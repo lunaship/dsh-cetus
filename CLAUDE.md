@@ -17,6 +17,7 @@ DSH 手机插件（npm 包）：局域网配对 + 设备管理 + 18640 接入代
 
 | 主题 | 文件 |
 |---|---|
+| 架构总览（分层 / 目录契约 / 数据流，新人入口） | `docs/ARCHITECTURE.md` |
 | 手机同步契约（字段级，改手机 API 必读） | `docs/MOBILE_SYNC_CONTRACT.md` |
 | 兼容矩阵 / DSH 基线 / 冒烟隔离警告 | `docs/COMPATIBILITY.md` |
 | 发布流程与 dist-tag 策略 | `RELEASING.md` |
