@@ -527,8 +527,7 @@ private fun DeviceCard(
             .fillMaxWidth()
             .heightIn(min = 96.dp)
             .clip(RoundedCornerShape(DshRadius.lg))
-            .background(if (pressed) Dsh.pressed else Dsh.bgSidePanel)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
+            .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onOpen)
             .semantics {
                 role = Role.Button
@@ -883,8 +882,7 @@ private fun MethodOption(
             .fillMaxWidth()
             .heightIn(min = 68.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (pressed) Dsh.pressed else Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(14.dp))
+            .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
             .semantics {
                 role = Role.Button
@@ -957,8 +955,7 @@ private fun ManualPairForm(
                         .widthIn(max = 360.dp)
                         .fillMaxWidth(0.9f)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Dsh.bgSidePanel)
-                        .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(14.dp))
+                        .background(Dsh.bgSubtle)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = dshRipple(),
@@ -1195,7 +1192,6 @@ private fun ConfirmDialog(
                     .shadow(12.dp, RoundedCornerShape(DshRadius.dialog), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                     .clip(RoundedCornerShape(DshRadius.dialog))
                     .background(Dsh.bgSidePanel)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.dialog))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

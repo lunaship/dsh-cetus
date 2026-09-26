@@ -357,14 +357,12 @@ fun DshTag(
     modifier: Modifier = Modifier,
     color: Color = Dsh.bgSubtle,
     contentColor: Color = Dsh.labelSecondary,
-    borderColor: Color? = null,
     shape: Shape = RoundedCornerShape(DshRadius.sm),
     contentDescription: String? = null,
 ) {
     val mod = modifier
         .clip(shape)
         .background(color)
-        .let { if (borderColor != null) it.border(1.dp, borderColor, shape) else it }
         .padding(horizontal = 8.dp, vertical = 2.dp)
         .semantics {
             if (contentDescription != null) this.contentDescription = contentDescription

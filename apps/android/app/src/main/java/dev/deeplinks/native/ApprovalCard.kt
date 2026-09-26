@@ -108,8 +108,7 @@ internal fun ApprovalCard(
             fontWeight = FontWeight(500),
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.sm))
-                .background(if (pressed) Dsh.pressed else Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
+                .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
                 .clickable(interactionSource = interaction, indication = dshRipple()) { open = true }
                 .semantics {
                     role = Role.Button
@@ -135,8 +134,7 @@ internal fun ApprovalCard(
             style = DshType.body,
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.sm))
-                .background(Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
+                .background(Dsh.bgSubtle)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
         return

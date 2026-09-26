@@ -414,11 +414,6 @@ private fun ModelOptionRow(
                     else -> Dsh.bgTrack
                 }
             )
-            .border(
-                1.dp,
-                if (selected) Dsh.brand400.copy(alpha = 0.28f) else Dsh.borderSubtle,
-                RoundedCornerShape(DshRadius.lg)
-            )
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
             .semantics { role = Role.Button }
             .padding(horizontal = 12.dp, vertical = 10.dp),

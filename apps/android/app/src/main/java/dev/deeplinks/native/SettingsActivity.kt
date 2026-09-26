@@ -40,7 +40,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -445,8 +444,7 @@ private fun SettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(DshRadius.lg))
-                                    .background(Dsh.bgCard)
-                                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
+                                    .background(Dsh.bgSubtle)
                                     .clickable(interactionSource = interaction, indication = dshRipple()) {
                                         expandedProviders = if (expanded) expandedProviders - group.provider else expandedProviders + group.provider
                                     }
@@ -583,8 +581,7 @@ private fun SettingsScreen(
                         .widthIn(max = 360.dp)
                         .fillMaxWidth(0.9f)
                         .clip(RoundedCornerShape(DshRadius.lg))
-                        .background(Dsh.bgCard)
-                        .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
+                        .background(Dsh.bgSubtle)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = dshRipple(),
@@ -663,8 +660,7 @@ private fun SettingsScreen(
                         .fillMaxWidth(0.92f)
                         .fillMaxHeight(0.8f)
                         .clip(RoundedCornerShape(DshRadius.lg))
-                        .background(Dsh.bgCard)
-                        .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
+                        .background(Dsh.bgSubtle)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = dshRipple(),
@@ -1134,7 +1130,6 @@ private fun SettingsSelectItem(
                 shape = RoundedCornerShape(DshRadius.lg),
                 tonalElevation = 0.dp,
                 shadowElevation = 12.dp,
-                border = BorderStroke(1.dp, Dsh.borderSubtle),
                 offset = DpOffset(0.dp, 4.dp)
             ) {
                 Column(
@@ -1471,7 +1466,6 @@ private fun ManagedSessionRow(
                 shape = RoundedCornerShape(DshRadius.lg),
                 tonalElevation = 0.dp,
                 shadowElevation = 12.dp,
-                border = BorderStroke(1.dp, Dsh.borderSubtle),
                 offset = DpOffset(0.dp, 4.dp),
             ) {
                 DropdownMenuItem(
@@ -1669,8 +1663,7 @@ private fun SettingsConfirmDialog(
                     .widthIn(max = 360.dp)
                     .fillMaxWidth(0.9f)
                     .clip(RoundedCornerShape(DshRadius.lg))
-                    .background(Dsh.bgCard)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
+                    .background(Dsh.bgSubtle)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = dshRipple(),

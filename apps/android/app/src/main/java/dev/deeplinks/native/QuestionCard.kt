@@ -77,8 +77,7 @@ internal fun QuestionCard(
             style = DshType.body,
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.sm))
-                .background(Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
+                .background(Dsh.bgSubtle)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
         return
@@ -201,8 +200,7 @@ internal fun QuestionCard(
                             .fillMaxWidth()
                             .heightIn(min = 48.dp, max = 140.dp)
                             .clip(RoundedCornerShape(DshRadius.sm))
-                            .background(Dsh.bgCard)
-                            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
+                            .background(Dsh.bgSubtle)
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                     ) {
                         if (draft.custom.isEmpty()) {
