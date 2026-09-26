@@ -39,25 +39,26 @@ class WorkspaceMenuTest {
         onShareImage = { ctx.log += "shareImage" },
         onExport = { ctx.log += "export" },
         onDelete = { ctx.log += "delete" },
+        onToggleViewMode = { ctx.log += "viewMode" },
     )
 
     @Test
-    fun baseMenuAlwaysHasSevenActions() {
-        assertEquals(7, menu(Ctx(), viewMode = "trace").size)
+    fun baseMenuAlwaysHasTheViewTogglePlusSevenActions() {
+        assertEquals(8, menu(Ctx(), viewMode = "trace").size)
     }
 
     @Test
     fun contextualItemsAreGatedByState() {
-        assertEquals(8, menu(Ctx(), viewMode = "chat").size)   // chat 多一个「工具查找」
-        assertEquals(7, menu(Ctx(), viewMode = "trace").size)  // trace 无该入口
+        assertEquals(9, menu(Ctx(), viewMode = "chat").size)   // 视图切换 + 工具查找
+        assertEquals(8, menu(Ctx(), viewMode = "trace").size)  // trace 无工具查找
     }
 
     @Test
     fun subagentsAndTurnJumpsAppearOnlyWhenRelevant() {
-        assertEquals(7, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
-        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 1).size)
-        assertEquals(8, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
-        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
+        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
+        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1).size)
+        assertEquals(9, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
+        assertEquals(10, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
     }
 
     @Test
@@ -73,7 +74,7 @@ class WorkspaceMenuTest {
     @Test
     fun contextualActionClosesMenuToo() {
         val ctx = Ctx()
-        val toolSearch = menu(ctx, toolSearchOpen = false).first()
+        val toolSearch = menu(ctx, toolSearchOpen = false).first { it.label == L.searchToolCalls }
         assertEquals(L.searchToolCalls, toolSearch.label)
         toolSearch.onClick()
         assertEquals(listOf("close", "toolSearch"), ctx.log)
@@ -81,7 +82,7 @@ class WorkspaceMenuTest {
 
     @Test
     fun toolSearchLabelReflectsOpenState() {
-        val open = menu(Ctx(), viewMode = "chat", toolSearchOpen = true).first()
+        val open = menu(Ctx(), viewMode = "chat", toolSearchOpen = true).first { it.label == L.closeToolSearch }
         assertEquals(L.closeToolSearch, open.label)
     }
 }

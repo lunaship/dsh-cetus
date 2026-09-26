@@ -39,7 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -106,12 +109,21 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
                 }
             }
             MarkdownBlockType.QUOTE -> {
+                val quoteBarColor = Dsh.brand400.copy(alpha = 0.5f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Dsh.bgCard)
-                        .border(2.dp, Dsh.borderSubtle)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .drawBehind {
+                            val barWidth = 3.dp.toPx()
+                            drawLine(
+                                color = quoteBarColor,
+                                start = Offset(barWidth / 2, 0f),
+                                end = Offset(barWidth / 2, size.height),
+                                strokeWidth = barWidth,
+                                cap = StrokeCap.Round,
+                            )
+                        }
+                        .padding(start = 12.dp, top = 2.dp, bottom = 2.dp)
                 ) {
                     InlineMarkdownText(block.content, color = Dsh.labelSecondary, streaming = streamTail)
                 }
@@ -198,7 +210,6 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.md))
             .background(Dsh.bgCard)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
     ) {
         Row(
             modifier = Modifier
@@ -291,7 +302,6 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(Dsh.bgCode)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
     ) {
         // 语言标签 + 复制（DSH code-block-banner）
         Row(

@@ -48,6 +48,25 @@ fun groupMessages(messages: List<MobileMessage>): List<MessageGroup> {
     return out
 }
 
+/** 智能格式化工具调用聚合摘要（如 "Read (3)"，"Read, bash (4)"，或回退到工具调用计数）。 */
+fun formatToolGroupSummary(
+    items: List<MobileMessage>,
+    fallbackCountText: (Int) -> String = { "$it tool calls" },
+): String {
+    val toolCalls = items.filter { it.role == "tool_call" }
+    val count = if (toolCalls.isNotEmpty()) toolCalls.size else items.size
+    val names = items.mapNotNull { it.toolName?.takeIf { n -> n.isNotBlank() } }.distinct()
+    return when {
+        names.isEmpty() -> fallbackCountText(count)
+        names.size == 1 -> {
+            val name = names.first()
+            if (count > 1) "$name ($count)" else name
+        }
+        names.size <= 2 -> "${names.joinToString(", ")} ($count)"
+        else -> "${names.take(2).joinToString(", ")} +${names.size - 2} ($count)"
+    }
+}
+
 data class UserTurnJump(
     val messageId: String,
     val preview: String,

@@ -36,8 +36,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -127,9 +126,10 @@ internal fun InputBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(elevation = 2.dp, shape = composerShape, ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                 .clip(composerShape)
                 .background(composerBg)
-                .border(1.dp, composerBorder, composerShape)
+                .border(0.5.dp, composerBorder, composerShape)
                 .padding(top = 4.dp)
                 .onFocusChanged { composerFocused = it.hasFocus }
         ) {
@@ -206,11 +206,8 @@ internal fun InputBar(
                     },
             )
 
-
-
-
-            // 底部工具行：左侧控件可压缩，发送键固定在最右，永不被挤出
-            val composerIdle = inputText.isBlank() && pendingImages.isEmpty()
+            // 底部工具行：附件、模型选择与发送
+            val composerIdle = inputText.isNullOrBlank() && pendingImages.isEmpty()
             Box(Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
@@ -219,9 +216,7 @@ internal fun InputBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .horizontalScroll(rememberScrollState()),
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -247,21 +242,66 @@ internal fun InputBar(
                                         attachOpen = false
                                         onTakePhoto()
                                     },
+                                    DshMenuItem(composerPermissionGlyph(permissionPreset), permissionLabel) {
+                                        attachOpen = false
+                                        onOpenPermissionPicker()
+                                    },
                                 ),
                             )
                         }
 
-                        // DSH 输入条座位：模型座 + 访问模式座（原来自己发明的「工作模式
-                        // 对话/规划/目标」plan 档已撤掉：DSH 里 plan / goal 是命令，不是模式）
-                        ComposerSeatsRow(
-                            modelName = modelName,
-                            modelEffort = modelEffort,
-                            permissionPreset = permissionPreset,
-                            permissionLabel = permissionLabel,
-                            compact = compact,
-                            onOpenModelPicker = onOpenModelPicker,
-                            onOpenPermissionPicker = onOpenPermissionPicker,
-                        )
+                        // 模型胶囊标签（轻量次级文字，低干扰）
+                        val modelLabel = if (!modelName.isNullOrBlank()) modelName else L.selectModel
+                        val effortLabel = if (!modelEffort.isNullOrBlank() && !modelEffort.equals("null", ignoreCase = true)) formatEffortLabel(modelEffort) else null
+                        val modelAria = when {
+                            modelName.isNullOrBlank() -> L.selectModel
+                            effortLabel == null -> L.modelSeatAria.format(modelName)
+                            else -> L.modelSeatAriaEffort.format(modelName, modelEffort)
+                        }
+                        val modelPillInteraction = remember { MutableInteractionSource() }
+                        val modelPillPressed by modelPillInteraction.collectIsPressedAsState()
+                        Row(
+                            modifier = Modifier
+                                .heightIn(min = 32.dp)
+                                .clip(RoundedCornerShape(DshRadius.sm))
+                                .background(if (modelPillPressed) Dsh.pressed else Color.Transparent)
+                                .clickable(
+                                    interactionSource = modelPillInteraction,
+                                    indication = dshRipple(),
+                                    onClick = onOpenModelPicker,
+                                )
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = modelAria
+                                }
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                modelLabel,
+                                color = Dsh.labelSecondary,
+                                style = DshType.t12x18M,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (effortLabel != null) {
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    effortLabel,
+                                    color = Dsh.labelTertiary,
+                                    style = DshType.t11,
+                                    maxLines = 1,
+                                )
+                            }
+                            Spacer(Modifier.width(3.dp))
+                            Icon(
+                                ChevronDownOutline14,
+                                contentDescription = null,
+                                tint = Dsh.labelTertiary,
+                                modifier = Modifier.size(11.dp),
+                            )
+                        }
                     }
                 }
 
@@ -442,6 +482,12 @@ internal fun InputBar(
  *
  * plan / goal 在 DSH 里是 `/plan` `/goal` 命令，不是座位，所以这里不再有「工作模式」。
  */
+private fun composerPermissionGlyph(preset: String) = when (canonicalComposerPermission(preset)) {
+    "read-only" -> BrowseOutline16
+    "danger-full-access" -> WarningOutline16
+    else -> FolderOpenOutline16
+}
+
 @Composable
 internal fun ComposerSeatsRow(
     modelName: String?,

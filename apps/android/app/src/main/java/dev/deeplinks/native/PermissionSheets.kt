@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -394,9 +395,9 @@ internal fun PermissionPickerSheet(
                             scaleX = motion.scale.value
                             scaleY = motion.scale.value
                         }
+                        .shadow(12.dp, RoundedCornerShape(DshRadius.dialog), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                         .clip(RoundedCornerShape(DshRadius.dialog))
                         .background(Dsh.bgCard)
-                        .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.dialog))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,

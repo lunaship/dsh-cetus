@@ -3,10 +3,12 @@ import assert from "node:assert/strict"
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { realpathSync, symlinkSync } from "node:fs"
 import {
   MobileWorkspaceCreateError,
   ensureMobileWorkspaceDirectory,
   planMobileWorkspaceCreate,
+  resolveAbsoluteWorkspaceDirectory,
 } from "../src/workspace-create.js"
 
 const anchor = (path) => [{ workspaceId: "ws-current", path }]
@@ -102,6 +104,29 @@ test("名称模式拒绝覆盖同名文件", async () => {
     await assert.rejects(
       () => ensureMobileWorkspaceDirectory(plan),
       (error) => error.code === "workspace-name-conflict" && error.status === 409,
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test("绝对路径解析成已存在目录的 realpath", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dsh-links-workspace-"))
+  try {
+    const real = join(root, "real")
+    const link = join(root, "link")
+    await mkdir(real)
+    symlinkSync(real, link)
+    assert.equal(resolveAbsoluteWorkspaceDirectory(link), realpathSync(real))
+    assert.throws(
+      () => resolveAbsoluteWorkspaceDirectory(join(root, "missing")),
+      (error) => error.code === "workspace-path-not-found" && error.status === 404,
+    )
+    const file = join(root, "file")
+    await writeFile(file, "x")
+    assert.throws(
+      () => resolveAbsoluteWorkspaceDirectory(file),
+      (error) => error.code === "workspace-not-a-directory" && error.status === 400,
     )
   } finally {
     await rm(root, { recursive: true, force: true })

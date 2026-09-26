@@ -153,8 +153,7 @@ internal fun ApprovalCard(
                 .fillMaxWidth()
                 .shadow(6.dp, RoundedCornerShape(DshRadius.lg), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                 .clip(RoundedCornerShape(DshRadius.lg))
-                .background(Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg)),
+                .background(Dsh.bgSurface),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Row(

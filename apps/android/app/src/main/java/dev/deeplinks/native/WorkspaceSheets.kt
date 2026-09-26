@@ -80,6 +80,7 @@ internal fun AddWorkspaceSheet(
     var workspaceInput by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var submitError by remember { mutableStateOf<String?>(null) }
+    var pendingNotice by remember { mutableStateOf<String?>(null) }
     val trimmedInput = workspaceInput.trim()
     val isAbsolutePath = trimmedInput.startsWith("/")
     val anchorLabel = creationAnchor?.title?.takeIf { it.isNotBlank() }
@@ -119,6 +120,7 @@ internal fun AddWorkspaceSheet(
                 onValueChange = {
                     workspaceInput = it
                     submitError = null
+                    pendingNotice = null
                 },
                 enabled = !submitting,
                 singleLine = true,
@@ -134,8 +136,10 @@ internal fun AddWorkspaceSheet(
                 isError = submitError != null,
                 supportingText = {
                     val err = submitError
+                    val notice = pendingNotice
                     val supporting = when {
                         err != null -> L.addWorkspaceFailed.format(err)
+                        notice != null -> notice
                         isAbsolutePath -> L.workspaceRegisterExistingPath
                         creationAnchor != null -> L.workspaceCreateNextTo.format(anchorLabel)
                         else -> L.workspaceNameRequiresAnchor
@@ -186,7 +190,12 @@ internal fun AddWorkspaceSheet(
                                     createWorkspace(requestedInput, parentWorkspaceId)
                                 }
                                 submitting = false
-                                onCreated(result.workspace)
+                                val created = result.workspace
+                                if (result.pending || created == null) {
+                                    pendingNotice = L.workspaceApprovalPending
+                                } else {
+                                    onCreated(created)
+                                }
                             } catch (error: Exception) {
                                 submitting = false
                                 if (isMobileAuthFailure(error)) {
@@ -376,7 +385,6 @@ internal fun SheetSearchField(
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(Dsh.bgTrack)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -486,7 +494,6 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
             .padding(12.dp)
     ) {
         Row(
@@ -551,6 +558,171 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(L.create, color = if (path.isBlank()) Dsh.labelTertiary else Dsh.onBrand, style = DshType.t13M, fontWeight = FontWeight(500))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SubagentBottomSheet(
+    sessions: List<MobileSession>,
+    currentSession: MobileSession?,
+    currentSessionId: String?,
+    onSelectSession: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val anchorParent = currentSession?.parentSessionId ?: currentSessionId
+    val children = remember(sessions, anchorParent) {
+        sessions.filter { it.origin == "subagent" && it.parentSessionId == anchorParent }
+            .sortedByDescending { it.updatedAt }
+    }
+    val parentOfCurrent = currentSession?.parentSessionId
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Dsh.bgCard,
+        contentColor = Dsh.labelPrimary,
+        shape = DshSheetShape,
+        dragHandle = null,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            DshSheetGrabber()
+            Text(L.subagents, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
+                color = Dsh.labelTertiary,
+                style = DshType.t13,
+            )
+            Spacer(Modifier.height(12.dp))
+            children.forEach { child ->
+                val selected = child.sessionId == currentSessionId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(DshRadius.md))
+                        .background(if (selected) Dsh.bgSelected else Color.Transparent)
+                        .clickable {
+                            onDismiss()
+                            onSelectSession(child.sessionId)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            child.title,
+                            color = Dsh.labelPrimary,
+                            style = DshType.t14M,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight(500),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                        if (child.running) {
+                            Text(L.runningStatus, color = Dsh.brand400, style = DshType.t11)
+                        }
+                    }
+                }
+            }
+            if (!parentOfCurrent.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    L.returnToParentSession,
+                    color = Dsh.brand400,
+                    style = DshType.t13M,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight(500),
+                    modifier = Modifier
+                        .clickable {
+                            onDismiss()
+                            onSelectSession(parentOfCurrent)
+                        }
+                        .padding(12.dp),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TurnJumpBottomSheet(
+    olderMessages: List<MobileMessage>,
+    messages: List<MobileMessage>,
+    onJumpToGroupIndex: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val merged = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
+    val jumps = remember(merged) { dev.deeplinks.native.util.userTurnJumps(merged) }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Dsh.bgCard,
+        contentColor = Dsh.labelPrimary,
+        shape = DshSheetShape,
+        dragHandle = null,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            DshSheetGrabber()
+            Text(L.jumpToTurn, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
+            Spacer(Modifier.height(12.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                jumps.forEachIndexed { index, jump ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clip(RoundedCornerShape(DshRadius.md))
+                            .clickable {
+                                val display = merged.filterNot {
+                                    it.role == "reasoning" && it.text.isBlank() && it.running != true
+                                }
+                                val groups = dev.deeplinks.native.util.groupMessages(display)
+                                val groupIndex = groups.indexOfFirst {
+                                    it is dev.deeplinks.native.util.MessageGroup.Single && it.msg.id == jump.messageId
+                                }
+                                onDismiss()
+                                if (groupIndex >= 0) {
+                                    onJumpToGroupIndex(groupIndex)
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${index + 1}",
+                            color = Dsh.labelTertiary,
+                            style = DshType.t12,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            modifier = Modifier.width(28.dp),
+                        )
+                        Text(
+                            jump.preview,
+                            color = Dsh.labelPrimary,
+                            style = DshType.t14,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }

@@ -156,7 +156,6 @@ internal fun ProducedFilesRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -197,7 +196,6 @@ internal fun ProducedFilesRow(
                         .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(DshRadius.full))
                         .background(Dsh.bgTrack)
-                        .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.full))
                         .semantics {
                             role = Role.Button
                             contentDescription = when {

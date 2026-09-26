@@ -286,6 +286,7 @@ class DshStrings(private val values: Map<String, String>) {
     val workspacePathExample: String get() = t("workspacePathExample")
     val workspaceCreateNextTo: String get() = t("workspaceCreateNextTo")
     val workspaceRegisterExistingPath: String get() = t("workspaceRegisterExistingPath")
+    val workspaceApprovalPending: String get() = t("workspaceApprovalPending")
     val workspaceNameRequiresAnchor: String get() = t("workspaceNameRequiresAnchor")
     val createAndAddWorkspace: String get() = t("createAndAddWorkspace")
     val addExistingWorkspace: String get() = t("addExistingWorkspace")

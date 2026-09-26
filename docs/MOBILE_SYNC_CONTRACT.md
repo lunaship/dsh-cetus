@@ -137,6 +137,18 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 - 插件重启后内存回调不可恢复，未决请求失效。
 - 澄清多题：旧 App 不声明 `multiQuestion` 时回落桌面，不在手机上构造未展示题目的答案。
 
+## 工作区注册与设备吊销
+
+- 单层名称：`POST /dsh-link/mobile/workspaces` 仍立即在锚点工作区的同级创建目录并注册，200 返回 `workspace`。
+- 绝对路径：目录必须已存在。插件把它解析成 realpath（符号链接展开成目标），**不**调用 `workspace.create`，返回 202：
+
+```json
+{ "ok": true, "pending": true, "requestId": "...", "path": "/realpath", "inputKind": "absolute-path", "expiresAt": 0 }
+```
+
+  电脑在「手机连接」面板批准后才注册；拒绝、过期或该设备被吊销则丢弃。旧 App 看到没有 `workspace` 对象时按原错误提示，不会静默注册。
+- `POST /dsh-link/mobile/revoke` 只能吊销调用方自己的设备。`deviceId` 或 `name` 指向其他设备时返回 403 `只能吊销当前设备`。跨设备吊销与全部吊销仍只在回环面板。
+
 ## 错误与重试
 
 - 校验失败（未知题目 ID、无效选项、缺必填、超长）返回 400，请求保持可处理。

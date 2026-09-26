@@ -300,7 +300,6 @@ private fun ModelMenuRow(
             .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(if (pressed && enabled) Dsh.pressed else Dsh.bgTrack)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
             .clickable(interactionSource = interaction, indication = dshRipple(), enabled = enabled, onClick = onClick)
             .semantics { role = Role.Button }
             .padding(horizontal = 12.dp, vertical = 10.dp),

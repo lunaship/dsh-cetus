@@ -46,3 +46,27 @@ internal fun resolveActiveSubagentCount(
     return currentSubagentCount?.takeIf { it > 0 }
         ?: sessions.count { it.origin == "subagent" && it.parentSessionId == sid }
 }
+
+/**
+ * 格式化会话列表副标题（项目名 · 相对时间 / 正在运行目标）。
+ */
+internal fun formatSessionSubtitle(
+    session: MobileSession,
+    goalSummary: String? = null,
+    runningLabel: String = "运行中",
+    relativeTimeFormatted: String = "",
+): String {
+    val project = session.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+    return when {
+        session.running && !goalSummary.isNullOrBlank() -> {
+            if (project != null) "$project · $goalSummary" else goalSummary
+        }
+        session.running -> {
+            if (project != null) "$project · $runningLabel" else runningLabel
+        }
+        else -> {
+            listOfNotNull(project, relativeTimeFormatted.takeIf { it.isNotBlank() }).joinToString(" · ")
+        }
+    }
+}
+

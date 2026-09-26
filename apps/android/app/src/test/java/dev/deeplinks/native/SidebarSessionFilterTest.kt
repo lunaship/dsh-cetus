@@ -79,4 +79,19 @@ class SidebarSessionFilterTest {
         val sessions = listOf(session("a", title = "x"), session("b", title = "y"))
         assertEquals(listOf("b"), filter(sessions, needle = "needle", serverIds = listOf("b")))
     }
+
+    @Test
+    fun formatSessionSubtitle_variousCases() {
+        val normalSession = session("1", cwd = "/home/user/work/my-project", updatedAt = now)
+        assertEquals("my-project · 10分钟前", formatSessionSubtitle(normalSession, relativeTimeFormatted = "10分钟前"))
+
+        val runningSession = normalSession.copy(running = true)
+        assertEquals("my-project · 思考中", formatSessionSubtitle(runningSession, runningLabel = "思考中"))
+
+        val runningWithGoal = normalSession.copy(running = true)
+        assertEquals("my-project · 修复单元测试", formatSessionSubtitle(runningWithGoal, goalSummary = "修复单元测试"))
+
+        val sessionNoCwd = session("2", cwd = null, updatedAt = now)
+        assertEquals("10分钟前", formatSessionSubtitle(sessionNoCwd, relativeTimeFormatted = "10分钟前"))
+    }
 }

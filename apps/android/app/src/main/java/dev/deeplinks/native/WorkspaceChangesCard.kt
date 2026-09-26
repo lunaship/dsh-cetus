@@ -45,8 +45,7 @@ internal fun WorkspaceChangesCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, shape),
+            .background(Dsh.bgInput),
     ) {
         Row(
             modifier = Modifier

@@ -119,4 +119,25 @@ class MessageGroupingTest {
     fun userTurnJumps_skipsBlankUser() {
         assertEquals(emptyList<UserTurnJump>(), userTurnJumps(listOf(msg("u-1", "user", 1).copy(text = "  \n"))))
     }
+
+    @Test
+    fun `formatToolGroupSummary 测试单一与多工具摘要`() {
+        val msgs1 = listOf(
+            msg("tc-1", "tool_call", 1).copy(toolName = "Read"),
+            msg("tr-1", "tool_result", 2),
+            msg("tc-2", "tool_call", 3).copy(toolName = "Read"),
+        )
+        assertEquals("Read (2)", formatToolGroupSummary(msgs1))
+
+        val msgs2 = listOf(
+            msg("tc-1", "tool_call", 1).copy(toolName = "Read"),
+            msg("tc-2", "tool_call", 2).copy(toolName = "bash"),
+        )
+        assertEquals("Read, bash (2)", formatToolGroupSummary(msgs2))
+
+        val msgsEmpty = listOf(
+            msg("tc-1", "tool_call", 1),
+        )
+        assertEquals("1 tool calls", formatToolGroupSummary(msgsEmpty))
+    }
 }

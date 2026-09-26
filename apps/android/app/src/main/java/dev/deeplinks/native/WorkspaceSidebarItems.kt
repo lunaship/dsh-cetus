@@ -12,19 +12,17 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +39,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SwipeToDismissBox
@@ -69,7 +68,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.deeplinks.core.DSH_RAIL_WIDTH_DP
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
@@ -106,29 +104,9 @@ private val RowRestColor: Color
     @Composable get() = Dsh.bgDrawer
 
 /**
- * 会话行（M3 抽屉条目规格）。
- * 归档滑动、长按菜单与原实现一致；仅尺寸/颜色/图标原生化的差异。
+ * 会话行（M3 抽屉/列表条目规格）。
+ * 归档滑动、长按菜单与原实现一致；尺寸/双行副标题/状态指示原生化。
  */
-@Composable
-private fun SessionGoalChip(goalSummary: String?) {
-    val chip = goalSummary?.takeIf { it.isNotBlank() }
-    if (chip == null) return
-    Spacer(Modifier.width(4.dp))
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Dsh.brand400.copy(alpha = 0.12f))
-            .padding(horizontal = 5.dp, vertical = 1.5.dp),
-    ) {
-        Text(
-            text = chip.take(24) + if (chip.length > 24) "…" else "",
-            color = Dsh.brand400,
-            style = DshType.t11M,
-            maxLines = 1,
-        )
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun SessionRowItem(
@@ -219,7 +197,7 @@ internal fun SessionRowItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = DrawerItemHeight)
+                    .heightIn(min = 56.dp)
                     .clip(rowShape)
                     // 先铺不透明行底，再叠选中/按压色：弱蓝是半透明色，
                     // 不垫底就会透出下层的滑动归档层。
@@ -247,52 +225,59 @@ internal fun SessionRowItem(
                             menuOpen = true
                         },
                     )
-                    .padding(horizontal = DrawerInnerPadding),
+                    .padding(horizontal = DrawerInnerPadding, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    Icons.Outlined.ChatBubbleOutline,
-                    contentDescription = null,
-                    tint = if (isSelected) Dsh.brand400 else Dsh.labelSecondary,
-                    modifier = Modifier.size(DrawerIconSize),
-                )
-                Spacer(Modifier.width(DrawerLeadingGap))
-                Text(
-                    session.title,
-                    color = Dsh.labelPrimary,
-                    style = DshType.body,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (!session.blank) {
-                    Spacer(Modifier.width(8.dp))
+                // 状态指示（色 + 形）：运行中以 brand500 旋转进度表达；闲置/完成以气泡弱灰表达
+                Box(
+                    modifier = Modifier.size(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     if (session.running) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Dsh.brand400),
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(15.dp),
+                            color = Dsh.brand500,
+                            strokeWidth = 2.dp,
                         )
-                        Spacer(Modifier.width(6.dp))
+                    } else {
+                        Icon(
+                            Icons.Outlined.ChatBubbleOutline,
+                            contentDescription = null,
+                            tint = if (isSelected) Dsh.brand400 else Dsh.labelTertiary,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
-                    SessionGoalChip(goalSummary = goalSummary)
+                }
+                Spacer(Modifier.width(DrawerLeadingGap))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     Text(
-                        relativeTime(session.updatedAt),
-                        color = Dsh.labelTertiary,
-                        style = DshType.captionRelaxed,
+                        session.title,
+                        color = Dsh.labelPrimary,
+                        style = DshType.titleSmall,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                } else if (session.running) {
-                    Spacer(Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Dsh.brand400),
+                    Spacer(Modifier.height(2.dp))
+                    val relTime = if (session.updatedAt > 0) relativeTime(session.updatedAt) else ""
+                    val subtitle = formatSessionSubtitle(
+                        session = session,
+                        goalSummary = goalSummary,
+                        runningLabel = L.runningStatus,
+                        relativeTimeFormatted = relTime,
                     )
-                    SessionGoalChip(goalSummary = goalSummary)
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            subtitle,
+                            color = if (session.running) Dsh.brand400 else Dsh.labelTertiary,
+                            style = DshType.captionRelaxed,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
             // 锚在行尾：菜单靠右弹出，避免贴侧栏左边
@@ -431,7 +416,6 @@ internal fun SidebarSearchField(
             .heightIn(min = 40.dp)
             .clip(RoundedCornerShape(DshRadius.md))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
             .padding(horizontal = DrawerInnerPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -789,62 +773,6 @@ internal fun WorkspaceSidebarCollapsed(actions: WorkspaceSidebarActions) {
             icon = Icons.Outlined.Settings,
             contentDescription = L.settingsTitle,
             onClick = { actions.onOpenSettings() },
-        )
-        SidebarIconAction(
-            icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-            contentDescription = if (isDarkTheme) L.switchToLight else L.switchToDark,
-            onClick = { ThemeManager.toggleTheme(context, isDarkTheme) },
-        )
-        Spacer(Modifier.height(4.dp))
-    }
-}
-
-/**
- * Medium 窗口（600–839dp）的常驻 Rail：只放四个高频入口，会话列表通过临时面板展开。
- *
- * 为什么不直接复用 [WorkspaceSidebarCollapsed]：折叠态侧栏绑在 PermanentDrawerSheet
- * 里（Expanded 用），而 Rail 必须能在模态抽屉外独立常驻；两者布局约束不同。
- */
-@Composable
-internal fun WorkspaceNavigationRail(
-    hostName: String,
-    onOpenSessionList: () -> Unit,
-    onNewSession: () -> Unit,
-    onOpenDevice: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    val isDarkTheme = Dsh.isDark
-    val context = androidx.compose.ui.platform.LocalContext.current
-    Column(
-        modifier = Modifier
-            .width(DSH_RAIL_WIDTH_DP.dp)
-            .fillMaxHeight()
-            .background(Dsh.bgDrawer)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        SidebarIconAction(
-            icon = PanelLeftOutline16,
-            contentDescription = L.sessionList,
-            onClick = onOpenSessionList,
-        )
-        SidebarIconAction(
-            icon = Icons.Outlined.Add,
-            contentDescription = L.newSession,
-            onClick = onNewSession,
-        )
-        SidebarIconAction(
-            icon = Icons.Outlined.Devices,
-            contentDescription = "${L.deviceAndPairing}: $hostName",
-            onClick = onOpenDevice,
-        )
-        Spacer(Modifier.weight(1f))
-        SidebarIconAction(
-            icon = Icons.Outlined.Settings,
-            contentDescription = L.settingsTitle,
-            onClick = onOpenSettings,
         )
         SidebarIconAction(
             icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,

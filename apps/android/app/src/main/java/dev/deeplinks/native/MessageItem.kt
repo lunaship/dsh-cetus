@@ -137,12 +137,6 @@ internal fun MessageItem(
                     horizontalAlignment = Alignment.End,
                 ) {
                     UserBubble(msg.text, longPressModifier)
-                    Spacer(Modifier.height(4.dp))
-                    MessageActionRow(
-                        onCopy = onCopy,
-                        onFork = null,
-                        onRegenerate = null,
-                    )
                 }
             }
             msg.role == "reasoning" -> ReasoningRow(msg.text, running || msg.running == true, msg.durationMs)
@@ -292,51 +286,6 @@ internal fun MessageItem(
     }
 }
 
-/** 消息底栏：复制 / 分叉 / 重新生成（按需显示） */
-@Composable
-private fun MessageActionRow(
-    onCopy: () -> Unit,
-    onFork: (() -> Unit)? = null,
-    onRegenerate: (() -> Unit)? = null,
-    onFeedback: (() -> Unit)? = null,
-) {
-    val haptic = rememberDshHaptic()
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MessageActionIcon(
-            icon = CopyOutline16,
-            contentDescription = L.copy,
-            onClick = {
-                haptic(DshHaptic.Confirm)
-                onCopy()
-            },
-        )
-        if (onFork != null) {
-            MessageActionIcon(
-                icon = BranchOutline16,
-                contentDescription = L.forkSession,
-                onClick = onFork,
-            )
-        }
-        if (onRegenerate != null) {
-            MessageActionIcon(
-                icon = RefreshOutline16,
-                contentDescription = L.regenerate,
-                onClick = onRegenerate,
-            )
-        }
-        if (onFeedback != null) {
-            MessageActionIcon(
-                icon = Icons.Default.Feedback,
-                contentDescription = L.messageFeedback,
-                onClick = onFeedback,
-            )
-        }
-    }
-}
-
 @Composable
 private fun MessageActionIcon(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -394,7 +343,6 @@ private fun RawMessageCard(msg: MobileMessage) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.md))
             .background(Dsh.bgCard)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
             .padding(12.dp)
     ) {
         Row(
@@ -693,7 +641,6 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
     ) {
         Row(
             modifier = Modifier
@@ -811,8 +758,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.brandTint.copy(alpha = 0.06f))
-            .border(1.dp, Dsh.brand400.copy(alpha = 0.12f), RoundedCornerShape(DshRadius.md))
+            .background(Dsh.brandTint.copy(alpha = 0.08f))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -995,20 +941,20 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .heightIn(min = 48.dp)
+                .heightIn(min = 36.dp)
                 .clip(RoundedCornerShape(DshRadius.sm))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (running) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(13.dp),
+                    modifier = Modifier.size(12.dp),
                     color = Dsh.brand500,
                     strokeWidth = 1.5.dp,
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
             } else {
                 Box(
                     modifier = Modifier
@@ -1032,12 +978,14 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                 ShimmerLabel(text = runningLabel.trimEnd('…', '.', '。'), working = true)
                 Spacer(Modifier.width(6.dp))
             }
-            Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
-                contentDescription = if (expanded) L.collapse else L.expand,
-                tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp),
-            )
+            if (!body.isNullOrBlank()) {
+                Icon(
+                    if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                    contentDescription = if (expanded) L.collapse else L.expand,
+                    tint = Dsh.labelTertiary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
         AnimatedVisibility(
             visible = expanded && !body.isNullOrBlank(),

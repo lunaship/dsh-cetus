@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from "node:fs"
 import { readFile as readFileAsync } from "node:fs/promises"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 import { randomBytes } from "node:crypto"
 import { homedir, hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
@@ -11,7 +11,7 @@ import { relayPairSnapshot } from "./relay/crypto.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
 import { mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
 import { optionalString, omitNullFields } from "./optional-string.js"
-import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory } from "./workspace-create.js"
+import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory, resolveAbsoluteWorkspaceDirectory } from "./workspace-create.js"
 import { normalizeQuestions, validateAnswers } from "./question-answers.js"
 import { canDeviceHandle, requestBelongsToSession, mapApprovalUiStatus } from "./request-lifecycle.js"
 import { resolveSessionLogPath } from "./session-log-path.js"
@@ -264,9 +264,26 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const body = await readAuthorizedJson(req, res, state, device)
   if (!body) return
       try {
+        const rawInput = body.input ?? body.path
+        if (isAbsolute(String(rawInput ?? "").trim())) {
+          const real = resolveAbsoluteWorkspaceDirectory(rawInput)
+          const pending = rt.workspaceApprovals.submit({
+            deviceId: device.deviceId,
+            deviceName: device.name,
+            path: real,
+          })
+          return json(res, 202, {
+            ok: true,
+            pending: true,
+            requestId: pending.requestId,
+            path: pending.path,
+            inputKind: "absolute-path",
+            expiresAt: pending.expiresAt,
+          })
+        }
         const list = await callLocalRpc(targetPort, "workspace.list", {})
         const plan = planMobileWorkspaceCreate({
-          input: body.input ?? body.path,
+          input: rawInput,
           parentWorkspaceId: body.parentWorkspaceId,
           workspaces: list.items ?? [],
         })
@@ -395,9 +412,14 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     if (req.method === "POST" && pathname === "/dsh-link/mobile/revoke") {
       const body = await readAuthorizedJson(req, res, state, device)
       if (!body) return
+      const targetId = String(body.deviceId ?? "").trim()
+      const targetName = String(body.name ?? "").trim()
+      if (!targetId && !targetName) return json(res, 400, { error: "缺少设备名或 deviceId" })
+      if ((targetId && targetId !== device.deviceId) || (targetName && targetName !== device.name)) {
+        return json(res, 403, { error: "只能吊销当前设备" })
+      }
       const result = await revokeDeviceEntry(state, stateFile, rt, {
-        name: body.name,
-        deviceId: body.deviceId,
+        deviceId: device.deviceId,
       }, req)
       if (result.status === 200 && logger) {
         logger.info(`dsh-links: device revoke device=${String(result.body?.deviceId ?? body.deviceId ?? "").slice(0, 8)}`)

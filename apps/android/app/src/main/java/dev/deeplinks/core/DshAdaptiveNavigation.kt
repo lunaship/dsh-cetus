@@ -5,8 +5,8 @@ package dev.deeplinks.core
  * - 宽屏常驻侧栏时原地切换会话（UpdateArgs / Replace），不堆返回栈；
  * - 窄屏 drill-in 用 Push，保留系统返回。
  *
- * 全部是纯函数、可表驱动单测；Navigation Compose 迁移到位后由 NavHost 消费。
- * 迁移尚未落地前，这些契约先锁住「宽屏/窄屏返回栈行为必须不同」这一设计意图。
+ * 全部是纯函数、可表驱动单测。窄屏把会话列表当首页、聊天压栈；
+ * 宽屏常驻侧栏时原地切换，不堆返回栈。
  */
 enum class DshNavAction { Push, Replace, UpdateArgs }
 

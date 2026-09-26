@@ -124,7 +124,6 @@ internal fun StickyTaskSummaryCard(
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(Dsh.bgInput.copy(alpha = 0.92f))
-            .border(1.dp, Dsh.borderSubtle.copy(alpha = 0.5f), RoundedCornerShape(DshRadius.lg))
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

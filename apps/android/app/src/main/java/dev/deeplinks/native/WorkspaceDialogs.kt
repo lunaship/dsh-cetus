@@ -91,7 +91,6 @@ internal fun DshRenameDialog(
                     .shadow(12.dp, RoundedCornerShape(DshRadius.dialog), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                     .clip(RoundedCornerShape(DshRadius.dialog))
                     .background(Dsh.bgCard)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.dialog))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -205,7 +204,6 @@ internal fun DshConfirmDialog(
                     .shadow(12.dp, RoundedCornerShape(DshRadius.dialog), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                     .clip(RoundedCornerShape(DshRadius.dialog))
                     .background(Dsh.bgCard)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.dialog))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

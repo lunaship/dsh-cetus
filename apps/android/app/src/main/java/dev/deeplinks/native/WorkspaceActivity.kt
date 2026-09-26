@@ -18,10 +18,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -128,6 +133,9 @@ class WorkspaceActivity : ComponentActivity() {
 
 // ---------- 工作台主界面 ----------
 
+/** 手机 / Medium 上的目的地。宽屏常驻侧栏时忽略，列表和聊天同时在。 */
+private enum class PhoneDest { Sessions, Chat }
+
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun WorkspaceScreen(
@@ -146,7 +154,15 @@ fun WorkspaceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val launchIntoChat = !initialSessionId.isNullOrBlank() ||
+        !initialShareText.isNullOrBlank() ||
+        initialShareImages.isNotEmpty() ||
+        !initialShareNotice.isNullOrBlank()
+    var phoneDest by rememberSaveable {
+        mutableStateOf(if (launchIntoChat) PhoneDest.Chat.name else PhoneDest.Sessions.name)
+    }
+    fun showPhoneChat() { phoneDest = PhoneDest.Chat.name }
+    fun showPhoneSessions() { phoneDest = PhoneDest.Sessions.name }
     val hostIdentity = remember(host) { host.stableIdentity() }
     // 进入工作区即记录「最近使用设备」；设备重命名不影响该身份。
     LaunchedEffect(hostIdentity) { HostStore.rememberLastHost(context, host) }
@@ -560,6 +576,7 @@ fun WorkspaceScreen(
     LaunchedEffect(initialSessionId) {
         val target = initialSessionId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         if (target != currentSessionId) selectSession(target)
+        showPhoneChat()
     }
 
     var appliedShareSeq by rememberSaveable { mutableStateOf(0L) }
@@ -574,6 +591,7 @@ fun WorkspaceScreen(
     val shareOwnerKey = composerOwnerKey()
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
+        showPhoneChat()
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
@@ -618,6 +636,7 @@ fun WorkspaceScreen(
             ParkedRestoreKind.SelectSession -> {
                 val target = parked.sessionId ?: return@LaunchedEffect
                 selectSession(target)
+                showPhoneChat()
             }
             ParkedRestoreKind.IntoCurrent -> {
                 val filledText = inputText.isBlank() && parked.text.isNotBlank()
@@ -628,6 +647,7 @@ fun WorkspaceScreen(
                 if (parkedRestoreComposerError(parked.droppedImages)) {
                     composerActionError = L.sendParkedImagesDropped
                 }
+                showPhoneChat()
             }
         }
     }
@@ -829,7 +849,7 @@ fun WorkspaceScreen(
                     }
                     selectSession(newId)
                     refreshSessions()
-                    if (closeDrawer) scope.launch { drawerState.close() }
+                    if (closeDrawer) showPhoneChat()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -1008,12 +1028,12 @@ fun WorkspaceScreen(
             LocalKind.SEARCH_SESSIONS -> {
                 sidebarSearchOpen = true
                 composerKeyboardController?.hide()
-                scope.launch { drawerState.open() }
+                showPhoneSessions()
             }
             LocalKind.NEW_SESSION -> {
                 startComposeSession(pendingSessionCwd)
                 selectViewMode("chat")
-                scope.launch { drawerState.close() }
+                showPhoneChat()
             }
             LocalKind.OPEN_SETTINGS -> {
                 // 与顶栏抽屉设置按钮共享入口；CONSUMED 显示可以放在 picker 选中后的 toast 中
@@ -1073,7 +1093,7 @@ fun WorkspaceScreen(
 
     fun createSessionIn(cwd: String?) {
         startComposeSession(cwd)
-        scope.launch { drawerState.close() }
+        showPhoneChat()
     }
 
     fun appendStreamMessage(m: MobileMessage) {
@@ -1766,21 +1786,32 @@ fun WorkspaceScreen(
         }
     }
 
-    // ===== 整体框架：侧边栏(抽屉) + 主区 =====
-    // 抽屉宽度：封顶 264dp 且不超过容器宽 - 96dp（留出足够的看到主区的边缘），
-    // 300dp 在窄屏手机上占比过大，会明显挤压主区视线。
+    // ===== 整体框架：宽屏常驻侧栏；手机/Medium 是会话列表 → 聊天的返回栈 =====
     // 用实际窗口容器宽度（LocalWindowInfo）而不是设备屏幕宽度：
     // 分屏、自由窗口和折叠屏下 screenWidthDp 会失真。
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val windowDensity = androidx.compose.ui.platform.LocalDensity.current
     val containerWidthDp = with(windowDensity) { windowInfo.containerSize.width.toDp() }
     val containerHeightDp = with(windowDensity) { windowInfo.containerSize.height.toDp() }
-    // 抽屉宽度对齐 M3：上限 340dp；手机取 85% 宽（264dp 偏窄，读起来像网页侧栏）
-    val sidebarWidth = minOf(340.dp, containerWidthDp * 0.85f).coerceAtLeast(240.dp)
-    // 自适应外壳：手机模态抽屉；Medium/Expanded 侧栏常驻（纯函数 DshLayout 推导）
     val dshLayout = remember(containerWidthDp, containerHeightDp) {
         deriveDshLayout(containerWidthDp.value.toInt(), containerHeightDp.value.toInt())
     }
+    var prevPersistent by remember { mutableStateOf(dshLayout.persistentSidebar) }
+    val collapsingToPhone = prevPersistent && !dshLayout.persistentSidebar
+    val displayDest = when {
+        dshLayout.persistentSidebar -> PhoneDest.Chat.name
+        collapsingToPhone && (currentSessionId != null || composeNewSession) -> PhoneDest.Chat.name
+        else -> phoneDest
+    }
+    SideEffect {
+        if (collapsingToPhone && (currentSessionId != null || composeNewSession)) {
+            phoneDest = PhoneDest.Chat.name
+        }
+        prevPersistent = dshLayout.persistentSidebar
+    }
+    val showSessionHome = !dshLayout.persistentSidebar && displayDest == PhoneDest.Sessions.name
+    val changesProgress by changesPanel.progress.asState()
+    val navMotionMs = motionDuration(DshDuration.slow)
     var sidebarCollapsed by remember { mutableStateOf(false) }
     // 归档撤销 Snackbar + 下拉刷新/输入区测量状态。
     // Snackbar 宿主在根 Box（DshAdaptiveShell 之外）——抽屉打开时仍可见可点（遮罩之上）；
@@ -1808,14 +1839,12 @@ fun WorkspaceScreen(
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
         onNewSession = {
-            scope.launch {
-                startComposeSession(null)
-                drawerState.close()
-            }
+            startComposeSession(null)
+            showPhoneChat()
         },
         onSelectSession = { sid ->
             selectSession(sid)
-            scope.launch { drawerState.close() }
+            showPhoneChat()
         },
         onRenameSession = { openRename(it) },
         onArchiveSession = { session ->
@@ -1868,23 +1897,7 @@ fun WorkspaceScreen(
     ) {
     DshAdaptiveShell(
         layout = dshLayout,
-        drawerState = drawerState,
-        compactDrawerWidth = sidebarWidth,
         sidebarCollapsed = sidebarCollapsed,
-        rail = {
-            WorkspaceNavigationRail(
-                hostName = host.name,
-                onOpenSessionList = { scope.launch { drawerState.open() } },
-                onNewSession = {
-                    scope.launch {
-                        startComposeSession(null)
-                        drawerState.close()
-                    }
-                },
-                onOpenDevice = { onOpenDevice(null) },
-                onOpenSettings = onOpenSettings,
-            )
-        },
         sidebar = {
             WorkspaceSidebar(
                 sessions = sessions,
@@ -1911,13 +1924,62 @@ fun WorkspaceScreen(
             )
         },
     ) {
-        Column(
+        BackHandler(enabled = !dshLayout.persistentSidebar && !showSessionHome && changesProgress <= 0f) {
+            showPhoneSessions()
+        }
+        AnimatedContent(
+            targetState = showSessionHome,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                if (targetState) {
+                    slideInHorizontally(tween(navMotionMs, easing = DshEasing.out)) { -it / 5 } togetherWith
+                        slideOutHorizontally(tween(navMotionMs, easing = DshEasing.out)) { it }
+                } else {
+                    slideInHorizontally(tween(navMotionMs, easing = DshEasing.out)) { it } togetherWith
+                        slideOutHorizontally(tween(navMotionMs, easing = DshEasing.out)) { -it / 5 }
+                }
+            },
+            label = "phoneWorkspace",
+        ) { showList ->
+        if (showList) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Dsh.bgBase)
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+            ) {
+                WorkspaceSidebar(
+                    sessions = sessions,
+                    archivedIds = archivedIds,
+                    deletedIds = deletedIds,
+                    currentSessionId = currentSessionId,
+                    searchQuery = searchQuery,
+                    searchState = searchState,
+                    searchResults = searchResults,
+                    sidebarSearchOpen = sidebarSearchOpen,
+                    sessionFilter = sessionFilter,
+                    workspaceAccounts = workspaceAccounts,
+                    deletedWorkspaces = deletedWorkspaces,
+                    workspaceRegistry = workspaceRegistry,
+                    workspaceRegistryReady = workspaceRegistryReady,
+                    sessionsInitialLoad = sessionsInitialLoad,
+                    sessionsLoadError = sessionsLoadError,
+                    expandedWorkspaces = expandedWorkspaces,
+                    expandedGroups = expandedGroups,
+                    hostName = host.name,
+                    collapsed = false,
+                    goalSummaries = workspaceViewModel.goalSummaries.value,
+                    actions = sidebarActions,
+                )
+            }
+        } else Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Dsh.bgBase)
                 .statusBarsPadding()
         ) {
-            // ===== 顶栏（单行：≡ 侧栏 + 标题 + 模式分段 + 更多） =====
+            // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
             // 跳转轮次从悬浮按钮移到这里：≥3 轮才出现，不占输入区视觉重量
@@ -2011,25 +2073,24 @@ fun WorkspaceScreen(
                                 }
                             },
                             onDelete = { currentSession?.let { openDeleteSession(it) } },
+                            onToggleViewMode = {
+                                selectViewMode(if (viewMode == "trace") "chat" else "trace")
+                            },
             )
             WorkspaceTopBar(
                 running = running,
                 title = currentSession?.title ?: L.newSession,
-                onOpenDrawer = {
+                showBack = !dshLayout.persistentSidebar,
+                onNavigate = {
                     if (dshLayout.persistentSidebar) {
                         sidebarCollapsed = !sidebarCollapsed
                     } else {
-                        scope.launch { drawerState.open() }
+                        showPhoneSessions()
                     }
                 },
-                viewMode = viewMode,
-                onSelectViewMode = { selectViewMode(it) },
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
                 menuItems = topBarMenuItems,
-                latestChanges = changeSummaries.firstOrNull(),
-                onOpenChanges = { scope.launch { changesPanel.open() } },
-                goalSummary = workspaceViewModel.currentGoalSummary.value,
             )
 
             // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
@@ -2081,7 +2142,7 @@ fun WorkspaceScreen(
             // 避免两张完整长列表在一次点按中同时测量、绘制和滑动。
             ChangesSwipeArea(
                 state = changesPanel,
-                enabled = changeSummaries.isNotEmpty(),
+                enabled = changeSummaries.isNotEmpty() && dshLayout.persistentSidebar,
                 // 大屏（Medium / Expanded）把消息流封顶 760dp 居中，
                 // 而不是把手机布局无限拉宽；手机仍是全宽 16dp 边距。
                 modifier = Modifier
@@ -2317,6 +2378,10 @@ fun WorkspaceScreen(
                     }
                 )
             }
+            val goalLine = workspaceViewModel.currentGoalSummary.value?.takeIf { it.isNotBlank() }
+            if (viewMode == "chat" && running && goalLine != null) {
+                ChatGoalLine(goalLine)
+            }
             // ===== bottom chrome（WI-006：发送队列/输入卡/统计栏同一容器，统一安全区与 IME） =====
             // 输入卡带 8dp 阴影悬浮，底部留 10dp 让影子完整落在手势条上方。
             Column(
@@ -2328,9 +2393,8 @@ fun WorkspaceScreen(
                     // 键盘弹起时输入区上移，Snackbar 底部让位随之跟随
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
-                // 工作区 + Harness 模式（对标 web，置于输入卡上方）
-                // 新会话：模式仅在此处；已开聊：模式移到顶部「历史」旁，此处只保留工作区
-                if (viewMode == "chat") {
+                // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
+                if (viewMode == "chat" && currentSessionId == null) {
                     ComposerTopRow(
                         sessions = sessions,
                         deletedWorkspaces = deletedWorkspaces,
@@ -2644,6 +2708,7 @@ fun WorkspaceScreen(
 
             } // bottom chrome 容器结束
         }
+        }
     }
 
     WorkspaceChangesPanel(
@@ -2803,7 +2868,7 @@ fun WorkspaceScreen(
                 showAddWorkspace = false
                 refreshWorkspaces()
                 refreshSessions()
-                scope.launch { drawerState.close() }
+                showPhoneChat()
             },
         )
     }
@@ -2931,157 +2996,28 @@ fun WorkspaceScreen(
     }
 
     if (showSubagentSheet) {
-        val anchorParent = currentSession?.parentSessionId ?: currentSessionId
-        val children = remember(sessions, anchorParent) {
-            sessions.filter { it.origin == "subagent" && it.parentSessionId == anchorParent }
-                .sortedByDescending { it.updatedAt }
-        }
-        val parentOfCurrent = currentSession?.parentSessionId
-        ModalBottomSheet(
-            onDismissRequest = { showSubagentSheet = false },
-            containerColor = Dsh.bgCard,
-            contentColor = Dsh.labelPrimary,
-            shape = DshSheetShape,
-            dragHandle = null,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp),
-            ) {
-                DshSheetGrabber()
-                Text(L.subagents, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = FontWeight(600))
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
-                    color = Dsh.labelTertiary,
-                    style = DshType.t13,
-                )
-                Spacer(Modifier.height(12.dp))
-                children.forEach { child ->
-                    val selected = child.sessionId == currentSessionId
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.md))
-                            .background(if (selected) Dsh.bgSelected else Color.Transparent)
-                            .clickable {
-                                showSubagentSheet = false
-                                selectSession(child.sessionId)
-                            }
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                child.title,
-                                color = Dsh.labelPrimary,
-                                style = DshType.t14M,
-                                fontWeight = FontWeight(500),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            if (child.running) {
-                                Text(L.runningStatus, color = Dsh.brand400, style = DshType.t11)
-                            }
-                        }
-                    }
-                }
-                if (!parentOfCurrent.isNullOrBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        L.returnToParentSession,
-                        color = Dsh.brand400,
-                        style = DshType.t13M,
-                        fontWeight = FontWeight(500),
-                        modifier = Modifier
-                            .clickable {
-                                showSubagentSheet = false
-                                selectSession(parentOfCurrent)
-                            }
-                            .padding(12.dp),
-                    )
-                }
-            }
-        }
+        SubagentBottomSheet(
+            sessions = sessions,
+            currentSession = currentSession,
+            currentSessionId = currentSessionId,
+            onSelectSession = { selectSession(it) },
+            onDismiss = { showSubagentSheet = false },
+        )
     }
 
     if (showTurnJumpSheet) {
-        val merged = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
-        val jumps = remember(merged) { userTurnJumps(merged) }
-        ModalBottomSheet(
-            onDismissRequest = { showTurnJumpSheet = false },
-            containerColor = Dsh.bgCard,
-            contentColor = Dsh.labelPrimary,
-            shape = DshSheetShape,
-            dragHandle = null,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp),
-            ) {
-                DshSheetGrabber()
-                Text(L.jumpToTurn, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = FontWeight(600))
-                Spacer(Modifier.height(12.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    jumps.forEachIndexed { index, jump ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.md))
-                                .clickable {
-                                    val display = merged.filterNot {
-                                        it.role == "reasoning" && it.text.isBlank() && it.running != true
-                                    }
-                                    val groups = groupMessages(display)
-                                    val groupIndex = groups.indexOfFirst {
-                                        it is MessageGroup.Single && it.msg.id == jump.messageId
-                                    }
-                                    val offset = if (hasMoreMessages) 1 else 0
-                                    showTurnJumpSheet = false
-                                    if (groupIndex >= 0) {
-                                        stickToBottom = false
-                                        showScrollToBottom = true
-                                        scope.launch {
-                                            listState.scrollToItem(offset + groupIndex)
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "${index + 1}",
-                                color = Dsh.labelTertiary,
-                                style = DshType.t12,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(28.dp),
-                            )
-                            Text(
-                                jump.preview,
-                                color = Dsh.labelPrimary,
-                                style = DshType.t14,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+        TurnJumpBottomSheet(
+            olderMessages = olderMessages,
+            messages = messages,
+            onJumpToGroupIndex = { groupIndex ->
+                val offset = if (hasMoreMessages) 1 else 0
+                stickToBottom = false
+                showScrollToBottom = true
+                scope.launch {
+                    listState.scrollToItem(offset + groupIndex)
                 }
-            }
-        }
+            },
+            onDismiss = { showTurnJumpSheet = false },
+        )
     }
 }

@@ -271,9 +271,8 @@ private fun TopBarWall() {
     WorkspaceTopBar(
         running = true,
         title = "调研 t3code 移动端设计并对比项目",
-        onOpenDrawer = {},
-        viewMode = "chat",
-        onSelectViewMode = {},
+        showBack = true,
+        onNavigate = {},
         menuExpanded = false,
         onMenuExpandedChange = {},
         menuItems = listOf(

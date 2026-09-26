@@ -11,9 +11,9 @@ enum class DshShell { Compact, Medium, Expanded }
 
 data class DshLayout(
     val shell: DshShell,
-    /** 只有 Expanded 把列表常驻；Compact/Medium 都走临时面板。 */
+    /** 只有 Expanded 把列表常驻；Compact/Medium 用会话列表 → 聊天的返回栈。 */
     val persistentSidebar: Boolean,
-    /** Medium 用窄 Navigation Rail 常驻入口，会话列表临时展开。 */
+    /** 保留字段。Medium 已并入手机栈，不再使用 Navigation Rail。 */
     val railNavigation: Boolean,
     /** 常驻侧栏宽度（dp）。 */
     val listPaneWidthDp: Int,
@@ -28,14 +28,10 @@ const val DSH_LIST_PANE_MIN_DP = 240
 const val DSH_LIST_PANE_MAX_DP = 380
 const val DSH_CONTENT_MAX_DP = 760
 
-/** Rail 宽度：M3 NavigationRail 默认 80dp；收窄到 72dp 让 600–839dp 的内容更宽。 */
-const val DSH_RAIL_WIDTH_DP = 72
-
 /**
  * 三档外壳：
- * - Compact（<600dp）：只有内容，会话列表是临时面板；
- * - Medium（600–839dp，或够宽但不够高）：窄 Rail + 临时会话面板，内容不被 240dp
- *   固定侧栏挤压（700dp 窗口里 240dp 列表占三分之一，读起来像 Web 控制台）；
+ * - Compact / Medium：会话列表是首页，聊天是压栈的下一页。Medium 不再加 Rail，
+ *   避免「窄栏 + 再弹一层列表」的控制台感。
  * - Expanded（>=840dp 且 >=600dp 高）：常驻侧栏的 master-detail。
  */
 fun deriveDshLayout(containerWidthDp: Int, containerHeightDp: Int): DshLayout {
@@ -49,7 +45,7 @@ fun deriveDshLayout(containerWidthDp: Int, containerHeightDp: Int): DshLayout {
     return DshLayout(
         shell = shell,
         persistentSidebar = shell == DshShell.Expanded,
-        railNavigation = shell == DshShell.Medium,
+        railNavigation = false,
         listPaneWidthDp = deriveListPaneWidth(width),
         contentMaxWidthDp = DSH_CONTENT_MAX_DP,
     )

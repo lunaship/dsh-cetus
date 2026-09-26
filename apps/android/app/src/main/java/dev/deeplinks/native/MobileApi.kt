@@ -172,8 +172,10 @@ data class MobileSessionSnapshot(
 )
 
 data class MobileWorkspaceCreation(
-    val workspace: MobileWorkspace,
+    val workspace: MobileWorkspace?,
     val created: Boolean,
+    val pending: Boolean = false,
+    val path: String = "",
 )
 
 internal fun parseMobileWorkspace(json: JSONObject?): MobileWorkspace? {
@@ -499,6 +501,14 @@ class MobileApiClient(private val host: Host) {
             .put("path", input)
         if (!parentWorkspaceId.isNullOrBlank()) body.put("parentWorkspaceId", parentWorkspaceId)
         val root = request("POST", "/dsh-link/mobile/workspaces", body)
+        if (root.optBoolean("pending")) {
+            return MobileWorkspaceCreation(
+                workspace = null,
+                created = false,
+                pending = true,
+                path = root.optString("path"),
+            )
+        }
         return MobileWorkspaceCreation(
             workspace = parseMobileWorkspace(root.optJSONObject("workspace"))
                 ?: throw IllegalStateException(L.workspaceCreateInvalidResponse),

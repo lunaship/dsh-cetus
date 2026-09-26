@@ -80,9 +80,9 @@ import dev.deeplinks.native.ui.DshBannerTone
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
@@ -122,7 +122,6 @@ internal fun ToolSearchBar(
                     .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(DshRadius.md))
                     .background(Dsh.bgInput)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -240,7 +239,6 @@ internal fun DeviceUnreachableBanner(
                 .padding(horizontal = 12.dp, vertical = 6.dp)
                 .clip(RoundedCornerShape(DshRadius.md))
                 .background(Dsh.bgCard)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .semantics { contentDescription = message },
         ) {
@@ -383,7 +381,6 @@ internal fun SearchStatusBanner(message: String, onRetry: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.md))
             .background(Dsh.bgCard)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -599,7 +596,6 @@ internal fun CommandSuggestions(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(DshRadius.lg))
                 .background(Dsh.bgCard)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
                 .padding(vertical = 6.dp)
         ) {
             grouped.forEach { (group, entries) ->
@@ -693,19 +689,20 @@ internal fun ToolGroupHeader(
     val groupRunning = sweepingId != null && group.items.any { it.id == sweepingId }
     val pressTint = Dsh.pressed
     val rail = Dsh.borderStrong
+    val summaryTitle = dev.deeplinks.native.util.formatToolGroupSummary(group.items) { L.toolCallCount.format(it) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .heightIn(min = 48.dp)
+                .heightIn(min = 36.dp)
                 .clip(RoundedCornerShape(DshRadius.sm))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .semantics {
                     role = Role.Button
-                    contentDescription = L.toolCallCount.format(group.items.size)
+                    contentDescription = summaryTitle
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (groupRunning) {
@@ -725,7 +722,7 @@ internal fun ToolGroupHeader(
                 Spacer(Modifier.width(8.dp))
             }
             Text(
-                L.toolCallCount.format(group.items.size),
+                summaryTitle,
                 color = if (groupRunning) Dsh.labelSecondary else Dsh.labelTertiary,
                 style = DshType.t13M,
                 fontWeight = FontWeight(500),
@@ -785,24 +782,18 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 单行顶栏（原生化）：≡ 侧栏按钮 + 标题▾（点按开会话抽屉）+ 对话/轨迹分段 + 更多菜单。
- * 纯展示：菜单项由调用方通过 [workspaceHeaderMenuItems] 构建后传入。
+ * 聊天顶栏：返回或收起侧栏、会话名、溢出菜单。
+ * 轨迹、改动计数、目标不放在这里。菜单项由 [workspaceHeaderMenuItems] 构建后传入。
  */
 @Composable
 internal fun WorkspaceTopBar(
     running: Boolean,
     title: String,
-    onOpenDrawer: () -> Unit,
-    viewMode: String,
-    onSelectViewMode: (String) -> Unit,
+    showBack: Boolean,
+    onNavigate: () -> Unit,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     menuItems: List<DshMenuItem>,
-    /** 本会话最新一轮改动；null 时不出入口（旧插件 / 没改过文件）。 */
-    latestChanges: WorkspaceChangesSummary? = null,
-    onOpenChanges: () -> Unit = {},
-    /** 活动目标文本；非空时在标题旁显示一个紧凑的目标胶囊。 */
-    goalSummary: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -811,40 +802,31 @@ internal fun WorkspaceTopBar(
             .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // ≡ 侧栏按钮（始终可见，作为抽屉/侧栏的主入口）
-        val sidebarInteraction = remember { MutableInteractionSource() }
-        val sidebarPressed by sidebarInteraction.collectIsPressedAsState()
+        val navInteraction = remember { MutableInteractionSource() }
+        val navPressed by navInteraction.collectIsPressedAsState()
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (sidebarPressed) Dsh.pressed else Color.Transparent)
-                .clickable(interactionSource = sidebarInteraction, indication = dshRipple()) { onOpenDrawer() }
+                .background(if (navPressed) Dsh.pressed else Color.Transparent)
+                .clickable(interactionSource = navInteraction, indication = dshRipple()) { onNavigate() }
                 .semantics {
                     role = Role.Button
-                    contentDescription = L.sessionMenu
+                    contentDescription = if (showBack) L.back else L.sessionList
                 },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                PanelLeftOutline16,
+                if (showBack) Icons.AutoMirrored.Filled.ArrowBack else PanelLeftOutline16,
                 contentDescription = null,
                 tint = Dsh.labelSecondary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(if (showBack) 22.dp else 18.dp),
             )
         }
 
-        // 标题 = 会话切换入口（点按开抽屉，充分释放横向阅读空间）
-        val titleInteraction = remember { MutableInteractionSource() }
         Row(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .clickable(interactionSource = titleInteraction, indication = dshRipple()) { onOpenDrawer() }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = title
-                }
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -866,112 +848,6 @@ internal fun WorkspaceTopBar(
                 modifier = Modifier.weight(1f),
             )
         }
-
-        // 改动入口：左滑手势的显式替身（手势不能是唯一入口），只写最新一轮的文件数
-        if (latestChanges != null) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .clickable(indication = dshRipple(), interactionSource = null, onClick = onOpenChanges)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(latestChanges)}"
-                    }
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(EditOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text("${latestChanges.total}", color = Dsh.labelSecondary, style = DshType.t12M, maxLines = 1)
-                }
-            }
-        }
-
-        // 活动目标摘要胶囊：仅运行中且 goal 非空时出现
-        val activeGoal = goalSummary?.takeIf { running && it.isNotBlank() }
-        if (activeGoal != null) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 28.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(Dsh.brand400.copy(alpha = 0.1f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Icon(
-                        GoalOutline16,
-                        contentDescription = null,
-                        tint = Dsh.brand400,
-                        modifier = Modifier.size(13.dp),
-                    )
-                    Text(
-                        text = activeGoal.take(28) + if (activeGoal.length > 28) "…" else "",
-                        color = Dsh.brand400,
-                        style = DshType.t11M,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-
-        // 对话 / 轨迹：紧凑微胶囊切换（图标+文字明确语义，触控48dp，视觉仅~56dp，不挤占标题）
-        val isTrace = viewMode == "trace"
-        val viewModeInteraction = remember { MutableInteractionSource() }
-        val viewModePressed by viewModeInteraction.collectIsPressedAsState()
-        Box(
-            modifier = Modifier
-                .heightIn(min = 44.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .clickable(interactionSource = viewModeInteraction, indication = dshRipple()) {
-                    onSelectViewMode(if (isTrace) "chat" else "trace")
-                }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = if (isTrace) L.tabChat else L.tabTrace
-                }
-                .padding(horizontal = 4.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(
-                        when {
-                            viewModePressed -> Dsh.pressed
-                            isTrace -> Dsh.brandTint
-                            else -> Dsh.bgTrack
-                        }
-                    )
-                    .border(
-                        1.dp,
-                        if (isTrace) Dsh.brand400.copy(alpha = 0.35f) else Dsh.borderSubtle,
-                        RoundedCornerShape(DshRadius.full)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    if (isTrace) Icons.Outlined.ChatBubbleOutline else CodeOutline16,
-                    contentDescription = null,
-                    tint = if (isTrace) Dsh.brand500 else Dsh.labelSecondary,
-                    modifier = Modifier.size(13.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = if (isTrace) L.tabChat else L.tabTrace,
-                    color = if (isTrace) Dsh.brand500 else Dsh.labelSecondary,
-                    style = DshType.t12M,
-                    fontWeight = if (isTrace) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                )
-            }
-        }
-
-        Spacer(Modifier.width(2.dp))
 
         Box {
             val moreInteraction = remember { MutableInteractionSource() }
@@ -999,6 +875,22 @@ internal fun WorkspaceTopBar(
         }
     }
 }
+
+/** 进行中的目标：一行次要文字，贴在输入区上方，不进顶栏。 */
+@Composable
+internal fun ChatGoalLine(text: String) {
+    Text(
+        text,
+        color = Dsh.labelSecondary,
+        style = DshType.t13,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 2.dp),
+    )
+}
+
 /**
  * 空会话画布（从 WorkspaceScreen 的 LazyColumn 抽出，COM-001 拆解）：
  * 加载 / 运行 / 失败 / 空态四选一，属于 LazyListScope 所以做成扩展。
@@ -1286,8 +1178,7 @@ internal fun SessionStatsDetailSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(DshRadius.md))
-                    .background(Dsh.bgBase)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
+                    .background(Dsh.bgInput)
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 StatsDetailRow(
@@ -1385,8 +1276,7 @@ private fun StatsMetricCard(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.bgBase)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
+            .background(Dsh.bgInput)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(

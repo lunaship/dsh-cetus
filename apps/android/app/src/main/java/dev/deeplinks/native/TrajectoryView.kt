@@ -398,7 +398,6 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
             .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(DshRadius.md))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

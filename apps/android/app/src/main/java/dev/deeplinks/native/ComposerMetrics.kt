@@ -36,10 +36,12 @@ internal fun composerModelSeat(
             ?.flatMap { it.models.asSequence() }
             ?.firstOrNull { it.id == id }
     }
+    val effort = pending?.third ?: current?.currentReasoningEffort ?: option?.defaultEffort
+    val cleanEffort = effort?.takeUnless { it.isBlank() || it.equals("null", ignoreCase = true) }
     return ComposerModelSeat(
         // 目录里有展示名就用展示名（pending 只有 id）
         name = option?.name ?: requested,
-        effort = pending?.third ?: current?.currentReasoningEffort ?: option?.defaultEffort,
+        effort = cleanEffort,
     )
 }
 
