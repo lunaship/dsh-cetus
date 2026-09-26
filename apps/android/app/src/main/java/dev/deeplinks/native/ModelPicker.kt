@@ -193,15 +193,15 @@ internal fun ModelPickerSheet(
                         initialLoad = loading && catalog == null,
                         hasError = error != null && catalog == null,
                     )) {
-                        SessionListKind.Loading -> Text(L.loadingModelList, color = Dsh.labelTertiary, style = DshType.t13, modifier = Modifier.padding(vertical = 16.dp))
+                        SessionListKind.Loading -> Text(L.loadingModelList, color = Dsh.labelTertiary, style = DshType.body, modifier = Modifier.padding(vertical = 16.dp))
                         SessionListKind.Error -> ChatHistoryError(
                             title = L.loadModelListFailed,
                             message = error ?: L.loadModelListFailed,
                             onRetry = onRetry,
                         )
-                        SessionListKind.Empty -> Text(L.noAvailableModels, color = Dsh.labelTertiary, style = DshType.t13, modifier = Modifier.padding(vertical = 16.dp))
+                        SessionListKind.Empty -> Text(L.noAvailableModels, color = Dsh.labelTertiary, style = DshType.body, modifier = Modifier.padding(vertical = 16.dp))
                         SessionListKind.Content -> if (filteredGroups.isEmpty()) {
-                            Text(L.noMatchingModels.format(query), color = Dsh.labelTertiary, style = DshType.t13, modifier = Modifier.padding(vertical = 16.dp))
+                            Text(L.noMatchingModels.format(query), color = Dsh.labelTertiary, style = DshType.body, modifier = Modifier.padding(vertical = 16.dp))
                         } else Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -224,13 +224,13 @@ internal fun ModelPickerSheet(
                                         Text(
                                             group.displayName.take(1).uppercase(),
                                             color = accent,
-                                            style = DshType.t11x12SB,
+                                            style = DshType.label,
                                             fontWeight = FontWeight(600),
                                             lineHeight = 12.sp
                                         )
                                     }
                                     Spacer(Modifier.width(8.dp))
-                                    Text(group.displayName, color = Dsh.labelSecondary, style = DshType.t13SB)
+                                    Text(group.displayName, color = Dsh.labelSecondary, style = DshType.bodyStrong)
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     group.models.forEach { model ->
@@ -255,7 +255,7 @@ internal fun ModelPickerSheet(
                 }
                 ModelPickerPage.EFFORT -> {
                     if (currentEfforts.isEmpty()) {
-                        Text(L.noAdjustableReasoningEffort, color = Dsh.labelTertiary, style = DshType.t13, modifier = Modifier.padding(vertical = 16.dp))
+                        Text(L.noAdjustableReasoningEffort, color = Dsh.labelTertiary, style = DshType.body, modifier = Modifier.padding(vertical = 16.dp))
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             currentEfforts.forEach { effort ->
@@ -326,7 +326,7 @@ private fun ModelMenuRow(
             Text(
                 title,
                 color = if (enabled) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.t12x17,
+                style = DshType.caption,
                 lineHeight = 17.sp,
             )
             Spacer(Modifier.height(2.dp))

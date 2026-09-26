@@ -64,7 +64,7 @@ internal fun WorkspaceChangesCard(
             Text(
                 ChangesL.cardTitle(summary),
                 color = Dsh.labelPrimary,
-                style = DshType.t13M,
+                style = DshType.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -83,7 +83,7 @@ internal fun WorkspaceChangesCard(
                 Text(
                     ChangesL.moreFiles.format(hidden),
                     color = Dsh.brand400,
-                    style = DshType.t12M,
+                    style = DshType.label,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 44.dp)
@@ -119,7 +119,7 @@ internal fun ChangedFileRow(
             Text(
                 file.name,
                 color = Dsh.labelPrimary,
-                style = DshType.t13,
+                style = DshType.body,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -128,7 +128,7 @@ internal fun ChangedFileRow(
                 Text(
                     file.directory,
                     color = Dsh.labelTertiary,
-                    style = DshType.t12,
+                    style = DshType.caption,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -136,8 +136,8 @@ internal fun ChangedFileRow(
         }
         Spacer(Modifier.width(8.dp))
         when {
-            file.binary -> Text("BIN", color = Dsh.labelTertiary, style = DshType.t11M)
-            file.oversized -> Text("—", color = Dsh.labelTertiary, style = DshType.t11M)
+            file.binary -> Text("BIN", color = Dsh.labelTertiary, style = DshType.microMedium)
+            file.oversized -> Text("—", color = Dsh.labelTertiary, style = DshType.microMedium)
             else -> DiffStat(file.added, file.deleted)
         }
     }
@@ -147,8 +147,8 @@ internal fun ChangedFileRow(
 @Composable
 internal fun DiffStat(added: Int, deleted: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (added > 0) Text("+$added", color = Dsh.success, style = DshType.t12M, fontFamily = FontFamily.Monospace)
+        if (added > 0) Text("+$added", color = Dsh.success, style = DshType.label, fontFamily = FontFamily.Monospace)
         if (added > 0 && deleted > 0) Spacer(Modifier.width(6.dp))
-        if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.t12M, fontFamily = FontFamily.Monospace)
+        if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.label, fontFamily = FontFamily.Monospace)
     }
 }

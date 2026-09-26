@@ -56,7 +56,7 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
                 Text(
                     text,
                     color = Dsh.labelPrimary,
-                    style = DshType.t16x28,
+                    style = DshType.bodyLarge,
                     lineHeight = 28.sp,
                     modifier = Modifier
                         .fillMaxWidth()

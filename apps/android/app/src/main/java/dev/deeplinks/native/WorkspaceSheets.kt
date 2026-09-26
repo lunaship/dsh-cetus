@@ -113,7 +113,7 @@ internal fun AddWorkspaceSheet(
                 lineHeight = 24.sp,
             )
             Spacer(Modifier.height(4.dp))
-            Text(L.addWorkspaceDesc, color = Dsh.labelTertiary, style = DshType.bodyDense, lineHeight = 20.sp)
+            Text(L.addWorkspaceDesc, color = Dsh.labelTertiary, style = DshType.body, lineHeight = 20.sp)
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value = workspaceInput,
@@ -144,7 +144,7 @@ internal fun AddWorkspaceSheet(
                         creationAnchor != null -> L.workspaceCreateNextTo.format(anchorLabel)
                         else -> L.workspaceNameRequiresAnchor
                     }
-                    Text(supporting, style = DshType.t12x17, lineHeight = 17.sp)
+                    Text(supporting, style = DshType.caption, lineHeight = 17.sp)
                 },
                 textStyle = DshType.t14.copy(color = Dsh.labelPrimary),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -221,7 +221,7 @@ internal fun AddWorkspaceSheet(
                         Text(
                             L.addingWorkspace,
                             color = Dsh.labelTertiary,
-                            style = DshType.t13M,
+                            style = DshType.title,
                             fontWeight = FontWeight(500),
                         )
                     }
@@ -288,7 +288,7 @@ internal fun WorkspacePickerSheet(
             DshSheetGrabber()
             Text(L.chooseWorkspaceTitle, color = Dsh.labelPrimary, style = DshType.headline, fontWeight = FontWeight(600), lineHeight = 24.sp)
             Spacer(Modifier.height(4.dp))
-            Text(L.chooseWorkspaceDesc, color = Dsh.labelTertiary, style = DshType.t13x18, lineHeight = 18.sp)
+            Text(L.chooseWorkspaceDesc, color = Dsh.labelTertiary, style = DshType.titleSmall, lineHeight = 18.sp)
             if (workspaces.size > 6) {
                 Spacer(Modifier.height(12.dp))
                 SheetSearchField(value = query, onValueChange = { query = it }, placeholder = L.searchWorkspace)
@@ -315,7 +315,7 @@ internal fun WorkspacePickerSheet(
                     SessionListKind.Loading -> Text(
                         L.loading,
                         color = Dsh.labelTertiary,
-                        style = DshType.t13,
+                        style = DshType.body,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
                     )
                     SessionListKind.Error -> Column(
@@ -355,7 +355,7 @@ internal fun WorkspacePickerSheet(
                             Text(
                                 L.noMatchingWorkspace.format(query),
                                 color = Dsh.labelTertiary,
-                                style = DshType.t13,
+                                style = DshType.body,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)
                             )
                         }
@@ -533,7 +533,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                     value = path,
                     onValueChange = { path = it },
                     singleLine = true,
-                    textStyle = DshType.t13.copy(color = Dsh.labelPrimary),
+                    textStyle = DshType.body.copy(color = Dsh.labelPrimary),
                     cursorBrush = SolidColor(Dsh.brand400),
                     modifier = Modifier
                         .weight(1f)
@@ -542,7 +542,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
-                            if (path.isEmpty()) Text(L.enterWorkspacePath, color = Dsh.labelTertiary, style = DshType.t13)
+                            if (path.isEmpty()) Text(L.enterWorkspacePath, color = Dsh.labelTertiary, style = DshType.body)
                             inner()
                         }
                     }
@@ -557,7 +557,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(L.create, color = if (path.isBlank()) Dsh.labelTertiary else Dsh.onBrand, style = DshType.t13M, fontWeight = FontWeight(500))
+                    Text(L.create, color = if (path.isBlank()) Dsh.labelTertiary else Dsh.onBrand, style = DshType.title, fontWeight = FontWeight(500))
                 }
             }
         }
@@ -595,12 +595,12 @@ internal fun SubagentBottomSheet(
                 .padding(bottom = 24.dp),
         ) {
             DshSheetGrabber()
-            Text(L.subagents, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
+            Text(L.subagents, color = Dsh.labelPrimary, style = DshType.headline, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
             Spacer(Modifier.height(4.dp))
             Text(
                 if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
                 color = Dsh.labelTertiary,
-                style = DshType.t13,
+                style = DshType.body,
             )
             Spacer(Modifier.height(12.dp))
             children.forEach { child ->
@@ -627,7 +627,7 @@ internal fun SubagentBottomSheet(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                         if (child.running) {
-                            Text(L.runningStatus, color = Dsh.brand400, style = DshType.t11)
+                            Text(L.runningStatus, color = Dsh.brand400, style = DshType.microRelaxed)
                         }
                     }
                 }
@@ -637,7 +637,7 @@ internal fun SubagentBottomSheet(
                 Text(
                     L.returnToParentSession,
                     color = Dsh.brand400,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = androidx.compose.ui.text.font.FontWeight(500),
                     modifier = Modifier
                         .clickable {
@@ -677,7 +677,7 @@ internal fun TurnJumpBottomSheet(
                 .padding(bottom = 24.dp),
         ) {
             DshSheetGrabber()
-            Text(L.jumpToTurn, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
+            Text(L.jumpToTurn, color = Dsh.labelPrimary, style = DshType.headline, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
             Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier
@@ -711,7 +711,7 @@ internal fun TurnJumpBottomSheet(
                         Text(
                             "${index + 1}",
                             color = Dsh.labelTertiary,
-                            style = DshType.t12,
+                            style = DshType.caption,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             modifier = Modifier.width(28.dp),
                         )

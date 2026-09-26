@@ -143,12 +143,12 @@ internal fun StickyTaskSummaryCard(
                     Text(
                         text = L.goalRole,
                         color = Dsh.brand400,
-                        style = DshType.t11M,
+                        style = DshType.microMedium,
                     )
                     Text(
                         text = goalSummary.take(60) + if (goalSummary.length > 60) "…" else "",
                         color = Dsh.labelPrimary,
-                        style = DshType.t12,
+                        style = DshType.caption,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth(),
@@ -167,7 +167,7 @@ internal fun StickyTaskSummaryCard(
                         Text(
                             text = "${todoProgress.done}/${total}",
                             color = Dsh.labelTertiary,
-                            style = DshType.t11,
+                            style = DshType.microRelaxed,
                             maxLines = 1,
                         )
                         val segments = buildList {
@@ -449,7 +449,7 @@ internal fun LazyListScope.chatMessageItems(
             Text(
                 L.noMatchingToolCalls,
                 color = Dsh.labelTertiary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -124,7 +124,7 @@ internal fun AgentPresetPickerSheet(
             Text(
                 L.chooseAgentPresetDesc,
                 color = Dsh.labelTertiary,
-                style = DshType.t13x18,
+                style = DshType.titleSmall,
                 lineHeight = 18.sp
             )
             Spacer(Modifier.height(14.dp))
@@ -134,7 +134,7 @@ internal fun AgentPresetPickerSheet(
                 hasError = error != null,
             )
             when (presetKind) {
-                SessionListKind.Loading -> Text(L.loadingPresets, color = Dsh.labelTertiary, style = DshType.t13)
+                SessionListKind.Loading -> Text(L.loadingPresets, color = Dsh.labelTertiary, style = DshType.body)
                 SessionListKind.Error -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         error ?: L.noAgentPresets,
@@ -157,7 +157,7 @@ internal fun AgentPresetPickerSheet(
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
-                SessionListKind.Empty -> Text(L.noAgentPresets, color = Dsh.labelTertiary, style = DshType.t13)
+                SessionListKind.Empty -> Text(L.noAgentPresets, color = Dsh.labelTertiary, style = DshType.body)
                 SessionListKind.Content -> {
                 LazyColumn(
                     modifier = Modifier.heightIn(max = 440.dp),
@@ -203,7 +203,7 @@ internal fun AgentPresetPickerSheet(
                                     Text(
                                         desc,
                                         color = Dsh.labelTertiary,
-                                        style = DshType.t12x17,
+                                        style = DshType.caption,
                                         lineHeight = 17.sp,
                                         maxLines = 3,
                                         overflow = TextOverflow.Ellipsis,
@@ -346,12 +346,12 @@ internal fun PermissionPickerSheet(
             }
             if (saving) {
                 Spacer(Modifier.height(10.dp))
-                Text(L.saving, color = Dsh.labelTertiary, style = DshType.t12)
+                Text(L.saving, color = Dsh.labelTertiary, style = DshType.caption)
             }
             if (error != null) {
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(L.saveFailedWithMessage.format(error), color = Dsh.error, style = DshType.t12, modifier = Modifier.weight(1f))
+                    Text(L.saveFailedWithMessage.format(error), color = Dsh.error, style = DshType.caption, modifier = Modifier.weight(1f))
                     Box(
                         modifier = Modifier
                             .heightIn(min = 48.dp)
@@ -361,7 +361,7 @@ internal fun PermissionPickerSheet(
                             .padding(horizontal = 12.dp, vertical = 5.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(L.retry, color = Dsh.brand400, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(L.retry, color = Dsh.brand400, style = DshType.label, fontWeight = FontWeight(500))
                     }
                 }
             }
@@ -422,7 +422,7 @@ internal fun PermissionPickerSheet(
                             onClick = requestDismiss,
                             colors = ButtonDefaults.textButtonColors(contentColor = Dsh.labelSecondary),
                         ) {
-                            Text(L.cancel, style = DshType.t12M, fontWeight = FontWeight(500))
+                            Text(L.cancel, style = DshType.label, fontWeight = FontWeight(500))
                         }
                         Spacer(Modifier.width(8.dp))
                         Button(
@@ -439,7 +439,7 @@ internal fun PermissionPickerSheet(
                                 disabledContentColor = Dsh.labelTertiary,
                             ),
                         ) {
-                            Text(L.enableFullAccess, style = DshType.t12M, fontWeight = FontWeight(500))
+                            Text(L.enableFullAccess, style = DshType.label, fontWeight = FontWeight(500))
                         }
                     }
                 }

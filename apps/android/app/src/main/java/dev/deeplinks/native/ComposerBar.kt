@@ -290,7 +290,7 @@ internal fun InputBar(
                                 Text(
                                     effortLabel,
                                     color = Dsh.labelTertiary,
-                                    style = DshType.t11,
+                                    style = DshType.microRelaxed,
                                     maxLines = 1,
                                 )
                             }
@@ -573,7 +573,7 @@ private fun ComposerModelSeat(
                 Text(
                     text = name ?: L.selectModel,
                     color = Dsh.labelSecondary,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -583,7 +583,7 @@ private fun ComposerModelSeat(
                     Text(
                         text = formatEffortLabel(effort),
                         color = Dsh.labelTertiary,
-                        style = DshType.t13,
+                        style = DshType.body,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -649,7 +649,7 @@ private fun ComposerAccessSeat(
                 Text(
                     text = label,
                     color = contentTint,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -780,7 +780,7 @@ internal fun ComposerTopRow(
                 Text(
                     workspaceLabel,
                     color = Dsh.labelPrimary,
-                    style = DshType.t13x20M,
+                    style = DshType.title,
                     fontWeight = FontWeight(500),
                     lineHeight = 20.sp,
                     maxLines = 1,
@@ -839,7 +839,7 @@ internal fun ComposerTopRow(
                     Text(
                         harnessLabel,
                         color = if (harnessEditable) Dsh.labelPrimary else Dsh.labelSecondary,
-                        style = DshType.t13x20M,
+                        style = DshType.title,
                         fontWeight = FontWeight(500),
                         lineHeight = 20.sp,
                         maxLines = 1,

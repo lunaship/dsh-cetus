@@ -64,7 +64,7 @@ fun DshTextField(
             Text(
                 text = label,
                 color = Dsh.labelSecondary,
-                style = DshType.t12M,
+                style = DshType.label,
                 fontWeight = FontWeight(500),
                 modifier = Modifier.padding(bottom = 4.dp, start = 2.dp),
             )
@@ -77,7 +77,7 @@ fun DshTextField(
                 singleLine = singleLine,
                 visualTransformation = visualTransformation,
                 interactionSource = interaction,
-                textStyle = DshType.bodyDense.copy(
+                textStyle = DshType.body.copy(
                     color = if (enabled) Dsh.labelPrimary else Dsh.labelDimmed,
                 ),
                 modifier = Modifier
@@ -106,7 +106,7 @@ fun DshTextField(
                             Text(
                                 text = placeholder,
                                 color = Dsh.labelTertiary,
-                                style = DshType.bodyDense,
+                                style = DshType.body,
                             )
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {

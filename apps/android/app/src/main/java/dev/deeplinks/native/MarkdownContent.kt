@@ -104,7 +104,7 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
             }
             MarkdownBlockType.LIST -> {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("•  ", color = Dsh.labelTertiary, style = DshType.t16x28, lineHeight = 28.sp)
+                    Text("•  ", color = Dsh.labelTertiary, style = DshType.bodyLarge)
                     InlineMarkdownText(block.content, streaming = streamTail)
                 }
             }
@@ -283,7 +283,7 @@ private fun TableGrid(rows: List<List<String>>, compact: Boolean = true) {
                         Text(
                             cell,
                             color = Dsh.labelPrimary,
-                            style = DshType.bodyDense,
+                            style = DshType.body,
                             fontWeight = if (rowIdx == 0) FontWeight(500) else FontWeight(400),
                         )
                     }

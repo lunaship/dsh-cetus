@@ -125,7 +125,7 @@ fun DshFilterChip(
             Text(
                 label,
                 color = textColor,
-                style = DshType.t13x20M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 lineHeight = 20.sp,
             )
@@ -180,7 +180,7 @@ fun DshTopSegment(
     val pressTint = Dsh.pressed
     // 文字是 sp、药丸是 dp：fontScale 1.3+ 不放大会把字顶出胶囊，
     // 所以按「标签行高 × fontScale」撑大药丸/轨道，1.0 时仍是 26/30dp。
-    val labelStyle = DshType.t13M
+    val labelStyle = DshType.title
     val lineSp = if (labelStyle.lineHeight.isSp) {
         labelStyle.lineHeight.value
     } else {
@@ -258,7 +258,7 @@ fun DshTopSegment(
                 Text(
                     label,
                     color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     maxLines = 1,
                 )
@@ -309,7 +309,7 @@ fun DshTextTabs(
                     Text(
                         label,
                         color = if (selected) dev.deeplinks.core.Dsh.labelPrimary else dev.deeplinks.core.Dsh.labelTertiary,
-                        style = DshType.t13,
+                        style = DshType.body,
                         fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                         letterSpacing = 0.sp,
                         maxLines = 1,
@@ -425,7 +425,7 @@ fun DshBadge(
                 text = label,
                 // 徽章底色任意（默认 error）：内容色朝底色的高对比侧收敛，保证 AA
                 color = readableTextColor(contentColor, listOf(color)),
-                style = DshType.t11x14SB,
+                style = DshType.label,
                 lineHeight = 14.sp,
                 fontWeight = FontWeight(600),
             )
@@ -477,7 +477,7 @@ fun DshBanner(
         Text(
             text = text,
             color = fg,
-            style = DshType.bodyDense,
+            style = DshType.body,
             modifier = Modifier.weight(1f),
         )
         if (actionLabel != null && onAction != null) {
@@ -501,7 +501,7 @@ fun DshBanner(
                 Text(
                     text = actionLabel,
                     color = accent,
-                    style = DshType.bodyDense,
+                    style = DshType.body,
                     fontWeight = FontWeight(500),
                 )
             }

@@ -331,7 +331,7 @@ fun MermaidDiagramBlock(
         Text(
             source,
             color = Dsh.labelTertiary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             fontFamily = FontFamily.Monospace,
             modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
         )
@@ -384,7 +384,7 @@ fun MermaidDiagramBlock(
         Text(
             error,
             color = Dsh.error,
-            style = DshType.t12x17,
+            style = DshType.caption,
             lineHeight = 17.sp,
             modifier = Modifier
                 .fillMaxWidth()
@@ -439,7 +439,7 @@ private fun MermaidZoomDialog(
                 Text(
                     error,
                     color = Dsh.error,
-                    style = DshType.t12x17,
+                    style = DshType.caption,
                     lineHeight = 17.sp,
                     modifier = Modifier
                         .fillMaxWidth()

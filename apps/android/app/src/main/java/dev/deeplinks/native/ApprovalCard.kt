@@ -104,7 +104,7 @@ internal fun ApprovalCard(
         Text(
             L.openApproval,
             color = Dsh.labelPrimary,
-            style = DshType.t13M,
+            style = DshType.title,
             fontWeight = FontWeight(500),
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.sm))
@@ -132,7 +132,7 @@ internal fun ApprovalCard(
         Text(
             L.approvalStatusUnknown,
             color = Dsh.labelSecondary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.sm))
                 .background(Dsh.bgSurface)
@@ -174,7 +174,7 @@ internal fun ApprovalCard(
                                 L.approvalRequest.format(msg.toolName ?: L.toolFallbackName)
                             },
                             color = Dsh.labelSecondary,
-                            style = DshType.t13x18,
+                            style = DshType.titleSmall,
                             lineHeight = 18.sp,
                         )
                         msg.toolName?.takeIf { it.isNotBlank() }?.let { name ->
@@ -182,7 +182,7 @@ internal fun ApprovalCard(
                             Text(
                                 name,
                                 color = Dsh.labelTertiary,
-                                style = DshType.t11,
+                                style = DshType.microRelaxed,
                                 fontFamily = FontFamily.Monospace,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -406,7 +406,7 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
         Text(
             label,
             color = tint,
-            style = DshType.t13M,
+            style = DshType.title,
             fontWeight = FontWeight(500),
         )
     }

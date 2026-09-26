@@ -169,7 +169,7 @@ internal fun ProducedFilesRow(
             Text(
                 L.producedFiles,
                 color = Dsh.labelPrimary,
-                style = DshType.t13x24M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 lineHeight = 24.sp,
             )
@@ -222,7 +222,7 @@ internal fun ProducedFilesRow(
                         Text(
                             label,
                             color = if (failed) Dsh.error else Dsh.labelPrimary,
-                            style = DshType.t13,
+                            style = DshType.body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

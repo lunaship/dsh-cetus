@@ -74,7 +74,7 @@ internal fun QuestionCard(
         Text(
             strings.questionSubmitted,
             color = Dsh.labelSecondary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.sm))
                 .background(Dsh.bgSurface)
@@ -112,7 +112,7 @@ internal fun QuestionCard(
         Text(
             msg.questionHeader?.takeIf { it.isNotBlank() } ?: strings.questionClarify,
             color = Dsh.labelTertiary,
-            style = DshType.t11M,
+            style = DshType.microMedium,
             fontWeight = FontWeight(500),
         )
         if (displayQuestions.any { it.unsupported }) {
@@ -131,7 +131,7 @@ internal fun QuestionCard(
                 Text(
                     strings.questionIndex.format(questionIndex + 1),
                     color = Dsh.labelTertiary,
-                    style = DshType.t11M,
+                    style = DshType.microMedium,
                     fontWeight = FontWeight(500),
                 )
                 Spacer(Modifier.height(2.dp))
@@ -175,7 +175,7 @@ internal fun QuestionCard(
                         Text(
                             "${index + 1}. ${option.label}",
                             color = if (isSelected) Dsh.labelPrimary else Dsh.labelSecondary,
-                            style = DshType.t13,
+                            style = DshType.body,
                             fontWeight = if (isSelected) FontWeight(600) else FontWeight.Normal,
                         )
                     }
@@ -193,7 +193,7 @@ internal fun QuestionCard(
                     }
                 },
                 maxLines = 5,
-                textStyle = DshType.t13.copy(color = Dsh.labelPrimary),
+                textStyle = DshType.body.copy(color = Dsh.labelPrimary),
                 cursorBrush = SolidColor(Dsh.labelPrimary),
                 decorationBox = { inner ->
                     Box(
@@ -206,7 +206,7 @@ internal fun QuestionCard(
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                     ) {
                         if (draft.custom.isEmpty()) {
-                            Text(strings.questionAnswerHint, color = Dsh.labelTertiary, style = DshType.t13)
+                            Text(strings.questionAnswerHint, color = Dsh.labelTertiary, style = DshType.body)
                         }
                         inner()
                     }

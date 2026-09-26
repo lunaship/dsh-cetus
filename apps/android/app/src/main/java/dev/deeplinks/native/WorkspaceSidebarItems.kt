@@ -182,7 +182,7 @@ internal fun SessionRowItem(
                     Text(
                         archiveLabel,
                         color = Dsh.onBrand,
-                        style = DshType.bodyDense,
+                        style = DshType.body,
                         fontWeight = FontWeight.Medium,
                     )
                 }
@@ -439,7 +439,7 @@ internal fun SidebarSearchField(
                         Text(
                             L.searchSessionsPlaceholder,
                             color = Dsh.labelTertiary,
-                            style = DshType.bodyDense,
+                            style = DshType.body,
                         )
                     }
                     inner()

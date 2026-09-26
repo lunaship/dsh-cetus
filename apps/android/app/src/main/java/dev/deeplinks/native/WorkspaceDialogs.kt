@@ -100,7 +100,7 @@ internal fun DshRenameDialog(
             ) {
                 Text(L.renameSession, color = Dsh.labelPrimary, style = DshType.t15x21M, fontWeight = FontWeight(500), lineHeight = 21.sp)
                 Spacer(Modifier.height(8.dp))
-                Text(L.renameSessionDesc, color = Dsh.labelTertiary, style = DshType.t12x17, lineHeight = 17.sp)
+                Text(L.renameSessionDesc, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp)
                 Spacer(Modifier.height(14.dp))
                 DshTextField(
                     value = name,
@@ -117,7 +117,7 @@ internal fun DshRenameDialog(
                     Text(
                         error,
                         color = Dsh.error,
-                        style = DshType.t12x17,
+                        style = DshType.caption,
                         lineHeight = 17.sp,
                         modifier = Modifier.semantics { contentDescription = error },
                     )
@@ -132,7 +132,7 @@ internal fun DshRenameDialog(
                         enabled = kind != RenameDialogKind.Saving,
                         colors = ButtonDefaults.textButtonColors(contentColor = Dsh.labelSecondary),
                     ) {
-                        Text(L.cancel, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(L.cancel, style = DshType.label, fontWeight = FontWeight(500))
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
@@ -147,7 +147,7 @@ internal fun DshRenameDialog(
                     ) {
                         Text(
                             if (kind == RenameDialogKind.Saving) L.saving else L.save,
-                            style = DshType.t12M,
+                            style = DshType.label,
                             fontWeight = FontWeight(500),
                         )
                     }
@@ -213,13 +213,13 @@ internal fun DshConfirmDialog(
             ) {
                 Text(title, color = Dsh.labelPrimary, style = DshType.t15x21M, fontWeight = FontWeight(500), lineHeight = 21.sp)
                 Spacer(Modifier.height(8.dp))
-                Text(message, color = Dsh.labelTertiary, style = DshType.t12x17, lineHeight = 17.sp)
+                Text(message, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp)
                 if (kind == RenameDialogKind.Failed && !error.isNullOrBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
                         error,
                         color = Dsh.error,
-                        style = DshType.t12x17,
+                        style = DshType.caption,
                         lineHeight = 17.sp,
                         modifier = Modifier.semantics { contentDescription = error },
                     )
@@ -234,7 +234,7 @@ internal fun DshConfirmDialog(
                         enabled = canConfirm,
                         colors = ButtonDefaults.textButtonColors(contentColor = Dsh.labelSecondary),
                     ) {
-                        Text(L.cancel, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(L.cancel, style = DshType.label, fontWeight = FontWeight(500))
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
@@ -253,7 +253,7 @@ internal fun DshConfirmDialog(
                     ) {
                         Text(
                             if (kind == RenameDialogKind.Saving) L.saving else confirmLabel,
-                            style = DshType.t12M,
+                            style = DshType.label,
                             fontWeight = FontWeight(500),
                         )
                     }

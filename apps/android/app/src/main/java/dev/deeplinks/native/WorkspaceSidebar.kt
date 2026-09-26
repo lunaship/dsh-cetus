@@ -212,7 +212,7 @@ internal fun WorkspaceSidebar(
                         Text(
                             if (searchState is SearchUiState.Loading) L.searching else L.noMatchingSessions,
                             color = Dsh.labelTertiary,
-                            style = DshType.t13,
+                            style = DshType.body,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)
                         )
                     }
@@ -222,7 +222,7 @@ internal fun WorkspaceSidebar(
                     Text(
                         L.loading,
                         color = Dsh.labelTertiary,
-                        style = DshType.t13,
+                        style = DshType.body,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)
                     )
                 }

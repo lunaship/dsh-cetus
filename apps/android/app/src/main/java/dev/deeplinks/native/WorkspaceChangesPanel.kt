@@ -325,7 +325,7 @@ internal fun WorkspaceChangesPanel(
             if (current == null) {
                 PanelHeader(title = ChangesL.changes, onClose = { scope.launch { state.settle(false) } })
                 Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Text(ChangesL.empty, color = Dsh.labelTertiary, style = DshType.bodyDense)
+                    Text(ChangesL.empty, color = Dsh.labelTertiary, style = DshType.body)
                 }
             } else if (file == null) {
                 TurnHeader(
@@ -381,7 +381,7 @@ private fun PanelHeader(title: String, onClose: () -> Unit, subtitle: String? = 
         Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
             Text(title, color = Dsh.labelPrimary, style = DshType.t14SB, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
-                Text(subtitle, color = Dsh.labelTertiary, style = DshType.t12, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         trailing()
@@ -436,7 +436,7 @@ private fun FileList(summary: WorkspaceChangesSummary, onOpenFile: (Int) -> Unit
                 Text(
                     ChangesL.moreFiles.format(summary.total - summary.files.size),
                     color = Dsh.labelTertiary,
-                    style = DshType.t12,
+                    style = DshType.caption,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
@@ -469,7 +469,7 @@ private fun FileHeader(
                     Text(
                         file.directory,
                         color = Dsh.labelTertiary,
-                        style = DshType.t12,
+                        style = DshType.caption,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -557,12 +557,12 @@ private fun FileDiffBody(
         ) {
             Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.t14)
             if (current.message.isNotBlank()) {
-                Text(current.message, color = Dsh.labelTertiary, style = DshType.t12, modifier = Modifier.padding(top = 4.dp))
+                Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = 4.dp))
             }
             Text(
                 L.retry,
                 color = Dsh.brand400,
-                style = DshType.t13M,
+                style = DshType.title,
                 modifier = Modifier
                     .padding(top = 12.dp)
                     .heightIn(min = 44.dp)
@@ -584,7 +584,7 @@ private fun DiffNoteRow(text: String) {
     Text(
         text,
         color = Dsh.labelSecondary,
-        style = DshType.t12,
+        style = DshType.caption,
         modifier = Modifier
             .fillMaxWidth()
             .background(Dsh.bgTrack)
@@ -599,7 +599,7 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
     val digits = remember(rows) {
         rows.maxOfOrNull { maxOf(it.oldNo ?: 0, it.newNo ?: 0) }?.toString()?.length?.coerceAtLeast(2) ?: 2
     }
-    val codeStyle = DshType.t12x17.copy(fontFamily = FontFamily.Monospace)
+    val codeStyle = DshType.caption.copy(fontFamily = FontFamily.Monospace)
     val measurer = rememberTextMeasurer()
     val charWidthPx = remember(codeStyle) { measurer.measure("0", codeStyle).size.width.toFloat() }
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Dsh.bgCode)) {

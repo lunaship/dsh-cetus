@@ -329,7 +329,7 @@ fun DevicesScreen(
                             Text(
                                 s.replaceDevice,
                                 color = Dsh.brand400,
-                                style = DshType.bodyDense,
+                                style = DshType.body,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -470,7 +470,7 @@ private fun DevicesNotice(
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, color = color, fontWeight = FontWeight(600), style = DshType.t12)
+                Text(label, color = color, fontWeight = FontWeight(600), style = DshType.caption)
             }
         }
     }
@@ -694,7 +694,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
         Text(
             s.noDevicesYet,
             color = Dsh.labelPrimary,
-            style = DshType.t17SB,
+            style = DshType.titleLarge,
             fontWeight = FontWeight(600),
             letterSpacing = (-0.2).sp,
             textAlign = TextAlign.Center,
@@ -703,7 +703,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
         Text(
             s.noDevicesHint,
             color = Dsh.labelTertiary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 280.dp),
         )
@@ -725,7 +725,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
             Text(
                 s.addDevice,
                 color = Dsh.onBrand,
-                style = DshType.t15SB,
+                style = DshType.bodyStrong,
                 fontWeight = FontWeight(600),
             )
         }
@@ -733,7 +733,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
         Text(
             s.addDeviceScanOrCode,
             color = Dsh.labelTertiary,
-            style = DshType.t11,
+            style = DshType.microRelaxed,
             textAlign = TextAlign.Center,
         )
     }
@@ -904,7 +904,7 @@ private fun MethodOption(
         }
         Spacer(Modifier.width(11.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.t13x18SB, fontWeight = FontWeight(600), lineHeight = 18.sp)
+            Text(title, color = Dsh.labelPrimary, style = DshType.bodyStrong, fontWeight = FontWeight(600), lineHeight = 18.sp)
             Spacer(Modifier.height(2.dp))
             Text(description, color = Dsh.labelTertiary, style = DshType.captionRelaxed, lineHeight = 18.sp)
         }
@@ -966,7 +966,7 @@ private fun ManualPairForm(
                         )
                         .padding(18.dp)
                 ) {
-                    Text(s.verifyCertificateTitle, color = Dsh.labelPrimary, style = DshType.t15SB, fontWeight = FontWeight(600))
+                    Text(s.verifyCertificateTitle, color = Dsh.labelPrimary, style = DshType.bodyStrong, fontWeight = FontWeight(600))
                     Spacer(Modifier.height(6.dp))
                     Text(
                         url.trim(),
@@ -1084,7 +1084,7 @@ private fun ManualPairForm(
                         .border(1.5.dp, Color.White, CircleShape)
                 )
             } else {
-                Text(s.connectDevice, color = Dsh.onBrand, style = DshType.t13SB, fontWeight = FontWeight(600))
+                Text(s.connectDevice, color = Dsh.onBrand, style = DshType.bodyStrong, fontWeight = FontWeight(600))
             }
         }
         Box(
@@ -1099,7 +1099,7 @@ private fun ManualPairForm(
                 }
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            Text(s.back, color = Dsh.labelSecondary, style = DshType.t11)
+            Text(s.back, color = Dsh.labelSecondary, style = DshType.microRelaxed)
         }
     }
 }
@@ -1211,7 +1211,7 @@ private fun ConfirmDialog(
                     Text(
                         error,
                         color = Dsh.error,
-                        style = DshType.t12x17,
+                        style = DshType.caption,
                         lineHeight = 17.sp,
                         modifier = Modifier.semantics { contentDescription = error },
                     )
@@ -1295,7 +1295,7 @@ private fun ConfirmButton(
                     danger || primary -> Color.White
                     else -> Dsh.labelSecondary
                 },
-                style = DshType.t12M,
+                style = DshType.label,
                 fontWeight = FontWeight(500)
             )
         }

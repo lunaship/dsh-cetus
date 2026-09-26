@@ -131,13 +131,13 @@ internal fun ToolSearchBar(
                     value = query,
                     onValueChange = onQueryChange,
                     singleLine = true,
-                    textStyle = DshType.bodyDense.copy(color = Dsh.labelPrimary),
+                    textStyle = DshType.body.copy(color = Dsh.labelPrimary),
                     cursorBrush = SolidColor(Dsh.brand400),
                     modifier = Modifier.weight(1f),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
-                                Text(L.toolSearchPlaceholder, color = Dsh.labelTertiary, style = DshType.t13, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(L.toolSearchPlaceholder, color = Dsh.labelTertiary, style = DshType.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             inner()
                         }
@@ -317,7 +317,7 @@ internal fun HeroShell() {
             L.heroSlogan,
             color = Dsh.labelPrimary,
             // 字重/行高由 token 自带，不在调用点重复覆盖（避免 token 演进被拽回旧值）
-            style = DshType.t20x28SB,
+            style = DshType.headlineMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -325,7 +325,7 @@ internal fun HeroShell() {
         Text(
             L.heroHint,
             color = Dsh.labelTertiary,
-            style = DshType.t13,
+            style = DshType.body,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -347,7 +347,7 @@ internal fun ChatHistoryError(
             Text(
                 title,
                 color = Dsh.labelPrimary,
-                style = DshType.t16SB,
+                style = DshType.titleLarge,
                 fontWeight = FontWeight(600),
                 lineHeight = 22.sp,
             )
@@ -369,7 +369,7 @@ internal fun ChatHistoryError(
                 .semantics { role = Role.Button },
             contentAlignment = Alignment.Center,
         ) {
-            Text(L.retry, color = Dsh.onBrand, style = DshType.t13M, fontWeight = FontWeight(500))
+            Text(L.retry, color = Dsh.onBrand, style = DshType.title, fontWeight = FontWeight(500))
         }
     }
 }
@@ -403,7 +403,7 @@ internal fun SearchStatusBanner(message: String, onRetry: () -> Unit) {
                 .padding(horizontal = 12.dp)
                 .wrapContentHeight(Alignment.CenterVertically),
         ) {
-            Text(L.retry, color = Dsh.onBrand, style = DshType.t12M, fontWeight = FontWeight(500))
+            Text(L.retry, color = Dsh.onBrand, style = DshType.label, fontWeight = FontWeight(500))
         }
     }
 }
@@ -476,7 +476,7 @@ internal fun ContextMeterButton(
                 Text(
                     text = "${percent.toInt()}%",
                     color = Dsh.labelTertiary,
-                    style = DshType.t12x20,
+                    style = DshType.caption,
                     lineHeight = 20.sp,
                     maxLines = 1,
                 )
@@ -493,12 +493,12 @@ internal fun ContextMeterButton(
             Column(modifier = Modifier.width(240.dp).padding(12.dp)) {
                 // header：上下文已用 + 百分比 + 用量数字
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(L.contextUsed, color = Dsh.labelTertiary, style = DshType.t12x20, lineHeight = 20.sp)
+                    Text(L.contextUsed, color = Dsh.labelTertiary, style = DshType.caption)
                     Spacer(Modifier.width(6.dp))
                     Text(
                         "${percent.toInt()}%",
                         color = Dsh.labelPrimary,
-                        style = DshType.t12x20M,
+                        style = DshType.label,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(500)
                     )
@@ -506,7 +506,7 @@ internal fun ContextMeterButton(
                     Text(
                         "~${compactTokens(used)} / ${compactTokens(window)}",
                         color = Dsh.labelPrimary,
-                        style = DshType.t12x20M,
+                        style = DshType.label,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(500),
                         fontFamily = FontFamily.Monospace
@@ -621,7 +621,7 @@ internal fun CommandSuggestions(
                         Text(
                             entry.command.trigger,
                             color = Dsh.labelPrimary,
-                            style = DshType.bodyDense,
+                            style = DshType.body,
                             fontFamily = FontFamily.Monospace,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -724,7 +724,7 @@ internal fun ToolGroupHeader(
             Text(
                 summaryTitle,
                 color = if (groupRunning) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.t13M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -738,7 +738,7 @@ internal fun ToolGroupHeader(
                 Text(
                     formatTraceDuration(totalDuration),
                     color = Dsh.labelTertiary,
-                    style = DshType.t11,
+                    style = DshType.microRelaxed,
                     fontFamily = FontFamily.Monospace,
                 )
                 Spacer(Modifier.width(6.dp))
@@ -882,7 +882,7 @@ internal fun ChatGoalLine(text: String) {
     Text(
         text,
         color = Dsh.labelSecondary,
-        style = DshType.t13,
+        style = DshType.body,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
@@ -1319,7 +1319,7 @@ private fun StatsDetailRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = label,
-                style = if (highlight) DshType.t13SB else DshType.bodyDense,
+                style = if (highlight) DshType.bodyStrong else DshType.body,
                 color = if (highlight) Dsh.labelPrimary else Dsh.labelSecondary,
             )
             if (tag != null) {
@@ -1341,7 +1341,7 @@ private fun StatsDetailRow(
         }
         Text(
             text = value,
-            style = if (highlight) DshType.t14SB else DshType.bodyDense,
+            style = if (highlight) DshType.t14SB else DshType.body,
             color = if (highlight) Dsh.brand500 else Dsh.labelPrimary,
         )
     }

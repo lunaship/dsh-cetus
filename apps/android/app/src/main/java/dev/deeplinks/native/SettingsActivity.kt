@@ -420,7 +420,7 @@ private fun SettingsScreen(
                             SessionListKind.Loading -> Text(
                                 s.loadingModelList,
                                 color = Dsh.labelTertiary,
-                                style = DshType.t13,
+                                style = DshType.body,
                                 modifier = Modifier.padding(vertical = 12.dp),
                             )
                             SessionListKind.Error -> SettingsLoadRetry(
@@ -430,7 +430,7 @@ private fun SettingsScreen(
                             SessionListKind.Empty -> Text(
                                 s.noAvailableModels,
                                 color = Dsh.labelTertiary,
-                                style = DshType.t13,
+                                style = DshType.body,
                                 modifier = Modifier.padding(vertical = 12.dp),
                             )
                             SessionListKind.Content -> Unit
@@ -475,7 +475,7 @@ private fun SettingsScreen(
                                     Text(
                                         "${group.models.size}",
                                         color = Dsh.labelTertiary,
-                                        style = DshType.t12x20,
+                                        style = DshType.caption,
                                         lineHeight = 20.sp
                                     )
                                 }
@@ -496,7 +496,7 @@ private fun SettingsScreen(
                                             Text(
                                                 model.name ?: model.id,
                                                 color = Dsh.labelSecondary,
-                                                style = DshType.bodyDense,
+                                                style = DshType.body,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f)
@@ -520,7 +520,7 @@ private fun SettingsScreen(
                         Text(
                             s.modelAddOnDesktopHint,
                             color = Dsh.labelTertiary,
-                            style = DshType.t12x17,
+                            style = DshType.caption,
                             lineHeight = 17.sp,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
                         )
@@ -613,7 +613,7 @@ private fun SettingsScreen(
                                 .padding(horizontal = 14.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(s.cancel, color = Dsh.labelSecondary, style = DshType.t12M, fontWeight = FontWeight(500))
+                            Text(s.cancel, color = Dsh.labelSecondary, style = DshType.label, fontWeight = FontWeight(500))
                         }
                         Spacer(Modifier.width(8.dp))
                         Box(
@@ -629,7 +629,7 @@ private fun SettingsScreen(
                                 .padding(horizontal = 14.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(s.enableFullAccess, color = Dsh.onBrand, style = DshType.t12M, fontWeight = FontWeight(500))
+                            Text(s.enableFullAccess, color = Dsh.onBrand, style = DshType.label, fontWeight = FontWeight(500))
                         }
                     }
                 }
@@ -691,7 +691,7 @@ private fun SettingsScreen(
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(s.close, color = Dsh.labelSecondary, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(s.close, color = Dsh.labelSecondary, style = DshType.label, fontWeight = FontWeight(500))
                     }
                 }
             }
@@ -919,7 +919,7 @@ private fun AppearanceSettings(
             Column(modifier = Modifier.weight(1f)) {
                 Text(s.systemFont, color = Dsh.labelPrimary, style = DshType.labelLarge, lineHeight = 20.sp, fontWeight = FontWeight(500))
                 Spacer(Modifier.height(2.dp))
-                Text(s.systemFontDesc, color = Dsh.labelTertiary, style = DshType.t12x17, lineHeight = 17.sp)
+                Text(s.systemFontDesc, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp)
             }
             Spacer(Modifier.width(12.dp))
             Switch(
@@ -1082,20 +1082,20 @@ private fun SettingsSelectItem(
         verticalAlignment = Alignment.Top
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.t14x20, lineHeight = 20.sp)
+            Text(title, color = Dsh.labelPrimary, style = DshType.t14x20)
             if (description != null) {
                 Spacer(Modifier.height(2.dp))
                 Text(
                     description,
                     color = Dsh.labelTertiary,
-                    style = DshType.t12x17,
+                    style = DshType.caption,
                     lineHeight = 17.sp
                 )
             }
             if (error != null) {
                 Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(s.saveFailedWithMessage.format(error), color = Dsh.error, style = DshType.t12x17, lineHeight = 17.sp, modifier = Modifier.weight(1f))
+                    Text(s.saveFailedWithMessage.format(error), color = Dsh.error, style = DshType.caption, lineHeight = 17.sp, modifier = Modifier.weight(1f))
                     Box(
                         modifier = Modifier
                             .heightIn(min = 48.dp)
@@ -1105,7 +1105,7 @@ private fun SettingsSelectItem(
                             .padding(horizontal = 10.dp, vertical = 3.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(s.retry, color = Dsh.brand400, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(s.retry, color = Dsh.brand400, style = DshType.label, fontWeight = FontWeight(500))
                     }
                 }
             }
@@ -1116,9 +1116,9 @@ private fun SettingsSelectItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (saving) {
-                    Text(s.saving, color = Dsh.labelTertiary, style = DshType.t12x20, lineHeight = 20.sp)
+                    Text(s.saving, color = Dsh.labelTertiary, style = DshType.caption)
                 } else {
-                    Text(value, color = Dsh.labelTertiary, style = DshType.bodyDense, lineHeight = 20.sp)
+                    Text(value, color = Dsh.labelTertiary, style = DshType.body)
                     Icon(
                         ChevronDownOutline14,
                         contentDescription = null,
@@ -1162,7 +1162,7 @@ private fun SettingsSelectItem(
                             Text(
                                 label,
                                 color = if (isSelected) Dsh.brand400 else Dsh.labelPrimary,
-                                style = DshType.bodyDense,
+                                style = DshType.body,
                                 modifier = Modifier.weight(1f)
                             )
                             if (isSelected) {
@@ -1314,7 +1314,7 @@ private fun SessionsSettings(host: Host?) {
         Text(
             s.loading,
             color = Dsh.labelTertiary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
         )
     } else if (listKind == SessionListKind.Error) {
@@ -1342,7 +1342,7 @@ private fun SessionsSettings(host: Host?) {
         Text(
             s.noArchivedSessions,
             color = Dsh.labelTertiary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
         )
     } else {
@@ -1365,7 +1365,7 @@ private fun SessionsSettings(host: Host?) {
         Text(
             s.noDeletedSessions,
             color = Dsh.labelTertiary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
         )
     } else {
@@ -1453,7 +1453,7 @@ private fun ManagedSessionRow(
                 }.joinToString(" · ")
                 if (desc.isNotBlank()) {
                     Spacer(Modifier.height(2.dp))
-                    Text(desc, color = Dsh.labelTertiary, style = DshType.t12x17, lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(desc, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Icon(
@@ -1475,14 +1475,14 @@ private fun ManagedSessionRow(
                 offset = DpOffset(0.dp, 4.dp),
             ) {
                 DropdownMenuItem(
-                    text = { Text(s.restoreToSidebar, color = Dsh.labelPrimary, style = DshType.t13) },
+                    text = { Text(s.restoreToSidebar, color = Dsh.labelPrimary, style = DshType.body) },
                     onClick = {
                         menuOpen = false
                         onRestore()
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text(s.removeFromLocalList, color = Dsh.error, style = DshType.t13) },
+                    text = { Text(s.removeFromLocalList, color = Dsh.error, style = DshType.body) },
                     onClick = {
                         menuOpen = false
                         onClear()
@@ -1513,7 +1513,7 @@ private fun SettingsLoadRetry(
         Text(
             message,
             color = Dsh.error,
-            style = DshType.t13x18,
+            style = DshType.titleSmall,
             lineHeight = 18.sp,
         )
         Text(
@@ -1627,7 +1627,7 @@ private fun SettingsItem(
             )
             if (description.isNotBlank()) {
                 Spacer(Modifier.height(2.dp))
-                Text(description, color = Dsh.labelTertiary, style = DshType.t12x17, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(description, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         Icon(
@@ -1697,7 +1697,7 @@ private fun SettingsConfirmDialog(
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(s.cancel, color = Dsh.labelSecondary, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(s.cancel, color = Dsh.labelSecondary, style = DshType.label, fontWeight = FontWeight(500))
                     }
                     Spacer(Modifier.width(8.dp))
                     Box(
@@ -1713,7 +1713,7 @@ private fun SettingsConfirmDialog(
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(confirmLabel, color = Dsh.onBrand, style = DshType.t12M, fontWeight = FontWeight(500))
+                        Text(confirmLabel, color = Dsh.onBrand, style = DshType.label, fontWeight = FontWeight(500))
                     }
                 }
             }

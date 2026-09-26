@@ -366,7 +366,7 @@ private fun RawMessageCard(msg: MobileMessage) {
             Text(
                 L.unsupportedMessageType.format(msg.role),
                 color = Dsh.labelSecondary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 lineHeight = 20.sp
             )
         }
@@ -426,7 +426,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
         Text(
             if (running) L.compressing else L.contextCompressed,
             color = Dsh.labelPrimary.copy(alpha = 0.85f),
-            style = DshType.t14x24,
+            style = DshType.bodyLarge,
             lineHeight = 24.sp
         )
         if (!running) {
@@ -441,7 +441,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
             Text(
                 summary.lineSequence().firstOrNull().orEmpty(),
                 color = Dsh.labelTertiary,
-                style = DshType.t14x24,
+                style = DshType.bodyLarge,
                 lineHeight = 24.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -465,7 +465,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
         Text(
             summary,
             color = Dsh.labelTertiary,
-            style = DshType.t14x24,
+            style = DshType.bodyLarge,
             lineHeight = 24.sp,
             modifier = Modifier.padding(start = 22.dp, top = 4.dp, bottom = 4.dp)
         )
@@ -664,7 +664,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             Text(
                 L.tasks,
                 color = Dsh.labelPrimary,
-                style = DshType.t13x24M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 lineHeight = 24.sp
             )
@@ -672,7 +672,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             Text(
                 L.todoCompleted.format(done, todos.size),
                 color = Dsh.labelTertiary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -700,7 +700,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                         Text(
                             todo.content,
                             color = Dsh.labelSecondary,
-                            style = DshType.bodyDense,
+                            style = DshType.body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -775,14 +775,14 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             Text(
                 text = L.goalRole,
                 color = Dsh.brand400,
-                style = DshType.t11M,
+                style = DshType.microMedium,
             )
             Spacer(Modifier.width(4.dp))
             Text(
                 text = if (expanded.value || displayText.length <= 60) displayText
                 else displayText.take(57) + "…",
                 color = Dsh.labelPrimary,
-                style = DshType.t13,
+                style = DshType.body,
                 maxLines = if (expanded.value) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -791,7 +791,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             Text(
                 text = if (expanded.value) "收起" else "展开",
                 color = Dsh.brand400,
-                style = DshType.t11M,
+                style = DshType.microMedium,
                 modifier = Modifier.clickable { expanded.value = !expanded.value },
             )
         }
@@ -885,7 +885,7 @@ private fun ReasoningRow(text: String, running: Boolean = false, durationMs: Lon
         Text(
             text,
             color = Dsh.labelTertiary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             fontStyle = FontStyle.Italic,
         )
     }
@@ -967,7 +967,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
             Text(
                 title,
                 color = if (running) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.t13M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

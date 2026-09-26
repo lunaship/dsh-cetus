@@ -179,7 +179,7 @@ internal fun ThinkingStatusRow(
         Spacer(Modifier.width(8.dp))
         Text(
             formatThinkingElapsed(elapsedSec),
-            style = DshType.t12M,
+            style = DshType.label,
             color = Dsh.labelTertiary,
             maxLines = 1,
         )
@@ -253,7 +253,7 @@ private fun ThinkingHeader(
                 } else {
                     Text(
                         doneLabel,
-                        style = DshType.t13M,
+                        style = DshType.title,
                         fontWeight = FontWeight(600),
                         color = Dsh.labelPrimary,
                         maxLines = 1,
@@ -279,7 +279,7 @@ private fun ThinkingHeader(
  */
 @Composable
 internal fun ShimmerLabel(text: String, working: Boolean) {
-    val style = DshType.t13M
+    val style = DshType.title
     if (!working || isReduceMotionEnabled()) {
         Text(text, style = style, color = Dsh.labelSecondary, maxLines = 1)
         return
