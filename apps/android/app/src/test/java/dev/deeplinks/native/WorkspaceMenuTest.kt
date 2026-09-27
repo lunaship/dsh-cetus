@@ -23,15 +23,18 @@ class WorkspaceMenuTest {
         toolSearchOpen: Boolean = false,
         subagents: Int = 0,
         turnJumps: Int = 0,
+        browseFiles: Boolean = false,
     ) = workspaceHeaderMenuItems(
         viewMode = viewMode,
         toolSearchOpen = toolSearchOpen,
         activeSubagentCount = subagents,
         turnJumpCount = turnJumps,
+        canBrowseFiles = browseFiles,
         onCloseMenu = { ctx.log += "close" },
         onOpenToolSearch = { ctx.log += "toolSearch" },
         onShowSubagents = { ctx.log += "subagents" },
         onShowTurnJump = { ctx.log += "turnJump" },
+        onBrowseFiles = { ctx.log += "browseFiles" },
         onRename = { ctx.log += "rename" },
         onFork = { ctx.log += "fork" },
         onCopyTitle = { ctx.log += "copy" },
@@ -94,5 +97,17 @@ class WorkspaceMenuTest {
     fun toolSearchLabelReflectsOpenState() {
         val open = menu(Ctx(), viewMode = "chat", toolSearchOpen = true).first { it.label == L.closeToolSearch }
         assertEquals(L.closeToolSearch, open.label)
+    }
+
+    @Test
+    fun browseFilesAppearsOnlyWhenPluginSupportsTree() {
+        assertEquals(8, menu(Ctx(), viewMode = "trace").size)
+        val ctx = Ctx()
+        val items = menu(ctx, viewMode = "trace", browseFiles = true)
+        assertEquals(9, items.size)
+        val browse = items.first()
+        assertEquals(L.browseFiles, browse.label)
+        browse.onClick()
+        assertEquals(listOf("close", "browseFiles"), ctx.log)
     }
 }

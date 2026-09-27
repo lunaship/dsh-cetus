@@ -509,6 +509,7 @@ fun WorkspaceScreen(
         }
     }
     var showTurnJumpSheet by remember { mutableStateOf(false) }
+    var showFileBrowser by remember { mutableStateOf(false) }
     val changesPanel = remember { ChangesPanelState() }
     LaunchedEffect(currentSessionId) { changesPanel.reset() }
     val historyForChanges = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
@@ -1508,6 +1509,7 @@ fun WorkspaceScreen(
         try {
             val (boot, refreshed) = workspaceViewModel.repo.bootstrap()
             bootstrapOk = true
+            workspaceViewModel.filesTreeSupported.value = boot.filesTree
             if (refreshed != host) {
                 runCatching {
                     if (host.hasRelay && !refreshed.hasRelay) HostStore.demoteRelay(context, host)
@@ -1984,6 +1986,7 @@ fun WorkspaceScreen(
                             toolSearchOpen = toolSearchOpen,
                             activeSubagentCount = activeSubagentCount,
                             turnJumpCount = turnJumpsForMenu.size,
+                            canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
                             onCloseMenu = { headerMenuOpen = false },
                             onOpenToolSearch = {
                                 toolSearchOpen = !toolSearchOpen
@@ -1991,6 +1994,7 @@ fun WorkspaceScreen(
                             },
                             onShowSubagents = { showSubagentSheet = true },
                             onShowTurnJump = { showTurnJumpSheet = true },
+                            onBrowseFiles = { showFileBrowser = true },
                             onRename = { currentSession?.let { openRename(it) } },
                             onFork = { currentSessionId?.let { forkNow(it) } },
                             onCopyTitle = {
@@ -3008,6 +3012,16 @@ fun WorkspaceScreen(
                 }
             },
             onDismiss = { showTurnJumpSheet = false },
+        )
+    }
+
+    val browseSessionId = currentSessionId
+    if (showFileBrowser && browseSessionId != null) {
+        WorkspaceFileBrowserSheet(
+            sessionId = browseSessionId,
+            loadDir = client::getWorkspaceTree,
+            fetchFile = client::getSessionFile,
+            onDismiss = { showFileBrowser = false },
         )
     }
 }

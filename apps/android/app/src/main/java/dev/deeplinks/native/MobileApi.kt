@@ -104,6 +104,8 @@ data class MobileBootstrap(
     val syncResync: Boolean = false,
     val multiQuestion: Boolean = false,
     val requestSnapshot: Boolean = false,
+    /** 插件支持按层列工作区目录（capabilities.files.tree）。 */
+    val filesTree: Boolean = false,
 )
 
 data class SessionRequestState(
@@ -607,6 +609,7 @@ class MobileApiClient(private val host: Host) {
             syncResync = root.optJSONObject("capabilities")?.optJSONObject("sync")?.optBoolean("resync") == true,
             multiQuestion = root.optJSONObject("capabilities")?.optJSONObject("questions")?.optBoolean("multi") == true,
             requestSnapshot = root.optJSONObject("capabilities")?.optJSONObject("requests")?.optBoolean("snapshot") == true,
+            filesTree = root.optJSONObject("capabilities")?.optJSONObject("files")?.optBoolean("tree") == true,
         )
         return info to applyBootstrapRelay(host, root)
     }
@@ -639,6 +642,13 @@ class MobileApiClient(private val host: Host) {
         }
         if (query.isNotEmpty()) path += "?" + query.joinToString("&")
         return request("GET", path)
+    }
+
+    /** 会话工作区的一层目录（[path] 为工作区内相对路径，空串为根）。 */
+    fun getWorkspaceTree(sessionId: String, path: String): WorkspaceDirListing {
+        val apiPath = "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") +
+            "/tree?path=" + java.net.URLEncoder.encode(path, "UTF-8")
+        return parseWorkspaceDirListing(request("GET", apiPath))
     }
 
     fun sendPrompt(sessionId: String, text: String, mode: String = "queue", images: List<Pair<String, String>> = emptyList()) {
@@ -1154,3 +1164,52 @@ internal fun parseHistoryResponse(root: JSONObject, beforeSeq: Long?): HistoryRe
     )
     return result
 }
+
+/** 工作区目录的一项；[outside] 为指向工作区外或断开的链接，不可进入也不可打开。 */
+data class WorkspaceDirEntry(
+    val name: String,
+    val type: String,
+    val size: Long? = null,
+    val link: Boolean = false,
+    val outside: Boolean = false,
+) {
+    val isDir: Boolean get() = type == "dir"
+    val isFile: Boolean get() = type == "file"
+}
+
+data class WorkspaceDirListing(
+    val path: String,
+    val entries: List<WorkspaceDirEntry>,
+    val total: Int,
+    val truncated: Boolean,
+)
+
+internal fun parseWorkspaceDirListing(root: JSONObject): WorkspaceDirListing {
+    val arr = root.optJSONArray("entries") ?: org.json.JSONArray()
+    val entries = (0 until arr.length()).mapNotNull { i ->
+        val obj = arr.optJSONObject(i) ?: return@mapNotNull null
+        val name = obj.optStringOrEmpty("name")
+        if (name.isEmpty() || name == "." || name == ".." || name.contains('/')) return@mapNotNull null
+        WorkspaceDirEntry(
+            name = name,
+            type = obj.optStringOrEmpty("type", "other"),
+            size = if (obj.has("size") && !obj.isNull("size")) obj.optLong("size") else null,
+            link = obj.optBoolean("link", false),
+            outside = obj.optBoolean("outside", false),
+        )
+    }
+    return WorkspaceDirListing(
+        path = root.optStringOrEmpty("path").trim('/'),
+        entries = entries,
+        total = root.optInt("total", entries.size),
+        truncated = root.optBoolean("truncated", false),
+    )
+}
+
+/** 目录内子项的相对路径（根为空串）。 */
+internal fun childWorkspacePath(dir: String, name: String): String =
+    if (dir.isEmpty()) name else "$dir/$name"
+
+/** 上一级目录的相对路径；根的上一级仍是根。 */
+internal fun parentWorkspacePath(dir: String): String =
+    dir.substringBeforeLast('/', missingDelimiterValue = "")

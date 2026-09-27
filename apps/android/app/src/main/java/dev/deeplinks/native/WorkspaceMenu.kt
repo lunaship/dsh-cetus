@@ -13,10 +13,12 @@ internal fun workspaceHeaderMenuItems(
     toolSearchOpen: Boolean,
     activeSubagentCount: Int,
     turnJumpCount: Int,
+    canBrowseFiles: Boolean,
     onCloseMenu: () -> Unit,
     onOpenToolSearch: () -> Unit,
     onShowSubagents: () -> Unit,
     onShowTurnJump: () -> Unit,
+    onBrowseFiles: () -> Unit,
     onRename: () -> Unit,
     onFork: () -> Unit,
     onCopyTitle: () -> Unit,
@@ -36,6 +38,9 @@ internal fun workspaceHeaderMenuItems(
             add(DshMenuItem(AgentPresetOutline16, L.subagentCount.format(activeSubagentCount)) {
                 onCloseMenu(); onShowSubagents()
             })
+        }
+        if (canBrowseFiles) {
+            add(DshMenuItem(FolderOpenOutline16, L.browseFiles) { onCloseMenu(); onBrowseFiles() })
         }
         if (turnJumpCount >= 3) {
             add(DshMenuItem(ChecklistOutline14, L.jumpToTurn) {

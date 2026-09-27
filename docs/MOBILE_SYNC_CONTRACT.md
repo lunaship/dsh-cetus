@@ -15,7 +15,7 @@
     "sync": { "resync": true, "catchupIntegrity": true },
     "questions": { "multi": true, "serverValidation": true },
     "requests": { "snapshot": true, "reconnectGraceMs": 30000 },
-    "files": { "workspace": true, "maxBytes": 8388608 }
+    "files": { "workspace": true, "maxBytes": 8388608, "tree": true, "treeMaxEntries": 2000 }
   },
   "archivedSessionIds": ["<session-id>"]
 }
@@ -32,6 +32,14 @@
 `GET /dsh-link/mobile/sessions/search` 同样遵守该集合：成功搜索和降级的标题搜索都不会返回 Web 已归档的 `sessionId`。
 
 产出文件：历史投影可含 `role: "produced_files"` 与 `files` 路径列表。具备 `capabilities.files.workspace` 时，`GET /dsh-link/mobile/sessions/:id/file?path=` 在该会话 cwd 沙箱内返回原始字节（默认上限 8MB）。路径越出工作区返回 403。旧 App 忽略未知 role，仍可走工具结果文本。
+
+工作区文件树（`capabilities.files.tree`）：`GET /dsh-link/mobile/sessions/:id/tree?path=` 列出该会话 cwd 沙箱内的**一层**目录，App 按层懒加载。与 `/file` 相同的门槛：只有持有该会话活跃 SSE 订阅的设备可调用，否则 403。
+
+- `path` 为工作区内相对路径，空串或 `.` 为根；绝对路径只要解析后仍在工作区内也接受。越出工作区（含经符号链接越出）403，不存在 404，不是目录 400。
+- 响应 `{ ok, path, total, truncated, entries }`：`path` 为解析后的真实相对路径（根为空串，经工作区内链接进入时给出目标路径）；`entries` 目录在前、同类按名称码元序，最多 `treeMaxEntries`（2000）条，超出时 `truncated: true`，`total` 为实际条数。
+- 条目 `{ name, type }`，`type` 为 `dir` / `file` / `symlink` / `other`；`file` 另带 `size`、`mtimeMs`。指向工作区内的符号链接按目标类型给出并带 `link: true`；指向工作区外或断开的链接为 `type: "symlink", outside: true`，App 不可进入也不可打开。
+- 不过滤隐藏文件（`.env`、`.git` 照常列出）：设备配对后本就能经 `/file` 读取工作区内任意文件，列目录不扩大可读范围。
+- 打开文件仍走 `/file?path=<目录 path>/<name>`。旧 App 不看该能力位，旧插件不宣告即不出现入口。
 
 ## 本轮改动文件（`capabilities.files.changes`）
 

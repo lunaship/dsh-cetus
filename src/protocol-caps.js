@@ -1,6 +1,6 @@
 /** 业务层能力协商。DLR/1 与内层证书固定不因这些字段改变。 */
 
-import { MAX_WORKSPACE_FILE_BYTES } from "./workspace-file.js"
+import { MAX_WORKSPACE_DIR_ENTRIES, MAX_WORKSPACE_FILE_BYTES } from "./workspace-file.js"
 import { MAX_DIFF_LINES } from "./workspace-changes.js"
 
 export const PLUGIN_PROTOCOL = 2
@@ -33,6 +33,8 @@ export function pluginCapabilities({ changes = false } = {}) {
     files: {
       workspace: true,
       maxBytes: MAX_WORKSPACE_FILE_BYTES,
+      tree: true,
+      treeMaxEntries: MAX_WORKSPACE_DIR_ENTRIES,
       ...(changes ? { changes: true, diff: true, diffMaxLines: MAX_DIFF_LINES } : {}),
     },
   }

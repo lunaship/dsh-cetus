@@ -76,6 +76,8 @@ internal class WorkspaceViewModel(
     val composerDrafts = mutableStateOf<Map<String, ComposerDraft>>(emptyMap())
     val composerDraftErrors = mutableStateOf<Map<String, String>>(emptyMap())
     val composerActionError = mutableStateOf<String?>(null)
+    /** 插件是否支持工作区文件树（bootstrap capabilities.files.tree）。 */
+    val filesTreeSupported = mutableStateOf(false)
 
     // ===== 自 composable remember 上收的数据态（WI-R3） =====
 

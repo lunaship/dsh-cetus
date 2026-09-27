@@ -10,7 +10,7 @@ import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
 import { relayPairSnapshot } from "./relay/crypto.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
-import { mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
+import { listWorkspaceDir, mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
 import { optionalString, omitNullFields } from "./optional-string.js"
 import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory, resolveAbsoluteWorkspaceDirectory } from "./workspace-create.js"
 import { normalizeQuestions, validateAnswers } from "./question-answers.js"
@@ -669,6 +669,30 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         return json(res, status, { error: message })
       }
       return
+    }
+
+    // 工作区文件树：按层列目录，与 /file 同一沙箱与订阅门槛（只有正在查看该会话的设备可列）。
+    const treeMatch = pathname.match(/^\/dsh-link\/mobile\/sessions\/([^/]+)\/tree$/)
+    if (req.method === "GET" && treeMatch) {
+      const sessionId = decodeURIComponent(treeMatch[1])
+      if (!isDeviceSubscribedToSession(rt, sessionId, device.deviceId)) {
+        return json(res, 403, { error: "仅正在查看该会话的设备可浏览文件" })
+      }
+      const requested = String(new URL(req.url ?? "/", "http://x").searchParams.get("path") ?? "").trim()
+      try {
+        const list = await callLocalRpc(targetPort, "session.list", {})
+        const item = (list.items ?? []).find((s) => s.sessionId === sessionId)
+        if (!item) {
+          const err = new Error("会话不存在")
+          err.status = 404
+          throw err
+        }
+        return json(res, 200, { ok: true, ...listWorkspaceDir(optionalString(item?.cwd), requested) })
+      } catch (err) {
+        const status = Number.isInteger(err?.status) ? err.status : 500
+        const message = status >= 500 ? "读取目录失败" : (err?.message || "读取目录失败")
+        return json(res, status, { error: message })
+      }
     }
 
     // 本轮改动文件：转发 Host workspaceChanges（摘要 = 路径 + 行数；对比 = 按需取的 hunk）。

@@ -79,7 +79,7 @@ internal fun decodeSampledBitmap(bytes: ByteArray, maxEdge: Int = PREVIEW_MAX_ED
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
 }
 
-private sealed interface ProducedPreview {
+internal sealed interface ProducedPreview {
     data class Image(val bitmap: Bitmap) : ProducedPreview
     data class Text(val path: String, val body: String) : ProducedPreview
 }
@@ -229,8 +229,14 @@ internal fun ProducedFilesRow(
         }
     }
 
-    when (val current = preview) {
-        is ProducedPreview.Image -> Dialog(onDismissRequest = { preview = null }) {
+    preview?.let { current -> ProducedPreviewDialog(current) { preview = null } }
+}
+
+/** 图片 / 文本预览对话框（本轮产出与工作区文件浏览共用）。 */
+@Composable
+internal fun ProducedPreviewDialog(current: ProducedPreview, onDismiss: () -> Unit) {
+    when (current) {
+        is ProducedPreview.Image -> Dialog(onDismissRequest = { onDismiss() }) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -242,7 +248,7 @@ internal fun ProducedFilesRow(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = dshRipple(),
-                    ) { preview = null }
+                    ) { onDismiss() }
                     .padding(DshSpace.s16),
                 contentAlignment = Alignment.Center,
             ) {
@@ -255,7 +261,7 @@ internal fun ProducedFilesRow(
                 )
             }
         }
-        is ProducedPreview.Text -> Dialog(onDismissRequest = { preview = null }) {
+        is ProducedPreview.Text -> Dialog(onDismissRequest = { onDismiss() }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -282,7 +288,7 @@ internal fun ProducedFilesRow(
                                 role = Role.Button
                                 contentDescription = L.close
                             }
-                            .clickable { preview = null }
+                            .clickable { onDismiss() }
                             .padding(horizontal = DshSpace.s8),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -302,6 +308,5 @@ internal fun ProducedFilesRow(
                 )
             }
         }
-        null -> Unit
     }
 }
