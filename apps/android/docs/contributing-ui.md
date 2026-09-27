@@ -58,7 +58,11 @@ CI（`.github/workflows/ci.yml`）按顺序跑：DLR 向量检查 → JVM 测试
 
 ## 5. 截图基线工作流（AGP Compose Preview Screenshot Testing）
 
-- 预览在 `app/src/screenshotTest/kotlin/.../DesignSystemScreenshotTest.kt`（`@PreviewTest`）。
+- 预览在 `app/src/screenshotTest/kotlin/dev/deeplinks/screenshot/`（`@PreviewTest`）：
+  `DesignSystemScreenshotTest.kt`（组件 / token / 设置 / 外壳）、`WorkspaceChangesScreenshotTest.kt`（改动卡与审查面）、
+  `ChatFeedScreenshotTest.kt`（一轮回复、流式中、审批卡、提问卡）。
+- 数学公式 / Mermaid 走 WebView 异步渲染，不进截图；`L.*`（AppLocale 全局）不跟 `LocalDshStrings` 切换，
+  英文预览里个别标签仍是中文属正常。
 - **改动 UI 后**：`./gradlew updateDebugScreenshotTest` 更新基准图，随 PR 一起提交。
 - 基准图目录：`app/src/screenshotTestDebug/reference/**`（务必提交，否则 CI 会失败）。
 - 覆盖矩阵：亮/暗 × 中/英 × 1.0/1.3 字号、412dp 宽。新增屏幕时补一个 `@PreviewTest`。
