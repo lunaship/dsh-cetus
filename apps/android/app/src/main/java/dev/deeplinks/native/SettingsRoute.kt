@@ -881,7 +881,7 @@ private fun ManagedSessionRow(
     }.joinToString(" · ")
     Box {
         DshListRow(
-            title = snapshot.title,
+            title = displaySessionTitle(snapshot.title),
             subtitle = desc.ifBlank { null },
             onClick = { menuOpen = true },
             trailing = DshListTrailing.None,

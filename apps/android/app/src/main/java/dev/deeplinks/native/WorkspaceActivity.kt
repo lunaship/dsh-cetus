@@ -1747,7 +1747,7 @@ fun WorkspaceScreen(
     LaunchedEffect(running) {
         val sid = currentSessionId
         if (!running && wasRunning && !isForeground && sid != null) {
-            val title = currentSession?.title ?: L.sessionFallbackTitle
+            val title = currentSession?.title?.let(::displaySessionTitle) ?: L.sessionFallbackTitle
             val failReason = parseStoppedReason(stoppedReason)
             if (failReason == null) {
                 DshNotifier.notifyTaskDone(context, host, sid, title)
@@ -2005,7 +2005,7 @@ fun WorkspaceScreen(
                             onShareImage = {
                                 val sid = currentSessionId
                                 if (sid != null) {
-                                    val title = currentSession?.title ?: L.sessionFallbackTitle
+                                    val title = currentSession?.title?.let(::displaySessionTitle) ?: L.sessionFallbackTitle
                                     val dark = shareDark
                                     scope.launch(Dispatchers.IO) {
                                         try {
@@ -2059,7 +2059,7 @@ fun WorkspaceScreen(
             WorkspaceTopBar(
                 running = running,
                 // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
-                title = if (currentSessionId == null) "" else currentSession?.title ?: L.newSession,
+                title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
                 subtitle = if (currentSessionId == null) null else listOfNotNull(
                     currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
                     host.name.takeIf { it.isNotBlank() },
@@ -2945,7 +2945,7 @@ fun WorkspaceScreen(
     deleteSessionTarget?.let { target ->
         DshConfirmDialog(
             title = L.deleteSessionTitle,
-            message = L.deleteSessionMessage.format(target.title),
+            message = L.deleteSessionMessage.format(displaySessionTitle(target.title)),
             confirmLabel = L.delete,
             danger = true,
             error = deleteSessionError,

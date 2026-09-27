@@ -239,7 +239,7 @@ internal fun SessionRowItem(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            session.title,
+                            displaySessionTitle(session.title),
                             color = Dsh.labelPrimary,
                             style = DshType.titleSmall,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
