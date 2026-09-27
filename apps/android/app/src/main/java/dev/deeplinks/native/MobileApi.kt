@@ -1,4 +1,5 @@
 package dev.deeplinks.native
+import dev.deeplinks.native.util.optStringOrEmpty
 import dev.deeplinks.core.DshStrings
 import dev.deeplinks.core.BoundedIo
 import dev.deeplinks.core.Host
@@ -124,28 +125,28 @@ internal fun parseSessionRequestSnapshot(root: JSONObject): SessionRequestSnapsh
     return SessionRequestSnapshot(
         approvals = (0 until approvals.length()).mapNotNull { i ->
             val obj = approvals.optJSONObject(i) ?: return@mapNotNull null
-            val id = obj.optString("approvalId").ifBlank { obj.optString("id") }
+            val id = obj.optStringOrEmpty("approvalId").ifBlank { obj.optStringOrEmpty("id") }
             if (id.isBlank()) return@mapNotNull null
             SessionRequestState(
                 id = id,
                 kind = "approval",
-                status = obj.optString("status", REQUEST_PENDING),
-                outcome = obj.optString("outcome").takeIf { it.isNotBlank() },
-                toolName = obj.optString("toolName").takeIf { it.isNotBlank() },
-                callId = obj.optString("callId").takeIf { it.isNotBlank() },
+                status = obj.optStringOrEmpty("status", REQUEST_PENDING),
+                outcome = obj.optNullableString("outcome"),
+                toolName = obj.optNullableString("toolName"),
+                callId = obj.optNullableString("callId"),
             )
         },
         questions = (0 until questions.length()).mapNotNull { i ->
             val obj = questions.optJSONObject(i) ?: return@mapNotNull null
-            val id = obj.optString("rpcId").ifBlank { obj.optString("id") }
+            val id = obj.optStringOrEmpty("rpcId").ifBlank { obj.optStringOrEmpty("id") }
             if (id.isBlank()) return@mapNotNull null
             SessionRequestState(
                 id = id,
                 kind = "question",
-                status = obj.optString("status", REQUEST_PENDING),
-                outcome = obj.optString("outcome").takeIf { it.isNotBlank() },
+                status = obj.optStringOrEmpty("status", REQUEST_PENDING),
+                outcome = obj.optNullableString("outcome"),
                 questionsJson = obj.optJSONArray("questions")?.toString()
-                    ?: obj.optString("questionsJson").takeIf { it.isNotBlank() },
+                    ?: obj.optNullableString("questionsJson"),
             )
         },
     )
@@ -181,13 +182,13 @@ data class MobileWorkspaceCreation(
 
 internal fun parseMobileWorkspace(json: JSONObject?): MobileWorkspace? {
     if (json == null) return null
-    val path = json.optString("path").ifBlank { json.optString("title") }.trimEnd('/')
+    val path = json.optStringOrEmpty("path").ifBlank { json.optStringOrEmpty("title") }.trimEnd('/')
     if (path.isBlank()) return null
     val ids = json.optJSONArray("sessionIds") ?: org.json.JSONArray()
     return MobileWorkspace(
-        workspaceId = json.optString("workspaceId").ifBlank { json.optString("id") },
+        workspaceId = json.optStringOrEmpty("workspaceId").ifBlank { json.optStringOrEmpty("id") },
         path = path,
-        title = json.optString("title").ifBlank { path.substringAfterLast('/') },
+        title = json.optStringOrEmpty("title").ifBlank { path.substringAfterLast('/') },
         sessionIds = (0 until ids.length()).mapNotNull { index ->
             ids.optString(index).takeIf { it.isNotBlank() }
         },
@@ -513,7 +514,7 @@ class MobileApiClient(private val host: Host) {
     /** 分叉会话，返回子会话 id。 */
     fun forkSession(sessionId: String): String? {
         val root = request("POST", "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") + "/fork", JSONObject())
-        return root.optString("sessionId").takeIf { it.isNotBlank() }
+        return root.optNullableString("sessionId")
     }
 
     /** 工作区列表（含服务端已归档会话 id，用于跨设备同步隐藏）。 */
@@ -557,7 +558,7 @@ class MobileApiClient(private val host: Host) {
                 workspace = null,
                 created = false,
                 pending = true,
-                path = root.optString("path"),
+                path = root.optStringOrEmpty("path"),
             )
         }
         return MobileWorkspaceCreation(
@@ -590,8 +591,8 @@ class MobileApiClient(private val host: Host) {
         val archived = root.optJSONArray("archivedSessionIds")
         val archivedArray = archived ?: org.json.JSONArray()
         val info = MobileBootstrap(
-            hostName = root.optJSONObject("host")?.optString("name").orEmpty(),
-            deviceName = root.optJSONObject("device")?.optString("name").orEmpty(),
+            hostName = root.optJSONObject("host")?.optStringOrEmpty("name").orEmpty(),
+            deviceName = root.optJSONObject("device")?.optStringOrEmpty("name").orEmpty(),
             sessions = (0 until sessions.length()).mapNotNull { index ->
                 runCatching { parseMobileSession(sessions.getJSONObject(index)) }.getOrNull()
             },
@@ -636,31 +637,31 @@ class MobileApiClient(private val host: Host) {
             val obj = rawList.getJSONObject(i)
             val todosArr = obj.optJSONArray("todos") ?: org.json.JSONArray()
             MobileMessage(
-                id = obj.optString("id").ifBlank { "msg-${beforeSeq ?: "tail"}-$i" },
-                role = obj.optString("role", "assistant"),
-                text = obj.optString("text", ""),
-                toolName = obj.optString("name").takeIf { it.isNotBlank() } ?: obj.optString("toolName").takeIf { it.isNotBlank() },
-                toolArgs = obj.optString("args").takeIf { it.isNotBlank() },
-                approvalId = obj.optString("approvalId").takeIf { it.isNotBlank() },
-                callId = obj.optString("callId").takeIf { it.isNotBlank() },
+                id = obj.optStringOrEmpty("id").ifBlank { "msg-${beforeSeq ?: "tail"}-$i" },
+                role = obj.optStringOrEmpty("role", "assistant"),
+                text = obj.optStringOrEmpty("text", ""),
+                toolName = obj.optNullableString("name") ?: obj.optNullableString("toolName"),
+                toolArgs = obj.optNullableString("args"),
+                approvalId = obj.optNullableString("approvalId"),
+                callId = obj.optNullableString("callId"),
                 time = obj.optLong("time", 0L),
-                type = obj.optString("type", "text"),
+                type = obj.optStringOrEmpty("type", "text"),
                 durationMs = if (obj.has("durationMs") && !obj.isNull("durationMs")) obj.optLong("durationMs") else null,
                 running = if (obj.has("running") && !obj.isNull("running")) obj.optBoolean("running") else null,
                 todos = (0 until todosArr.length()).map { j ->
                     val t = todosArr.getJSONObject(j)
-                    MobileTodoItem(t.optString("content", ""), t.optString("status", "pending"))
+                    MobileTodoItem(t.optStringOrEmpty("content", ""), t.optStringOrEmpty("status", "pending"))
                 },
                 seq = obj.optLong("seq", 0L),
-                questionRpcId = obj.optString("questionRpcId").takeIf { it.isNotBlank() },
+                questionRpcId = obj.optNullableString("questionRpcId"),
                 questionOptions = obj.optJSONArray("questionOptions")?.let { arr ->
                     (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
                 } ?: emptyList(),
-                questionHeader = obj.optString("questionHeader").takeIf { it.isNotBlank() },
-                questionPayloadJson = obj.optString("questionPayloadJson").takeIf { it.isNotBlank() }
+                questionHeader = obj.optNullableString("questionHeader"),
+                questionPayloadJson = obj.optNullableString("questionPayloadJson")
                     ?: obj.optJSONArray("questions")?.toString(),
-                requestStatus = obj.optString("requestStatus").takeIf { it.isNotBlank() },
-                outcome = obj.optString("outcome").takeIf { it.isNotBlank() },
+                requestStatus = obj.optNullableString("requestStatus"),
+                outcome = obj.optNullableString("outcome"),
                 files = parseHistoryFiles(obj),
                 turn = if (obj.has("turn") && !obj.isNull("turn")) obj.optInt("turn") else null,
                 changes = obj.optJSONObject("changes")?.let { parseWorkspaceChanges(it, obj.optLong("seq", 0L)) },
@@ -770,7 +771,7 @@ class MobileApiClient(private val host: Host) {
         val items = root.optJSONArray("items") ?: org.json.JSONArray()
         val list = (0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
-            MobileSearchResult(item.getString("sessionId"), item.optString("snippet"))
+            MobileSearchResult(item.getString("sessionId"), item.optStringOrEmpty("snippet"))
         }
         return list to root.optBoolean("degraded", false)
     }
@@ -788,10 +789,10 @@ class MobileApiClient(private val host: Host) {
             namespaces = (0 until arr.length()).map { i ->
                 val ns = arr.getJSONObject(i)
                 MobileSettingsNamespace(
-                    ns = ns.optString("ns"),
+                    ns = ns.optStringOrEmpty("ns"),
                     value = ns.optJSONObject("value") ?: JSONObject(),
                     user = ns.optJSONObject("user"),
-                    applies = ns.optString("applies", "restart"),
+                    applies = ns.optStringOrEmpty("applies", "restart"),
                     revision = ns.optLong("revision", 0L),
                     secrets = (ns.optJSONArray("secrets") ?: org.json.JSONArray()).let { sa ->
                         (0 until sa.length()).map { j ->
@@ -816,10 +817,10 @@ class MobileApiClient(private val host: Host) {
         val root = request("POST", "/dsh-link/mobile/settings/update", body)
         val secrets = (root.optJSONArray("secrets") ?: org.json.JSONArray())
         return MobileSettingsNamespace(
-            ns = root.optString("ns", ns),
+            ns = root.optStringOrEmpty("ns", ns),
             value = root.optJSONObject("value") ?: JSONObject(),
             user = root.optJSONObject("user"),
-            applies = root.optString("applies", "restart"),
+            applies = root.optStringOrEmpty("applies", "restart"),
             revision = root.optLong("revision", 0L),
             secrets = (0 until secrets.length()).map { j ->
                 val s = secrets.getJSONObject(j)
@@ -838,8 +839,8 @@ class MobileApiClient(private val host: Host) {
             val p = arr.getJSONObject(i)
             MobileAgentPreset(
                 id = p.getString("id"),
-                name = p.optString("name", p.optString("id")),
-                description = p.optString("description", ""),
+                name = p.optStringOrEmpty("name", p.optStringOrEmpty("id")),
+                description = p.optStringOrEmpty("description", ""),
                 isDefault = p.optBoolean("isDefault", false),
             )
         }
@@ -885,7 +886,7 @@ class MobileApiClient(private val host: Host) {
         val arr = root.optJSONArray("models") ?: org.json.JSONArray()
         return (0 until arr.length()).mapNotNull { i ->
             val m = arr.optJSONObject(i) ?: return@mapNotNull null
-            val id = m.optString("id").trim()
+            val id = m.optStringOrEmpty("id").trim()
             if (id.isEmpty()) return@mapNotNull null
             MobileModelDraft(
                 id = id,
@@ -903,15 +904,15 @@ class MobileApiClient(private val host: Host) {
         val arr = root.optJSONArray("devices") ?: org.json.JSONArray()
         return (0 until arr.length()).map { i ->
             val d = arr.getJSONObject(i)
-            val name = d.optString("name", "")
-            val rawVia = d.optString("via", "")
+            val name = d.optStringOrEmpty("name", "")
+            val rawVia = d.optStringOrEmpty("via", "")
             val via = when {
                 rawVia == "relay" || rawVia == "lan" -> rawVia
                 name.endsWith("·云") || name.contains(" · 云端") -> "relay"
                 else -> "lan"
             }
             MobilePairedDevice(
-                deviceId = d.optString("deviceId", ""),
+                deviceId = d.optStringOrEmpty("deviceId", ""),
                 name = name,
                 createdAt = d.optLong("createdAt", 0L),
                 lastSeenAt = d.optLong("lastSeenAt", 0L),
@@ -1055,7 +1056,7 @@ private fun JSONObject.optStringList(key: String): List<String> {
 }
 
 internal fun parseModelOption(m: JSONObject): MobileModelOption = MobileModelOption(
-    id = m.optString("id", ""),
+    id = m.optStringOrEmpty("id", ""),
     name = m.optNullableString("name"),
     contextWindow = m.optPositiveLong("contextWindow"),
     maxTokens = m.optPositiveLong("maxTokens"),
@@ -1069,8 +1070,8 @@ internal fun parseModelGroups(arr: org.json.JSONArray?): List<MobileModelGroup> 
         val g = arr.optJSONObject(i) ?: return@mapNotNull null
         val models = g.optJSONArray("models") ?: org.json.JSONArray()
         MobileModelGroup(
-            provider = g.optString("provider", L.unknownProvider),
-            displayName = g.optString("providerName").ifBlank { g.optString("provider", L.unknownProvider) },
+            provider = g.optStringOrEmpty("provider", L.unknownProvider),
+            displayName = g.optStringOrEmpty("providerName").ifBlank { g.optStringOrEmpty("provider", L.unknownProvider) },
             models = (0 until models.length()).mapNotNull { j -> models.optJSONObject(j)?.let(::parseModelOption) },
         )
     }
@@ -1080,13 +1081,13 @@ private fun parseWallets(arr: org.json.JSONArray?): List<MobileWallet> {
     if (arr == null) return emptyList()
     return (0 until arr.length()).mapNotNull { i ->
         val w = arr.optJSONObject(i) ?: return@mapNotNull null
-        val currency = w.optString("currency").presentOrNull() ?: return@mapNotNull null
-        MobileWallet(currency = currency, balance = w.optString("balance"))
+        val currency = w.optStringOrEmpty("currency").presentOrNull() ?: return@mapNotNull null
+        MobileWallet(currency = currency, balance = w.optStringOrEmpty("balance"))
     }
 }
 
 internal fun parseBalance(root: JSONObject): MobileBalance = MobileBalance(
-    status = root.optString("status").presentOrNull() ?: "unavailable",
+    status = root.optStringOrEmpty("status").presentOrNull() ?: "unavailable",
     wallets = parseWallets(root.optJSONArray("wallets")),
     bonusWallets = parseWallets(root.optJSONArray("bonusWallets")),
 )
@@ -1098,13 +1099,13 @@ internal fun parseProviderDirectory(root: JSONObject): MobileProviderDirectory {
         writable = root.optBoolean("writable", false),
         providers = (0 until rows.length()).mapNotNull { i ->
             val p = rows.optJSONObject(i) ?: return@mapNotNull null
-            val provider = p.optString("provider").presentOrNull() ?: return@mapNotNull null
+            val provider = p.optStringOrEmpty("provider").presentOrNull() ?: return@mapNotNull null
             val cred = p.optJSONObject("credential")
             val models = p.optJSONArray("models") ?: org.json.JSONArray()
             MobileProviderRow(
                 provider = provider,
-                displayName = p.optString("displayName").presentOrNull() ?: provider,
-                kind = p.optString("kind").presentOrNull() ?: "api",
+                displayName = p.optStringOrEmpty("displayName").presentOrNull() ?: provider,
+                kind = p.optStringOrEmpty("kind").presentOrNull() ?: "api",
                 active = p.optBoolean("active", true),
                 custom = p.optBoolean("custom", false),
                 keyRef = p.optNullableString("keyRef"),
@@ -1123,8 +1124,8 @@ internal fun parseProviderDirectory(root: JSONObject): MobileProviderDirectory {
         },
         addable = (0 until addable.length()).mapNotNull { i ->
             val a = addable.optJSONObject(i) ?: return@mapNotNull null
-            val provider = a.optString("provider").presentOrNull() ?: return@mapNotNull null
-            MobileAddableProvider(provider, a.optString("displayName").presentOrNull() ?: provider)
+            val provider = a.optStringOrEmpty("provider").presentOrNull() ?: return@mapNotNull null
+            MobileAddableProvider(provider, a.optStringOrEmpty("displayName").presentOrNull() ?: provider)
         },
     )
 }
@@ -1139,6 +1140,6 @@ internal fun MobileModelDraft.toJson(): JSONObject {
 }
 
 internal fun parseMobileApiError(code: Int, text: String): String {
-    val fromJson = runCatching { JSONObject(text).optString("error") }.getOrNull()?.takeIf { it.isNotBlank() }
+    val fromJson = runCatching { JSONObject(text).optStringOrEmpty("error") }.getOrNull()?.takeIf { it.isNotBlank() }
     return fromJson ?: text.ifBlank { "HTTP $code" }
 }

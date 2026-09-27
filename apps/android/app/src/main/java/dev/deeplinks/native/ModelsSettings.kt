@@ -287,35 +287,16 @@ internal fun ModelsSettingsPage(
         else -> null
     }
     val providersFooter = if (!unsupported && host != null) s.customProviderDesktopHint else null
-    // 每个供应商一张卡片；分区标题（带「添加供应商」）挂在第一张上，桌面端提示挂在最后一张下
-    val providerCards = rows.size + if (directoryNote != null) 1 else 0
-    var cardIndex = 0
-    fun nextCard(): Pair<Boolean, Boolean> = Pair(cardIndex == 0, cardIndex == providerCards - 1).also { cardIndex += 1 }
-    if (providerCards == 0) {
-        DshListSection(
-            header = s.sectionProviders,
-            headerAction = if (canWrite) s.addProvider else null,
-            headerActionEnabled = busy == null,
-            onHeaderAction = if (canWrite) ({ sheetError = null; sheet = ModelsSheet.AddProvider }) else null,
-            footer = providersFooter,
-        ) {}
-    }
-    if (directoryNote != null) {
-        val (first, last) = nextCard()
-        DshListSection(
-            header = if (first) s.sectionProviders else null,
-            footer = if (last) providersFooter else null,
-        ) { directoryNote() }
-    }
-    rows.forEach { row ->
-        val (first, last) = nextCard()
-        DshListSection(
-            header = if (first) s.sectionProviders else null,
-            headerAction = if (first && canWrite) s.addProvider else null,
-            headerActionEnabled = busy == null,
-            onHeaderAction = if (first && canWrite) ({ sheetError = null; sheet = ModelsSheet.AddProvider }) else null,
-            footer = if (last) providersFooter else null,
-        ) {
+    // 所有供应商同在一张分组卡：收起时是一列行，展开的明细缩进到名称起点，层级靠缩进而不是另起卡片
+    DshListSection(
+        header = s.sectionProviders,
+        headerAction = if (canWrite) s.addProvider else null,
+        headerActionEnabled = busy == null,
+        onHeaderAction = if (canWrite) ({ sheetError = null; sheet = ModelsSheet.AddProvider }) else null,
+        footer = providersFooter,
+    ) {
+        directoryNote?.invoke()
+        rows.forEach { row ->
             ProviderRows(
                 row = row,
                 expanded = expanded.contains(row.provider),
@@ -425,8 +406,9 @@ internal fun ModelsSettingsPage(
 }
 
 /**
- * 一个供应商卡片里的行：表头（状态点 · 名称 · 标签 · 模型数，点按展开）+ 展开后的
- * API Key、模型列表与操作行。放在 [DshListSection] 里，分隔线由卡片画。
+ * 一个供应商的行：表头（状态点 · 名称 · 标签 · 模型数，点按展开）+ 展开后的
+ * API Key、模型列表与操作行。所有供应商共用一张 [DshListSection]，分隔线由卡片画；
+ * 表头总占着图标位（没有状态点也留空），展开的子行缩进到同一文字起点。
  */
 @Composable
 private fun ProviderRows(
@@ -466,13 +448,13 @@ private fun ProviderRows(
         value = s.providerModelCount.format(row.models.size),
         onClick = onToggle,
         trailing = DshListTrailing.None,
-        leading = dotColor?.let { color ->
-            {
+        leading = {
+            if (dotColor != null) {
                 Box(
                     Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(color)
+                        .background(dotColor)
                         .semantics { contentDescription = if (keyConfigured || row.kind == "account") s.apiKeyConfigured else s.apiKeyMissing },
                 )
             }
@@ -494,7 +476,7 @@ private fun ProviderRows(
         DshListRow(
             title = s.apiKey,
             icon = KeyOutline16,
-            iconTint = if (keyConfigured || cred?.writable == false) Dsh.brand400 else Dsh.error,
+            iconTint = if (keyConfigured || cred?.writable == false) Dsh.labelSecondary else Dsh.error,
             subtitle = row.keyRef?.takeIf { keyConfigured },
             value = when {
                 cred?.writable == false -> s.apiKeyReadOnly
@@ -506,15 +488,19 @@ private fun ProviderRows(
             onClick = if (canSetKey && busy == null) onSetKey else null,
         )
     } else if (row.kind == "account") {
-        DshListNote(s.accountProviderHint)
+        DshListNote(s.accountProviderHint, inset = true)
     }
 
     val canRemove = writable && row.modelsEditable && row.models.size > 1 && busy == null
     row.models.forEach { model ->
         DshListRow(
             title = model.name ?: model.id,
-            subtitle = model.id.takeIf { model.name != null && model.name != model.id },
-            value = model.contextWindow?.let { s.contextSize.format(compactTokens(it)) },
+            // 上下文大小并进副标题：放在行尾会和删除钮一起挤压标题，把模型名从中间折断
+            subtitle = listOfNotNull(
+                model.id.takeIf { model.name != null && model.name != model.id },
+                model.contextWindow?.let { s.contextSize.format(compactTokens(it)) },
+            ).joinToString(" · ").ifBlank { null },
+            leading = {},
             trailingContent = if (writable && row.modelsEditable) {
                 { RemoveModelButton(model, enabled = canRemove) { onRemoveModel(model) } }
             } else {
@@ -525,7 +511,7 @@ private fun ProviderRows(
 
     when {
         row.kind != "api" -> Unit
-        !row.modelsEditable -> DshListNote(s.modelsInheritedHint)
+        !row.modelsEditable -> DshListNote(s.modelsInheritedHint, inset = true)
         writable -> {
             DshListActionRow(label = s.addModel, icon = PlusOutline16, enabled = busy == null, onClick = onAddModel)
             if (row.canDiscover) {
@@ -538,7 +524,7 @@ private fun ProviderRows(
             }
         }
     }
-    if (error != null) DshListNote(error, error = true)
+    if (error != null) DshListNote(error, error = true, inset = true)
 }
 
 @Composable

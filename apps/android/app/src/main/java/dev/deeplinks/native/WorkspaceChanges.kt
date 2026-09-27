@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.native.util.optStringOrEmpty
 import org.json.JSONObject
 
 /**
@@ -70,11 +71,11 @@ sealed interface WorkspaceFileDiff {
 }
 
 internal fun parseChangedFile(obj: JSONObject): ChangedFile? {
-    val path = obj.optString("path").trim()
+    val path = obj.optStringOrEmpty("path").trim()
     if (path.isEmpty()) return null
     return ChangedFile(
         path = path,
-        display = obj.optString("display").trim().ifEmpty { path },
+        display = obj.optStringOrEmpty("display").trim().ifEmpty { path },
         added = obj.optInt("added", 0).coerceAtLeast(0),
         deleted = obj.optInt("deleted", 0).coerceAtLeast(0),
         binary = obj.optBoolean("binary", false),
@@ -98,9 +99,9 @@ internal fun parseWorkspaceChanges(obj: JSONObject, seq: Long): WorkspaceChanges
 }
 
 internal fun parseWorkspaceFileDiff(obj: JSONObject): WorkspaceFileDiff? {
-    val path = obj.optString("path")
-    val display = obj.optString("display").ifEmpty { path }
-    return when (obj.optString("kind")) {
+    val path = obj.optStringOrEmpty("path")
+    val display = obj.optStringOrEmpty("display").ifEmpty { path }
+    return when (obj.optStringOrEmpty("kind")) {
         "binary" -> WorkspaceFileDiff.Binary(path, display)
         "oversized" -> WorkspaceFileDiff.Oversized(path, display)
         "text" -> {

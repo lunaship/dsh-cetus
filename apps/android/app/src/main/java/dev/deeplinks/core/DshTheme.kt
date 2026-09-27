@@ -169,8 +169,10 @@ val LightDshColors = DshColors(
     bgOverlay = Color(0x52000000),
     bgRecessed = Color(0xFFF3F4F6),      // ThinkingTrace：比白画布略凹
     // 白卡压白底会整块隐形：分组页底取冷灰一档（对照 iOS systemGroupedBackground）
-    bgGrouped = Color(0xFFF2F3F7),
-    bgGroupedCard = Color(0xFFFFFFFF),
+    // 与侧栏 / 聊天页同一套层次：白画布 + 浅灰容器（侧栏行 F9FAFB、输入框 F1F3F5 之间），
+    // 不再用「灰底白卡」的 iOS 分组观感，否则设置与主界面像两套设计。
+    bgGrouped = Color(0xFFFFFFFF),
+    bgGroupedCard = Color(0xFFF4F5F7),
     bgSurface = Color(0xFFFFFFFF),
     // 文字
     labelPrimary = Color(0xFF0F1115),

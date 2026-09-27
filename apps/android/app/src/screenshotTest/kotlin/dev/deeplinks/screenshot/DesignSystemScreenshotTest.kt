@@ -111,6 +111,7 @@ import dev.deeplinks.native.ui.DshLargeTitle
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
+import dev.deeplinks.native.SessionStatsLine
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
@@ -296,6 +297,8 @@ private fun ChromeWall() {
     ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
     ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)
     ContextMeterRow(label = "Messages", value = "18.7K", swatchColor = Dsh.brand400)
+    SectionTitle("Session stats line")
+    SessionStatsLine(MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167))
     SectionTitle("Composer seats")
     ComposerSeatsRow(
         modelName = "DeepSeek V4 Flash",

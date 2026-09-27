@@ -114,7 +114,7 @@ class WorkspacePrefs(context: Context) {
                             SessionSnapshot(
                                 sessionId = key,
                                 title = obj.optString("title").ifBlank { key },
-                                cwd = obj.optString("cwd").takeIf { it.isNotBlank() },
+                                cwd = obj.optNullableString("cwd"),
                                 updatedAt = obj.optLong("updatedAt", 0L),
                             ),
                         )

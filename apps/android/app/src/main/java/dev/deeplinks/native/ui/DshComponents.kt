@@ -459,13 +459,7 @@ fun DshBanner(
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // tone 指示条
-        Box(
-            modifier = Modifier
-                .size(width = 3.dp, height = 16.dp)
-                .background(accent, RoundedCornerShape(DshRadius.full))
-        )
-        Spacer(Modifier.width(8.dp))
+        // 语气只靠 tonal 底色 + 文字色表达；左侧竖色条是网页 callout 写法，不用
         if (leading != null) {
             leading()
             Spacer(Modifier.width(8.dp))

@@ -1377,7 +1377,7 @@ fun WorkspaceScreen(
                     text = data.optString("reason").ifBlank { L.approvalRequest.format(data.optString("toolName", L.toolFallbackName)) },
                     toolName = data.optString("toolName", "tool"),
                     approvalId = approvalId,
-                    callId = data.optString("callId").takeIf { it.isNotBlank() },
+                    callId = data.optNullableString("callId"),
                     time = item.time,
                     type = "approval",
                     seq = item.seq,

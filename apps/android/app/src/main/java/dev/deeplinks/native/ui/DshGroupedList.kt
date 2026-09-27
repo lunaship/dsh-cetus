@@ -65,9 +65,10 @@ import dev.deeplinks.native.DshRadius
 /**
  * 分组列表（对照 lody-ios 的 LodyGroupedList / FormGroup）。
  *
- * 一页 = [DshGroupedPage] 的冷灰底 + 若干 [DshListSection]；每个分组是一张圆角卡片，
+ * 一页 = [DshGroupedPage] 的画布底 + 若干 [DshListSection]；每个分组是一张浅灰 tonal 圆角卡片，
  * 卡片上方是小号分组标题，下方是说明性页脚。行只有一种骨架 [DshListRow]：
  * 图标 · 标题 / 副标题 · 取值 · 尾标，开关、下拉、按钮行都是它的变体。
+ * 行首图标默认中性灰（与侧栏一致），品牌蓝只留给可执行的操作行和选中勾。
  * 行间发丝线由卡片自动画，起点跟随下一行的文字起点（有图标时让开图标）。
  */
 
@@ -90,7 +91,7 @@ private data class DividerInset(val start: Dp) : ParentDataModifier {
 private fun Modifier.dividerInset(hasIcon: Boolean): Modifier =
     then(DividerInset(if (hasIcon) TextInsetWithIcon else RowPaddingH))
 
-/** 分组页容器：冷灰底、独立滚动、手机 16dp 边距、大屏 720dp 居中。 */
+/** 分组页容器：画布底（与侧栏 / 聊天页同色）、独立滚动、手机 16dp 边距、大屏 720dp 居中。 */
 @Composable
 fun DshGroupedPage(
     modifier: Modifier = Modifier,
@@ -253,7 +254,7 @@ fun DshListRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.brand400,
+    iconTint: Color = Dsh.labelSecondary,
     value: String? = null,
     destructive: Boolean = false,
     enabled: Boolean = true,
@@ -424,7 +425,7 @@ fun DshSwitchRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.brand400,
+    iconTint: Color = Dsh.labelSecondary,
     enabled: Boolean = true,
 ) {
     DshListRowLayout(
@@ -479,7 +480,7 @@ fun DshSelectRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.brand400,
+    iconTint: Color = Dsh.labelSecondary,
     saving: Boolean = false,
     error: String? = null,
     onRetry: (() -> Unit)? = null,
@@ -616,22 +617,26 @@ fun DshListActionRow(
     }
 }
 
-/** 卡片里的说明 / 状态文字（加载中、空态、错误）：占一行，不可点。 */
+/**
+ * 卡片里的说明 / 状态文字（加载中、空态、错误）：占一行，不可点。
+ * [inset] 为真时与带图标行的文字起点对齐——用在展开的子行里，保持层级。
+ */
 @Composable
 fun DshListNote(
     text: String,
     modifier: Modifier = Modifier,
     error: Boolean = false,
+    inset: Boolean = false,
 ) {
     Text(
         text,
         color = if (error) Dsh.error else Dsh.labelTertiary,
         style = DshType.body,
         modifier = modifier
-            .dividerInset(false)
+            .dividerInset(inset)
             .fillMaxWidth()
             .heightIn(min = RowMinHeight)
-            .padding(horizontal = RowPaddingH, vertical = 14.dp),
+            .padding(start = if (inset) TextInsetWithIcon else RowPaddingH, end = RowPaddingH, top = 14.dp, bottom = 14.dp),
     )
 }
 

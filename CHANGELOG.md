@@ -2,6 +2,13 @@
 
 ## dsh-links 未发布
 
+手机端第二轮打磨：设置与主界面统一成同一套层次。
+
+- 浅色模式改为「白底 + 浅灰分组卡」（与侧栏会话行、输入框同一层次），不再是灰底白卡；列表行首图标改中性灰，品牌蓝只留给操作行和选中勾。横幅去掉左侧竖色条。
+- 模型页的供应商合并为一个分组，展开的明细缩进到名称起点；模型的上下文大小移到副标题，模型名不再被折断。
+- 会话用量看板改为紧凑对话框：三个关键数一行、令牌构成一行、上下文一条进度；输入框下的统计行只保留一行浅色文字「7 轮 · 223 步 · 23.5M 令牌」。
+- 解析层不再把 JSON `null` 读成 `"null"`：新增 `optStringOrEmpty`（不修剪空白），`MobileApi` / `QuestionAnswers` / `WorkspaceChanges` 全部改用空安全读取；新增 `JsonNullSafetyTest`。
+
 修复手机切换会话模型必定失败：`445a21f` 拆分 `mobile-api.js` 时漏掉了 `selectSessionModel` 的定义，`POST /dsh-link/mobile/sessions/:id/model` 一直抛 `ReferenceError`，返回 502。已恢复原实现（按会话模型目录解析供应商 / 模型 id，推理等级不在允许列表时回落默认），`test/mobile-error-map.test.mjs` 新增回归用例。需要重启 host 才生效。
 
 手机设置、设备、模型和工作区面板改成分组列表。
