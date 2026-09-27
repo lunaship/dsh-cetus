@@ -15,8 +15,12 @@
    - 存量以 `app/src/test/resources/design-token-baseline.txt` 登记为**每文件上限**。
 2. **禁止裸色值**：不得写 `Color(0x...)`。颜色一律走 `Dsh.*`（`core/DshTheme.kt`）；
    语法高亮走 `DshSyntaxPalette`。唯一允许字面量的文件是 token 定义文件
-   （`DshTheme.kt` / `DshTypography.kt` / `DshSyntaxPalette.kt`）。
-3. **只允许下调**：以上预算文件只允许把数字改小。若因结构性改动必须一次性上调，
+   （`DshTheme.kt` / `DshTypography.kt` / `DshSyntaxPalette.kt` / `DswPalette.kt`）。
+3. **色源是 DSH**：`DshTheme.kt` 的颜色取自 `Dsw.*`（`core/DswPalette.kt`，DSH 调色板镜像）；
+   仍写字面量的行必须带「偏离 DSH：原因」，由 `DshPaletteProvenanceTest` 强制。
+4. **间距走刻度**：`padding` / `spacedBy` / `PaddingValues` / `Spacer` 里写 `DshSpace.s2…s32`；
+   刻度外存量按 `app/src/test/resources/spacing-baseline.txt` 每文件预算只降不升，由 `DshSpacingUsageTest` 强制。
+5. **只允许下调**：以上预算文件只允许把数字改小。若因结构性改动必须一次性上调，
    必须在预算文件里写明原因与下调计划（参见 `SettingsActivity.kt` 的导航迁移）。
 
 由 `DesignTokenUsageTest` 强制：新增违规即让 `testDebugUnitTest` 失败。

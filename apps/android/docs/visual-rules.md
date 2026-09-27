@@ -4,16 +4,17 @@
 
 ## 唯一方向
 
-> **Material 3 的结构、导航、状态和无障碍规则 + DSH Blue 品牌色 + 面向开发工作的克制高密度。**
+> **Material 3 的结构、导航、状态和无障碍规则 + DeepSeek Harness 的色值与节奏 + 面向开发工作的克制高密度。**
 
-这一条是全 App 视觉决策的最终依据。任何「对照某个外部产品」的逐项对齐表述均已作废：
-DeepSeek Web / lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生），
-不得作为新增组件、形状或页面语法的直接来源。需要新视觉元素时，先问它属于下面哪一份合同，
+这一条是全 App 视觉决策的最终依据。本 App 是 DeepSeek Harness 的客户端，**视觉取值的唯一参照是
+DSH Web**（`@deepseek-ai/dsh-client-ui-theme` 的 `--dsw-*` token，见下方「色源」）。
+lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生），
+不得作为新增组件、形状、色值或页面语法的直接来源。需要新视觉元素时，先问它属于下面哪一份合同，
 合同没有的，先改合同（连同门禁测试），再改页面。
 
 本文件是设计语言统一改造（2026-09-27 方案）的落地合同，由
-`DesignTokenUsageTest` / `ComponentLanguageTest` / `DshShapeRoleTest` / `DshSurfaceRoleTest`
-共同强制；违反即让 `testDebugUnitTest` 失败。
+`DesignTokenUsageTest` / `ComponentLanguageTest` / `DshShapeRoleTest` / `DshSurfaceRoleTest` /
+`DshPaletteProvenanceTest` / `DshSpacingUsageTest` 共同强制；违反即让 `testDebugUnitTest` 失败。
 
 ## 一、页面骨架（DshPageScaffold）
 
@@ -121,26 +122,72 @@ DeepSeek Web / lody-iOS / Paseo / t3code 只能作为**问题样例**（说明�
 ## 六、十条（仍然有效）
 
 1. **色源唯一**：运行时颜色只走 Compose `DshTheme` / `DshColors`（及代理 `Dsh.*`）。XML `values/colors.xml` 与 `values-night/colors.xml` 必须与同一套 DSH 色对齐。**XML 运行时色名一律 `dsh_*`；禁止再引入 `ink_*` 作为第二套色系统。**
-2. **DeepSeek 色主轴**：深色画布近黑（`#0E0E10` 族）；唯一高饱和强调色钉死 DeepSeek Blue（`brand500` / `brand400`）。发送键、链接、实心主按钮用这一族。选中态、用户气泡和进行中状态用浅灰与正文色，不把品牌蓝铺进列表和消息流。Material You 动态取色只动表面 / 灰阶文字，**不得**用壁纸色替换品牌 token。
+2. **DSH 色主轴**：画布和层级取 DSH neutral-bluish 色阶（深色画布 `#151517`）；唯一高饱和强调色钉死 DSH deepseek 蓝（`brand500` / `brand400`）。发送键、链接、实心主按钮用这一族。选中态、用户气泡和进行中状态用浅灰与正文色，不把品牌蓝铺进列表和消息流。Material You 动态取色只动表面 / 灰阶文字，**不得**用壁纸色替换品牌 token。
    **发送槽规格（Mic / Send / Stop 同一槽）**：空态语音 = `bgTrack` 圆钮；可发送 / 运行 / 录音 = `brand500` 实心；禁用 = `brand500` 55%；出错 = `error`。状态只换图标；**禁止**给这个槽上墨黑/反白实心。
-3. **禁墨色主轴**：禁止墨黑或反白近白当主按钮色。Splash / Devices / Settings / 聊天必须像同一产品。
+3. **禁墨色主轴**：禁止墨黑或反白近白当主按钮色。这是**有意偏离 DSH**（DSH 的 `button-primary-fill` 是墨色）：
+   手机上单手操作，蓝色主操作更容易一眼找到（2026-09-27 用户确认）。Splash / Devices / Settings / 聊天必须像同一产品。
 4. **文字灰阶**：高对比正文（`labelPrimary`）+ muted 次要（`labelSecondary` / `labelTertiary`）；层级靠灰阶与字重，不靠第二套高饱和色。
-5. **ThinkingTrace 规格**：面板背景比画布更深一档（`bgRecessed`）；左侧约 2dp DeepSeek Blue 竖条；CoT 正文 dimmed + italic；折叠标题清晰；最终回答 upright 高对比；助手消息无气泡全宽。
+5. **ThinkingTrace 规格**：面板背景比画布更深一档（`bgRecessed`）；左侧约 2dp 品牌蓝竖条；CoT 正文 dimmed + italic；折叠标题清晰；最终回答 upright 高对比；助手消息无气泡全宽。
 6. **轨迹色降噪**：推理用蓝系弱强调（`traceReasoning`）；禁止亮紫与品牌蓝抢同一层级；审批/警告保留语义色但降噪。
 7. **单 CTA**：每个表面最多一个实心 accent 主按钮；其余 ghost / outline / 文字按钮。
 8. **Chrome 安静**：Devices / Settings / 侧栏少装饰、少抢戏像素风与第二强调色；状态写进操作本身。
 9. **插件不在本仓改**：配对插件、协议、SSE、Relay 在 `../dsh-links`；本仓只改 Android App 视觉与客户端体验。
 10. **版本与发布边界**：本视觉迭代不升 `versionName` / `versionCode`；正式签名与推送规则见仓库根 `CLAUDE.md`。
 
+## 七、间距刻度
+
+DSH 没有把间距做成 token；刻度取自 DSH Web 实际写下的 padding / gap 分布：
+
+| Token | 值 | 典型用途 |
+|---|---:|---|
+| `DshSpace.s2` | 2dp | 图标与文字的微调、细条间隙 |
+| `DshSpace.s4` | 4dp | 行内元素之间 |
+| `DshSpace.s6` | 6dp | chip 内边距、紧凑行内间距 |
+| `DshSpace.s8` | 8dp | 组内元素之间 |
+| `DshSpace.s12` | 12dp | 行内边距、卡片内边距 |
+| `DshSpace.s16` | 16dp | 页面水平边距（`pageGutter`）、卡片外边距 |
+| `DshSpace.s20` | 20dp | 本端补的一档：大卡片内边距 |
+| `DshSpace.s24` | 24dp | 组与组之间（`sectionGap`） |
+| `DshSpace.s32` | 32dp | 页面级留白、空态上下 |
+
+- `padding` / `spacedBy` / `PaddingValues` / `Spacer` 里只写 `DshSpace.*`。
+- 刻度外的存量（10 / 14 / 3 / 5 / 1.5 …）登记在 `spacing-baseline.txt`，只降不升；
+  把它们落到相邻一档是逐处的视觉决定，要看截图，不做批量替换。
+- 尺寸（图标、触控区、头像）、描边、阴影里的 dp 不归这张表管。
+
+## 色源
+
+**DSH 调色板镜像**：`core/DswPalette.kt`（`object Dsw`）逐字镜像 DSH 的 `--dsw-static-*`
+和半透明 `--dsw-alias-*`，勿手改。DSH 升级后重新生成：从已安装的
+`@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-theme/lib/client.js`
+抽出 `--dsw-*` 声明，按原名转 camelCase（例如 `--dsw-static-neutral-bluish-950` → `Dsw.neutralBluish950`）。
+
+**角色映射**：`DshTheme.kt` 的每个 `DshColors` 角色取自 `Dsw.*`，行尾注释写对应的 DSH alias。
+写字面量 `Color(0x…)` 的行必须在同一行写「偏离 DSH」和原因，由 `DshPaletteProvenanceTest` 强制。
+新增或调整颜色时，先在 DSH 的 alias 里找同语义的，找不到再偏离。
+
+当前的偏离（完整清单：`grep -n '偏离 DSH' app/src/main/java/dev/deeplinks/core/DshTheme.kt`）：
+
+| 角色 | 原因 |
+|---|---|
+| 浅色 `labelTertiary` / `labelSecondary` | DSH tertiary 白底 3.7:1 不达 AA；tertiary 下压后 secondary 也下压一档拉开层级 |
+| 浅色 `brand400` | DSH `alias-link`（deepseek-500）白底 4.2:1，改用色阶下一档 deepseek-600（仍在 DSH 色板内） |
+| 浅色 `error` / `errorBg` / `warnLabel` / `successContent` | DSH 红色过刺，琥珀和绿色族白底不达 AA |
+| 深色 `successContent`、`shadowCard` | DSH 没有深底绿字；阴影不分深浅，深色上看不见 |
+| `systemAccent` / `toolsAccent` / `trace*` | DSH 没有对应角色（Android 专有的轨迹语义色） |
+| `pureBlack()` 几档 | OLED 纯黑模式是本端独有 |
+| 主按钮保持实心蓝 | 见第六节第 3 条 |
+
 ## 快速对照
 
-| 角色 | Token | 深色示例 | 浅色示例 |
-| --- | --- | --- | --- |
-| 画布 | `bgBase` | `#0E0E10` | `#FFFFFF` |
-| Tonal 容器 | `bgSubtle` | `#2A2A2F` | `#F1F3F5` |
-| 选中容器 | `bgNavSelected` | `#1A2744` | `#E5EDFF` |
-| 凹进面板 | `bgRecessed` | `#08080A` | `#F3F4F6` |
-| 主强调 | `brand500` | `#4D6BFE` | `#4D6BFE` |
-| 链接/次强调 | `brand400` | `#6B86FE` | `#3B5BDB` |
+| 角色 | Token | DSH 来源 | 深色 | 浅色 |
+| --- | --- | --- | --- | --- |
+| 画布 | `bgBase` | `alias-bg-base` | `#151517` | `#FFFFFF` |
+| 卡片 | `bgCard` | `alias-bg-layer-1` | `#232324` | `#FFFFFF` |
+| Tonal 容器 | `bgSubtle` | `alias-interactive-bg-hover-solid` | `#353638` | `#F1F3F5` |
+| 选中容器 | `bgNavSelected` | `specific-sidebar-nav-item-active-accent` | `#353638` | `#E4EDFD` |
+| 凹进面板 | `bgRecessed` | 色阶最深一档 / `neutral-bluish-60` | `#0F1115` | `#F5F6F7` |
+| 主强调 | `brand500` | `alias-brand-primary-new-color` | `#5686FE` | `#4176E6` |
+| 链接/次强调 | `brand400` | `alias-link`（浅色偏离，见上） | `#7AAAFF` | `#4868B2` |
 
 配套阅读：[`contributing-ui.md`](contributing-ui.md)（工程门禁与截图基线工作流）。
