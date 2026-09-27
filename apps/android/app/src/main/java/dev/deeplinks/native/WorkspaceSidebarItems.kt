@@ -58,6 +58,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
+import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.ThemeManager
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.native.util.relativeTime
@@ -81,6 +82,8 @@ internal val DrawerIconSize = 16.dp
 internal val DrawerEdgePadding = 6.dp
 /** 行内水平内边距（原 14dp）。 */
 internal val DrawerInnerPadding = 12.dp
+/** 首页所有文字的左边线：标题、筛选文字、分区标题、会话标题都落在这里。 */
+internal val DrawerTextStart = DrawerEdgePadding + DrawerInnerPadding
 /** 图标与文字的间距（原 12dp）。 */
 internal val DrawerLeadingGap = 10.dp
 /** 抽屉所有行共用同一圆角（选中/按压/滑动垫底同形），不混两种弧度。 */
@@ -227,21 +230,33 @@ internal fun SessionRowItem(
                     } else {
                         ""
                     }
+                    // 时间放在标题行尾，副标题只写项目和状态
                     val meta = formatSessionSubtitle(
                         session = session,
                         goalSummary = goalSummary,
                         runningLabel = s.runningStatus,
                         awaitingLabel = s.awaitingInputStatus,
-                        relativeTimeFormatted = relTime,
                     )
-                    Text(
-                        session.title,
-                        color = Dsh.labelPrimary,
-                        style = DshType.titleSmall,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            session.title,
+                            color = Dsh.labelPrimary,
+                            style = DshType.titleSmall,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (relTime.isNotBlank()) {
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                relTime,
+                                color = Dsh.labelTertiary,
+                                style = DshType.captionRelaxed.tabularNums(),
+                                maxLines = 1,
+                            )
+                        }
+                    }
                     if (meta.isNotBlank()) {
                         Spacer(Modifier.height(2.dp))
                         Text(

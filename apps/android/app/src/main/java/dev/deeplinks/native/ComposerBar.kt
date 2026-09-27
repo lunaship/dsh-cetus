@@ -49,7 +49,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -714,6 +716,9 @@ internal fun ComposerTopRow(
     onRetryWorkspaces: () -> Unit = {},
     onOpenHarnessPicker: (() -> Unit)? = null,
     onStartSession: (String?) -> Unit,
+    /** 新会话起始块的标题与小字（如「新任务」「192.168.10.20」）；为空时不画标题。 */
+    setupTitle: String? = null,
+    setupCaption: String? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val workspaces = remember(sessions, deletedWorkspaces, registeredPaths, registryReady) {
@@ -734,123 +739,49 @@ internal fun ComposerTopRow(
         ?: lastCwd?.takeIf { it in workspaces }
     val showSetup = composerShowsSetupRow(workspaceEditable, showHarness, harnessLabel)
 
+    // 新会话：输入框上方一块起始区——标题 + 工作区 / 智能体预设竖排，整块贴近拇指。
+    // 已有会话：这一行只剩 trailingContent。
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (showSetup) Modifier.heightIn(min = 48.dp) else Modifier)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (workspaceEditable) {
-            val workspaceLabel = displayCwd?.substringAfterLast('/') ?: L.selectWorkspaceShort
-            Row(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(DshRadius.container))
-                    .heightIn(min = 48.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = workspaceLabel
-                    }
-                    .clickable { showPicker = true }
-                    .padding(horizontal = 2.dp)
-                    .wrapContentHeight(Alignment.CenterVertically),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    FolderOpenOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelPrimary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(6.dp))
+        if (showSetup && !setupTitle.isNullOrBlank()) {
+            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
                 Text(
-                    workspaceLabel,
+                    setupTitle,
                     color = Dsh.labelPrimary,
-                    style = DshType.title,
-                    fontWeight = FontWeight(500),
-                    lineHeight = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    // 与首页「任务」同一档页面标题
+                    style = DshType.headlineMedium,
+                    modifier = Modifier.semantics { heading() },
                 )
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    ChevronDownOutline14,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-            }
-
-            if (showHarness && harnessLabel.isNotBlank()) {
-                val harnessInteraction = remember { MutableInteractionSource() }
-                val harnessPressed by harnessInteraction.collectIsPressedAsState()
-                val harnessBg = when {
-                    harnessPressed -> Dsh.pressed
-                    else -> Color.Transparent
-                }
-                Row(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(DshRadius.container))
-                        .background(harnessBg)
-                        .then(
-                            if (harnessEditable && onOpenHarnessPicker != null) {
-                                Modifier
-                                    .semantics {
-                                        role = Role.Button
-                                        contentDescription = harnessLabel
-                                    }
-                                    .clickable(
-                                        interactionSource = harnessInteraction,
-                                        indication = dshRipple(),
-                                        onClick = onOpenHarnessPicker,
-                                    )
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .padding(horizontal = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        AgentPresetOutline16,
-                        contentDescription = null,
-                        tint = if (harnessEditable) Dsh.labelPrimary else Dsh.labelSecondary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
+                if (!setupCaption.isNullOrBlank()) {
                     Text(
-                        harnessLabel,
-                        color = if (harnessEditable) Dsh.labelPrimary else Dsh.labelSecondary,
-                        style = DshType.title,
-                        fontWeight = FontWeight(500),
-                        lineHeight = 20.sp,
+                        setupCaption,
+                        color = Dsh.labelTertiary,
+                        style = DshType.captionRelaxed,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (harnessEditable && onOpenHarnessPicker != null) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            ChevronDownOutline14,
-                            contentDescription = null,
-                            tint = Dsh.labelTertiary,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
                 }
             }
+            Spacer(Modifier.height(12.dp))
+        }
+        if (workspaceEditable) {
+            ComposerSetupRow(
+                icon = FolderOpenOutline16,
+                label = displayCwd?.substringAfterLast('/') ?: L.selectWorkspaceShort,
+                onClick = { showPicker = true },
+            )
+        }
+        if (showHarness && harnessLabel.isNotBlank()) {
+            ComposerSetupRow(
+                icon = AgentPresetOutline16,
+                label = harnessLabel,
+                onClick = if (harnessEditable) onOpenHarnessPicker else null,
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
             trailingContent()
         }
@@ -873,5 +804,51 @@ internal fun ComposerTopRow(
                 onStartSession(cwd)
             },
         )
+    }
+}
+
+/** 新会话起始区的一行：图标 + 当前取值 + 下拉箭头；不可改时只显示取值。 */
+@Composable
+private fun ComposerSetupRow(
+    icon: ImageVector,
+    label: String,
+    onClick: (() -> Unit)?,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Row(
+        modifier = Modifier
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(if (pressed) Dsh.pressed else Color.Transparent)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = label
+                        }
+                        .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            label,
+            color = if (onClick != null) Dsh.labelPrimary else Dsh.labelSecondary,
+            style = DshType.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (onClick != null) {
+            Spacer(Modifier.width(4.dp))
+            Icon(ChevronDownOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+        }
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,7 +45,11 @@ import dev.deeplinks.native.util.HomeSection
  * 筛选选中和分区标题都是中性灰。实心品牌蓝只留在底部「开始新任务」的加号上。
  */
 
-/** 顶栏：左边是当前电脑（点开设备面板），右边搜索与设置。 */
+/**
+ * 顶栏：「任务」大标题，下面一行小字是当前电脑（点标题块打开设备面板）；右边搜索与设置。
+ * 标题、筛选文字、分区标题、会话标题都落在同一条左边线（[DrawerTextStart]）上，
+ * 选中底色向外多伸出 [DrawerInnerPadding]，与会话行同一个做法。
+ */
 @Composable
 internal fun HomeHeader(
     hostName: String,
@@ -57,45 +62,43 @@ internal fun HomeHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = DrawerEdgePadding + 6.dp, end = DrawerEdgePadding),
+            .padding(start = DrawerEdgePadding, end = DrawerEdgePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .weight(1f, fill = false)
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .clickable(role = Role.Button, onClickLabel = s.deviceAndPairing, onClick = onOpenDevice),
-            verticalAlignment = Alignment.CenterVertically,
+                .weight(1f)
+                .clip(RoundedCornerShape(DshRadius.container))
+                .clickable(role = Role.Button, onClickLabel = s.deviceAndPairing, onClick = onOpenDevice)
+                .padding(horizontal = DrawerInnerPadding, vertical = 4.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(Dsh.bgSubtle)
-                    .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
+            Text(
+                s.tasks,
+                color = Dsh.labelPrimary,
+                style = DshType.headlineMedium,
+                maxLines = 1,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     hostName.ifBlank { s.deviceAndPairing },
-                    color = Dsh.labelPrimary,
-                    style = DshType.titleSmall,
+                    color = Dsh.labelSecondary,
+                    style = DshType.captionRelaxed,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 200.dp),
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(4.dp))
                 Icon(
                     ChevronDownOutline14,
                     contentDescription = null,
                     tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(12.dp),
                 )
             }
         }
-        Spacer(Modifier.weight(1f))
-        // 与设置页同一件图标按钮（48dp 热区 / 20dp 图标 / 同一按压态）
+        // 与设置页同一件图标按钮（48dp 热区 / 同一按压态）
         DshIconAction(
             icon = SearchOutline16,
             contentDescription = s.searchSessions,
@@ -131,7 +134,8 @@ internal fun WorkspaceChips(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = DrawerEdgePadding + 6.dp),
+            // 胶囊内边距 12dp：文字落在 DrawerTextStart，选中底色向外伸出，与会话行一致
+            .padding(horizontal = DrawerEdgePadding),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -189,8 +193,8 @@ internal fun HomeSectionHeader(section: HomeSection) {
     DshSectionHeader(
         title = title,
         modifier = Modifier.padding(
-            start = DrawerEdgePadding + DrawerInnerPadding,
-            end = DrawerEdgePadding + DrawerInnerPadding,
+            start = DrawerTextStart,
+            end = DrawerTextStart,
             top = 14.dp,
             bottom = 4.dp,
         ),

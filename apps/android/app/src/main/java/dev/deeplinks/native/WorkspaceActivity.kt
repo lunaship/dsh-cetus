@@ -2058,8 +2058,9 @@ fun WorkspaceScreen(
             )
             WorkspaceTopBar(
                 running = running,
-                title = currentSession?.title ?: L.newSession,
-                subtitle = listOfNotNull(
+                // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
+                title = if (currentSessionId == null) "" else currentSession?.title ?: L.newSession,
+                subtitle = if (currentSessionId == null) null else listOfNotNull(
                     currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
                     host.name.takeIf { it.isNotBlank() },
                 ).joinToString(" · "),
@@ -2386,6 +2387,8 @@ fun WorkspaceScreen(
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
                 if (viewMode == "chat" && currentSessionId == null) {
                     ComposerTopRow(
+                        setupTitle = L.newSession,
+                        setupCaption = host.name,
                         sessions = sessions,
                         deletedWorkspaces = deletedWorkspaces,
                         registeredPaths = workspaceRegistry,
