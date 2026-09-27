@@ -183,12 +183,20 @@ fun pinnedTurnChanges(messages: List<MobileMessage>): WorkspaceChangesSummary? {
     return messages.drop(lastUser + 1).lastOrNull { it.role == ROLE_WORKSPACE_CHANGES }?.changes
 }
 
-/** 渲染行：hunk 头 / 上下文 / 新增 / 删除，带双列行号。 */
-data class DiffRow(val kind: Kind, val oldNo: Int?, val newNo: Int?, val text: String) {
+/** 渲染行：hunk 头 / 上下文 / 新增 / 删除，带双列行号；[emphasis] 为行内变化片段（见 IntralineDiff.kt）。 */
+data class DiffRow(
+    val kind: Kind,
+    val oldNo: Int?,
+    val newNo: Int?,
+    val text: String,
+    val emphasis: List<IntRange> = emptyList(),
+) {
     enum class Kind { HUNK, CONTEXT, ADD, DELETE }
 }
 
-fun diffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
+fun diffRows(hunks: List<DiffHunk>): List<DiffRow> = withIntralineEmphasis(plainDiffRows(hunks))
+
+private fun plainDiffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
     for (hunk in hunks) {
         add(DiffRow(DiffRow.Kind.HUNK, null, null, "@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@"))
         var oldNo = hunk.oldStart

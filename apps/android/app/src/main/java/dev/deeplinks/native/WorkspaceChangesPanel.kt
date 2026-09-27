@@ -68,7 +68,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -653,7 +658,7 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
         )
         Text(" $sign ", color = signColor, style = style, maxLines = 1, softWrap = false)
         Text(
-            row.text.replace("\t", "    "),
+            remember(row, signColor) { diffLineText(row, signColor.copy(alpha = 0.3f)) },
             color = Dsh.labelPrimary,
             style = style,
             softWrap = wrap,
@@ -662,4 +667,18 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
             modifier = Modifier.weight(1f),
         )
     }
+}
+
+/** 行文本：tab 展开为 4 空格；行内变化片段叠一层更深的同色底（区间按原串计，逐段展开以免错位）。 */
+private fun diffLineText(row: DiffRow, emphasis: Color): AnnotatedString = buildAnnotatedString {
+    fun put(from: Int, to: Int) = append(row.text.substring(from, to).replace("\t", "    "))
+    var cursor = 0
+    for (r in row.emphasis) {
+        val start = r.first.coerceIn(cursor, row.text.length)
+        val end = (r.last + 1).coerceIn(start, row.text.length)
+        put(cursor, start)
+        withStyle(SpanStyle(background = emphasis)) { put(start, end) }
+        cursor = end
+    }
+    put(cursor, row.text.length)
 }
