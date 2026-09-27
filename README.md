@@ -108,36 +108,25 @@
 ## 架构
 
 ```mermaid
-flowchart TB
-    subgraph App ["Android App（apps/android · Kotlin / Compose）"]
+flowchart LR
+    subgraph Phone ["手机"]
+        App["Android App<br/>Kotlin · Jetpack Compose"]
+    end
+
+    subgraph Computer ["运行 DSH 的电脑"]
         direction TB
-        Devices["devices/ 配对与设备入口"]
-        Native["native/ 工作台屏幕与组件"]
-        Core["core/ 主题 token · 本地化 · 加密存储 · 布局推导"]
+        Plugin["dsh-links 插件<br/>手机 API · 配对与设备状态机"]
+        Panel["「手机连接」面板<br/>仅本机回环"]
+        Host["DSH Host<br/>会话 · 工具 · 工作区"]
     end
 
-    subgraph Plugin ["dsh-links 插件（src/ · Node）"]
-        direction TB
-        MobileApi["mobile-api.js<br/>/dsh-link/mobile/*"]
-        StateMachine["index.js<br/>配对 / 吊销状态机 · 路由注册"]
-        Panel["module2.js → client.js<br/>回环「手机连接」面板"]
-        RelayClient["relay/<br/>DLR/1 客户端"]
-    end
+    Relay["Relay（Go · 内测）<br/>信令 · 加密转发"]
 
-    subgraph Host ["DSH Host"]
-        WebServer["webServer · 会话 · 工具 · workspaceChanges"]
-    end
-
-    Relay["Relay（relay/ · Go）<br/>信令 · 加密转发 · 设备注册"]
-
-    App -->|"HTTPS + 设备 token（证书固定）"| MobileApi
-    MobileApi -->|"SSE：事件 · 审批 · 提问（游标续传）"| App
-    MobileApi --> StateMachine
-    StateMachine -->|"回环 RPC（仅 127.0.0.1）"| WebServer
-    Panel -->|"同源回环 POST"| StateMachine
+    App <-->|"HTTPS + 设备 token<br/>SSE：事件 · 审批 · 提问"| Plugin
+    Panel -->|"同源回环 POST"| Plugin
+    Plugin -->|"回环 RPC · 127.0.0.1"| Host
     App -.->|"远端模式（持接入码）"| Relay
-    Relay -.->|"加密字节流"| RelayClient
-    RelayClient -.-> MobileApi
+    Relay -.->|"DLR/1 加密字节流"| Plugin
 ```
 
 一条请求的生命线、目录契约与两条关键设计线（审批式工作区注册、SSE 续传）见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)；手机 API 的字段级契约见 [`docs/MOBILE_SYNC_CONTRACT.md`](docs/MOBILE_SYNC_CONTRACT.md)。
