@@ -1,8 +1,10 @@
 package dev.deeplinks.native.util
 
+import org.json.JSONObject
+
 /**
  * 输入条草稿跟会话走（对照 OpenClaw：附件/语音不得泄漏到切走后的会话）。
- * 未提交草稿不跨进程持久化；进程内按会话键暂存。
+ * 进程内按会话键暂存；正文另按主机落盘（见 [StoredDraft]），附件不落盘。
  */
 data class ComposerDraft(
     val text: String = "",
@@ -87,4 +89,84 @@ fun liveOrParkedComposerError(
     val text = message.trim()
     if (text.isEmpty()) return errors to null
     return if (ownerKey == liveKey) errors to text else putComposerDraftError(errors, ownerKey, text) to null
+}
+
+/**
+ * 落盘的草稿正文（进程被杀后恢复用）。只存文字：图片是 base64，体积大且可重新选。
+ * [savedAt] 是正文最后一次变化的时间，用于过期与条数淘汰。
+ */
+data class StoredDraft(val text: String, val savedAt: Long)
+
+const val STORED_DRAFT_MAX_ENTRIES = 30
+const val STORED_DRAFT_MAX_AGE_MS = 14L * 24 * 60 * 60 * 1000
+const val STORED_DRAFT_MAX_CHARS = 20_000
+
+/**
+ * 进程内草稿 + 当前输入槽 → 待落盘集合。输入槽覆盖同键的旧暂存（清空输入即删除落盘草稿）；
+ * 已删除会话不落盘；正文未变的沿用旧 [StoredDraft.savedAt]。
+ */
+fun storedDraftsFrom(
+    drafts: Map<String, ComposerDraft>,
+    liveKey: String,
+    live: ComposerDraft,
+    previous: Map<String, StoredDraft>,
+    deletedSessionIds: Set<String>,
+    now: Long,
+): Map<String, StoredDraft> {
+    val merged = putComposerDraft(drafts, liveKey, live)
+    val out = LinkedHashMap<String, StoredDraft>()
+    for ((key, draft) in merged) {
+        if (key in deletedSessionIds || draft.text.isBlank()) continue
+        val text = draft.text.take(STORED_DRAFT_MAX_CHARS)
+        val prev = previous[key]
+        out[key] = StoredDraft(text, if (prev?.text == text) prev.savedAt else now)
+    }
+    return pruneStoredDrafts(out, now)
+}
+
+/** 丢掉过期项，再按最近修改保留 [maxEntries] 条。 */
+fun pruneStoredDrafts(
+    stored: Map<String, StoredDraft>,
+    now: Long,
+    maxEntries: Int = STORED_DRAFT_MAX_ENTRIES,
+    maxAgeMs: Long = STORED_DRAFT_MAX_AGE_MS,
+): Map<String, StoredDraft> =
+    stored.entries
+        .filter { it.value.text.isNotBlank() && now - it.value.savedAt <= maxAgeMs }
+        .sortedByDescending { it.value.savedAt }
+        .take(maxEntries)
+        .associate { it.key to it.value }
+
+/** 冷启动合并：进程内（含 SavedState 恢复的）草稿优先，落盘正文只补缺。 */
+fun restoreComposerDrafts(
+    drafts: Map<String, ComposerDraft>,
+    stored: Map<String, StoredDraft>,
+): Map<String, ComposerDraft> {
+    var next = drafts
+    for ((key, s) in stored) {
+        if (key !in next) next = next + (key to ComposerDraft(s.text))
+    }
+    return next
+}
+
+fun encodeStoredDrafts(stored: Map<String, StoredDraft>): String {
+    val root = JSONObject()
+    stored.forEach { (key, s) -> root.put(key, JSONObject().put("t", s.text).put("at", s.savedAt)) }
+    return root.toString()
+}
+
+fun decodeStoredDrafts(raw: String?): Map<String, StoredDraft> {
+    if (raw.isNullOrBlank()) return emptyMap()
+    return try {
+        val root = JSONObject(raw)
+        buildMap {
+            for (key in root.keys()) {
+                val obj = root.optJSONObject(key) ?: continue
+                val text = obj.optString("t")
+                if (text.isNotBlank()) put(key, StoredDraft(text, obj.optLong("at", 0L)))
+            }
+        }
+    } catch (_: Exception) {
+        emptyMap()
+    }
 }

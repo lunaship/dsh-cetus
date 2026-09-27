@@ -91,4 +91,64 @@ class ComposerDraftTest {
         assertEquals(null, noLive)
         assertEquals("voice failed", parked["s1"])
     }
+
+    @Test
+    fun storedDraftsTakeLiveSlotAndDropEmptyAndDeleted() {
+        val drafts = mapOf(
+            "s1" to ComposerDraft("stale s1"),
+            "s2" to ComposerDraft("keep s2", listOf("image/jpeg" to "aaa")),
+            "gone" to ComposerDraft("deleted session"),
+            "img" to ComposerDraft("", listOf("image/jpeg" to "bbb")),
+        )
+        val out = storedDraftsFrom(drafts, "s1", ComposerDraft(""), emptyMap(), setOf("gone"), now = 1_000)
+        assertEquals(setOf("s2"), out.keys)
+        assertEquals(StoredDraft("keep s2", 1_000), out["s2"])
+    }
+
+    @Test
+    fun storedDraftsKeepSavedAtWhenTextUnchanged() {
+        val previous = mapOf("s1" to StoredDraft("same", 10), "s2" to StoredDraft("old", 10))
+        val drafts = mapOf("s2" to ComposerDraft("new"))
+        val out = storedDraftsFrom(drafts, "s1", ComposerDraft("same"), previous, emptySet(), now = 500)
+        assertEquals(10L, out["s1"]?.savedAt)
+        assertEquals(500L, out["s2"]?.savedAt)
+    }
+
+    @Test
+    fun storedDraftsTruncateHugeText() {
+        val huge = "x".repeat(STORED_DRAFT_MAX_CHARS + 50)
+        val out = storedDraftsFrom(emptyMap(), "", ComposerDraft(huge), emptyMap(), emptySet(), now = 1)
+        assertEquals(STORED_DRAFT_MAX_CHARS, out[""]?.text?.length)
+    }
+
+    @Test
+    fun pruneDropsExpiredAndKeepsNewest() {
+        val now = STORED_DRAFT_MAX_AGE_MS + 100
+        val stored = mapOf(
+            "old" to StoredDraft("a", 0),
+            "n1" to StoredDraft("b", now - 1),
+            "n2" to StoredDraft("c", now - 2),
+            "n3" to StoredDraft("d", now - 3),
+        )
+        val out = pruneStoredDrafts(stored, now, maxEntries = 2)
+        assertEquals(listOf("n1", "n2"), out.keys.toList())
+    }
+
+    @Test
+    fun restoreKeepsInMemoryDraftsFirst() {
+        val memory = mapOf("s1" to ComposerDraft("memory", listOf("image/png" to "p")))
+        val stored = mapOf("s1" to StoredDraft("disk", 1), "s2" to StoredDraft("disk s2", 1))
+        val out = restoreComposerDrafts(memory, stored)
+        assertEquals(memory["s1"], out["s1"])
+        assertEquals(ComposerDraft("disk s2"), out["s2"])
+    }
+
+    @Test
+    fun storedDraftsRoundTripAndTolerateGarbage() {
+        val stored = mapOf("" to StoredDraft("new session", 7), "s1" to StoredDraft("多行\n草稿", 8))
+        assertEquals(stored, decodeStoredDrafts(encodeStoredDrafts(stored)))
+        assertTrue(decodeStoredDrafts(null).isEmpty())
+        assertTrue(decodeStoredDrafts("not json").isEmpty())
+        assertTrue(decodeStoredDrafts("""{"s1":{"t":"  ","at":1}}""").isEmpty())
+    }
 }

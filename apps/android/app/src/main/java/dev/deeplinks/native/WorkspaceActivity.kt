@@ -276,6 +276,15 @@ fun WorkspaceScreen(
         inputText = draft.text
         pendingImages = draft.images
     }
+    PersistComposerDrafts(
+        prefs = workspacePrefs,
+        slotKey = host.slotKey,
+        drafts = workspaceViewModel.composerDrafts,
+        ownerKey = ::composerOwnerKey,
+        live = ::liveComposerDraft,
+        deletedSessionIds = { deletedIds },
+        fillLiveText = { inputText = it },
+    )
     fun restoreComposerToOwner(ownerKey: String, draft: ComposerDraft) {
         if (composerOwnerKey() == ownerKey) applyLiveComposer(draft)
         else composerDrafts = putComposerDraft(composerDrafts, ownerKey, draft)

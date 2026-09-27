@@ -139,6 +139,17 @@ class WorkspacePrefs(context: Context) {
             editor.commit()
         }
 
+    /** 某台主机的落盘草稿（键 = [composerDraftKey]，新建会话为空串）。 */
+    fun composerDrafts(slotKey: String): Map<String, StoredDraft> =
+        decodeStoredDrafts(prefs.getString(KEY_COMPOSER_DRAFTS_PREFIX + slotKey, null))
+
+    fun saveComposerDrafts(slotKey: String, drafts: Map<String, StoredDraft>) {
+        val key = KEY_COMPOSER_DRAFTS_PREFIX + slotKey
+        val editor = prefs.edit()
+        if (drafts.isEmpty()) editor.remove(key) else editor.putString(key, encodeStoredDrafts(drafts))
+        editor.apply()
+    }
+
     fun rememberSessionSnapshot(sessionId: String, title: String, cwd: String?, updatedAt: Long) {
         val next = sessionSnapshots.toMutableMap()
         next[sessionId] = SessionSnapshot(sessionId, title.ifBlank { sessionId }, cwd, updatedAt)
@@ -207,6 +218,9 @@ class WorkspacePrefs(context: Context) {
         const val KEY_LAST_WORKSPACE = "workspace_last_selected_cwd"
         const val KEY_SESSION_SNAPSHOTS = "workspace_session_snapshots"
         const val KEY_PARKED_SEND = "workspace_parked_send"
+
+        /** 每台主机一条：`workspace_composer_drafts:<slotKey>`。 */
+        const val KEY_COMPOSER_DRAFTS_PREFIX = "workspace_composer_drafts:"
 
         /** 每台设备一条：`last_session_id:<stable_host_identity>`。 */
         const val KEY_LAST_SESSION_PREFIX = "workspace_last_session_id:"
