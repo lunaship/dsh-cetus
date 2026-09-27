@@ -150,7 +150,7 @@ internal fun ThinkingTrace(
                 ) + fadeOut(animationSpec = tween(motionDuration(180))),
             ) {
                 Column(
-                    modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 6.dp),
+                    modifier = Modifier.padding(start = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s6),
                     content = body,
                 )
             }
@@ -174,9 +174,9 @@ internal fun ThinkingStatusRow(
             tint = Dsh.brand400,
             modifier = Modifier.size(16.dp),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         ShimmerLabel(text = L.thinkingActive, working = true)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         Text(
             formatThinkingElapsed(elapsedSec),
             style = DshType.label,
@@ -231,7 +231,7 @@ private fun ThinkingHeader(
                     if (pressed) Modifier.drawBehind { drawRect(pressTint) }
                     else Modifier,
                 )
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -240,7 +240,7 @@ private fun ThinkingHeader(
                 tint = if (working) Dsh.brand400 else Dsh.labelTertiary,
                 modifier = Modifier.size(16.dp),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             AnimatedContent(
                 targetState = working,
                 transitionSpec = {
@@ -260,7 +260,7 @@ private fun ThinkingHeader(
                     )
                 }
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Icon(
                 ChevronDownOutline14,
                 contentDescription = expandLabel,

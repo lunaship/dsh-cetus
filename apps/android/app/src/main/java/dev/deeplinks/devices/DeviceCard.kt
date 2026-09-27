@@ -1,6 +1,7 @@
 package dev.deeplinks.devices
 
 import androidx.compose.runtime.getValue
+import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.RefreshOutline16
 import dev.deeplinks.native.ScanOutline16
 import dev.deeplinks.native.SwapOutline16
@@ -204,7 +205,7 @@ internal fun DeviceCard(
                 },
             )
             .semantics { contentDescription = "${device.host.name}, $stateLabel" }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MonitorGlyph(tint = Dsh.labelSecondary, size = 24.dp)
@@ -217,7 +218,7 @@ internal fun DeviceCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(DshSpace.s2))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -225,7 +226,7 @@ internal fun DeviceCard(
                         .clip(CircleShape)
                         .background(statusColor),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 Text(
                     meta,
                     color = Dsh.labelSecondary,
@@ -242,13 +243,13 @@ internal fun DeviceCard(
                 overflow = TextOverflow.Ellipsis,
             )
             if (device.host.needsCloudRescan) {
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(DshSpace.s6))
                 // 线路过期提示：共享状态 pill（颜色 + 文字双通道），不再用页面私有 DeviceTag
                 DshStatusBadge(text = s.restoreCloudTag, tone = DshStatusTone.Error)
             }
         }
         if (onOpen != null) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             Icon(ChevronRightOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
         }
     }

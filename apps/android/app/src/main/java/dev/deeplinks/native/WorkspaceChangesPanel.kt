@@ -322,7 +322,7 @@ internal fun WorkspaceChangesPanel(
             val file = index?.let { current?.files?.getOrNull(it) }
             if (current == null) {
                 PanelHeader(title = ChangesL.changes, onClose = { scope.launch { state.settle(false) } })
-                Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
                     Text(ChangesL.empty, color = Dsh.labelTertiary, style = DshType.body)
                 }
             } else if (file == null) {
@@ -372,11 +372,11 @@ private fun PanelHeader(title: String, onClose: () -> Unit, subtitle: String? = 
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PanelIconButton(CloseOutline16, L.close, onClose)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
             Text(title, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
                 Text(subtitle, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -402,7 +402,7 @@ private fun TurnHeader(
     ) {
         DiffStat(summary.added, summary.deleted)
         if (summaries.size > 1) {
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(DshSpace.s4))
             val older = summaries.getOrNull(position + 1)
             val newer = if (position > 0) summaries[position - 1] else null
             PanelIconButton(
@@ -418,7 +418,7 @@ private fun TurnHeader(
                 tint = if (newer != null) Dsh.labelSecondary else Dsh.labelDimmed,
             )
         } else {
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(DshSpace.s12))
         }
     }
 }
@@ -435,7 +435,7 @@ private fun FileList(summary: WorkspaceChangesSummary, onOpenFile: (Int) -> Unit
                     ChangesL.moreFiles.format(summary.total - summary.files.size),
                     color = Dsh.labelTertiary,
                     style = DshType.caption,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
                 )
             }
         }
@@ -456,11 +456,11 @@ private fun FileHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PanelIconButton(ChevronLeftOutline14, ChangesL.backToFiles, onBack)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
             Text(file.name, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (file.directory.isNotEmpty()) {
@@ -472,7 +472,7 @@ private fun FileHeader(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(DshSpace.s6))
                 }
                 DiffStat(file.added, file.deleted)
             }
@@ -550,23 +550,23 @@ private fun FileDiffBody(
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Dsh.brand400)
         }
         is DiffLoad.Failed -> Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(DshSpace.s24),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.body)
             if (current.message.isNotBlank()) {
-                Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = 4.dp))
+                Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = DshSpace.s4))
             }
             Text(
                 L.retry,
                 color = Dsh.brand400,
                 style = DshType.title,
                 modifier = Modifier
-                    .padding(top = 12.dp)
+                    .padding(top = DshSpace.s12)
                     .heightIn(min = 44.dp)
                     .clip(RoundedCornerShape(DshRadius.full))
                     .clickable(interactionSource = null, indication = dshRipple()) { attempt++ }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
             )
         }
         is DiffLoad.Ready -> when (val diff = current.diff) {
@@ -586,7 +586,7 @@ private fun DiffNoteRow(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Dsh.bgTrack)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s16, vertical = 10.dp),
     )
 }
 
@@ -638,7 +638,7 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
         modifier = Modifier
             .fillMaxWidth()
             .background(bg)
-            .padding(horizontal = 8.dp, vertical = 1.dp),
+            .padding(horizontal = DshSpace.s8, vertical = 1.dp),
     ) {
         if (row.kind == DiffRow.Kind.HUNK) {
             Text(row.text, color = Dsh.labelTertiary, style = style, maxLines = 1, softWrap = false)

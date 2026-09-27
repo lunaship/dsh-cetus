@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.DshRadius
+import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.WarningOutline16
 
 /**
@@ -57,7 +58,7 @@ private fun DshStateScaffold(
     ) {
         if (graphic != null) {
             graphic()
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(DshSpace.s20))
         }
         Text(
             title,
@@ -66,7 +67,7 @@ private fun DshStateScaffold(
             textAlign = TextAlign.Center,
         )
         if (message != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             Text(
                 message,
                 color = Dsh.labelTertiary,
@@ -77,19 +78,19 @@ private fun DshStateScaffold(
         }
         if (actionLabel != null && onAction != null) {
             if (compact || !solidAction) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(DshSpace.s4))
                 Box(
                     modifier = Modifier
                         .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(DshRadius.full))
                         .clickable(role = Role.Button, onClick = onAction)
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = DshSpace.s16),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(actionLabel, color = Dsh.labelPrimary, style = DshType.labelLarge)
                 }
             } else {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(DshSpace.s20))
                 Button(
                     onClick = onAction,
                     shape = RoundedCornerShape(DshRadius.full),

@@ -128,7 +128,7 @@ internal fun InputBar(
                 .clip(composerShape)
                 .background(composerBg)
                 .border(0.5.dp, composerBorder, composerShape)
-                .padding(top = 4.dp)
+                .padding(top = DshSpace.s4)
                 .onFocusChanged { composerFocused = it.hasFocus }
         ) {
             // 待发送图片缩略图（DSH 待发送图片行）
@@ -136,8 +136,8 @@ internal fun InputBar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 12.dp, top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(start = DshSpace.s16, end = DshSpace.s12, top = DshSpace.s8),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)
                 ) {
                     pendingImages.forEachIndexed { index, (_, data) ->
                         val preview = remember(data) { android.util.Base64.decode(data, android.util.Base64.DEFAULT) }
@@ -198,7 +198,7 @@ internal fun InputBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 40.dp, max = 200.dp)
-                    .padding(start = 16.dp, end = 12.dp, top = 2.dp)
+                    .padding(start = DshSpace.s16, end = DshSpace.s12, top = DshSpace.s2)
                     .let { base ->
                         if (composerFocusRequester != null) base.focusRequester(composerFocusRequester) else base
                     },
@@ -210,13 +210,13 @@ internal fun InputBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, top = 0.dp, bottom = 4.dp),
+                    .padding(start = DshSpace.s8, end = DshSpace.s8, top = 0.dp, bottom = DshSpace.s4),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
                 ) {
                     // 左侧：+ 按钮（DSH input add：图片/附件）
                     if (!running) {
@@ -272,7 +272,7 @@ internal fun InputBar(
                                     role = Role.Button
                                     contentDescription = modelAria
                                 }
-                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -284,7 +284,7 @@ internal fun InputBar(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             if (effortLabel != null) {
-                                Spacer(Modifier.width(4.dp))
+                                Spacer(Modifier.width(DshSpace.s4))
                                 Text(
                                     effortLabel,
                                     color = Dsh.labelTertiary,
@@ -364,7 +364,7 @@ internal fun InputBar(
                 }
                 Box(
                     modifier = Modifier
-                        .padding(start = 4.dp)
+                        .padding(start = DshSpace.s4)
                         .size(48.dp)
                         .dshPressScale(sendInteraction)
                         .semantics {
@@ -461,7 +461,7 @@ internal fun InputBar(
                     style = DshType.caption,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 12.dp, bottom = 8.dp)
+                        .padding(start = DshSpace.s16, end = DshSpace.s12, bottom = DshSpace.s8)
                         .semantics { contentDescription = shownActionError },
                 )
             }
@@ -498,7 +498,7 @@ internal fun ComposerSeatsRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
     ) {
         ComposerModelSeat(
             name = modelName,
@@ -556,9 +556,9 @@ private fun ComposerModelSeat(
                 // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
                 .clip(RoundedCornerShape(DshRadius.control))
                 .background(composerSeatBackground(pressed))
-                .padding(start = 8.dp, end = 4.dp),
+                .padding(start = DshSpace.s8, end = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             // DSH 默认藏图标、窄档才只显示图标
             if (compact) {
@@ -635,9 +635,9 @@ private fun ComposerAccessSeat(
                 // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
                 .clip(RoundedCornerShape(DshRadius.control))
                 .background(composerSeatBackground(pressed))
-                .padding(start = 8.dp, end = 4.dp),
+                .padding(start = DshSpace.s8, end = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             Icon(
                 glyph,
@@ -744,10 +744,10 @@ internal fun ComposerTopRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 2.dp),
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s2),
     ) {
         if (showSetup && !setupTitle.isNullOrBlank()) {
-            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+            Column(modifier = Modifier.padding(horizontal = DshSpace.s4)) {
                 Text(
                     setupTitle,
                     color = Dsh.labelPrimary,
@@ -765,7 +765,7 @@ internal fun ComposerTopRow(
                     )
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(DshSpace.s12))
         }
         if (workspaceEditable) {
             ComposerSetupRow(
@@ -833,7 +833,7 @@ private fun ComposerSetupRow(
                     Modifier
                 },
             )
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
@@ -847,7 +847,7 @@ private fun ComposerSetupRow(
             modifier = Modifier.weight(1f, fill = false),
         )
         if (onClick != null) {
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(DshSpace.s4))
             Icon(ChevronDownOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
         }
     }

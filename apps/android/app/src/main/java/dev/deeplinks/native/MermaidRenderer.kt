@@ -333,7 +333,7 @@ fun MermaidDiagramBlock(
             color = Dsh.labelTertiary,
             style = DshType.body,
             fontFamily = FontFamily.Monospace,
-            modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+            modifier = modifier.fillMaxWidth().padding(vertical = DshSpace.s4),
         )
         return
     }
@@ -357,7 +357,7 @@ fun MermaidDiagramBlock(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = DshSpace.s4)
             .heightIn(max = 480.dp)
             .horizontalScroll(rememberScrollState()),
         contentAlignment = Alignment.CenterStart,
@@ -388,7 +388,7 @@ fun MermaidDiagramBlock(
             lineHeight = 17.sp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp)
+                .padding(top = DshSpace.s4)
                 .semantics { contentDescription = error },
         )
     }
@@ -420,10 +420,10 @@ private fun MermaidZoomDialog(
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
                 .navigationBarsPadding()
-                .padding(12.dp)
+                .padding(DshSpace.s12)
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
-                .padding(12.dp),
+                .padding(DshSpace.s12),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -443,7 +443,7 @@ private fun MermaidZoomDialog(
                     lineHeight = 17.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp)
+                        .padding(top = DshSpace.s4)
                         .semantics { contentDescription = error },
                 )
             }

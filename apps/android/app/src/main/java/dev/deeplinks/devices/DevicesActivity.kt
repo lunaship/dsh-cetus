@@ -2,6 +2,7 @@ package dev.deeplinks.devices
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.ui.DshEmptyState
 import dev.deeplinks.native.KeyboardOutline16
 import dev.deeplinks.native.ScanOutline16
@@ -365,7 +366,7 @@ private fun DevicesPage(
                 EmptyDevicesState(onAdd = onAddDevice)
             }
             notice?.let { msg ->
-                Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) { DevicesNotice(msg) }
+                Box(Modifier.padding(horizontal = DshSpace.s16).padding(bottom = DshSpace.s16)) { DevicesNotice(msg) }
             }
         } else {
             PullToRefreshBox(
@@ -377,15 +378,15 @@ private fun DevicesPage(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 4.dp, bottom = 32.dp),
+                        .padding(horizontal = DshSpace.s16)
+                        .padding(top = DshSpace.s4, bottom = DshSpace.s32),
                 ) {
                     // 页首导语：副标题降为正文说明，与设置页同一字阶
                     Text(
                         s.manageYourLinks,
                         color = Dsh.labelTertiary,
                         style = DshType.body,
-                        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+                        modifier = Modifier.padding(start = DshSpace.s4, top = DshSpace.s4, bottom = DshSpace.s4),
                     )
                     DeviceDetailSections(
                         device = current,
@@ -547,8 +548,8 @@ private fun ColumnScope.ManualPairForm(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(top = DshSpace.s12),
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
     ) {
         DshTextField(
             value = name,
@@ -572,7 +573,7 @@ private fun ColumnScope.ManualPairForm(
             contentDescription = "${s.pairCodeLabel}，${s.pairFieldCodePlaceholder}",
         )
         error?.let { msg ->
-            Text(msg, color = Dsh.error, style = DshType.captionRelaxed, modifier = Modifier.padding(horizontal = 4.dp))
+            Text(msg, color = Dsh.error, style = DshType.captionRelaxed, modifier = Modifier.padding(horizontal = DshSpace.s4))
         }
     }
     DshSheetPrimaryButton(
@@ -585,7 +586,7 @@ private fun ColumnScope.ManualPairForm(
         colors = ButtonDefaults.textButtonColors(contentColor = Dsh.labelSecondary),
         modifier = Modifier
             .align(Alignment.CenterHorizontally)
-            .padding(top = 4.dp),
+            .padding(top = DshSpace.s4),
     ) {
         Text(s.back, style = DshType.labelLarge)
     }
@@ -609,7 +610,7 @@ private fun CertificateCheckDialog(
             style = DshType.captionRelaxed,
             fontFamily = FontFamily.Monospace,
             maxLines = 2,
-            modifier = Modifier.padding(top = 6.dp),
+            modifier = Modifier.padding(top = DshSpace.s6),
         )
         DshDialogMessage(s.verifyCertificateDesc)
         Text(
@@ -618,11 +619,11 @@ private fun CertificateCheckDialog(
             style = DshType.captionRelaxed,
             fontFamily = FontFamily.Monospace,
             modifier = Modifier
-                .padding(top = 12.dp)
+                .padding(top = DshSpace.s12)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgSubtle)
-                .padding(12.dp),
+                .padding(DshSpace.s12),
         )
         DshDialogButtons(
             dismissLabel = s.cancel,

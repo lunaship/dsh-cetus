@@ -113,7 +113,7 @@ internal fun ModelPickerSheet(
             }
         }
         if (!error.isNullOrBlank() && catalog != null) {
-            Text(error, color = Dsh.error, style = DshType.captionRelaxed, modifier = Modifier.padding(horizontal = 4.dp))
+            Text(error, color = Dsh.error, style = DshType.captionRelaxed, modifier = Modifier.padding(horizontal = DshSpace.s4))
         }
 
         when (page) {
@@ -136,7 +136,7 @@ internal fun ModelPickerSheet(
                 )
             }
             ModelPickerPage.MODELS -> {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(DshSpace.s8))
                 SheetSearchField(value = query, onValueChange = { query = it }, placeholder = L.searchModelProvider)
                 when (catalogKind(
                     hasItems = catalog?.groups?.isNotEmpty() == true,

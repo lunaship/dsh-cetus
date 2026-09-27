@@ -114,17 +114,17 @@ internal fun StickyTaskSummaryCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput.copy(alpha = 0.92f))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
             // 目标行
             if (hasGoal) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(
@@ -154,7 +154,7 @@ internal fun StickyTaskSummaryCard(
                 if (total > 0) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
@@ -458,7 +458,7 @@ internal fun LazyListScope.chatMessageItems(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = DshSpace.s24),
             )
         }
     }

@@ -67,10 +67,10 @@ fun CameraCropSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(20.dp)
+                .padding(DshSpace.s20)
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
-                .padding(16.dp),
+                .padding(DshSpace.s16),
         ) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -102,10 +102,10 @@ fun CameraCropSheet(
                         },
                 )
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(DshSpace.s12))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
             ) {
                 CropAction(L.retakePhoto, Modifier.weight(1f), onRetake)
                 CropAction(L.usePhoto, Modifier.weight(1f)) {

@@ -28,6 +28,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ArrowLeftOutline16
+import dev.deeplinks.native.DshSpace
 
 /**
  * 一级页面统一骨架（docs/visual-rules.md 第一节）。
@@ -76,7 +77,7 @@ fun DshPageScaffold(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = PageNavHeight)
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = DshSpace.s4),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (navigation == DshPageNavigation.Back) {
@@ -85,7 +86,7 @@ fun DshPageScaffold(
                             contentDescription = DshS.back,
                             onClick = onNavigateBack,
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(DshSpace.s4))
                     }
                     Text(
                         title,

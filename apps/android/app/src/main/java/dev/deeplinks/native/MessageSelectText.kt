@@ -41,7 +41,7 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
                 .navigationBarsPadding()
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
-                .padding(12.dp),
+                .padding(DshSpace.s12),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -62,7 +62,7 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .heightIn(max = 480.dp)
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 8.dp, bottom = 4.dp),
+                        .padding(top = DshSpace.s8, bottom = DshSpace.s4),
                 )
             }
         }

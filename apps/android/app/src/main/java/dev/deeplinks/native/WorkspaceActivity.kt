@@ -2225,9 +2225,9 @@ fun WorkspaceScreen(
                         }
                         chatListHeightPx = h
                     },
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
                 contentPadding = PaddingValues(
-                    horizontal = COMPOSER_SIDE_CLEARANCE + 8.dp,
+                    horizontal = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
                     vertical = 10.dp
                 )
             ) {
@@ -2294,7 +2294,7 @@ fun WorkspaceScreen(
                 visible = showScrollToBottom && currentSessionId != null && messages.isNotEmpty(),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = COMPOSER_SIDE_CLEARANCE, bottom = 12.dp),
+                    .padding(end = COMPOSER_SIDE_CLEARANCE, bottom = DshSpace.s12),
                 enter = fadeIn(animationSpec = tween(motionDuration(150))) +
                     scaleIn(animationSpec = tween(motionDuration(180))),
                 exit = fadeOut(animationSpec = tween(motionDuration(120))) +
@@ -2724,7 +2724,7 @@ fun WorkspaceScreen(
         hostState = snackbarHostState,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = DshSpace.s16)
             .padding(bottom = with(density) { clearancePx.toDp() } + 16.dp),
     )
     }

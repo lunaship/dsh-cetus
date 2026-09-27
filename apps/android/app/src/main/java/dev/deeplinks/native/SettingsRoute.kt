@@ -88,8 +88,8 @@ internal fun SettingsPageCanvas(content: @Composable ColumnScope.() -> Unit) {
             .fillMaxSize()
             .background(Dsh.bgBase)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 4.dp, bottom = 32.dp),
+            .padding(horizontal = DshSpace.s16)
+            .padding(top = DshSpace.s4, bottom = DshSpace.s32),
         content = content,
     )
 }
@@ -363,7 +363,7 @@ private fun LegalDocDialog(fileName: String, title: String, onDismiss: () -> Uni
             color = Dsh.labelSecondary,
             style = DshType.microRelaxed,
             modifier = Modifier
-                .padding(top = 12.dp)
+                .padding(top = DshSpace.s12)
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         )
@@ -889,7 +889,7 @@ private fun ManagedSessionRow(
                 Icon(EllipsisOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(20.dp))
             },
         )
-        Box(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp)) {
+        Box(Modifier.align(Alignment.BottomEnd).padding(end = DshSpace.s16)) {
             DshMenu(
                 expanded = menuOpen,
                 onDismiss = { menuOpen = false },

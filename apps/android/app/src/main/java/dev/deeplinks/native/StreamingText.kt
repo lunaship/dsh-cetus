@@ -132,7 +132,7 @@ internal fun rememberStreamCaretContent(): InlineTextContent {
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 2.dp)
+                    .padding(start = DshSpace.s2)
                     .width(2.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(DshRadius.micro))
@@ -174,7 +174,7 @@ internal fun StreamCaret(modifier: Modifier = Modifier) {
     val ink = Dsh.labelPrimary
     Box(
         modifier = modifier
-            .padding(start = 2.dp, top = 8.dp)
+            .padding(start = DshSpace.s2, top = DshSpace.s8)
             .width(2.dp)
             .height(12.dp)
             .clip(RoundedCornerShape(DshRadius.micro))

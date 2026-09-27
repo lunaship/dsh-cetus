@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.native.DshSpace
 
 // ============================================================
 // DshTextField —— 文本输入：48dp 高、聚焦仅加深描边（无 focus ring）、error 态红边
@@ -67,7 +68,7 @@ fun DshTextField(
                 color = Dsh.labelSecondary,
                 style = DshType.label,
                 fontWeight = FontWeight(500),
-                modifier = Modifier.padding(bottom = 4.dp, start = 2.dp),
+                modifier = Modifier.padding(bottom = DshSpace.s4, start = DshSpace.s2),
             )
         }
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -113,7 +114,7 @@ fun DshTextField(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.weight(1f)) { innerTextField() }
                             if (trailingIcon != null) {
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(DshSpace.s8))
                                 trailingIcon()
                             }
                         }
@@ -126,7 +127,7 @@ fun DshTextField(
                 text = errorText,
                 color = Dsh.error,
                 style = DshType.microRelaxed,
-                modifier = Modifier.padding(top = 4.dp, start = 2.dp),
+                modifier = Modifier.padding(top = DshSpace.s4, start = DshSpace.s2),
             )
         }
     }

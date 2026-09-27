@@ -39,6 +39,7 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSheetShape
+import dev.deeplinks.native.DshSpace
 
 /**
  * 统一底部面板（docs/visual-rules.md 第五节）：画布底 + 把手 + 标题 / 说明（+ 可选关闭钮）。
@@ -72,8 +73,8 @@ fun DshSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
+                .padding(horizontal = DshSpace.s16)
+                .padding(bottom = DshSpace.s20),
         ) {
             DshSheetGrabber()
             if (title != null) {
@@ -99,10 +100,10 @@ fun DshSheetHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = DshSpace.s4, top = DshSpace.s4, bottom = DshSpace.s4),
         verticalAlignment = Alignment.Top,
     ) {
-        Column(Modifier.weight(1f).padding(top = 4.dp)) {
+        Column(Modifier.weight(1f).padding(top = DshSpace.s4)) {
             Text(
                 title,
                 color = Dsh.labelPrimary,
@@ -110,7 +111,7 @@ fun DshSheetHeader(
                 modifier = Modifier.semantics { heading() },
             )
             if (!subtitle.isNullOrBlank()) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(DshSpace.s4))
                 Text(subtitle, color = Dsh.labelTertiary, style = DshType.supporting)
             }
         }
@@ -139,10 +140,10 @@ fun DshSheetPrimaryButton(
             disabledContainerColor = Dsh.bgTrack,
             disabledContentColor = Dsh.labelTertiary,
         ),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = DshSpace.s16),
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 16.dp)
+            .padding(top = DshSpace.s16)
             .heightIn(min = 50.dp),
     ) {
         Text(label, style = DshType.labelLarge)

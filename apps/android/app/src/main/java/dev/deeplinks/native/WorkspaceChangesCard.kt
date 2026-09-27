@@ -55,7 +55,7 @@ internal fun WorkspaceChangesCard(
                     role = Role.Button
                     contentDescription = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(summary)}"
                 }
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = DshSpace.s12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(EditOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
@@ -68,7 +68,7 @@ internal fun WorkspaceChangesCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             DiffStat(summary.added, summary.deleted)
         }
         val visible = summary.files.take(CHANGES_CARD_VISIBLE_FILES)
@@ -111,7 +111,7 @@ internal fun ChangedFileRow(
                 role = Role.Button
                 contentDescription = file.display
             }
-            .padding(start = startPadding, end = 12.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = startPadding, end = DshSpace.s12, top = DshSpace.s6, bottom = DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -123,7 +123,7 @@ internal fun ChangedFileRow(
                 overflow = TextOverflow.Ellipsis,
             )
             if (file.directory.isNotEmpty()) {
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 Text(
                     file.directory,
                     color = Dsh.labelTertiary,
@@ -133,7 +133,7 @@ internal fun ChangedFileRow(
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         when {
             file.binary -> Text("BIN", color = Dsh.labelTertiary, style = DshType.microMedium)
             file.oversized -> Text("—", color = Dsh.labelTertiary, style = DshType.microMedium)
@@ -161,7 +161,7 @@ internal fun LatestChangesLine(
                 role = Role.Button
                 contentDescription = "${ChangesL.viewChanges}: $title"
             }
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (summary.added > 0 || summary.deleted > 0) {
@@ -183,7 +183,7 @@ internal fun LatestChangesLine(
 internal fun DiffStat(added: Int, deleted: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (added > 0) Text("+$added", color = Dsh.successContent, style = DshType.label.tabularNums())
-        if (added > 0 && deleted > 0) Spacer(Modifier.width(6.dp))
+        if (added > 0 && deleted > 0) Spacer(Modifier.width(DshSpace.s6))
         if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.label.tabularNums())
     }
 }

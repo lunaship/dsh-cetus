@@ -95,7 +95,7 @@ internal fun DshDialogFrame(
                         indication = null,
                         onClick = {},
                     )
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
+                    .padding(start = DshSpace.s24, end = DshSpace.s24, top = DshSpace.s24, bottom = DshSpace.s16),
             ) {
                 content(requestDismiss)
             }
@@ -115,7 +115,7 @@ internal fun DshDialogTitle(title: String) {
 
 @Composable
 internal fun DshDialogMessage(message: String, modifier: Modifier = Modifier) {
-    Text(message, color = Dsh.labelSecondary, style = DshType.body, modifier = modifier.padding(top = 8.dp))
+    Text(message, color = Dsh.labelSecondary, style = DshType.body, modifier = modifier.padding(top = DshSpace.s8))
 }
 
 @Composable
@@ -126,7 +126,7 @@ internal fun DshDialogError(error: String?) {
         color = Dsh.error,
         style = DshType.captionRelaxed,
         modifier = Modifier
-            .padding(top = 8.dp)
+            .padding(top = DshSpace.s8)
             .semantics { contentDescription = error },
     )
 }
@@ -145,7 +145,7 @@ internal fun DshDialogButtons(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 20.dp),
+            .padding(top = DshSpace.s20),
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -157,7 +157,7 @@ internal fun DshDialogButtons(
             Text(dismissLabel, style = DshType.labelLarge)
         }
         if (confirmLabel != null) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             Button(
                 onClick = onConfirm,
                 enabled = confirmEnabled,
@@ -189,7 +189,7 @@ internal fun DshRenameDialog(
     DshDialogFrame(onDismiss = onDismiss, dismissible = kind != RenameDialogKind.Saving) { requestDismiss ->
         DshDialogTitle(L.renameSession)
         DshDialogMessage(L.renameSessionDesc)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(DshSpace.s16))
         DshTextField(
             value = name,
             onValueChange = {
@@ -236,7 +236,7 @@ internal fun DshConfirmDialog(
                 onClick = onSecondary,
                 enabled = kind != RenameDialogKind.Saving,
                 colors = ButtonDefaults.textButtonColors(contentColor = Dsh.error),
-                modifier = Modifier.padding(top = 12.dp),
+                modifier = Modifier.padding(top = DshSpace.s12),
             ) {
                 Text(secondaryLabel, style = DshType.labelLarge)
             }

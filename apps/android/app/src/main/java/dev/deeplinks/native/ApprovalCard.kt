@@ -112,7 +112,7 @@ internal fun ApprovalCard(
                     contentDescription = L.openApproval
                 }
                 .heightIn(min = 48.dp)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         )
         return
     }
@@ -132,7 +132,7 @@ internal fun ApprovalCard(
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.control))
                 .background(Dsh.bgSubtle)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         )
         return
     }
@@ -150,7 +150,7 @@ internal fun ApprovalCard(
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgSubtle),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = DshSpace.s12)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
@@ -163,7 +163,7 @@ internal fun ApprovalCard(
                             fontWeight = FontWeight(500),
                             lineHeight = 18.sp,
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(DshSpace.s4))
                         Text(
                             msg.text.ifBlank {
                                 L.approvalRequest.format(msg.toolName ?: L.toolFallbackName)
@@ -172,7 +172,7 @@ internal fun ApprovalCard(
                             style = DshType.titleSmall,
                         )
                         msg.toolName?.takeIf { it.isNotBlank() }?.let { name ->
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(DshSpace.s6))
                             Text(
                                 name,
                                 color = Dsh.labelTertiary,
@@ -183,7 +183,7 @@ internal fun ApprovalCard(
                             )
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(DshSpace.s8))
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -210,7 +210,7 @@ internal fun ApprovalCard(
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(DshSpace.s8))
 
                 ApprovalOptionRow(
                     label = L.allowOnce,
@@ -242,7 +242,7 @@ internal fun ApprovalCard(
                     style = DshType.caption,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = DshSpace.s4)
                         .semantics { contentDescription = shownError },
                 )
             }
@@ -252,7 +252,7 @@ internal fun ApprovalCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Dsh.bgCard.copy(alpha = if (Dsh.isDark) 0.5f else 1f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -324,7 +324,7 @@ private fun ApprovalOptionRow(
                 contentDescription = label
             }
             .heightIn(min = 48.dp)
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+            .padding(horizontal = DshSpace.s6, vertical = DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -353,7 +353,7 @@ private fun ApprovalOptionRow(
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         Text(
             label,
             color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
@@ -380,7 +380,7 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
         modifier = Modifier
             .clip(RoundedCornerShape(DshRadius.full))
             .background(tint.copy(alpha = 0.14f))
-            .padding(start = 4.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = DshSpace.s4, end = 10.dp, top = DshSpace.s4, bottom = DshSpace.s4),
     ) {
         Box(
             modifier = Modifier
@@ -396,7 +396,7 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
                 modifier = Modifier.size(11.dp),
             )
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(DshSpace.s6))
         Text(
             label,
             color = tint,

@@ -105,7 +105,7 @@ internal fun ToolSearchBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 4.dp),
+                .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
@@ -118,7 +118,7 @@ internal fun ToolSearchBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
@@ -227,7 +227,7 @@ private fun QuietStatusLine(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 2.dp)
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s2)
             .semantics { this.contentDescription = contentDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -249,7 +249,7 @@ private fun QuietStatusAction(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = DshSpace.s8)
             .semantics {
                 role = Role.Button
                 this.contentDescription = label
@@ -331,9 +331,9 @@ internal fun ContextMeterButton(
                     stateDescription = "${percent.toInt()}%"
                 }
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = true }
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             Canvas(modifier = Modifier.size(14.dp)) {
                 val stroke = 2.dp.toPx()
@@ -377,11 +377,11 @@ internal fun ContextMeterButton(
             containerColor = Dsh.bgSubtle,
             shape = RoundedCornerShape(DshRadius.container)
         ) {
-            Column(modifier = Modifier.width(240.dp).padding(12.dp)) {
+            Column(modifier = Modifier.width(240.dp).padding(DshSpace.s12)) {
                 // header：上下文已用 + 百分比 + 用量数字
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(L.contextUsed, color = Dsh.labelTertiary, style = DshType.caption)
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(DshSpace.s6))
                     Text(
                         "${percent.toInt()}%",
                         color = Dsh.labelPrimary,
@@ -433,12 +433,12 @@ internal fun ContextMeterButton(
                         )
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(DshSpace.s12))
                 // 明细行（系统提示词/工具/对话消息 + 色块 + tok 数）
                 ContextMeterRow(L.systemPrompt, compactTokens(stats.systemTokens), Dsh.systemAccent)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(DshSpace.s4))
                 ContextMeterRow(L.tools, compactTokens(stats.toolsTokens), Dsh.toolsAccent)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(DshSpace.s4))
                 ContextMeterRow(L.chatMessages, compactTokens(stats.messageTokens), Dsh.brand400)
             }
         }
@@ -457,7 +457,7 @@ internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {
                 .clip(RoundedCornerShape(DshRadius.micro))
                 .background(swatchColor)
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(DshSpace.s6))
         Text(label, color = Dsh.labelSecondary, style = DshType.captionRelaxed, modifier = Modifier.weight(1f))
         Text(value, color = Dsh.labelPrimary, style = DshType.captionRelaxed.tabularNums(),)
     }
@@ -509,7 +509,7 @@ internal fun CommandSuggestions(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 6.dp),
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s6),
     ) {
         Column(
             modifier = Modifier
@@ -519,7 +519,7 @@ internal fun CommandSuggestions(
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCard)
                 .verticalScroll(rememberScrollState())
-                .padding(6.dp),
+                .padding(DshSpace.s6),
         ) {
             grouped.forEach { (group, entries) ->
                 if (!filtering) {
@@ -527,7 +527,7 @@ internal fun CommandSuggestions(
                         group.displayName,
                         color = Dsh.labelTertiary,
                         style = DshType.microMedium,
-                        modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 4.dp),
+                        modifier = Modifier.padding(start = 10.dp, top = DshSpace.s8, bottom = DshSpace.s4),
                     )
                 }
                 entries.forEach { entry ->
@@ -551,7 +551,7 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
             .clip(RoundedCornerShape(DshRadius.container))
             .background(if (highlighted) Dsh.bgSubtle else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -568,11 +568,11 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
                 modifier = Modifier.size(16.dp),
             )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(DshSpace.s12))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(command.title, color = Dsh.labelPrimary, style = DshType.body, maxLines = 1)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 Text(
                     command.trigger,
                     color = Dsh.labelTertiary,
@@ -649,7 +649,7 @@ internal fun ToolGroupHeader(
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
-                .padding(horizontal = 6.dp, vertical = 4.dp),
+                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (groupRunning) {
@@ -666,7 +666,7 @@ internal fun ToolGroupHeader(
                     tint = Dsh.labelTertiary,
                     modifier = Modifier.size(14.dp),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             }
             Text(
                 summaryTitle,
@@ -677,17 +677,17 @@ internal fun ToolGroupHeader(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             if (groupRunning) {
                 ShimmerLabel(text = L.executing.trimEnd('…', '.'), working = true)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             } else if (totalDuration != null) {
                 Text(
                     formatTraceDuration(totalDuration),
                     color = Dsh.labelTertiary,
                     style = DshType.microRelaxed.tabularNums(),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
             }
             Icon(
                 if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
@@ -704,14 +704,14 @@ internal fun ToolGroupHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 7.dp, top = 2.dp)
+                    .padding(start = 7.dp, top = DshSpace.s2)
                     .drawBehind {
                         val x = 3.5.dp.toPx()
                         drawLine(rail, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
                     }
-                    .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = DshSpace.s16, top = DshSpace.s4, bottom = DshSpace.s4),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
                     group.items.forEach { item ->
                         MessageItem(
                             msg = item,
@@ -751,7 +751,7 @@ internal fun WorkspaceTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 52.dp)
-                .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                .padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val navInteraction = remember { MutableInteractionSource() }
@@ -779,7 +779,7 @@ internal fun WorkspaceTopBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (running) {
@@ -789,7 +789,7 @@ internal fun WorkspaceTopBar(
                             .clip(CircleShape)
                             .background(Dsh.brand400),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(DshSpace.s6))
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -858,7 +858,7 @@ internal fun ChatGoalLine(text: String) {
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 2.dp),
+            .padding(horizontal = DshSpace.s20, vertical = DshSpace.s2),
     )
 }
 
@@ -884,7 +884,7 @@ internal fun LazyListScope.chatEmptyCanvas(
             Box(
                 modifier = Modifier
                     .fillParentMaxSize()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = DshSpace.s8),
                 contentAlignment = Alignment.Center,
             ) {
                 ChatHistoryError(
@@ -943,7 +943,7 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
                     .defaultMinSize(minWidth = 18.dp)
                     .clip(CircleShape)
                     .background(Dsh.labelPrimary)
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                    .padding(horizontal = 5.dp, vertical = DshSpace.s2),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -989,7 +989,7 @@ internal fun SessionStatsLine(stats: MobileSessionStats?) {
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(role = Role.Button, onClickLabel = strings.statsViewDetails, onClick = { detailOpen = true })
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
         )
     }
 
@@ -1020,14 +1020,14 @@ internal fun SessionStatsDetailDialog(
                 .shadow(16.dp, RoundedCornerShape(DshRadius.modal), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                 .clip(RoundedCornerShape(DshRadius.modal))
                 .background(Dsh.bgCard)
-                .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 20.dp),
+                .padding(start = DshSpace.s20, end = DshSpace.s8, top = DshSpace.s8, bottom = DshSpace.s20),
         ) {
             DshSheetHeader(
                 title = strings.sessionStatsSheetTitle,
                 subtitle = strings.statsTurnsSteps.format(stats.turns, stats.steps),
                 onClose = onDismiss,
             )
-            Column(Modifier.padding(end = 12.dp)) {
+            Column(Modifier.padding(end = DshSpace.s12)) {
                 StatsDetailSections(stats)
             }
         }
@@ -1042,7 +1042,7 @@ private fun StatsDetailSections(s: MobileSessionStats) {
     val cacheHitPercent = if (inputTokens > 0) ((s.cacheReadTokens * 100) / inputTokens).toInt() else null
     val speed = if (s.decodeMs > 0 && s.decodeTokens > 0) s.decodeTokens * 1000.0 / s.decodeMs else null
 
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(DshSpace.s12))
     // 三个关键数：一张 tonal 卡片里三等分，不再各占一张卡
     Row(
         modifier = Modifier
@@ -1068,15 +1068,15 @@ private fun StatsDetailSections(s: MobileSessionStats) {
         ),
         color = Dsh.labelTertiary,
         style = DshType.captionRelaxed.tabularNums(),
-        modifier = Modifier.padding(horizontal = 4.dp),
+        modifier = Modifier.padding(horizontal = DshSpace.s4),
     )
 
     if (s.contextWindow > 0) {
         val used = s.contextPressureTokens
         val percent = ((used * 100) / s.contextWindow).toInt().coerceIn(0, 100)
         val tight = percent > 80
-        Spacer(Modifier.height(20.dp))
-        Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.height(DshSpace.s20))
+        Row(Modifier.padding(horizontal = DshSpace.s4), verticalAlignment = Alignment.CenterVertically) {
             Text(strings.statsContextWindow, color = Dsh.labelSecondary, style = DshType.titleSmall, modifier = Modifier.weight(1f))
             Text(
                 "${compactTokens(used)} / ${compactTokens(s.contextWindow)} · $percent%",
@@ -1084,10 +1084,10 @@ private fun StatsDetailSections(s: MobileSessionStats) {
                 style = DshType.captionRelaxed.tabularNums(),
             )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(DshSpace.s8))
         Box(
             modifier = Modifier
-                .padding(horizontal = 4.dp)
+                .padding(horizontal = DshSpace.s4)
                 .fillMaxWidth()
                 .height(4.dp)
                 .clip(RoundedCornerShape(DshRadius.full))
@@ -1102,7 +1102,7 @@ private fun StatsDetailSections(s: MobileSessionStats) {
             )
         }
         if (s.systemTokens + s.toolsTokens + s.messageTokens > 0) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             Text(
                 strings.statsContextBreakdownLine.format(
                     compactTokens(s.systemTokens),
@@ -1111,7 +1111,7 @@ private fun StatsDetailSections(s: MobileSessionStats) {
                 ),
                 color = Dsh.labelTertiary,
                 style = DshType.captionRelaxed.tabularNums(),
-                modifier = Modifier.padding(horizontal = 4.dp),
+                modifier = Modifier.padding(horizontal = DshSpace.s4),
             )
         }
     }
@@ -1122,7 +1122,7 @@ private fun StatsDetailSections(s: MobileSessionStats) {
 private fun StatsFigure(value: String, label: String, modifier: Modifier = Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, color = Dsh.labelPrimary, style = DshType.titleLarge.tabularNums(), maxLines = 1)
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(DshSpace.s2))
         Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

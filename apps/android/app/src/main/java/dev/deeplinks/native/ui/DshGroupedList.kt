@@ -62,6 +62,7 @@ import dev.deeplinks.native.CheckOutline16
 import dev.deeplinks.native.ChevronDownOutline14
 import dev.deeplinks.native.ChevronRightOutline14
 import dev.deeplinks.native.DshRadius
+import dev.deeplinks.native.DshSpace
 
 /**
  * Section 与行骨架（docs/visual-rules.md 第五节：设置、设备、Sheet 复用同一行结构）。
@@ -141,7 +142,7 @@ fun DshSection(
                 footer,
                 color = Dsh.labelTertiary,
                 style = DshType.captionRelaxed,
-                modifier = Modifier.padding(start = RowPaddingH, end = RowPaddingH, top = 6.dp),
+                modifier = Modifier.padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s6),
             )
         }
     }
@@ -215,7 +216,7 @@ fun DshSectionHeader(
                     .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(enabled = actionEnabled, role = Role.Button, onClick = onAction)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = DshSpace.s8),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(actionLabel, color = color, style = DshType.titleSmall)
@@ -389,7 +390,7 @@ private fun DshListRowLayout(
             }
         }
         if (!value.isNullOrBlank()) {
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(DshSpace.s12))
             Text(
                 value,
                 color = Dsh.labelTertiary,
@@ -401,7 +402,7 @@ private fun DshListRowLayout(
             )
         }
         if (trailingContent != null) {
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(DshSpace.s12))
             trailingContent()
         }
         DshListTrailingMark(trailing)
@@ -428,7 +429,7 @@ private fun DshListTrailingMark(trailing: DshListTrailing) {
         DshListTrailing.Check -> Triple(CheckOutline16, Dsh.labelPrimary, 18.dp)
         DshListTrailing.Select -> Triple(ChevronDownOutline14, Dsh.labelTertiary, 16.dp)
     }
-    Spacer(Modifier.width(6.dp))
+    Spacer(Modifier.width(DshSpace.s6))
     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size))
 }
 
@@ -448,7 +449,7 @@ private fun DshListRowError(error: String, onRetry: (() -> Unit)?, modifier: Mod
                     .heightIn(min = 32.dp)
                     .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(role = Role.Button, onClick = onRetry)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = DshSpace.s8),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(s.retry, color = Dsh.labelPrimary, style = DshType.titleSmall)
@@ -590,7 +591,7 @@ fun DshOptionsMenu(
         Column(
             modifier = Modifier
                 .widthIn(min = 180.dp, max = 260.dp)
-                .padding(vertical = 4.dp),
+                .padding(vertical = DshSpace.s4),
         ) {
             options.forEach { (label, id) ->
                 val selected = id == selectedId
@@ -688,7 +689,7 @@ fun DshListCaption(text: String, modifier: Modifier = Modifier) {
         text,
         color = Dsh.labelTertiary,
         style = DshType.captionRelaxed,
-        modifier = modifier.padding(start = RowPaddingH, end = RowPaddingH, top = 12.dp),
+        modifier = modifier.padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s12),
     )
 }
 

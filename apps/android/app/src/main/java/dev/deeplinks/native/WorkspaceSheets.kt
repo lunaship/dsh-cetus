@@ -87,7 +87,7 @@ internal fun AddWorkspaceSheet(
         subtitle = L.addWorkspaceDesc,
         skipPartiallyExpanded = true,
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         OutlinedTextField(
             value = workspaceInput,
             onValueChange = {
@@ -216,7 +216,7 @@ internal fun WorkspacePickerSheet(
     }
     DshSheet(onDismiss = onDismiss, title = L.chooseWorkspaceTitle, subtitle = L.chooseWorkspaceDesc) {
         if (workspaces.size > 6) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             SheetSearchField(value = query, onValueChange = { query = it }, placeholder = L.searchWorkspace)
         }
         Column(
@@ -279,11 +279,11 @@ internal fun SheetSearchField(
             .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .padding(start = 12.dp),
+            .padding(start = DshSpace.s12),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -356,7 +356,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
         )
         AnimatedVisibility(visible = expanded) {
             Row(
-                modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                modifier = Modifier.padding(start = DshSpace.s16, end = DshSpace.s12, top = 10.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 BasicTextField(
@@ -370,7 +370,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                         .heightIn(min = 44.dp)
                         .clip(RoundedCornerShape(DshRadius.control))
                         .background(Dsh.bgSubtle)
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s12),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (path.isEmpty()) Text(L.enterWorkspacePath, color = Dsh.labelTertiary, style = DshType.body)
@@ -378,7 +378,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                         }
                     }
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
                 Button(
                     onClick = { onCreate(path.trim()) },
                     enabled = path.isNotBlank(),

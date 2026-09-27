@@ -62,6 +62,7 @@ import dev.deeplinks.native.DshDuration
 import dev.deeplinks.native.DshEasing
 import dev.deeplinks.native.DshHaptic
 import dev.deeplinks.native.DshRadius
+import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.motionDuration
 import dev.deeplinks.native.rememberDshHaptic
 
@@ -138,7 +139,7 @@ fun DshFilterChip(
                 .height(32.dp)
                 .clip(RoundedCornerShape(DshRadius.full))
                 .background(bg)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = DshSpace.s12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -149,7 +150,7 @@ fun DshFilterChip(
                 lineHeight = 20.sp,
             )
             if (count != null) {
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(DshSpace.s4))
                 Text(
                     count.toString(),
                     color = if (selected) Dsh.labelSecondary else Dsh.labelTertiary,
@@ -270,7 +271,7 @@ fun DshTopSegment(
                             onSelect(index)
                         },
                     )
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = DshSpace.s12),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -301,7 +302,7 @@ fun DshTextTabs(
 ) {
     if (labels.isEmpty()) return
     val safeIndex = selectedIndex.coerceIn(0, labels.lastIndex)
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
         labels.forEachIndexed { index, label ->
             val selected = index == safeIndex
             val interaction = remember { MutableInteractionSource() }
@@ -352,7 +353,7 @@ fun DshSheetGrabber() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(top = DshSpace.s8, bottom = DshSpace.s4),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -381,7 +382,7 @@ fun DshTag(
     val mod = modifier
         .clip(shape)
         .background(color)
-        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2)
         .semantics {
             if (contentDescription != null) this.contentDescription = contentDescription
         }
@@ -472,7 +473,7 @@ fun DshBanner(
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
             .background(bg)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
             .semantics {
                 liveRegion = LiveRegionMode.Polite
                 if (contentDescription != null) this.contentDescription = contentDescription
@@ -482,7 +483,7 @@ fun DshBanner(
         // 语气只靠 tonal 底色 + 文字色表达；左侧竖色条是网页 callout 写法，不用
         if (leading != null) {
             leading()
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
         }
         Text(
             text = text,
@@ -491,7 +492,7 @@ fun DshBanner(
             modifier = Modifier.weight(1f),
         )
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             val interaction = remember { MutableInteractionSource() }
             val pressed by interaction.collectIsPressedAsState()
             Box(
@@ -501,7 +502,7 @@ fun DshBanner(
                     .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onAction)
                     .heightIn(min = 48.dp)
                     .widthIn(min = 48.dp)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
                     .semantics {
                         role = Role.Button
                         this.contentDescription = actionLabel
@@ -535,7 +536,7 @@ fun ChatLoadingSkeleton(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12)
             .semantics { this.contentDescription = loadingLabel },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -603,7 +604,7 @@ fun DshHeaderAction(
                 contentDescription = label
             }
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = DshSpace.s8),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
@@ -684,13 +685,13 @@ fun DshPrimaryAction(
                 role = Role.Button,
                 onClick = onClick,
             )
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s24, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         if (icon != null) {
             Icon(icon, contentDescription = null, tint = Dsh.onBrand, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
         }
         Text(label, color = Dsh.onBrand, style = DshType.labelLarge, maxLines = 1)
     }
@@ -735,7 +736,7 @@ fun DshStatusBadge(
                     .clip(CircleShape)
                     .background(accent),
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
         }
         Text(text, color = fg, style = DshType.captionRelaxed, maxLines = 1)
     }

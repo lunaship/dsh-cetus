@@ -167,7 +167,7 @@ internal fun SessionRowItem(
                         tint = Dsh.onBrand,
                         modifier = Modifier.size(20.dp),
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(DshSpace.s8))
                     Text(
                         archiveLabel,
                         color = Dsh.onBrand,
@@ -248,7 +248,7 @@ internal fun SessionRowItem(
                             modifier = Modifier.weight(1f),
                         )
                         if (relTime.isNotBlank()) {
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(DshSpace.s12))
                             Text(
                                 relTime,
                                 color = Dsh.labelTertiary,
@@ -258,7 +258,7 @@ internal fun SessionRowItem(
                         }
                     }
                     if (meta.isNotBlank()) {
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(DshSpace.s2))
                         Text(
                             meta,
                             color = Dsh.labelTertiary,
@@ -323,7 +323,7 @@ internal fun SidebarSearchField(
             tint = Dsh.labelTertiary,
             modifier = Modifier.size(14.dp),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -355,7 +355,7 @@ internal fun SidebarSearchField(
             )
         }
         if (value.isNotEmpty()) {
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             SidebarIconAction(
                 icon = CloseOutline16,
                 contentDescription = L.clearSearch,
@@ -420,7 +420,7 @@ internal fun WorkspaceSidebarCollapsed(actions: WorkspaceSidebarActions) {
     Column(
         Modifier
             .fillMaxSize()
-            .padding(vertical = 8.dp),
+            .padding(vertical = DshSpace.s8),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SidebarIconAction(
@@ -449,6 +449,6 @@ internal fun WorkspaceSidebarCollapsed(actions: WorkspaceSidebarActions) {
             contentDescription = if (isDarkTheme) L.switchToLight else L.switchToDark,
             onClick = { ThemeManager.toggleTheme(context, isDarkTheme) },
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(DshSpace.s4))
     }
 }

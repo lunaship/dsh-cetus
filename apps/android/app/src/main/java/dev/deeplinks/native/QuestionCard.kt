@@ -75,7 +75,7 @@ internal fun QuestionCard(
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.control))
                 .background(Dsh.bgSubtle)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         )
         return
     }
@@ -103,7 +103,7 @@ internal fun QuestionCard(
             .heightIn(min = 120.dp)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgSubtle)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = DshSpace.s12),
     ) {
         Text(
             msg.questionHeader?.takeIf { it.isNotBlank() } ?: strings.questionClarify,
@@ -112,7 +112,7 @@ internal fun QuestionCard(
             fontWeight = FontWeight(500),
         )
         if (displayQuestions.any { it.unsupported }) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             Text(
                 strings.questionUnsupportedOnPhone,
                 color = Dsh.labelSecondary,
@@ -121,8 +121,8 @@ internal fun QuestionCard(
             return@Column
         }
         displayQuestions.forEachIndexed { questionIndex, question ->
-            if (questionIndex > 0) Spacer(Modifier.height(12.dp))
-            else Spacer(Modifier.height(4.dp))
+            if (questionIndex > 0) Spacer(Modifier.height(DshSpace.s12))
+            else Spacer(Modifier.height(DshSpace.s4))
             if (displayQuestions.size > 1) {
                 Text(
                     strings.questionIndex.format(questionIndex + 1),
@@ -130,7 +130,7 @@ internal fun QuestionCard(
                     style = DshType.microMedium,
                     fontWeight = FontWeight(500),
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(DshSpace.s2))
             }
             Text(
                 question.prompt.ifBlank { msg.text },
@@ -142,7 +142,7 @@ internal fun QuestionCard(
             val draft = draftOf(question.id)
             val bringIntoView = remember(question.id) { BringIntoViewRequester() }
             if (question.options.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(DshSpace.s8))
                 question.options.forEachIndexed { index, option ->
                     val isSelected = option.id in draft.selected || option.label in draft.selected
                     Row(
@@ -165,7 +165,7 @@ internal fun QuestionCard(
                             )
                             .semantics { contentDescription = option.label }
                             .heightIn(min = 48.dp)
-                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                            .padding(vertical = DshSpace.s6, horizontal = DshSpace.s4),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -177,7 +177,7 @@ internal fun QuestionCard(
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             BasicTextField(
                 value = draft.custom,
                 onValueChange = { value ->
@@ -198,7 +198,7 @@ internal fun QuestionCard(
                             .heightIn(min = 48.dp, max = 140.dp)
                             .clip(RoundedCornerShape(DshRadius.control))
                             .background(Dsh.bgSubtle)
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                     ) {
                         if (draft.custom.isEmpty()) {
                             Text(strings.questionAnswerHint, color = Dsh.labelTertiary, style = DshType.body)
@@ -227,7 +227,7 @@ internal fun QuestionCard(
                     .fillMaxWidth()
                     .semantics { contentDescription = shownError },
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
         }
         Row(
             modifier = Modifier.fillMaxWidth(),

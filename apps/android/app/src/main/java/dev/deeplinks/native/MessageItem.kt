@@ -187,9 +187,9 @@ internal fun MessageItem(
                                 buildAnswerMeta(msg.durationMs)
                             }
                             Row(
-                                modifier = Modifier.padding(top = 6.dp),
+                                modifier = Modifier.padding(top = DshSpace.s6),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
                             ) {
                                     MessageActionIcon(
                                         icon = CopyOutline16,
@@ -224,7 +224,7 @@ internal fun MessageItem(
                                             color = Dsh.labelTertiary,
                                             style = DshType.microRelaxed,
                                             maxLines = 1,
-                                            modifier = Modifier.padding(start = 6.dp),
+                                            modifier = Modifier.padding(start = DshSpace.s6),
                                         )
                                     }
                                 }
@@ -336,7 +336,7 @@ private fun RawMessageCard(msg: MobileMessage) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard)
-            .padding(12.dp)
+            .padding(DshSpace.s12)
     ) {
         Row(
             modifier = Modifier
@@ -355,7 +355,7 @@ private fun RawMessageCard(msg: MobileMessage) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(12.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 L.unsupportedMessageType.format(msg.role),
                 color = Dsh.labelSecondary,
@@ -364,7 +364,7 @@ private fun RawMessageCard(msg: MobileMessage) {
             )
         }
         if (expanded) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(DshSpace.s6))
             Text(
                 detail,
                 fontFamily = FontFamily.Monospace,
@@ -390,7 +390,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { expanded = !expanded }
-            .padding(vertical = 2.dp),
+            .padding(vertical = DshSpace.s2),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 16px leading 图标（上下文图标）
@@ -415,7 +415,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
                 )
             }
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(DshSpace.s6))
         Text(
             if (running) L.compressing else L.contextCompressed,
             color = Dsh.labelPrimary.copy(alpha = 0.85f),
@@ -426,7 +426,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
             // 分隔点：padding 在 size 外面（原来写在固定 2dp 盒内不生效，只剩一粒贴字的小点）
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 6.dp)
+                    .padding(horizontal = DshSpace.s6)
                     .size(3.dp)
                     .clip(CircleShape)
                     .background(Dsh.labelTertiary)
@@ -460,7 +460,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
             color = Dsh.labelTertiary,
             style = DshType.bodyLarge,
             lineHeight = 24.sp,
-            modifier = Modifier.padding(start = 22.dp, top = 4.dp, bottom = 4.dp)
+            modifier = Modifier.padding(start = 22.dp, top = DshSpace.s4, bottom = DshSpace.s4)
         )
     }
 }
@@ -481,7 +481,7 @@ private fun GoalRoundRow(text: String) {
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable { expanded = !expanded }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4)
     ) {
         Row(
             modifier = Modifier
@@ -495,7 +495,7 @@ private fun GoalRoundRow(text: String) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(13.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 L.goalInjection,
                 color = Dsh.labelTertiary,
@@ -530,10 +530,10 @@ private fun GoalRoundRow(text: String) {
                 maxLines = 8,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(top = 6.dp)
+                    .padding(top = DshSpace.s6)
                     .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp, vertical = DshSpace.s8)
             )
         }
     }
@@ -554,7 +554,7 @@ private fun ContextInjectionRow(text: String) {
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable { expanded = !expanded }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4)
     ) {
         Row(
             modifier = Modifier
@@ -568,7 +568,7 @@ private fun ContextInjectionRow(text: String) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(12.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 L.contextInjection,
                 color = Dsh.labelTertiary,
@@ -612,10 +612,10 @@ private fun ContextInjectionRow(text: String) {
                 maxLines = 16,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(top = 6.dp)
+                    .padding(top = DshSpace.s6)
                     .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp, vertical = DshSpace.s8)
             )
         }
     }
@@ -643,7 +643,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { expanded = !expanded }
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -682,8 +682,8 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             exit = shrinkVertically(animationSpec = tween(motionDuration(180), easing = FastOutSlowInEasing))
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
+                verticalArrangement = Arrangement.spacedBy(DshSpace.s8)
             ) {
                 todos.forEach { todo ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -751,12 +751,12 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgSubtle)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
         ) {
             Icon(
                 GoalOutline16,
@@ -769,7 +769,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
                 color = Dsh.labelSecondary,
                 style = DshType.microMedium,
             )
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(DshSpace.s4))
             Text(
                 text = if (expanded.value || displayText.length <= 60) displayText
                 else displayText.take(57) + "…",
@@ -808,7 +808,7 @@ internal fun LoadOlderRow(
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(if (pressed) Dsh.pressed else Color.Transparent)
                 .clickable(enabled = !loading, interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = DshSpace.s12),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -903,7 +903,7 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
                     bottomEnd = DshRadius.control
                 ))
                 .background(Dsh.bgSubtle)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = DshSpace.s16, vertical = 10.dp)
         ) {
             Text(
                 text.trimEnd(),
@@ -941,7 +941,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                 .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
-                .padding(horizontal = 6.dp, vertical = 4.dp),
+                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (running) {
@@ -950,7 +950,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                     color = Dsh.brand500,
                     strokeWidth = 1.5.dp,
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             } else {
                 Box(
                     modifier = Modifier
@@ -958,7 +958,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                         .clip(CircleShape)
                         .background(Dsh.labelTertiary),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             }
             Text(
                 title,
@@ -970,9 +970,9 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                 modifier = Modifier.weight(1f),
             )
             if (running) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
                 ShimmerLabel(text = runningLabel.trimEnd('…', '.', '。'), working = true)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
             }
             if (!body.isNullOrBlank()) {
                 Icon(
@@ -990,12 +990,12 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 7.dp, top = 2.dp)
+                    .padding(start = 7.dp, top = DshSpace.s2)
                     .drawBehind {
                         val x = 3.5.dp.toPx()
                         drawLine(rail, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
                     }
-                    .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = DshSpace.s16, top = DshSpace.s4, bottom = DshSpace.s4),
             ) {
                 Text(
                     body.orEmpty(),
@@ -1008,7 +1008,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(DshRadius.control))
                         .background(Dsh.bgCode)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                 )
             }
         }

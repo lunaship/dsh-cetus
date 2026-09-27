@@ -70,7 +70,7 @@ internal fun HomeHeader(
                 .weight(1f)
                 .clip(RoundedCornerShape(DshRadius.container))
                 .clickable(role = Role.Button, onClickLabel = s.deviceAndPairing, onClick = onOpenDevice)
-                .padding(horizontal = DrawerInnerPadding, vertical = 4.dp),
+                .padding(horizontal = DrawerInnerPadding, vertical = DshSpace.s4),
         ) {
             Text(
                 s.tasks,
@@ -80,7 +80,7 @@ internal fun HomeHeader(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 Text(
                     hostName.ifBlank { s.deviceAndPairing },
                     color = Dsh.labelSecondary,
@@ -89,7 +89,7 @@ internal fun HomeHeader(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(DshSpace.s4))
                 Icon(
                     ChevronDownOutline14,
                     contentDescription = null,
@@ -136,7 +136,7 @@ internal fun WorkspaceChips(
             .horizontalScroll(rememberScrollState())
             // 胶囊内边距 12dp：文字落在 DrawerTextStart，选中底色向外伸出，与会话行一致
             .padding(horizontal = DrawerEdgePadding),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DshFilterChip(
@@ -196,7 +196,7 @@ internal fun HomeSectionHeader(section: HomeSection) {
             start = DrawerTextStart,
             end = DrawerTextStart,
             top = 14.dp,
-            bottom = 4.dp,
+            bottom = DshSpace.s4,
         ),
         contentStart = 0.dp,
     )
@@ -209,7 +209,7 @@ internal fun HomeNewTaskBar(workspaceName: String?, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = DrawerEdgePadding + 6.dp, vertical = 8.dp)
+            .padding(horizontal = DrawerEdgePadding + DshSpace.s6, vertical = DshSpace.s8)
             .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(DshRadius.composer))
             .background(Dsh.bgSubtle)
@@ -232,7 +232,7 @@ internal fun HomeNewTaskBar(workspaceName: String?, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(end = 8.dp)
+                    .padding(end = DshSpace.s8)
                     .widthIn(max = 140.dp),
             )
         }

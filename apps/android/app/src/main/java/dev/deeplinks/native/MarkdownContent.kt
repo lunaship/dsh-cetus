@@ -123,7 +123,7 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
                                 cap = StrokeCap.Round,
                             )
                         }
-                        .padding(start = 12.dp, top = 2.dp, bottom = 2.dp)
+                        .padding(start = DshSpace.s12, top = DshSpace.s2, bottom = DshSpace.s2)
                 ) {
                     InlineMarkdownText(block.content, color = Dsh.labelSecondary, streaming = streamTail)
                 }
@@ -215,7 +215,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Dsh.bgCodeBanner)
-                .padding(horizontal = 12.dp, vertical = 2.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(L.tableLabel, color = Dsh.labelTertiary, style = DshType.microRelaxed, modifier = Modifier.weight(1f))
@@ -232,7 +232,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                 style = DshType.microRelaxed,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6)
                     .semantics { contentDescription = error },
             )
         }
@@ -246,7 +246,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                     .navigationBarsPadding()
                     .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgBase)
-                    .padding(12.dp),
+                    .padding(DshSpace.s12),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(L.tableLabel, color = Dsh.labelPrimary, style = DshType.body, modifier = Modifier.weight(1f))
@@ -259,7 +259,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 8.dp),
+                        .padding(top = DshSpace.s8),
                 ) {
                     TableGrid(rows, compact = false)
                 }
@@ -308,7 +308,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Dsh.bgCodeBanner)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -332,7 +332,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                             Toast.makeText(context, L.copied, Toast.LENGTH_SHORT).show()
                         }
                     }
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -341,7 +341,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                     tint = Dsh.labelTertiary,
                     modifier = Modifier.size(12.dp)
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(DshSpace.s4))
                 Text(L.copy, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
             }
         }
@@ -359,7 +359,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(codeScroll)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = DshSpace.s16, vertical = 10.dp)
         )
     }
 }

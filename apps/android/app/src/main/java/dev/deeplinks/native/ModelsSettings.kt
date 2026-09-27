@@ -550,7 +550,7 @@ private fun SheetHint(text: String) {
         text,
         color = Dsh.labelTertiary,
         style = DshType.captionRelaxed,
-        modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
+        modifier = Modifier.padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s8),
     )
 }
 
@@ -561,7 +561,7 @@ private fun SheetError(error: String?) {
         error,
         color = Dsh.error,
         style = DshType.captionRelaxed,
-        modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
+        modifier = Modifier.padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s8),
     )
 }
 
@@ -583,7 +583,7 @@ private fun ApiKeySheet(
         subtitle = listOfNotNull(s.apiKey, keyRef).joinToString(" · "),
         skipPartiallyExpanded = true,
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         DshTextField(
             value = key,
             onValueChange = { key = it },
@@ -613,7 +613,7 @@ private fun AddModelSheet(
     var context by remember { mutableStateOf("") }
     val idValid = modelIdLooksValid(id) && id.trim() !in existingIds
     DshSheet(onDismiss = onDismiss, title = s.addModel, subtitle = title, skipPartiallyExpanded = true) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         DshTextField(
             value = id,
             onValueChange = { id = it },
@@ -622,9 +622,9 @@ private fun AddModelSheet(
             isError = id.isNotEmpty() && !idValid,
             errorText = s.modelIdInvalid,
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         DshTextField(value = name, onValueChange = { name = it }, label = s.modelNameLabel)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         DshTextField(
             value = context,
             onValueChange = { next -> context = next.filter { it.isDigit() }.take(9) },
@@ -666,7 +666,7 @@ private fun DiscoverModelsSheet(
             return@DshSheet
         }
         if (candidates.size > 8) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(DshSpace.s12))
             SheetSearchField(value = query, onValueChange = { query = it }, placeholder = s.searchModelProvider)
         }
         Column(
@@ -738,7 +738,7 @@ private fun AddProviderSheet(
                 it.displayName.contains(query, ignoreCase = true) || it.provider.contains(query, ignoreCase = true)
             }
             if (addable.size > 8) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(DshSpace.s12))
                 SheetSearchField(value = query, onValueChange = { query = it }, placeholder = s.searchModelProvider)
             }
             Column(
@@ -759,7 +759,7 @@ private fun AddProviderSheet(
             }
             return@DshSheet
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         DshTextField(
             value = key,
             onValueChange = { key = it },

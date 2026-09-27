@@ -99,7 +99,7 @@ internal fun WorkspaceSidebar(
         Modifier
             .fillMaxSize()
             .background(containerColor)
-            .padding(top = 4.dp)
+            .padding(top = DshSpace.s4)
     ) {
         HomeHeader(
             hostName = hostName,
@@ -114,7 +114,7 @@ internal fun WorkspaceSidebar(
             enter = fadeIn(tween(motionDuration(150))) + expandVertically(tween(motionDuration(180), easing = FastOutSlowInEasing)),
             exit = fadeOut(tween(motionDuration(100))) + shrinkVertically(tween(motionDuration(150), easing = FastOutSlowInEasing)),
         ) {
-            Box(Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+            Box(Modifier.padding(top = DshSpace.s4, bottom = DshSpace.s4)) {
                 SidebarSearchField(
                     value = searchQuery,
                     onValueChange = actions.onSearchQueryChange,
@@ -171,11 +171,11 @@ internal fun WorkspaceSidebar(
         )
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(DshSpace.s2)
         ) {
             if (searchNeedle.isNotEmpty() && searchShowsDegradedHint(searchState)) {
                 item(key = "sidebar-search-degraded") {
-                    Box(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Box(Modifier.padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)) {
                         SearchStatusBanner(
                             message = L.fullTextSearchUnavailable,
                             onRetry = { actions.onRetrySearch() },
@@ -197,7 +197,7 @@ internal fun WorkspaceSidebar(
                             if (searchState is SearchUiState.Loading) L.searching else L.noMatchingSessions,
                             color = Dsh.labelTertiary,
                             style = DshType.body,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)
+                            modifier = Modifier.padding(horizontal = DshSpace.s20, vertical = DshSpace.s20)
                         )
                     }
                 }
@@ -207,7 +207,7 @@ internal fun WorkspaceSidebar(
                         L.loading,
                         color = Dsh.labelTertiary,
                         style = DshType.body,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)
+                        modifier = Modifier.padding(horizontal = DshSpace.s20, vertical = DshSpace.s20)
                     )
                 }
             } else if (sessionKind == SessionListKind.Error) {
@@ -235,7 +235,7 @@ internal fun WorkspaceSidebar(
                             title = DshS.homeEmptyTitle,
                             message = DshS.homeEmptyHint,
                             compact = true,
-                            modifier = Modifier.padding(top = 32.dp),
+                            modifier = Modifier.padding(top = DshSpace.s32),
                         )
                     }
                 }
@@ -261,7 +261,7 @@ internal fun WorkspaceSidebar(
                         }
                     }
                 }
-                item(key = "home-bottom-space") { Spacer(Modifier.height(8.dp)) }
+                item(key = "home-bottom-space") { Spacer(Modifier.height(DshSpace.s8)) }
             }
         }
 

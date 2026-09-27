@@ -61,7 +61,7 @@ internal fun DshMenu(
         Column(
             modifier = Modifier
                 .width(220.dp)
-                .padding(vertical = 4.dp)
+                .padding(vertical = DshSpace.s4)
         ) {
             items.forEach { item ->
                 val interaction = remember { MutableInteractionSource() }

@@ -153,7 +153,7 @@ internal fun ProducedFilesRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s12, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -172,10 +172,10 @@ internal fun ProducedFilesRow(
             )
         }
         if (files.isEmpty()) return@Column
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(DshSpace.s8))
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+            verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
         ) {
             files.forEach { path ->
                 val name = producedFileName(path)
@@ -204,7 +204,7 @@ internal fun ProducedFilesRow(
                             onClick = { if (!loading) openPath(path) },
                             onLongClick = { copyPath(path) },
                         )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -214,7 +214,7 @@ internal fun ProducedFilesRow(
                                 strokeWidth = 1.5.dp,
                                 color = Dsh.labelSecondary,
                             )
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(DshSpace.s8))
                         }
                         Text(
                             label,
@@ -243,7 +243,7 @@ internal fun ProducedFilesRow(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = dshRipple(),
                     ) { preview = null }
-                    .padding(16.dp),
+                    .padding(DshSpace.s16),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -262,7 +262,7 @@ internal fun ProducedFilesRow(
                     .navigationBarsPadding()
                     .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
-                    .padding(16.dp),
+                    .padding(DshSpace.s16),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -283,7 +283,7 @@ internal fun ProducedFilesRow(
                                 contentDescription = L.close
                             }
                             .clickable { preview = null }
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = DshSpace.s8),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(L.close, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
