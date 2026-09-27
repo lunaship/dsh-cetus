@@ -47,6 +47,9 @@ import kotlinx.coroutines.withContext
 object AppRoute {
     const val DEVICES = "devices"
     const val WORKSPACE = "workspace"
+
+    /** 批次 2：设置从独立 Activity 并入应用级导航（SettingsActivity 仅剩兼容壳）。 */
+    const val SETTINGS = "settings"
 }
 
 /**
@@ -68,7 +71,7 @@ internal fun AppNavHost(
     hostNotice: String?,
     onHostNotice: (String?) -> Unit,
     onScan: () -> Unit,
-    onOpenSettings: (Host) -> Unit,
+    onOpenSettings: () -> Unit,
     onStartVoiceInput: ((String) -> Unit, () -> Unit, (String) -> Unit) -> Unit,
     onStopVoiceInput: () -> Unit,
     requestedRoute: String?,
@@ -203,6 +206,17 @@ internal fun AppNavHost(
             )
         }
 
+        composable(AppRoute.SETTINGS) {
+            // 设置壳层统一（DshPageScaffold），内部二级页保留自己的 NavHost
+            SettingsRoute(
+                host = currentHost,
+                onBack = { navController.popBackStack() },
+                onOpenDevices = {
+                    navController.navigate(AppRoute.DEVICES) { launchSingleTop = true }
+                },
+            )
+        }
+
         composable(AppRoute.WORKSPACE) {
             val host = currentHost
             if (host == null) {
@@ -244,7 +258,7 @@ internal fun AppNavHost(
                                 }
                             }
                         },
-                        onOpenSettings = { onOpenSettings(host) },
+                        onOpenSettings = { onOpenSettings() },
                         onStartVoiceInput = onStartVoiceInput,
                         onStopVoiceInput = onStopVoiceInput,
                     )

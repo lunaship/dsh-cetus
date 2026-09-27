@@ -115,6 +115,8 @@ import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.ui.DshGroupedPage
 import dev.deeplinks.native.ui.DshLargeTitle
 import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshPageNavigation
+import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSection
 import dev.deeplinks.native.ui.DshSectionContainer
 import dev.deeplinks.native.ui.DshStatusBadge
@@ -675,6 +677,27 @@ internal fun SettingsDarkEnLarge() {
 internal fun SettingsHomePairedLightZh() {
     GroupedWall(dark = false, english = false) {
         SettingsHome(appSettings = AppSettings(), onOpen = {}, host = PreviewHost)
+    }
+}
+
+/**
+ * 设置页整壳（批次 2）：DshPageScaffold 标题 + 返回热区 + 页面内容，
+ * 与任务首页 / 设备页同一骨架；内容仍走 DshGroupedPage 兼容包装。
+ */
+@PreviewTest
+@Preview(name = "settings page shell light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun SettingsPageShellLightZh() {
+    ShotFrame(dark = false, english = false) {
+        DshPageScaffold(
+            title = DshS.settingsTitle,
+            navigation = DshPageNavigation.Back,
+            onNavigateBack = {},
+        ) {
+            DshGroupedPage {
+                SettingsHome(appSettings = AppSettings(), onOpen = { _: SettingsDest -> }, host = PreviewHost)
+            }
+        }
     }
 }
 

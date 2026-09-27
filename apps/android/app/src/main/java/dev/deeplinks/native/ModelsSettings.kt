@@ -230,9 +230,10 @@ internal fun ModelsSettingsPage(
         )
     }
 
-    // ── 余额 ──
+    // ── 余额（独立数据块：tonal 容器）──
     DshListSection(
         header = s.sectionBalance,
+        tonal = true,
         headerAction = when {
             host == null -> s.addDevice
             unsupported -> null

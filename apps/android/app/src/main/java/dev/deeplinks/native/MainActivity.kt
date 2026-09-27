@@ -112,7 +112,12 @@ class MainActivity : ComponentActivity() {
         incomingIntent.value = intent
         hostNotice.value = intent.getStringExtra(EXTRA_AUTH_NOTICE)
         launchRoute = resolveLaunchRoute(applicationContext, intent)
-        launchHost = if (launchRoute == AppRoute.WORKSPACE) resolveLaunchHost(applicationContext, intent) else null
+        // 设置页也带主机上下文（SettingsActivity 兼容壳转发时经 Intent 传入）
+        launchHost = if (launchRoute == AppRoute.WORKSPACE || launchRoute == AppRoute.SETTINGS) {
+            resolveLaunchHost(applicationContext, intent)
+        } else {
+            null
+        }
         initSpeechRecognizer()
 
         setContent {
@@ -125,8 +130,9 @@ class MainActivity : ComponentActivity() {
                     hostNotice = hostNotice.value,
                     onHostNotice = { hostNotice.value = it },
                     onScan = { startActivity(Intent(this, ScanActivity::class.java)) },
-                    onOpenSettings = { host ->
-                        startActivity(host.putInto(Intent(this, SettingsActivity::class.java)))
+                    // 批次 2：设置走应用级导航，不再是独立 Activity（无切换闪白）
+                    onOpenSettings = {
+                        pendingRoute.value = AppRoute.SETTINGS
                     },
                     onStartVoiceInput = { onResult, onIdle, onError ->
                         startVoiceListening(onResult, onIdle, onError)

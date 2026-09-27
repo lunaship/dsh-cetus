@@ -47,9 +47,13 @@ class ComponentLanguageTest {
             "dev/deeplinks/devices/DevicesActivity.kt" to 2,
         )
 
-        /** DshGroupedPage 兼容包装调用点存量（批次 2 清零，import 不计）。 */
+        /**
+         * DshGroupedPage 兼容包装调用点存量（import 不计）。
+         * 批次 2：设置 UI 搬到 SettingsRoute.kt，包装调用随迁；设备页（批次 3）清零后
+         * 本包装删除。
+         */
         val GROUPED_PAGE_BUDGET = mapOf(
-            "dev/deeplinks/native/SettingsActivity.kt" to 8,
+            "dev/deeplinks/native/SettingsRoute.kt" to 7,
             "dev/deeplinks/devices/DevicesActivity.kt" to 1,
         )
 
