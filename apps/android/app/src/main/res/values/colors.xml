@@ -14,22 +14,22 @@
     <color name="dsh_border">#1F000000</color>
     <color name="dsh_border_light">#1A000000</color>
 
-    <!-- 主强调：DeepSeek Blue -->
-    <color name="dsh_brand">#4D6BFE</color>
+    <!-- 主强调：DSH alias-brand-primary-new-color -->
+    <color name="dsh_brand">#4176E6</color>
     <color name="dsh_on_brand">#FFFFFF</color>
     <color name="dsh_pressed">#0F263148</color>
-    <color name="dsh_overlay">#52000000</color>
+    <color name="dsh_overlay">#3D000000</color>
 
     <!-- 语义色：对齐 Dsh.success / cloud / system -->
     <color name="dsh_online">#22C55E</color>
     <color name="dsh_online_bg">#1A22C55E</color>
-    <color name="dsh_source_cloud">#3B5BDB</color>
-    <color name="dsh_source_cloud_bg">#1A3B5BDB</color>
+    <color name="dsh_source_cloud">#4868B2</color>
+    <color name="dsh_source_cloud_bg">#1A4868B2</color>
     <color name="dsh_endpoint_web">#5B7A9D</color>
     <color name="dsh_endpoint_web_bg">#1A5B7A9D</color>
 
-    <color name="dsh_offline">#9CA3AF</color>
-    <color name="dsh_checking">#C7CDD6</color>
+    <color name="dsh_offline">#979DA6</color>
+    <color name="dsh_checking">#CFD3D6</color>
     <color name="dsh_avatar_bg">#F1F3F5</color>
     <color name="dsh_avatar_text">#0F1115</color>
 

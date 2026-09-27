@@ -30,7 +30,7 @@ import dev.deeplinks.native.DshRadius
 
 /**
  * DeepSeek Harness 设计系统颜色 Token 接口定义与主题管理器。
- * 支持暗色（Dark）和亮色（Light）两套 1:1 对齐 DSH 设计规范的配色，
+ * 两套配色的每个角色都取自 [Dsw]（DSH Web 调色板镜像），偏离处逐行写明原因，
  * 并支持通过系统设置 / App 内部偏好进行动态切换。
  */
 @Stable
@@ -95,126 +95,122 @@ data class DshColors(
     val cloudContainer: Color = Color.Unspecified,
 )
 
+// ===== 色源：DeepSeek Harness（docs/visual-rules.md「色源」）=====
+// 每个角色取自 Dsw（DSH 调色板镜像），行尾注释是对应的 --dsw-alias-* / --dsw-specific-*。
+// 取不到 DSH 值的行必须写「偏离 DSH」和原因，由 DshPaletteProvenanceTest 强制。
+
 val DarkDshColors = DshColors(
     isDark = true,
-    // 近黑画布（对齐 DeepSeek Harness / Chat），表面阶梯叠微弱品牌蓝
-    bgBase = Color(0xFF0E0E10),
-    bgSidePanel = Color(0xFF141416),
-    bgCard = Color(0xFF1A1A1E),
-    bgInput = Color(0xFF222226),
-    bgSubtle = Color(0xFF2A2A2F),
-    bgCode = Color(0xFF141416),
-    bgCodeBanner = Color(0xFF222226),
-    bgSelected = Color(0xFF1A2744),   // 选中容器：与 bgNavSelected 同值（DSH Blue tonal）
-    bgPressed = Color(0xFF222226),
-    bgDrawer = Color(0xFF141416),        // 抽屉容器底：与 bgSidePanel 同档
-    bgNavSelected = Color(0xFF1A2744),   // 选中会话：DeepSeek Blue 弱底
-    bgTrack = Color(0xFF2A2A2F),
-    bgOverlay = Color(0x80000000),
-    bgRecessed = Color(0xFF08080A),      // ThinkingTrace：比画布更深一档
-    bgSurface = Color(0xFF161618),
-    labelPrimary = Color(0xFFF9FAFB),
-    labelSecondary = Color(0xFFCFD3D6),
-    labelTertiary = Color(0xFF9AA0A6),
-    labelDimmed = Color(0xFF43454A),
-    borderSubtle = Color(0x1FFFFFFF),
-    borderStrong = Color(0x29FFFFFF),
-    pressed = Color(0x14FFFFFF),
-    activated = Color(0x24FFFFFF),
-    // DeepSeek Blue 一族：#4D6BFE 为主；深色上抬一档作链接/次强调
-    brand400 = Color(0xFF6B86FE),
-    brand500 = Color(0xFF4D6BFE),
-    success = Color(0xFF22C55E),
-    warn = Color(0xFFD97706),
-    warnLabel = Color(0xFFB45309),
-    error = Color(0xFFF25A5A),
-    errorBg = Color(0x26F25A5A),
-    buttonElevated = Color(0xFF2A2A2F),
-    buttonFloating = Color(0xFF1A1A1E),
-    shadowCard = Color(0x1F000000),
-    systemAccent = Color(0xFF94A3B8),
-    toolsAccent = Color(0xFF8BA3C7),    // 蓝灰弱强调，避免亮紫与品牌蓝抢层级
-    traceReasoning = Color(0xFF7B93F8), // 推理：蓝系弱强调（非紫）
-    traceApproval = Color(0xFFE07A3A),  // 审批：降噪橙
-    traceTodo = Color(0xFF5BB8C9),
-    brandTint = Color(0x1A4D6BFE),
-    onBrand = Color(0xFFFFFFFF),
-    successContent = Color(0xFF86EFAC),
-    successContainer = Color(0xFF14532D),
-    cloudContent = Color(0xFFB8C7FF),
-    cloudContainer = Color(0xFF1E2A4A),
+    bgBase = Dsw.neutralBluish950,           // alias-bg-base
+    bgSidePanel = Dsw.neutralBluish900,      // specific-sidebar-fill
+    bgCard = Dsw.neutralBluish875,           // alias-bg-layer-1
+    bgInput = Dsw.neutralBluish850,          // specific-input-major
+    bgSubtle = Dsw.neutralBluish800,         // alias-interactive-bg-hover-solid
+    bgCode = Dsw.neutralBluish900,           // alias-markdown-code-block
+    bgCodeBanner = Dsw.neutralBluish850,     // alias-markdown-code-block-banner
+    bgSelected = Dsw.neutralBluish800,       // specific-sidebar-nav-item-active-accent
+    bgPressed = Dsw.neutralBluish800,        // alias-interactive-bg-hover-solid
+    bgDrawer = Dsw.neutralBluish900,         // specific-sidebar-fill
+    bgNavSelected = Dsw.neutralBluish800,    // specific-sidebar-nav-item-active-accent
+    bgTrack = Dsw.neutralBluish800,          // alias-interactive-bg-hover-solid
+    bgOverlay = Dsw.mask1Dark,               // alias-bg-mask-1
+    // DSH 没有「凹进」面；思考轨迹取调色板最深一档，比画布再暗一级
+    bgRecessed = Dsw.neutralBluish1000,
+    bgSurface = Dsw.neutralBluish900,        // specific-sidebar-fill（比画布高一级，同旧关系）
+    labelPrimary = Dsw.neutralBluish50,      // alias-label-primary
+    labelSecondary = Dsw.neutralBluish300,   // alias-label-secondary
+    labelTertiary = Dsw.neutralBluish400,    // alias-label-tertiary
+    labelDimmed = Dsw.neutralBluish750,      // alias-label-dimmed
+    borderSubtle = Dsw.borderL2Dark,         // alias-border-l2
+    borderStrong = Dsw.borderL3Dark,         // alias-border-l3
+    pressed = Dsw.interactiveHoverDark,      // alias-interactive-bg-hover
+    activated = Dsw.interactiveActiveDark,   // alias-interactive-bg-active
+    brand400 = Dsw.deepseek400,              // alias-link
+    brand500 = Dsw.deepseek450,              // alias-brand-primary-new-color
+    success = Dsw.green500,                  // alias-state-success-primary
+    warn = Dsw.amber500,                     // DSH 无 warning alias，取 static amber
+    warnLabel = Dsw.amber400,                // 深底上的警告文字用亮一档
+    error = Dsw.red400,                      // alias-state-error-primary
+    errorBg = Dsw.interactiveHoverDangerDark, // alias-interactive-bg-hover-danger
+    buttonElevated = Dsw.neutralBluish750,   // alias-button-elevated-fill
+    buttonFloating = Dsw.neutralBluish850,   // alias-button-floating-fill
+    shadowCard = Color(0x1F000000),          // 偏离 DSH：DSH 阴影不分深浅（0D），深色画布上看不见，加深到 1F
+    systemAccent = Color(0xFF94A3B8),        // 偏离 DSH：无对应角色（Android 分段语义色）
+    toolsAccent = Color(0xFF8BA3C7),         // 偏离 DSH：无对应角色；蓝灰弱强调，不与品牌蓝抢层级
+    traceReasoning = Color(0xFF7B93F8),      // 偏离 DSH：无对应角色；推理轨蓝系弱强调（非紫）
+    traceApproval = Color(0xFFE07A3A),       // 偏离 DSH：无对应角色；审批降噪橙
+    traceTodo = Color(0xFF5BB8C9),           // 偏离 DSH：无对应角色；待办青
+    brandTint = Dsw.deepseek450.copy(alpha = 0.1f),
+    onBrand = Dsw.neutralBluish00,
+    successContent = Color(0xFF86EFAC),      // 偏离 DSH：DSH 没有深底上的绿色文字档
+    successContainer = Dsw.green900,         // alias-state-success-tertiary
+    cloudContent = Dsw.deepseek300,
+    cloudContainer = Dsw.deepseek800,        // alias-state-business-tertiary
 )
 
 val LightDshColors = DshColors(
     isDark = false,
-    // 背景阶梯
-    bgBase = Color(0xFFFFFFFF),
-    bgSidePanel = Color(0xFFF9FAFB),
-    bgCard = Color(0xFFFFFFFF),
-    bgInput = Color(0xFFFFFFFF),
-    bgSubtle = Color(0xFFF1F3F5),
-    bgCode = Color(0xFFF9FAFB),
-    bgCodeBanner = Color(0xFFF9FAFB),
-    bgSelected = Color(0xFFE5EDFF),   // 选中容器：与 bgNavSelected 同值（DSH Blue tonal）
-    bgPressed = Color(0xFFF1F3F5),
-    bgDrawer = Color(0xFFF9FAFB),
-    bgNavSelected = Color(0xFFE5EDFF),   // 选中会话：DeepSeek Blue 弱底
-    // 与暗色同语义（bgTrack == bgSubtle）：F9FAFB 与白画布/抽屉底同档，胶囊与轨道会整块消失
-    bgTrack = Color(0xFFF1F3F5),
-    bgOverlay = Color(0x52000000),
-    bgRecessed = Color(0xFFF3F4F6),      // ThinkingTrace：比白画布略凹
-    bgSurface = Color(0xFFFFFFFF),
-    // 文字
-    labelPrimary = Color(0xFF0F1115),
-    // 与 tertiary 拉开一档（7.5:1 vs 4.7:1）；原 #61666B 与 #70757A 几乎同色，浅色只剩两级灰
-    labelSecondary = Color(0xFF50555C),
-    // #70757A on white is 4.66:1（10–13sp 正文需 AA）
-    labelTertiary = Color(0xFF70757A),
-    labelDimmed = Color(0xFFE1E5EE),
-    // 边框
-    borderSubtle = Color(0x1A000000),
-    borderStrong = Color(0x1F000000),
-    // 交互反馈
-    pressed = Color(0x0F263148),
-    activated = Color(0x19263148),
-    // DeepSeek Blue：实心主操作 #4D6BFE；链接/小字用更深一档保证 AA（#4D6BFE on white ≈4.0）
-    brand400 = Color(0xFF3B5BDB),
-    brand500 = Color(0xFF4D6BFE),
-    // 状态色（语义保留、降噪）
-    success = Color(0xFF22C55E),
-    warn = Color(0xFFD97706),
-    warnLabel = Color(0xFFB45309),
-    // 降饱和一档：#EC1113 纯红配粉底过刺眼；#D92D20 on white ≈4.8:1
-    error = Color(0xFFD92D20),
-    errorBg = Color(0x1AD92D20),
-    buttonElevated = Color(0xFFD1D5DB),
-    buttonFloating = Color(0xFFFFFFFF),
-    shadowCard = Color(0x0D000000),
-    systemAccent = Color(0xFF64748B),
-    toolsAccent = Color(0xFF5B7A9D),    // 蓝灰，避免紫与品牌蓝抢层级
-    // 蓝系弱强调：降饱和、不与 brand500 同色（visual-rules 第 6 条）；11sp 标签需 AA，≈4.8:1
-    traceReasoning = Color(0xFF5B6FB8),
-    traceApproval = Color(0xFFD97706),
-    traceTodo = Color(0xFF0E8A9A),
-    brandTint = Color(0x1A4D6BFE),
-    onBrand = Color(0xFFFFFFFF),
-    successContent = Color(0xFF166534),
-    successContainer = Color(0xFFDCFCE7),
-    cloudContent = Color(0xFF3B5BDB),
-    cloudContainer = Color(0xFFE9EDFF),
+    bgBase = Dsw.neutralBluish00,            // alias-bg-base
+    bgSidePanel = Dsw.neutralBluish50,       // specific-sidebar-fill
+    bgCard = Dsw.neutralBluish00,            // alias-bg-layer-1
+    bgInput = Dsw.neutralBluish00,           // specific-input-major
+    bgSubtle = Dsw.neutralBluish75,          // alias-interactive-bg-hover-solid
+    bgCode = Dsw.neutralBluish50,            // alias-markdown-code-block
+    bgCodeBanner = Dsw.neutralBluish50,      // alias-markdown-code-block-banner
+    bgSelected = Dsw.deepseek100,            // specific-sidebar-nav-item-active-accent
+    bgPressed = Dsw.neutralBluish75,         // alias-interactive-bg-hover-solid
+    bgDrawer = Dsw.neutralBluish50,          // specific-sidebar-fill
+    bgNavSelected = Dsw.deepseek100,         // specific-sidebar-nav-item-active-accent
+    // 与暗色同语义（bgTrack == bgSubtle）：50 与白画布/抽屉底同档，胶囊与轨道会整块消失
+    bgTrack = Dsw.neutralBluish75,           // alias-interactive-bg-hover-solid
+    bgOverlay = Dsw.mask1Light,              // alias-bg-mask-1
+    bgRecessed = Dsw.neutralBluish60,        // linear-think-select 的起始色
+    bgSurface = Dsw.neutralBluish00,         // alias-bg-base
+    labelPrimary = Dsw.neutralBluish1000,    // alias-label-primary
+    // 偏离 DSH（alias-label-secondary = 700 #61666B）：tertiary 为达 AA 已偏到 #70757A，
+    // 再用 700 两级灰几乎同色；secondary 下压一档（7.5:1）把层级拉开
+    labelSecondary = Color(0xFF50555C),      // 偏离 DSH：见上
+    labelTertiary = Color(0xFF70757A),       // 偏离 DSH：alias-label-tertiary（600 #81858C）白底 3.7:1，10–13sp 不达 AA
+    labelDimmed = Dsw.neutralBluish200,      // alias-label-dimmed
+    borderSubtle = Dsw.borderL2Light,        // alias-border-l2
+    borderStrong = Dsw.borderL3Light,        // alias-border-l3
+    pressed = Dsw.interactiveHoverLight,     // alias-interactive-bg-hover
+    activated = Dsw.interactiveActiveLight,  // alias-interactive-bg-active
+    // alias-link 是 deepseek-500，白底 4.2:1 不达 AA；链接和小字取调色板下一档 600（5.4:1）
+    brand400 = Dsw.deepseek600,
+    brand500 = Dsw.deepseek500,              // alias-brand-primary-new-color
+    success = Dsw.green500,                  // alias-state-success-primary
+    warn = Dsw.amber600,                     // DSH 无 warning alias，取 static amber
+    warnLabel = Color(0xFFB45309),           // 偏离 DSH：amber 族白底都不达 AA，文字用更深的琥珀
+    error = Color(0xFFD92D20),               // 偏离 DSH：alias-state-error-primary（red-600 #EC1313）纯红配粉底过刺眼；本值 4.8:1
+    errorBg = Color(0x1AD92D20),             // 偏离 DSH：随 error 同色相
+    buttonElevated = Dsw.neutralBluish00,    // alias-button-elevated-fill
+    buttonFloating = Dsw.neutralBluish00,    // alias-button-floating-fill
+    shadowCard = Dsw.shadowLv1,              // shadow-lv1 的颜色分量
+    systemAccent = Color(0xFF64748B),        // 偏离 DSH：无对应角色（Android 分段语义色）
+    toolsAccent = Color(0xFF5B7A9D),         // 偏离 DSH：无对应角色；蓝灰，不与品牌蓝抢层级
+    traceReasoning = Color(0xFF5B6FB8),      // 偏离 DSH：无对应角色；11sp 标签需 AA（4.8:1）
+    traceApproval = Dsw.amber600,
+    traceTodo = Color(0xFF0E8A9A),           // 偏离 DSH：无对应角色；待办青
+    brandTint = Dsw.deepseek500.copy(alpha = 0.1f),
+    onBrand = Dsw.neutralBluish00,
+    successContent = Color(0xFF166534),      // 偏离 DSH：DSH 绿色族白底都不达 AA
+    successContainer = Dsw.green100,         // alias-state-success-tertiary
+    cloudContent = Dsw.deepseek600,          // 在 deepseek-100 上 4.6:1
+    cloudContainer = Dsw.deepseek100,        // alias-state-business-tertiary
 )
 
 /**
  * 深色「纯黑」背景（OLED）：只压画布、侧栏、代码底这几层；卡片 / 输入 / 气泡保持原色阶，
- * 分层靠卡片比底亮而不是底比卡片暗。
+ * 分层靠卡片比底亮而不是底比卡片暗。DSH 没有纯黑模式，这几档都是本端独有。
  */
 fun DshColors.pureBlack(): DshColors = copy(
     bgBase = Color.Black,
-    bgSidePanel = Color(0xFF0A0A0B),
-    bgDrawer = Color(0xFF0A0A0B),
-    bgCode = Color(0xFF0A0A0B),
+    bgSidePanel = Color(0xFF0A0A0B),         // 偏离 DSH：OLED 纯黑模式独有
+    bgDrawer = Color(0xFF0A0A0B),            // 偏离 DSH：OLED 纯黑模式独有
+    bgCode = Color(0xFF0A0A0B),              // 偏离 DSH：OLED 纯黑模式独有
     bgRecessed = Color.Black,
-    bgSurface = Color(0xFF111113),
+    bgSurface = Color(0xFF111113),           // 偏离 DSH：OLED 纯黑模式独有
 )
 
 val LocalDshColors = staticCompositionLocalOf { DarkDshColors }
@@ -436,18 +432,18 @@ fun DshTheme(
     val materialColors = if (isDark) {
         darkColorScheme(
             primary = colors.brand400,
-            onPrimary = Color(0xFF0F1115),
-            // container/on-container 配对：深蓝容器 + 浅字（DeepSeek Blue 族）
-            primaryContainer = Color(0xFF1A2744),
-            onPrimaryContainer = Color(0xFFDCE7FF),
+            onPrimary = Dsw.neutralBluish1000,
+            // container/on-container 配对：深蓝容器 + 浅字（DSH deepseek 族）
+            primaryContainer = Dsw.deepseek800,
+            onPrimaryContainer = Dsw.deepseek100,
             secondary = colors.brand400,
-            onSecondary = Color(0xFF0F1115),
+            onSecondary = Dsw.neutralBluish1000,
             secondaryContainer = colors.bgSubtle,
             onSecondaryContainer = colors.labelPrimary,
-            tertiary = Color(0xFF86EFAC),
-            onTertiary = Color(0xFF14532D),
-            tertiaryContainer = Color(0xFF14532D),
-            onTertiaryContainer = Color(0xFFBBF7D0),
+            tertiary = colors.successContent,
+            onTertiary = colors.successContainer,
+            tertiaryContainer = colors.successContainer,
+            onTertiaryContainer = colors.successContent,
             background = colors.bgBase,
             onBackground = colors.labelPrimary,
             surface = colors.bgSurface,
@@ -457,9 +453,9 @@ fun DshTheme(
             outline = colors.labelTertiary,
             outlineVariant = colors.borderStrong,
             error = colors.error,
-            onError = Color(0xFF690005),
-            errorContainer = Color(0xFF93000A),
-            onErrorContainer = Color(0xFFFFDAD6),
+            onError = Dsw.red900,
+            errorContainer = Dsw.red900,
+            onErrorContainer = Dsw.red100,
             inverseSurface = colors.labelPrimary,
             inverseOnSurface = colors.bgBase,
             inversePrimary = colors.brand400,
@@ -469,17 +465,17 @@ fun DshTheme(
         lightColorScheme(
             primary = colors.brand400,
             onPrimary = Color.White,
-            // #2563D8 上放 #0F1115 只有 ~3.47:1；改用浅蓝容器 + 深蓝文字（≥ 9:1）
-            primaryContainer = Color(0xFFD8E4FF),
-            onPrimaryContainer = Color(0xFF0A2A66),
+            // 浅蓝容器 + 深蓝文字（alias-label-primary-bluish，≥ 9:1）
+            primaryContainer = Dsw.deepseek200,
+            onPrimaryContainer = Dsw.blue900,
             secondary = colors.brand400,
             onSecondary = Color.White,
-            secondaryContainer = Color(0xFFE5EDFF),
+            secondaryContainer = Dsw.deepseek100,
             onSecondaryContainer = colors.labelPrimary,
-            tertiary = Color(0xFF166534),
+            tertiary = colors.successContent,
             onTertiary = Color.White,
-            tertiaryContainer = Color(0xFFDCFCE7),
-            onTertiaryContainer = Color(0xFF14532D),
+            tertiaryContainer = colors.successContainer,
+            onTertiaryContainer = colors.successContent,
             background = colors.bgBase,
             onBackground = colors.labelPrimary,
             surface = colors.bgSurface,
@@ -490,8 +486,8 @@ fun DshTheme(
             outlineVariant = colors.borderStrong,
             error = colors.error,
             onError = Color.White,
-            errorContainer = Color(0xFFFFDAD6),
-            onErrorContainer = Color(0xFF410002),
+            errorContainer = Dsw.red100,
+            onErrorContainer = Dsw.red900,
             inverseSurface = colors.labelPrimary,
             inverseOnSurface = colors.bgBase,
             inversePrimary = colors.brand500,

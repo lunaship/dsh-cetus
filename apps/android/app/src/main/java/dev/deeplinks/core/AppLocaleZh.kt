@@ -49,7 +49,7 @@ val DshStringsZh = DshStrings(
         put("systemFont", "跟随系统字体")
         put("systemFontDesc", "关闭时使用 Plus Jakarta Sans 品牌字；默认开启以获得原生观感")
         put("dynamicColor", "动态取色")
-        put("dynamicColorDesc", "壁纸影响表面与灰阶文字；品牌强调色保持 DeepSeek Blue #4D6BFE（Android 12+）")
+        put("dynamicColorDesc", "壁纸影响表面与灰阶文字；品牌强调色保持 DSH 蓝（Android 12+）")
         put("darkBackground", "深色背景")
         put("darkBackgroundSoft", "柔和")
         put("darkBackgroundBlack", "纯黑")

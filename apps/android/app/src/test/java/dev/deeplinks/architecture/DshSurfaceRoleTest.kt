@@ -1,5 +1,7 @@
 package dev.deeplinks.architecture
 
+import dev.deeplinks.core.DarkDshColors
+import dev.deeplinks.core.LightDshColors
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -94,24 +96,13 @@ class DshSurfaceRoleTest {
 
     @Test
     fun selectionContainerIsOneRole() {
-        val theme = File(mainSourceRoot(), "dev/deeplinks/core/DshTheme.kt").readText()
-        val violations = mutableListOf<String>()
-        for (palette in listOf("val DarkDshColors", "val LightDshColors")) {
-            val start = theme.indexOf(palette)
-            assertTrue("DshTheme.kt 找不到 $palette", start >= 0)
-            val end = theme.indexOf("\n)", start)
-            val block = theme.substring(start, if (end > start) end else theme.length)
-            fun value(name: String) =
-                Regex("""$name = Color\((0x[0-9A-Fa-f]+)\)""").find(block)?.groupValues?.get(1)
-            val selected = value("bgSelected")
-            val navSelected = value("bgNavSelected")
-            if (selected == null || navSelected == null) {
-                violations += "$palette: 找不到 bgSelected / bgNavSelected 定义"
-            } else if (selected != navSelected) {
-                violations += "$palette: bgSelected=$selected 与 bgNavSelected=$navSelected 不一致。" +
-                    "选中态必须合并为一个 DSH Blue tonal selection container"
+        // 直接比运行时值：色值改为取自 Dsw 后，源码里已经没有可解析的字面量
+        val violations = listOf("DarkDshColors" to DarkDshColors, "LightDshColors" to LightDshColors)
+            .filter { (_, colors) -> colors.bgSelected != colors.bgNavSelected }
+            .map { (name, colors) ->
+                "$name: bgSelected=${colors.bgSelected} 与 bgNavSelected=${colors.bgNavSelected} 不一致。" +
+                    "选中态必须合并为一个 selection container"
             }
-        }
         assertTrue(
             "selection container 合并（docs/visual-rules.md 第二节）：\n" + violations.joinToString("\n"),
             violations.isEmpty(),

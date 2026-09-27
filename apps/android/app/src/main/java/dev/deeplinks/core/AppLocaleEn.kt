@@ -49,7 +49,7 @@ val DshStringsEn = DshStrings(
         put("systemFont", "System font")
         put("systemFontDesc", "On by default for a native look; off uses Plus Jakarta Sans brand font")
         put("dynamicColor", "Dynamic color")
-        put("dynamicColorDesc", "Wallpaper tints surfaces and muted text; brand accent stays DeepSeek Blue #4D6BFE (Android 12+)")
+        put("dynamicColorDesc", "Wallpaper tints surfaces and muted text; brand accent stays DSH blue (Android 12+)")
         put("darkBackground", "Dark background")
         put("darkBackgroundSoft", "Soft")
         put("darkBackgroundBlack", "Pure black")

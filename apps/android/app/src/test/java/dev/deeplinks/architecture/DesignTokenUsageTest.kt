@@ -12,7 +12,7 @@ import java.io.File
  * - 任何文件的裸字号数量超过基线 -> 失败；
  * - 迁移使数量下降后应把基线调小（允许收敛，禁止回涨）。
  *
- * 白名单只放 token 定义文件（DshTheme / DshTypography / DshSyntaxPalette）。
+ * 白名单只放 token 定义文件（DshTheme / DshTypography / DshSyntaxPalette / DswPalette）。
  */
 class DesignTokenUsageTest {
 
@@ -23,6 +23,7 @@ class DesignTokenUsageTest {
         "dev/deeplinks/core/DshTheme.kt",
         "dev/deeplinks/core/DshTypography.kt",
         "dev/deeplinks/core/DshSyntaxPalette.kt",
+        "dev/deeplinks/core/DswPalette.kt",
     )
 
     private fun mainSourceRoot(): File {
