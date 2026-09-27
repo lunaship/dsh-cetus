@@ -75,15 +75,22 @@ internal fun isPluginTooOld(error: Throwable): Boolean =
 internal fun formatWallets(wallets: List<MobileWallet>): String? {
     if (wallets.isEmpty()) return null
     return wallets.joinToString(" · ") { w ->
+        val amount = formatMoney(w.balance)
         when (w.currency.uppercase()) {
-            "CNY" -> "¥${w.balance}"
-            "USD" -> "$${w.balance}"
-            else -> "${w.balance} ${w.currency}"
+            "CNY" -> "¥$amount"
+            "USD" -> "$$amount"
+            else -> "$amount ${w.currency}"
         }
     }
 }
 
-/** 默认模型的展示名：供应商显示名 · 模型显示名（目录里找不到时退回原始 id）。 */
+/** 服务端给的是高精度小数串（如 9.0022919000000000）：保留两位、向下截断，不把余额显示得比实际多。 */
+internal fun formatMoney(raw: String): String =
+    raw.trim().toBigDecimalOrNull()
+        ?.setScale(2, java.math.RoundingMode.DOWN)
+        ?.toPlainString()
+        ?: raw
+
 /** 默认模型行的取值：只放模型名（优先展示名）——「供应商 · 模型」在行尾取值宽度里会被截断。 */
 internal fun defaultModelName(groups: List<MobileModelGroup>, provider: String?, model: String?): String? {
     if (model.isNullOrBlank()) return null

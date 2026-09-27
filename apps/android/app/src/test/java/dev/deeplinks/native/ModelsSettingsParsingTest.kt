@@ -100,4 +100,13 @@ class ModelsSettingsParsingTest {
         assertEquals("glm-9", defaultModelName(groups, "zai", "glm-9"))
         assertNull(defaultModelName(groups, "zai", null))
     }
+
+    @Test
+    fun walletAmountsShowTwoDecimalsRoundedDown() {
+        assertEquals("9.00", formatMoney("9.0022919000000000"))
+        assertEquals("12.34", formatMoney("12.349"))
+        assertEquals("0.00", formatMoney("0"))
+        assertEquals("n/a", formatMoney("n/a"))
+        assertEquals("¥9.00 · $1.50", formatWallets(listOf(MobileWallet("CNY", "9.0022919"), MobileWallet("USD", "1.5"))))
+    }
 }
