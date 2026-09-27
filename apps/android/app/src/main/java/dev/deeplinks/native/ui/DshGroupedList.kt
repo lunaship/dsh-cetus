@@ -57,6 +57,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.dshRipple
+import dev.deeplinks.core.tabularNums
 import dev.deeplinks.native.CheckOutline16
 import dev.deeplinks.native.ChevronDownOutline14
 import dev.deeplinks.native.ChevronRightOutline14
@@ -200,22 +201,34 @@ fun DshListSection(
     )
 }
 
-/** Section 标题（小号灰字，与行内文字对齐）；Section 外的自定义内容也用它起头。 */
+/**
+ * Section 标题（小号灰字，与行内文字对齐）；Section 外的自定义内容也用它起头。
+ *
+ * 状态变体（任务首页的分区头）：[leading] 放状态圆点 / 图标，[count] 是计数 pill——
+ * 颜色只作辅助，语义由文字承担（docs/visual-rules.md 第五节）。
+ */
 @Composable
 fun DshSectionHeader(
     title: String,
+    modifier: Modifier = Modifier,
     actionLabel: String? = null,
     actionDanger: Boolean = false,
     actionEnabled: Boolean = true,
     onAction: (() -> Unit)? = null,
+    leading: (@Composable () -> Unit)? = null,
+    count: Int? = null,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 32.dp)
             .padding(start = RowPaddingH),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (leading != null) {
+            leading()
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             title,
             color = Dsh.labelTertiary,
@@ -224,6 +237,17 @@ fun DshSectionHeader(
                 .weight(1f)
                 .semantics { heading() },
         )
+        if (count != null && count > 0) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(DshRadius.full))
+                    .background(Dsh.bgSubtle)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("$count", color = Dsh.labelTertiary, style = DshType.captionRelaxed.tabularNums())
+            }
+        }
         if (actionLabel != null && onAction != null) {
             val color = when {
                 !actionEnabled -> Dsh.labelDimmed

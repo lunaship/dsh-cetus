@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -83,31 +84,48 @@ fun DshFilterChip(
     count: Int? = null,
     enabled: Boolean = true,
     contentDescription: String? = null,
+    /** 长按 extras（如工作区胶囊的「新建会话 / 移除」菜单）；为空时退化为普通点击。 */
+    onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    // 选中态 = DSH Blue tonal selection container（docs/visual-rules.md 第二节）：
+    // 不再用纯黑反色胶囊；文字取 brand400，保证弱蓝底上的 AA 对比。
     val bg = when {
         !enabled -> Color.Transparent
-        selected -> Dsh.bgSelected
+        selected -> Dsh.bgNavSelected
         pressed -> Dsh.pressed
         else -> Color.Transparent
     }
     val textColor = when {
         !enabled -> Dsh.labelDimmed
-        selected -> Dsh.labelPrimary
+        selected -> Dsh.brand400
         else -> Dsh.labelSecondary
     }
     // 视觉 32dp 胶囊 / 外层 48dp 触摸热区：可点面积不缩，观感收紧
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .selectable(
-                selected = selected,
-                interactionSource = interaction,
-                indication = dshRipple(),
-                enabled = enabled,
-                role = Role.Tab,
-                onClick = onClick,
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(
+                        interactionSource = interaction,
+                        indication = dshRipple(),
+                        enabled = enabled,
+                        role = Role.Tab,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
+                } else {
+                    Modifier.selectable(
+                        selected = selected,
+                        interactionSource = interaction,
+                        indication = dshRipple(),
+                        enabled = enabled,
+                        role = Role.Tab,
+                        onClick = onClick,
+                    )
+                },
             )
             .semantics {
                 if (contentDescription != null) {
@@ -135,7 +153,7 @@ fun DshFilterChip(
                 Spacer(Modifier.width(4.dp))
                 Text(
                     count.toString(),
-                    color = if (selected) Dsh.labelPrimary.copy(alpha = 0.7f) else Dsh.labelTertiary,
+                    color = if (selected) Dsh.brand400 else Dsh.labelTertiary,
                     style = DshType.captionRelaxed.tabularNums(),
                 )
             }
@@ -607,6 +625,8 @@ fun DshIconAction(
     iconSize: Dp = 20.dp,
     active: Boolean = false,
     tint: Color = Dsh.labelSecondary,
+    /** 实心模式（如任务入口的 + 钮）：容器用品牌色，图标用 onBrand。 */
+    containerColor: Color? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -616,6 +636,7 @@ fun DshIconAction(
             .clip(CircleShape)
             .background(
                 when {
+                    containerColor != null -> containerColor
                     active -> Dsh.bgNavSelected
                     pressed -> Dsh.bgPressed
                     else -> Color.Transparent
@@ -631,7 +652,7 @@ fun DshIconAction(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (active) Dsh.brand500 else tint,
+            tint = if (containerColor != null) Dsh.onBrand else if (active) Dsh.brand500 else tint,
             modifier = Modifier.size(iconSize),
         )
     }

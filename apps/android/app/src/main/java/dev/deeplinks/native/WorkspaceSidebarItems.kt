@@ -61,6 +61,8 @@ import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
 import dev.deeplinks.core.ThemeManager
 import dev.deeplinks.core.dshRipple
+import dev.deeplinks.native.ui.DshStatusBadge
+import dev.deeplinks.native.ui.DshStatusTone
 import dev.deeplinks.native.util.relativeTime
 
 /**
@@ -85,7 +87,7 @@ internal val DrawerInnerPadding = 12.dp
 /** 图标与文字的间距（原 12dp）。 */
 internal val DrawerLeadingGap = 10.dp
 /** 抽屉所有行共用同一圆角（选中/按压/滑动垫底同形），不混两种弧度。 */
-internal val DrawerRowShape = RoundedCornerShape(DshRadius.md)
+internal val DrawerRowShape = RoundedCornerShape(DshRadius.container)
 
 /**
  * 任务首页会话行（M3 双行列表条目规格）。
@@ -302,7 +304,7 @@ private fun HomeTaskLeadingStatus(session: MobileSession) {
     val container = when {
         awaiting -> Dsh.warn.copy(alpha = 0.12f)
         session.running -> Dsh.brandTint
-        else -> Dsh.bgGroupedCard
+        else -> Dsh.bgSubtle
     }
     val content = when {
         awaiting -> waitingContent
@@ -332,16 +334,13 @@ private fun HomeTaskLeadingStatus(session: MobileSession) {
 @Composable
 private fun HomeTaskTrailingStatus(session: MobileSession) {
     val s = DshS
-    val waitingContent = if (Dsh.isDark) Dsh.warn else Dsh.warnLabel
     when {
-        session.awaitingInput -> Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(Dsh.warn.copy(alpha = 0.12f))
-                .padding(horizontal = 9.dp, vertical = 4.dp),
-        ) {
-            Text(s.awaitingInputStatus, color = waitingContent, style = DshType.microRelaxed)
-        }
+        // 等待输入：共享状态 pill（颜色 + 文字双通道），与设置/设备同一语义
+        session.awaitingInput -> DshStatusBadge(
+            text = s.awaitingInputStatus,
+            tone = DshStatusTone.Waiting,
+            contentDescription = s.awaitingInputStatus,
+        )
         session.running -> CircularProgressIndicator(
             modifier = Modifier.size(22.dp),
             color = Dsh.brand400,
@@ -371,7 +370,7 @@ internal fun SidebarSearchField(
             .fillMaxWidth()
             .padding(horizontal = DrawerEdgePadding)
             .heightIn(min = 40.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
             .padding(horizontal = DrawerInnerPadding),
         verticalAlignment = Alignment.CenterVertically,

@@ -25,17 +25,16 @@ class DshSurfaceRoleTest {
         /** bgGrouped 调用存量（逐批收敛到 bgBase）。 */
         val BG_GROUPED_BUDGET = mapOf(
             "dev/deeplinks/native/ui/DshSheet.kt" to 1,
-            "dev/deeplinks/native/SettingsActivity.kt" to 2,
             "dev/deeplinks/native/WorkspaceChrome.kt" to 1,
-            "dev/deeplinks/devices/DevicesActivity.kt" to 1,
         )
 
-        /** bgGroupedCard 调用存量（逐批收敛到 bgSubtle）。 */
+        /**
+         * bgGroupedCard 调用存量（逐批收敛到 bgSubtle）。
+         * 批次 2/3/4：设置、设备、任务首页均已清零；余下的是聊天工作区与浮层（批次 5）。
+         */
         val BG_GROUPED_CARD_BUDGET = mapOf(
             "dev/deeplinks/native/WorkspaceSheets.kt" to 4,
-            "dev/deeplinks/native/WorkspaceSidebarItems.kt" to 1,
             "dev/deeplinks/native/WorkspaceChrome.kt" to 3,
-            "dev/deeplinks/native/HomeHub.kt" to 5,
         )
 
         /** 真正的浮层：允许阴影。 */

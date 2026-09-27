@@ -59,11 +59,10 @@ class ComponentLanguageTest {
 
         /**
          * HomeChip 等单页临时组件调用点存量（定义行不计）。
-         * 批次 3：DeviceCard 的私有 DeviceTag 已换成共享 DshStatusBadge，预算清零。
+         * 批次 3/4：DeviceTag → DshStatusBadge、HomeChip → DshFilterChip，
+         * 预算全部归零，零容忍（PAGE_CHIP_BUDGET 为空即任何新出现都失败）。
          */
-        val PAGE_CHIP_BUDGET = mapOf(
-            "dev/deeplinks/native/HomeHub.kt" to mapOf("HomeChip" to 2),
-        )
+        val PAGE_CHIP_BUDGET: Map<String, Map<String, Int>> = emptyMap()
 
         /** 其余页面文件的 pill 形状存量（逐批收敛到共享组件）。 */
         val PILL_SHAPE_BUDGET = mapOf(

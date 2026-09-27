@@ -835,7 +835,8 @@ private fun SidebarWall() {
         HomeHeader(hostName = "MacBook Pro", searchActive = false, onOpenDevice = {}, onToggleSearch = {}, onOpenSettings = {})
         WorkspaceChips(
             workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
-            selected = null,
+            // 选中态入基线：DSH Blue tonal（bgNavSelected + brand400），不是纯黑反色
+            selected = "/Users/me/dsh-links",
             onSelect = {},
             onAddWorkspace = {},
             onCreateSessionIn = {},
