@@ -1,6 +1,6 @@
 # 视觉规则（不可违反）
 
-面向 DSH Links Android 客户端（本仓 `deeplinks`）。
+面向 DeepLinks Android 客户端（本仓 `deeplinks`）。
 
 ## 唯一方向
 

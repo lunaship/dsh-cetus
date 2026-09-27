@@ -237,7 +237,7 @@ val DshStringsZh = DshStrings(
         put("addExistingWorkspace", "添加已有目录")
         put("addingWorkspace", "正在处理…")
         put("addWorkspaceFailed", "添加失败：%s")
-        put("workspaceCreateInvalidResponse", "电脑端未返回工作区信息，请更新并重载 DSH Links 插件")
+        put("workspaceCreateInvalidResponse", "电脑端未返回工作区信息，请更新并重载 DeepLinks 插件")
         put("add", "添加")
         put("deleteWorkspaceTitle", "删除工作区？")
         put("deleteWorkspaceMessage", "将移除「%s」及其中所有会话。")

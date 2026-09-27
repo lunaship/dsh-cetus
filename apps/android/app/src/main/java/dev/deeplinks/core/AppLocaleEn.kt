@@ -237,7 +237,7 @@ val DshStringsEn = DshStrings(
         put("addExistingWorkspace", "Add existing folder")
         put("addingWorkspace", "Working…")
         put("addWorkspaceFailed", "Could not add workspace: %s")
-        put("workspaceCreateInvalidResponse", "The computer returned no workspace. Update and reload the DSH Links plugin.")
+        put("workspaceCreateInvalidResponse", "The computer returned no workspace. Update and reload the DeepLinks plugin.")
         put("add", "Add")
         put("deleteWorkspaceTitle", "Delete workspace?")
         put("deleteWorkspaceMessage", "Remove \"%s\" and all sessions inside it.")

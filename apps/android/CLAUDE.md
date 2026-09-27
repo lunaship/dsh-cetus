@@ -1,6 +1,6 @@
 # deeplinks — AI 协作规则
 
-DSH Links Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版本基线以 `../docs/COMPATIBILITY.md` 为准，本仓库不另维护版本表。
+DeepLinks Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版本基线以 `../docs/COMPATIBILITY.md` 为准，本仓库不另维护版本表。
 
 ## 红线
 

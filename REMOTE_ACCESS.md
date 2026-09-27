@@ -1,12 +1,12 @@
 # 远端连接路线（实验性）
 
-扫码中的地址或手动填写的地址可以指向家中电脑或远程服务器上运行的 DSH。`dsh-links` 当前正式支持的是可信局域网 Android Beta。本页说明两种由你自己管理的实验性跨网络路径，以及维护者内测中的 DSH Links Relay。它们都不是已经对公众开放的自助“云端连接”产品。
+扫码中的地址或手动填写的地址可以指向家中电脑或远程服务器上运行的 DSH。`dsh-links` 当前正式支持的是可信局域网 Android Beta。本页说明两种由你自己管理的实验性跨网络路径，以及维护者内测中的 DeepLinks Relay。它们都不是已经对公众开放的自助“云端连接”产品。
 
 | 方式 | 适合什么 | 公网入口 | 手机怎么加 |
 |---|---|---|---|
 | Tailscale | 个人电脑和自己的手机 | 无 | 手动填写 `https://100.x.y.z:18640` |
 | Cloudflare Tunnel | 自己的域名、跨网络直连 | 有，由你的 Tunnel 管理 | 手动填写 `https://dsh.example.com` |
-| DSH Links Relay | 维护者内测的跨网络中继 | Relay | 电脑先填接入码；接入成功后再扫「远端连接」里的第二张云端码 |
+| DeepLinks Relay | 维护者内测的跨网络中继 | Relay | 电脑先填接入码；接入成功后再扫「远端连接」里的第二张云端码 |
 
 **接入码不会出现在本仓库、GitHub Release 或 npm 包里。** 只有维护者可以发放。局域网配对不需要接入码。
 
@@ -16,7 +16,7 @@
 
 1. 在电脑和 Android 手机上安装 Tailscale，并登录同一个 tailnet。
 2. 让 dsh 与插件运行，电脑执行 `tailscale ip -4`，得到 `100.x.y.z` 地址。
-3. 在手机 DSH Links App 选择“手动添加”，填写 `https://100.x.y.z:18640` 和电脑「手机连接」局域网页的当前 6 位配对码。
+3. 在手机 DeepLinks App 选择“手动添加”，填写 `https://100.x.y.z:18640` 和电脑「手机连接」局域网页的当前 6 位配对码。
 4. 首次连接时，App 会显示 TLS 指纹；只在它与该页的指纹一致时继续。
 
 App 会将 Tailscale 默认的 `100.64.0.0/10` 节点地址按私网自签证书处理并钉扎指纹。换 Wi-Fi 不会改变该连接地址或已固定的主机身份。
@@ -49,10 +49,10 @@ ingress:
 
 Android App 当前不会执行 Cloudflare Access 的网页登录，也不会携带 `Cf-Access-Jwt-Assertion`。因此配置 `originRequest.access.required: true` 会拒绝 App 的配对与运行请求；不要把该配置误认为当前可用。
 
-## DSH Links Relay（维护者内测）
+## DeepLinks Relay（维护者内测）
 
 ```
-手机 App  ⇄  DSH Links Relay  ⇄  电脑插件（主动出站）  ⇄  127.0.0.1:18640
+手机 App  ⇄  DeepLinks Relay  ⇄  电脑插件（主动出站）  ⇄  127.0.0.1:18640
 ```
 
 端到端远端配对已经在测试环境跑通，但仍处于内测：

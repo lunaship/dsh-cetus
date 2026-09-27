@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="deeplinks Logo" />
-  <h1>deeplinks</h1>
+  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="DeepLinks Logo" />
+  <h1>DeepLinks</h1>
   <p><b>DeepSeek Harness 的手机端</b> · 局域网配对 · 原生 Android 会话工作台</p>
 
   <p>
@@ -40,7 +40,7 @@
 ---
 
 > [!IMPORTANT]
-> **本项目为独立的社区项目。** DSH Links 与 DeepSeek 无隶属、授权或背书关系；DeepSeek Harness 的名称与相关标识归各自所有者。问题请在本仓库反馈，不要提交给上游。
+> **本项目为独立的社区项目。** DeepLinks 与 DeepSeek 无隶属、授权或背书关系；DeepSeek Harness 的名称与相关标识归各自所有者。问题请在本仓库反馈，不要提交给上游。
 >
 > **项目处于公开 Beta。** 正式支持范围是**可信局域网**；远端 Relay 为邀请制内测。插件、App 与同步协议迭代较快，升级前请看 [`CHANGELOG.md`](CHANGELOG.md) 与 [兼容矩阵](docs/COMPATIBILITY.md)。
 
@@ -48,7 +48,7 @@
 
 ## 概览
 
-**DSH Links** 让运行在电脑、家中主机或远程服务器上的 DeepSeek Harness 拥有一个经过配对的原生手机入口。电脑继续运行 DSH、工具与工作区；手机负责看会话、发消息、收实时事件、处理审批与提问。
+**DeepLinks** 让运行在电脑、家中主机或远程服务器上的 DeepSeek Harness 拥有一个经过配对的原生手机入口。电脑继续运行 DSH、工具与工作区；手机负责看会话、发消息、收实时事件、处理审批与提问。
 
 它不是远程桌面，也不是把 DSH Web 塞进手机浏览器：一个仓库、三个发布物、一条配对信任链。
 
@@ -177,7 +177,7 @@ dsh-links/
 3. **开始使用**：在 App 里选择已配对的电脑，进入会话工作台。
 
 > [!NOTE]
-> 局域网配对不需要接入码。远端访问的可选路径（Tailscale、Cloudflare Tunnel、DSH Links Relay）见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。**不要**把 `18640` 端口直接做路由器端口转发。
+> 局域网配对不需要接入码。远端访问的可选路径（Tailscale、Cloudflare Tunnel、DeepLinks Relay）见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。**不要**把 `18640` 端口直接做路由器端口转发。
 
 ---
 
@@ -256,15 +256,17 @@ CN=DSH Links, OU=lunaship, O=lunaship, C=CN
 SHA-256: 38f71adf8b67d81042c99a3ec0dfdafb4303dd31e3fc491068ccd534cb482a47
 ```
 
+签名证书仍使用旧名称；校验已发布 APK 时请以 SHA-256 指纹为准。
+
 安装前可用 `apksigner verify --print-certs <apk>` 核对。
 
 ---
 
 ## License
 
-DSH Links 以 [MIT](LICENSE) 许可发布。
+DeepLinks 以 [MIT](LICENSE) 许可发布。
 
-「DSH Links」名称、logo 与应用图标**不在** MIT 授权范围内；第三方 fork 请更换名称、图标与 `applicationId` 后再分发。随包的第三方库与资源保留各自许可，见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 与 [`apps/android/THIRD_PARTY_NOTICES.md`](apps/android/THIRD_PARTY_NOTICES.md)。
+「DeepLinks」名称、logo 与应用图标**不在** MIT 授权范围内；第三方 fork 请更换名称、图标与 `applicationId` 后再分发。随包的第三方库与资源保留各自许可，见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 与 [`apps/android/THIRD_PARTY_NOTICES.md`](apps/android/THIRD_PARTY_NOTICES.md)。
 
 ---
 

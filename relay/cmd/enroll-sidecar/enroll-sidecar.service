@@ -1,5 +1,5 @@
 [Unit]
-Description=DSH Links enroll sidecar (public invite dispenser)
+Description=DeepLinks enroll sidecar (public invite dispenser)
 After=network-online.target
 Wants=network-online.target
 

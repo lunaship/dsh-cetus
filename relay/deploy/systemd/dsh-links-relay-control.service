@@ -1,5 +1,5 @@
 [Unit]
-Description=DSH Links Relay Control Plane
+Description=DeepLinks Relay Control Plane
 After=network.target
 
 [Service]

@@ -1,4 +1,4 @@
-# DSH Links compatibility matrix
+# DeepLinks compatibility matrix
 
 This is the single compatibility reference for the public `dsh-links`
 repository (plugin plus Relay under `relay/`).
@@ -125,7 +125,7 @@ them.
 ## Support boundary
 
 - **Public supported:** Android and DSH on the same trusted LAN.
-- **Private testing:** DSH Links Relay, invite-only. Self-host issues codes
+- **Private testing:** DeepLinks Relay, invite-only. Self-host issues codes
   from the single `admin` Control login. A hosted maintainer may provision
   Control tenants who then issue and revoke their own codes; there is no
   public signup and the Android App still pairs with the plugin, not

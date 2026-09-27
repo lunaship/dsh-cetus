@@ -1,6 +1,6 @@
 # Relay
 
-本目录是 DSH Links Relay（DLR/1）源码，现位于公开仓库 [`lunaship/dsh-links`](https://github.com/lunaship/dsh-links) 的 `relay/`。Go module 为 `github.com/lunaship/dsh-links/relay`。
+本目录是 DeepLinks Relay（DLR/1）源码，现位于公开仓库 [`lunaship/dsh-links`](https://github.com/lunaship/dsh-links) 的 `relay/`。Go module 为 `github.com/lunaship/dsh-links/relay`。
 
 电脑 `Agent` 与手机 `App` 均主动出站连接 Relay，Relay 仅在外层 TLS 内转发 DLR 控制帧与 App↔插件的内层 TLS 密文。使用仍为维护者接入码私测；本目录不含接入码或主机凭据。
 

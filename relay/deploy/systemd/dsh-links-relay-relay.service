@@ -1,5 +1,5 @@
 [Unit]
-Description=DSH Links Relay Data Plane
+Description=DeepLinks Relay Data Plane
 After=network.target dsh-links-relay-control.service
 Requires=dsh-links-relay-control.service
 

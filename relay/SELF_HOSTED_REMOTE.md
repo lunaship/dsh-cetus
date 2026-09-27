@@ -24,7 +24,7 @@ Tailscale 与 Cloudflare Tunnel 均为用户自管的实验路径，不属于 Be
    ```
 
 3. 电脑端 DSH 设置 →「手机连接」→「远端连接」会显示本次 6 位配对码与 TLS 指纹。
-4. 手机 DSH Links App → 添加设备 → 手动添加，填入：
+4. 手机 DeepLinks App → 添加设备 → 手动添加，填入：
 
    - 地址：`https://<电脑的 100.x.y.z 地址>:18640`
    - 配对码：电脑端当前显示的 6 位码
@@ -74,7 +74,7 @@ Cloudflare 边缘向手机提供受系统 CA 信任的证书；插件仍然用�
 不要把 Access 配置误认为已经可用。Cloudflare Tunnel 与 Relay 私测是两条
 独立路径；Cloudflare Tunnel 只适合你明确接受其公网边界的个人实验部署。
 
-## DSH Links Relay（维护者私测）
+## DeepLinks Relay（维护者私测）
 
 ```
 手机 App  ⇄  你的 VPS Relay  ⇄  电脑 local-relay  ⇄  127.0.0.1:18640

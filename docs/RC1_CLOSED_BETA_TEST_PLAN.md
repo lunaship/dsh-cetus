@@ -1,4 +1,4 @@
-# DSH Links RC1 封闭 Beta 测试包
+# DeepLinks RC1 封闭 Beta 测试包
 
 本包面向 3–5 名相互独立的测试者。它是测试执行材料，不是公开 Relay
 发布说明。公开支持路径仍是同一可信局域网；Relay 为维护者接入码私测。

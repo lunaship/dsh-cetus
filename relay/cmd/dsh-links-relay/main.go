@@ -61,7 +61,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Print(`dsh-links-relay - DSH Links Relay
+	fmt.Print(`dsh-links-relay - DeepLinks Relay
 
 Usage:
   dsh-links-relay init    --dir .local

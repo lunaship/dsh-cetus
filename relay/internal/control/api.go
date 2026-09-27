@@ -1272,7 +1272,7 @@ func (s *Server) handleUI(w http.ResponseWriter, r *http.Request) {
 	data, err := webFS.ReadFile("web/index.html")
 	if err != nil {
 		// fallback
-		w.Write([]byte(`<!doctype html><html><head><meta charset="utf-8"><title>DSH Links Relay Control</title></head><body><h1>Control OK</h1><p>Use API: /v1/invites, /v1/hosts, /v1/overview</p></body></html>`))
+		w.Write([]byte(`<!doctype html><html><head><meta charset="utf-8"><title>DeepLinks Relay Control</title></head><body><h1>Control OK</h1><p>Use API: /v1/invites, /v1/hosts, /v1/overview</p></body></html>`))
 		return
 	}
 	_, _ = w.Write(data)

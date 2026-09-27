@@ -1,8 +1,8 @@
 # Security
 
-DSH Links connects a phone to [DeepSeek Harness (dsh)](https://github.com/deepseek-ai) instances that can run tools and execute code on the host machine. Treat a paired device as a privileged remote console.
+DeepLinks connects a phone to [DeepSeek Harness (dsh)](https://github.com/deepseek-ai) instances that can run tools and execute code on the host machine. Treat a paired device as a privileged remote console.
 
-This public Beta supports **trusted LAN** as the documented product path. DSH Links Relay is in **private testing**: remote pairing has been exercised end-to-end, but enrollment requires a maintainer-issued invite code. Invite codes, Relay host credentials, and `state.json` must not appear in this repository, GitHub Releases, or the npm package.
+This public Beta supports **trusted LAN** as the documented product path. DeepLinks Relay is in **private testing**: remote pairing has been exercised end-to-end, but enrollment requires a maintainer-issued invite code. Invite codes, Relay host credentials, and `state.json` must not appear in this repository, GitHub Releases, or the npm package.
 
 If you use an intranet-tunnelling product yourself, treat it as an **experimental personal deployment**: it is not a supported Beta configuration and receives no compatibility or security guarantee. Do not expose port `18640` directly to the public Internet.
 
@@ -56,7 +56,7 @@ On the host, enable「配对需本机确认」so an unexpected device still need
 ## Source and APK trust
 
 - The public repository opens the `dsh-links` plugin, Relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The npm package still ships the plugin only; it does not include `relay/` or `apps/android/`.
-- Do not trust third-party rebuilds or sideloaded APKs that claim to be DSH Links.
+- Do not trust third-party rebuilds or sideloaded APKs that claim to be DeepLinks.
 
 ## Reporting
 

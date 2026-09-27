@@ -1,6 +1,6 @@
 # Third-party notices
 
-DSH Links App's APK distributes the runtime components and font listed below.
+DeepLinks App's APK distributes the runtime components and font listed below.
 Their copyright and license terms remain with their respective authors. The
 exact versions used by this build are recorded in `gradle/libs.versions.toml`
 and `app/build.gradle.kts`.

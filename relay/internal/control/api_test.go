@@ -24,7 +24,7 @@ func TestHandlerServesWebAssets(t *testing.T) {
 		contentType string
 		marker      string
 	}{
-		{path: "/", contentType: "text/html", marker: "DSH Links Relay — Control"},
+		{path: "/", contentType: "text/html", marker: "DeepLinks Relay — Control"},
 		{path: "/tokens.css", contentType: "text/css", marker: "--color-paper"},
 		{path: "/app.css", contentType: "text/css", marker: "macrostructure: Stat-Led"},
 		{path: "/app.js", contentType: "text/javascript", marker: "'/v1/overview'"},
