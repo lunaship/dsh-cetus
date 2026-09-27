@@ -24,7 +24,6 @@ import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshListTrailing
 import dev.deeplinks.native.ui.DshSheet
-import dev.deeplinks.native.util.SessionFilter
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.catalogKind
 import dev.deeplinks.native.util.sessionShowsRefreshBanner
@@ -83,7 +82,6 @@ internal fun AgentPresetPickerSheet(
         }
     }
 }
-
 // ---------- 权限选择弹层（WI-004：真实写入服务端 permission.defaultPreset） ----------
 
 @Composable
@@ -217,37 +215,4 @@ internal fun PermissionModeOption(
         onClick = if (enabled) onClick else null,
         trailing = if (selected) DshListTrailing.Check else DshListTrailing.None,
     )
-}
-
-@Composable
-internal fun SessionFilterSheet(
-    selected: SessionFilter,
-    counts: Map<SessionFilter, Int>,
-    onSelect: (SessionFilter) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    DshSheet(onDismiss = onDismiss, title = L.filterSessions) {
-        DshListSection {
-            SessionFilter.entries.forEach { f ->
-                DshListRow(
-                    title = when (f) {
-                        SessionFilter.ALL -> L.allSessions
-                        SessionFilter.RUNNING -> L.runningStatus
-                        SessionFilter.STOPPED -> L.stopped
-                    },
-                    subtitle = when (f) {
-                        SessionFilter.ALL -> L.showAllSessions
-                        SessionFilter.RUNNING -> L.onlyShowRunningSessions
-                        SessionFilter.STOPPED -> L.onlyShowStoppedSessions
-                    },
-                    value = (counts[f] ?: 0).toString(),
-                    onClick = {
-                        onSelect(f)
-                        onDismiss()
-                    },
-                    trailing = if (f == selected) DshListTrailing.Check else DshListTrailing.None,
-                )
-            }
-        }
-    }
 }

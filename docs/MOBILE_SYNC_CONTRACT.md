@@ -27,6 +27,8 @@
 
 `GET /dsh-link/mobile/sessions` 也返回同名 `archivedSessionIds`。App 的后台会话刷新必须先应用该集合，再更新列表和当前选择，避免列表请求与工作区请求之间产生短暂不一致。
 
+会话行（`bootstrap.sessions` 与 `GET /dsh-link/mobile/sessions`）可带 `awaitingInput: true`：该会话有尚未结束的审批或澄清问题，不论它由手机接管还是交给电脑端网页处理。字段由插件在 `approval/request`、`user-questions/request` 钩子外层计数得出（DSH 的 `session.list` 不带这个状态），只在为真时下发，缺省即 `false`；旧 App 忽略该键。交给电脑端的请求手机只能看到状态，仍需在电脑上处理。
+
 `GET /dsh-link/mobile/sessions/search` 同样遵守该集合：成功搜索和降级的标题搜索都不会返回 Web 已归档的 `sessionId`。
 
 产出文件：历史投影可含 `role: "produced_files"` 与 `files` 路径列表。具备 `capabilities.files.workspace` 时，`GET /dsh-link/mobile/sessions/:id/file?path=` 在该会话 cwd 沙箱内返回原始字节（默认上限 8MB）。路径越出工作区返回 403。旧 App 忽略未知 role，仍可走工具结果文本。

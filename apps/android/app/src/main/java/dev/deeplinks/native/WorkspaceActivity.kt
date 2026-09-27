@@ -265,7 +265,6 @@ fun WorkspaceScreen(
             workspacePrefs.forgetLastSession(hostIdentity, sid)
         }
     }
-    var sessionFilter by remember { mutableStateOf(workspacePrefs.sessionFilter) }
     var pendingSessionCwd by remember { mutableStateOf<String?>(null) }
     /** 用户点了「新建会话」、尚未发首条消息时为 true；此期间 refreshSessions 不得抢绑旧会话。 */
     var composeNewSession by remember { mutableStateOf(false) }
@@ -322,8 +321,6 @@ fun WorkspaceScreen(
     var showSubagentSheet by remember { mutableStateOf(false) }
     /** 新会话阶段的默认模型（create 后 selectModel）。 */
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
-    var expandedWorkspaces by remember { mutableStateOf(setOf<String>()) }
-    var expandedGroups by remember { mutableStateOf(setOf<String>()) } // 组内"显示全部"展开态
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
     var deleteWorkspaceSaving by remember { mutableStateOf(false) }
@@ -375,7 +372,9 @@ fun WorkspaceScreen(
     // searchQuery：侧边栏搜索文本（持久化文本，不持久化结果）
     var searchQuery by remember { mutableStateOf(localStore.historyQuery) }
     var sidebarSearchOpen by remember { mutableStateOf(localStore.historyQuery.isNotBlank()) }
-    var showSessionFilterSheet by remember { mutableStateOf(false) }
+    // 任务首页的工作区筛选属于 Workspace 状态，不能留在侧栏内部；否则旋转、分屏或
+    // 全屏首页 / 常驻侧栏互换时会回到「全部」。路径失效时由 WorkspaceSidebar 回退全部。
+    var selectedHomeWorkspace by rememberSaveable { mutableStateOf<String?>(null) }
     // WI-R2/R3：搜索结果与状态机、网络任务句柄（sessions/workspaces/history）
     // 一律由 WorkspaceViewModel 持有，组合重建不再中断数据流
     var searchResults by workspaceViewModel.searchResults
@@ -1003,7 +1002,6 @@ fun WorkspaceScreen(
     }
 
     // 会话筛选持久化（dsh_workspace；重启 App 后恢复上次选择）
-    LaunchedEffect(sessionFilter) { workspacePrefs.sessionFilter = sessionFilter }
 
     /**
      * 分发 palette 的本地动作。
@@ -1846,10 +1844,6 @@ fun WorkspaceScreen(
         onForkSession = { forkNow(it, closeDrawer = true) },
         onCreateSessionIn = { createSessionIn(it) },
         onDeleteWorkspace = { openDeleteWorkspace(it) },
-        onToggleWorkspaceExpanded = { cwd ->
-            expandedWorkspaces = if (cwd in expandedWorkspaces) expandedWorkspaces - cwd else expandedWorkspaces + cwd
-        },
-        onExpandGroup = { expandedGroups = expandedGroups + it },
         onToggleSearch = {
             sidebarSearchOpen = !sidebarSearchOpen
             if (!sidebarSearchOpen && searchQuery.isBlank()) {
@@ -1870,7 +1864,6 @@ fun WorkspaceScreen(
         },
         onRetrySearch = { runSearchDebounced(searchQuery) },
         onRetrySessions = { refreshSessions() },
-        onOpenFilterSheet = { showSessionFilterSheet = true },
         onAddWorkspace = { showAddWorkspace = true },
         onOpenSettings = onOpenSettings,
     )
@@ -1894,16 +1887,16 @@ fun WorkspaceScreen(
                 searchState = searchState,
                 searchResults = searchResults,
                 sidebarSearchOpen = sidebarSearchOpen,
-                sessionFilter = sessionFilter,
                 workspaceAccounts = workspaceAccounts,
                 deletedWorkspaces = deletedWorkspaces,
                 workspaceRegistry = workspaceRegistry,
                 workspaceRegistryReady = workspaceRegistryReady,
                 sessionsInitialLoad = sessionsInitialLoad,
                 sessionsLoadError = sessionsLoadError,
-                expandedWorkspaces = expandedWorkspaces,
-                expandedGroups = expandedGroups,
                 hostName = host.name,
+                selectedWorkspace = selectedHomeWorkspace,
+                onSelectWorkspace = { selectedHomeWorkspace = it },
+                containerColor = Dsh.bgDrawer,
                 collapsed = sidebarCollapsed,
                 goalSummaries = workspaceViewModel.goalSummaries.value,
                 actions = sidebarActions,
@@ -1944,16 +1937,16 @@ fun WorkspaceScreen(
                     searchState = searchState,
                     searchResults = searchResults,
                     sidebarSearchOpen = sidebarSearchOpen,
-                    sessionFilter = sessionFilter,
                     workspaceAccounts = workspaceAccounts,
                     deletedWorkspaces = deletedWorkspaces,
                     workspaceRegistry = workspaceRegistry,
                     workspaceRegistryReady = workspaceRegistryReady,
                     sessionsInitialLoad = sessionsInitialLoad,
                     sessionsLoadError = sessionsLoadError,
-                    expandedWorkspaces = expandedWorkspaces,
-                    expandedGroups = expandedGroups,
                     hostName = host.name,
+                    selectedWorkspace = selectedHomeWorkspace,
+                    onSelectWorkspace = { selectedHomeWorkspace = it },
+                    containerColor = Dsh.bgBase,
                     collapsed = false,
                     goalSummaries = workspaceViewModel.goalSummaries.value,
                     actions = sidebarActions,
@@ -2793,23 +2786,6 @@ fun WorkspaceScreen(
         )
     }
 
-    if (showSessionFilterSheet) {
-        val filterData = remember(sessions, archivedIds, deletedIds, showSessionFilterSheet) {
-            buildSessionFilterData(
-                sessions = sessions,
-                archivedIds = archivedIds,
-                deletedIds = deletedIds,
-                nowMillis = System.currentTimeMillis(),
-            )
-        }
-        SessionFilterSheet(
-            selected = sessionFilter,
-            counts = filterData.counts,
-            onSelect = { sessionFilter = it },
-            onDismiss = { showSessionFilterSheet = false },
-        )
-    }
-
     // 访问模式选择（有会话 → 改当前会话；无会话 → 写全局默认）
     if (showPermissionPicker) {
         PermissionPickerSheet(
@@ -2851,7 +2827,6 @@ fun WorkspaceScreen(
                 workspaceRegistryReady = true
                 val committedPath = normalizeWorkspacePath(workspace.path)
                 persistDeletedWorkspaces(deletedWorkspaces - committedPath)
-                expandedWorkspaces = expandedWorkspaces + committedPath
                 workspacePrefs.lastSelectedWorkspace = committedPath
                 startComposeSession(committedPath)
                 selectViewMode("chat")
@@ -2933,8 +2908,6 @@ fun WorkspaceScreen(
                                 if (workspacePrefs.lastSelectedWorkspace?.let(::normalizeWorkspacePath) == path) {
                                     workspacePrefs.lastSelectedWorkspace = null
                                 }
-                                expandedWorkspaces = expandedWorkspaces - path
-                                expandedGroups = expandedGroups - path
                                 refreshSessions()
                             }
                             deleteWorkspaceTarget = null

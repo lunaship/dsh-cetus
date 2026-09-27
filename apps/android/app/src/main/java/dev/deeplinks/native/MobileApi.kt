@@ -77,6 +77,8 @@ data class MobileSession(
     val origin: String? = null, // "subagent" = 子智能体会话（侧边栏隐藏，对齐 Web UI rowVisible）
     val parentSessionId: String? = null,
     val subagentCount: Int? = null,
+    /** 有未结束的审批 / 澄清问题（插件自记，见 MOBILE_SYNC_CONTRACT）；首页「等待确认」分区。 */
+    val awaitingInput: Boolean = false,
 )
 
 data class MobilePairedDevice(
@@ -213,6 +215,7 @@ internal fun parseMobileSession(json: JSONObject): MobileSession = MobileSession
     origin = json.optNullableString("origin"),
     parentSessionId = json.optNullableString("parentSessionId"),
     subagentCount = json.optInt("subagentCount", -1).takeIf { it >= 0 },
+    awaitingInput = json.optBoolean("awaitingInput"),
 )
 
 internal fun resolveHarnessLabel(

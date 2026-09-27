@@ -7,6 +7,7 @@
  *   3. 配对采用一次性 6 位配对码（默认 10 分钟有效）。默认扫码即批准；
  *      开启「配对需本机确认」后，token 先发、API 要等面板点批准才放行。
  */
+import { createAwaitingInput } from "./awaiting-input.js"
 import { createServer as createHttpsServer } from "node:https"
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -760,6 +761,8 @@ function createRuntime(config) {
       ttlMs: (config?.pairingTtlSeconds ?? 600) * 1000,
     }),
     requests,
+    // sessionId → 未结束的审批 / 澄清问题数（含交给电脑端的），首页「等待确认」用
+    awaiting: createAwaitingInput(),
   }
 }
 
@@ -1822,7 +1825,7 @@ export function apply(ctx, config) {
    * 签名是 (req, next)，不是元事件 "waterfall"）。无手机 SSE 时必须 next()，
    * 否则会把桌面审批一并挂死。
    */
-  ctx.on("approval/request", (req, next) => {
+  ctx.on("approval/request", (req, next) => rt.awaiting.track(req?.agent?.session?.id, () => {
     if (req?.signal?.aborted === true) return Promise.resolve("cancelled")
     const sessionId = req?.agent?.session?.id
     const writers = sessionId ? rt.sessionStreams.get(sessionId) : null
@@ -1856,13 +1859,13 @@ export function apply(ctx, config) {
       rt.requests.addApproval(rec)
       req.signal?.addEventListener("abort", rec.onAbort, { once: true })
     })
-  })
+  }))
 
   /**
    * 0.1.2 起澄清卡走 `user-questions/request` waterfall，不再经 /api/events.mux。
    * 有手机 SSE 时由插件代答；否则 next() 把问题交给网页 UI。
    */
-  ctx.on("user-questions/request", (req, next) => {
+  ctx.on("user-questions/request", (req, next) => rt.awaiting.track(req?.agent?.session?.id, () => {
     if (req?.signal?.aborted === true) return next()
     const sessionId = req?.agent?.session?.id
     const writers = sessionId ? rt.sessionStreams.get(sessionId) : null
@@ -1898,7 +1901,7 @@ export function apply(ctx, config) {
       writeSse(new Set(targets), `event: question\ndata: ${body}\n\n`)
       ctx.logger.info(`dsh-links: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${rpcId.slice(0, 8)}`)
     })
-  })
+  }))
 
   // ---------- 手机接入代理（0.0.0.0:<port> HTTPS）：仅 health / pair / mobile/* ----------
   const requestHandler = async (req, res) => {

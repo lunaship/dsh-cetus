@@ -71,6 +71,11 @@ function mapModelGroups(groups) {
   }))
 }
 
+/** 会话摘要 + 插件侧运行时状态（等待确认）。 */
+function summarizeSession(rt, item) {
+  return mobileSessionSummary(item, { awaitingInput: rt?.awaiting?.has(item?.sessionId) })
+}
+
 function uniqueRpcPayloads(payloads) {
   const seen = new Set()
   const out = []
@@ -187,7 +192,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     }
     if (req.method === "GET" && pathname === "/dsh-link/mobile/bootstrap") {
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
-      const sessions = items.map(mobileSessionSummary)
+      const sessions = items.map((item) => summarizeSession(rt, item))
       return json(res, 200, {
         version: 1,
         protocol: PLUGIN_PROTOCOL,
@@ -205,7 +210,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
       return json(res, 200, {
         version: 1,
-        sessions: items.map(mobileSessionSummary),
+        sessions: items.map((item) => summarizeSession(rt, item)),
         archivedSessionIds,
       })
     }

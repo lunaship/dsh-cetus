@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
 import dev.deeplinks.core.ThemeManager
@@ -86,12 +87,8 @@ internal val DrawerLeadingGap = 10.dp
 /** 抽屉所有行共用同一圆角（选中/按压/滑动垫底同形），不混两种弧度。 */
 internal val DrawerRowShape = RoundedCornerShape(DshRadius.md)
 
-/** 抽屉行未选中底色：与抽屉容器同色；选中态的弱蓝必须叠在它上面，不能单独当行底。 */
-private val RowRestColor: Color
-    @Composable get() = Dsh.bgDrawer
-
 /**
- * 会话行（M3 抽屉/列表条目规格）。
+ * 任务首页会话行（M3 双行列表条目规格）。
  * 归档滑动、长按菜单与原实现一致；尺寸/双行副标题/状态指示原生化。
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -106,13 +103,16 @@ internal fun SessionRowItem(
     onDelete: () -> Unit = {},
     indent: Dp = 0.dp,
     goalSummary: String? = null,
+    containerColor: Color = Color.Unspecified,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val itemInteraction = remember { MutableInteractionSource() }
     val itemPressed by itemInteraction.collectIsPressedAsState()
     val haptic = LocalHapticFeedback.current
     val semanticHaptic = rememberDshHaptic()
+    val s = DshS
     val archiveLabel = L.archiveSession
+    val rowRestColor = if (containerColor == Color.Unspecified) Dsh.bgDrawer else containerColor
     // 会话行统一用抽屉行圆角（小圆角矩形），不改成会抢注意力的长胶囊。
     val rowShape = DrawerRowShape
 
@@ -188,7 +188,7 @@ internal fun SessionRowItem(
                     .clip(rowShape)
                     // 先铺不透明行底，再叠选中/按压色：弱蓝是半透明色，
                     // 不垫底就会透出下层的滑动归档层。
-                    .background(RowRestColor)
+                    .background(rowRestColor)
                     .background(
                         when {
                             // 固定品牌弱蓝，避免 Android 动态色把会话选中态变成系统色。
@@ -200,6 +200,11 @@ internal fun SessionRowItem(
                     .semantics {
                         role = Role.Button
                         selected = isSelected
+                        if (session.awaitingInput) {
+                            stateDescription = s.awaitingInputStatus
+                        } else if (session.running) {
+                            stateDescription = s.runningStatus
+                        }
                     }
                     .combinedClickable(
                         interactionSource = itemInteraction,
@@ -212,58 +217,52 @@ internal fun SessionRowItem(
                             menuOpen = true
                         },
                     )
-                    .padding(horizontal = DrawerInnerPadding, vertical = 8.dp),
+                    .padding(horizontal = DrawerInnerPadding, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 对照 lody 的会话行：不再每行垫一个固定图标，标题独占首行、时间靠右；
-                // 次行是「状态 · 项目 · 目标」，运行中用品牌色细环表达（色 + 形）
+                HomeTaskLeadingStatus(session)
+                Spacer(Modifier.width(12.dp))
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     val relTime = if (!session.running && session.updatedAt > 0) relativeTime(session.updatedAt) else ""
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    val awaiting = session.awaitingInput
+                    val project = session.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+                    val meta = if (awaiting) {
+                        listOfNotNull(project, goalSummary?.takeIf { it.isNotBlank() }).joinToString(" · ")
+                    } else {
+                        formatSessionSubtitle(
+                            session = session,
+                            goalSummary = goalSummary,
+                            runningLabel = s.runningStatus,
+                            relativeTimeFormatted = relTime,
+                        )
+                    }
+                    Text(
+                        session.title,
+                        color = Dsh.labelPrimary,
+                        style = DshType.titleSmall,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (session.running || awaiting || meta.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
                         Text(
-                            session.title,
-                            color = Dsh.labelPrimary,
-                            style = DshType.titleSmall,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            meta.ifBlank { s.awaitingInputStatus },
+                            color = when {
+                                session.running && !awaiting -> Dsh.brand400
+                                else -> Dsh.labelTertiary
+                            },
+                            style = DshType.captionRelaxed,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
                         )
-                        if (relTime.isNotBlank()) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(relTime, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1)
-                        }
-                    }
-                    val meta = formatSessionSubtitle(
-                        session = session,
-                        goalSummary = goalSummary,
-                        runningLabel = L.runningStatus,
-                    )
-                    if (session.running || meta.isNotBlank()) {
-                        Spacer(Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (session.running) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(10.dp),
-                                    color = Dsh.brand400,
-                                    trackColor = Dsh.brand400.copy(alpha = 0.2f),
-                                    strokeWidth = 1.5.dp,
-                                )
-                                Spacer(Modifier.width(6.dp))
-                            }
-                            Text(
-                                meta,
-                                color = if (session.running) Dsh.brand400 else Dsh.labelTertiary,
-                                style = DshType.captionRelaxed,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
                     }
                 }
+                Spacer(Modifier.width(12.dp))
+                HomeTaskTrailingStatus(session)
             }
             // 锚在行尾：菜单靠右弹出，避免贴侧栏左边
             Box(modifier = Modifier.align(Alignment.CenterEnd)) {
@@ -295,41 +294,69 @@ internal fun SessionRowItem(
     }
 }
 
-/** 抽屉主操作「新会话」：与会话行同规格的列表行 + 品牌 + 图标 —— 侧栏保持一整列，不压浮动胶囊。 */
+/** 任务状态用「色 + 形」双重表达；所有颜色来自现有 DSH 语义 token。 */
 @Composable
-internal fun SidebarNewSessionRow(onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
+private fun HomeTaskLeadingStatus(session: MobileSession) {
+    val awaiting = session.awaitingInput
+    val waitingContent = if (Dsh.isDark) Dsh.warn else Dsh.warnLabel
+    val container = when {
+        awaiting -> Dsh.warn.copy(alpha = 0.12f)
+        session.running -> Dsh.brandTint
+        else -> Dsh.bgGroupedCard
+    }
+    val content = when {
+        awaiting -> waitingContent
+        session.running -> Dsh.brand400
+        else -> Dsh.labelSecondary
+    }
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DrawerEdgePadding)
-            .heightIn(min = DrawerItemHeight)
-            .clip(DrawerRowShape)
-            .background(if (pressed) Dsh.bgPressed else Color.Transparent)
-            .semantics {
-                role = Role.Button
-                contentDescription = L.newSession
-            }
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .padding(horizontal = DrawerInnerPadding),
-        verticalAlignment = Alignment.CenterVertically,
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(container),
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            PlusOutline16,
-            contentDescription = null,
-            tint = Dsh.brand500,
-            modifier = Modifier.size(DrawerIconSize),
+        when {
+            awaiting -> Icon(ClockOutline16, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+            session.running -> CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = content,
+                trackColor = Dsh.brand400.copy(alpha = 0.18f),
+                strokeWidth = 2.dp,
+            )
+            else -> Icon(CheckOutline16, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun HomeTaskTrailingStatus(session: MobileSession) {
+    val s = DshS
+    val waitingContent = if (Dsh.isDark) Dsh.warn else Dsh.warnLabel
+    when {
+        session.awaitingInput -> Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(DshRadius.full))
+                .background(Dsh.warn.copy(alpha = 0.12f))
+                .padding(horizontal = 9.dp, vertical = 4.dp),
+        ) {
+            Text(s.awaitingInputStatus, color = waitingContent, style = DshType.microRelaxed)
+        }
+        session.running -> CircularProgressIndicator(
+            modifier = Modifier.size(22.dp),
+            color = Dsh.brand400,
+            trackColor = Dsh.brand400.copy(alpha = 0.18f),
+            strokeWidth = 2.dp,
         )
-        Spacer(Modifier.width(DrawerLeadingGap))
-        Text(
-            L.newSession,
-            color = Dsh.labelPrimary,
-            style = DshType.body,
-            fontWeight = FontWeight.Medium,
+        else -> Icon(
+            ChevronRightOutline14,
+            contentDescription = null,
+            tint = Dsh.labelTertiary,
+            modifier = Modifier.size(16.dp),
         )
     }
 }
+
 
 /** 抽屉搜索：40dp 输入框（bgInput + 发丝描边，与工具调用查找条同语义）。 */
 @Composable
@@ -400,252 +427,10 @@ internal fun SidebarSearchField(
     }
 }
 
-/** 小节标题 + 搜索入口 + 右侧 overflow（原先一行挤三个图标，改成两个 24dp 按钮）。 */
-@Composable
-internal fun SidebarSectionHeader(
-    title: String,
-    searchActive: Boolean,
-    filterActive: Boolean,
-    onToggleSearch: () -> Unit,
-    onOpenFilterSheet: () -> Unit,
-    onAddWorkspace: () -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = DrawerEdgePadding + DrawerInnerPadding, end = DrawerEdgePadding)
-            .heightIn(min = 40.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            title,
-            color = Dsh.labelTertiary,
-            style = DshType.label,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(1f),
-        )
-        SidebarIconAction(
-            icon = SearchOutline16,
-            contentDescription = L.searchSessions,
-            onClick = onToggleSearch,
-            size = 48.dp,
-            iconSize = 16.dp,
-            active = searchActive,
-        )
-        Box {
-            SidebarIconAction(
-                icon = EllipsisOutline16,
-                contentDescription = if (filterActive) L.filterSessions else title,
-                onClick = { menuOpen = true },
-                size = 48.dp,
-                iconSize = 16.dp,
-                active = filterActive,
-            )
-            DshMenu(
-                expanded = menuOpen,
-                onDismiss = { menuOpen = false },
-                items = listOf(
-                    DshMenuItem(ChecklistOutline14, L.filterSessions) {
-                        menuOpen = false
-                        onOpenFilterSheet()
-                    },
-                    DshMenuItem(PlusOutline16, L.addWorkspace) {
-                        menuOpen = false
-                        onAddWorkspace()
-                    },
-                ),
-            )
-        }
-    }
-}
 
 /** 工作区组头：M3 抽屉条目形态。行内不再嵌「+」，新建会话进长按菜单。 */
 @OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun SidebarWorkspaceRow(
-    name: String,
-    collapsed: Boolean,
-    sessionCount: Int,
-    onToggle: () -> Unit,
-    onCreateSession: () -> Unit,
-    onDeleteWorkspace: () -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val haptic = LocalHapticFeedback.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DrawerEdgePadding),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = DrawerItemHeight)
-                .clip(DrawerRowShape)
-                .background(if (pressed) Dsh.bgPressed else Color.Transparent)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = name
-                    stateDescription = if (collapsed) L.expand else L.collapse
-                }
-                .combinedClickable(
-                    interactionSource = interaction,
-                    indication = dshRipple(),
-                    onClick = {
-                        haptic.performHapticFeedback(
-                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.ContextClick,
-                        )
-                        onToggle()
-                    },
-                    onLongClick = {
-                        haptic.performHapticFeedback(
-                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
-                        )
-                        menuOpen = true
-                    },
-                )
-                .padding(horizontal = DrawerInnerPadding),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                FolderOpenOutline16,
-                contentDescription = null,
-                tint = Dsh.labelSecondary,
-                modifier = Modifier.size(DrawerIconSize),
-            )
-            Spacer(Modifier.width(DrawerLeadingGap))
-            Text(
-                name,
-                color = Dsh.labelPrimary,
-                style = DshType.body,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            if (sessionCount > 0) {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    sessionCount.toString(),
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            // 展开箭头放行尾（M3 抽屉规范）：leading 图标才能与其他条目对齐
-            Icon(
-                if (collapsed) {
-                    ChevronRightOutline14
-                } else {
-                    ChevronDownOutline14
-                },
-                contentDescription = null,
-                tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-            DshMenu(
-                expanded = menuOpen,
-                onDismiss = { menuOpen = false },
-                offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
-                items = listOf(
-                    DshMenuItem(PlusOutline16, L.createSession) {
-                        menuOpen = false
-                        onCreateSession()
-                    },
-                    DshMenuItem(TrashOutline16, L.deleteWorkspace, danger = true) {
-                        menuOpen = false
-                        onDeleteWorkspace()
-                    },
-                ),
-            )
-        }
-    }
-}
 
-/** 抽屉底部：发丝分隔线 + 设置条目（48dp）+ 设备 / 主题图标按钮（48dp 热区）。 */
-@Composable
-internal fun SidebarFooter(
-    isDarkTheme: Boolean,
-    hostName: String,
-    onOpenSettings: () -> Unit,
-    onOpenDevice: () -> Unit,
-    onToggleTheme: () -> Unit,
-) {
-    val settingsInteraction = remember { MutableInteractionSource() }
-    val settingsPressed by settingsInteraction.collectIsPressedAsState()
-    val haptic = rememberDshHaptic()
-    Column(Modifier.fillMaxWidth()) {
-        // 通栏发丝线：把常驻操作与滚动列表切开（容器与内容同系后由它锚定底部分区）
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Dsh.borderSubtle),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = DrawerEdgePadding, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = DrawerItemHeight)
-                    .clip(DrawerRowShape)
-                    .background(if (settingsPressed) Dsh.bgPressed else Color.Transparent)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = L.settingsTitle
-                    }
-                    .clickable(
-                        interactionSource = settingsInteraction,
-                        indication = dshRipple(),
-                        onClick = onOpenSettings,
-                    )
-                    .padding(horizontal = DrawerInnerPadding),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    SettingsOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(DrawerIconSize),
-                )
-                Spacer(Modifier.width(DrawerLeadingGap))
-                Text(
-                    L.settingsTitle,
-                    color = Dsh.labelPrimary,
-                    style = DshType.body,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
-            SidebarIconAction(
-                icon = DevicesOutline16,
-                contentDescription = "${L.deviceAndPairing} · $hostName",
-                onClick = onOpenDevice,
-                size = 48.dp,
-                iconSize = DrawerIconSize,
-            )
-            SidebarIconAction(
-                icon = if (isDarkTheme) LightOutline16 else DarkOutline16,
-                contentDescription = if (isDarkTheme) L.switchToLight else L.switchToDark,
-                onClick = {
-                    // 主题切换是状态切换：给 Tick（导航类点击不加震动）
-                    haptic(DshHaptic.Tick)
-                    onToggleTheme()
-                },
-                size = 48.dp,
-                iconSize = DrawerIconSize,
-            )
-        }
-    }
-}
 
 /** 抽屉内的小图标按钮（overflow / 清除 / 主题），热区与图标分开。 */
 @Composable

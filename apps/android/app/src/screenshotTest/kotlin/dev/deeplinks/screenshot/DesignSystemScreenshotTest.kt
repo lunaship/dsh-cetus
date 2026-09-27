@@ -1,6 +1,12 @@
 package dev.deeplinks.screenshot
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
+import dev.deeplinks.native.util.HomeSection
+import dev.deeplinks.native.HomeNewTaskBar
+import dev.deeplinks.native.HomeSectionHeader
+import dev.deeplinks.native.WorkspaceChips
+import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.SparkleOutline16
 import dev.deeplinks.native.ArchiveBoxOutline16
 import androidx.compose.material3.Icon
@@ -119,11 +125,7 @@ import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
 import dev.deeplinks.native.SessionStatsDetailDialog
-import dev.deeplinks.native.SidebarFooter
-import dev.deeplinks.native.SidebarNewSessionRow
 import dev.deeplinks.native.SidebarSearchField
-import dev.deeplinks.native.SidebarSectionHeader
-import dev.deeplinks.native.SidebarWorkspaceRow
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
 import dev.deeplinks.native.ComposerSeatsRow
@@ -715,107 +717,61 @@ internal fun DevicesDarkEn() {
 }
 
 /**
- * 抽屉行墙：收紧后的抽屉规格（48dp 行 / 20dp 图标 / CornerFull 选中胶囊 / bgDrawer 容器
- * 与 bgSidePanel 同档）。只用 blank 会话，避免相对时间随时钟漂移导致基线抖动。
+ * 首页（任务中心）墙：顶栏 → 工作区筛选条 → 等待确认 / 进行中 / 今天 / 昨天 → 开始新任务。
+ * 会话时间都给 0，避免相对时间随时钟漂移导致基线抖动。
  */
 @Composable
 private fun SidebarWall() {
-    val hairline = Dsh.borderSubtle
+    fun session(id: String, title: String, running: Boolean = false, awaiting: Boolean = false) = MobileSession(
+        sessionId = id,
+        title = title,
+        updatedAt = 0L,
+        running = running,
+        blank = false,
+        cwd = "/Users/me/dsh-links",
+        agentPreset = null,
+        awaitingInput = awaiting,
+    )
     Column(
         modifier = Modifier
-            .width(304.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Dsh.bgDrawer)
-            // 与真实抽屉一致：末缘发丝线（DshAdaptiveShell 的 SidebarEdgeHairline）
-            .drawWithContent {
-                drawContent()
-                val stroke = 1.dp.toPx()
-                val x = size.width - stroke / 2
-                drawLine(hairline, Offset(x, 0f), Offset(x, size.height), strokeWidth = stroke)
-            }
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        SectionTitle("Primary action")
-        SidebarNewSessionRow(onClick = {})
-        SectionTitle("Section header")
-        SidebarSectionHeader(
-            title = "工作区",
-            searchActive = false,
-            filterActive = true,
-            onToggleSearch = {},
-            onOpenFilterSheet = {},
+        HomeHeader(hostName = "MacBook Pro", searchActive = false, onOpenDevice = {}, onToggleSearch = {}, onOpenSettings = {})
+        WorkspaceChips(
+            workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
+            selected = null,
+            onSelect = {},
             onAddWorkspace = {},
-        )
-        SectionTitle("Search")
-        SidebarSearchField(value = "", onValueChange = {}, onClear = {}, loading = false)
-        SectionTitle("Rows")
-        SessionRowItem(
-            session = MobileSession(
-                sessionId = "s1",
-                title = "重构侧边栏行组件",
-                updatedAt = 0L,
-                running = true,
-                blank = true,
-                cwd = null,
-                agentPreset = null,
-            ),
-            isSelected = true,
-            onClick = {},
-            onRename = {},
-            onFork = {},
-        )
-        SessionRowItem(
-            session = MobileSession(
-                sessionId = "s2",
-                title = "修复图片附件回退",
-                updatedAt = 0L,
-                running = false,
-                blank = true,
-                cwd = null,
-                agentPreset = null,
-            ),
-            isSelected = false,
-            onClick = {},
-            onRename = {},
-            onFork = {},
-        )
-        SidebarWorkspaceRow(
-            name = "deeplinks",
-            collapsed = false,
-            sessionCount = 3,
-            onToggle = {},
-            onCreateSession = {},
+            onCreateSessionIn = {},
             onDeleteWorkspace = {},
         )
-        SidebarWorkspaceRow(
-            name = "dsh-links",
-            collapsed = true,
-            sessionCount = 0,
-            onToggle = {},
-            onCreateSession = {},
-            onDeleteWorkspace = {},
-        )
-        SectionTitle("Footer")
-        SidebarFooter(
-            isDarkTheme = false,
-            hostName = "MacBook Pro",
-            onOpenSettings = {},
-            onOpenDevice = {},
-            onToggleTheme = {},
-        )
+        HomeSectionHeader(HomeSection.AWAITING, 2)
+        SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.RUNNING, 1)
+        SessionRowItem(session("s2", "完善审批状态同步", running = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.TODAY, 2)
+        SessionRowItem(session("s3", "修复手机模型切换"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s4", "整理工作区导航"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.YESTERDAY, 1)
+        SessionRowItem(session("s6", "补齐移动端测试"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        Spacer(Modifier.height(24.dp))
+        HomeNewTaskBar(workspaceName = "dsh-links", onClick = {})
     }
 }
 
 @PreviewTest
-@Preview(name = "sidebar light zh", showBackground = true, widthDp = 340, heightDp = 900)
+@Preview(name = "sidebar light zh", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SidebarLightZh() {
     Wall(dark = false, english = false) { SidebarWall() }
 }
 
 @PreviewTest
-@Preview(name = "sidebar dark en", showBackground = true, widthDp = 340, heightDp = 900)
+@Preview(name = "sidebar dark en", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SidebarDarkEn() {
     Wall(dark = true, english = true) { SidebarWall() }
