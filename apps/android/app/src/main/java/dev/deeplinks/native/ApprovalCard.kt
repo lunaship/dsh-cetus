@@ -247,11 +247,11 @@ internal fun ApprovalCard(
                 )
             }
 
-            // footer：步骤点 + 上箭头提交
+            // footer：步骤点 + 上箭头提交。与提问卡一致，留在卡片同一层底色里——
+            // 单独铺 bgCard 在浅色下与页面白底连成一片，卡片看起来像被截断。
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Dsh.bgCard.copy(alpha = if (Dsh.isDark) 0.5f else 1f))
                     .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
