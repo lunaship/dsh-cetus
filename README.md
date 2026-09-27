@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="DSH Links Logo" />
-  <h1>DSH Links</h1>
+  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="deeplinks Logo" />
+  <h1>deeplinks</h1>
   <p><b>DeepSeek Harness 的手机端</b> · 局域网配对 · 原生 Android 会话工作台</p>
 
   <p>
