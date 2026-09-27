@@ -39,15 +39,15 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
-                .padding(12.dp),
+                .padding(DshSpace.s12),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     L.selectText,
                     color = Dsh.labelPrimary,
-                    style = DshType.t14,
+                    style = DshType.body,
                     modifier = Modifier.weight(1f),
                 )
                 DshHeaderAction(L.close, onClick = onDismiss)
@@ -56,13 +56,13 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
                 Text(
                     text,
                     color = Dsh.labelPrimary,
-                    style = DshType.t16x28,
+                    style = DshType.bodyLarge,
                     lineHeight = 28.sp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 480.dp)
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 8.dp, bottom = 4.dp),
+                        .padding(top = DshSpace.s8, bottom = DshSpace.s4),
                 )
             }
         }

@@ -1,10 +1,12 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.CircleShape
 import dev.deeplinks.core.DshType
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,21 +24,16 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
@@ -74,12 +71,11 @@ internal fun QuestionCard(
         Text(
             strings.questionSubmitted,
             color = Dsh.labelSecondary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.sm))
-                .background(Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(Dsh.bgSubtle)
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         )
         return
     }
@@ -99,25 +95,24 @@ internal fun QuestionCard(
         )
     }
 
+    // 默认 tonal 容器（bgSubtle + container 圆角）：问题卡是行内卡片，不浮起，去掉阴影
     Column(
         modifier = Modifier
             .widthIn(max = 340.dp)
             .fillMaxWidth()
             .heightIn(min = 120.dp)
-            .shadow(6.dp, RoundedCornerShape(DshRadius.lg), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-            .clip(RoundedCornerShape(DshRadius.lg))
-            .background(Dsh.bgSurface)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgSubtle)
+            .padding(horizontal = 14.dp, vertical = DshSpace.s12),
     ) {
         Text(
             msg.questionHeader?.takeIf { it.isNotBlank() } ?: strings.questionClarify,
             color = Dsh.labelTertiary,
-            style = DshType.t11M,
+            style = DshType.microMedium,
             fontWeight = FontWeight(500),
         )
         if (displayQuestions.any { it.unsupported }) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             Text(
                 strings.questionUnsupportedOnPhone,
                 color = Dsh.labelSecondary,
@@ -126,16 +121,16 @@ internal fun QuestionCard(
             return@Column
         }
         displayQuestions.forEachIndexed { questionIndex, question ->
-            if (questionIndex > 0) Spacer(Modifier.height(12.dp))
-            else Spacer(Modifier.height(4.dp))
+            if (questionIndex > 0) Spacer(Modifier.height(DshSpace.s12))
+            else Spacer(Modifier.height(DshSpace.s4))
             if (displayQuestions.size > 1) {
                 Text(
                     strings.questionIndex.format(questionIndex + 1),
                     color = Dsh.labelTertiary,
-                    style = DshType.t11M,
+                    style = DshType.microMedium,
                     fontWeight = FontWeight(500),
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(DshSpace.s2))
             }
             Text(
                 question.prompt.ifBlank { msg.text },
@@ -147,13 +142,13 @@ internal fun QuestionCard(
             val draft = draftOf(question.id)
             val bringIntoView = remember(question.id) { BringIntoViewRequester() }
             if (question.options.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(DshSpace.s8))
                 question.options.forEachIndexed { index, option ->
                     val isSelected = option.id in draft.selected || option.label in draft.selected
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.sm))
+                            .clip(RoundedCornerShape(DshRadius.control))
                             .selectable(
                                 selected = isSelected,
                                 onClick = {
@@ -170,19 +165,19 @@ internal fun QuestionCard(
                             )
                             .semantics { contentDescription = option.label }
                             .heightIn(min = 48.dp)
-                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                            .padding(vertical = DshSpace.s6, horizontal = DshSpace.s4),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             "${index + 1}. ${option.label}",
                             color = if (isSelected) Dsh.labelPrimary else Dsh.labelSecondary,
-                            style = DshType.t13,
+                            style = DshType.body,
                             fontWeight = if (isSelected) FontWeight(600) else FontWeight.Normal,
                         )
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
             BasicTextField(
                 value = draft.custom,
                 onValueChange = { value ->
@@ -194,20 +189,19 @@ internal fun QuestionCard(
                     }
                 },
                 maxLines = 5,
-                textStyle = DshType.t13.copy(color = Dsh.labelPrimary),
+                textStyle = DshType.body.copy(color = Dsh.labelPrimary),
                 cursorBrush = SolidColor(Dsh.labelPrimary),
                 decorationBox = { inner ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 48.dp, max = 140.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .background(Dsh.bgCard)
-                            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .clip(RoundedCornerShape(DshRadius.control))
+                            .background(Dsh.bgSubtle)
+                            .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                     ) {
                         if (draft.custom.isEmpty()) {
-                            Text(strings.questionAnswerHint, color = Dsh.labelTertiary, style = DshType.t13)
+                            Text(strings.questionAnswerHint, color = Dsh.labelTertiary, style = DshType.body)
                         }
                         inner()
                     }
@@ -233,7 +227,7 @@ internal fun QuestionCard(
                     .fillMaxWidth()
                     .semantics { contentDescription = shownError },
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(DshSpace.s8))
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -263,15 +257,15 @@ internal fun QuestionCard(
                 Box(
                     modifier = Modifier
                         .size(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(CircleShape)
                         .background(if (canSend) Dsh.labelPrimary else Dsh.bgTrack),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Default.KeyboardArrowUp,
+                        ChevronUpOutline14,
                         contentDescription = null,
                         tint = if (canSend) Dsh.bgSurface else Dsh.labelTertiary,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(14.dp),
                     )
                 }
             }

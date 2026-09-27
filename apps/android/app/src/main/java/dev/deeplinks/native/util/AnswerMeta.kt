@@ -15,11 +15,15 @@ fun compactDuration(ms: Long): String = when {
     else -> "${ms}ms"
 }
 
+/** 概览用紧凑写法（29.8K）；明细行用 [exactTokens]。两者单位统一大写 K / M。 */
 fun compactTokens(n: Long): String = when {
     n >= 1_000_000 -> String.format(Locale.US, "%.1fM", n / 1_000_000.0)
     n >= 1000 -> String.format(Locale.US, "%.1fK", n / 1000.0)
     else -> "$n"
 }
+
+/** 明细行的精确数字：千分位分隔（18,400），与概览的紧凑写法区分开但不混用裸数字。 */
+fun exactTokens(n: Long): String = String.format(Locale.US, "%,d", n)
 
 /**
  * 助手回复底栏只保留这条消息自己的耗时。

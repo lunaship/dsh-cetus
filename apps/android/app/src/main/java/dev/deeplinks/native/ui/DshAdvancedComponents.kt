@@ -1,5 +1,7 @@
 package dev.deeplinks.native.ui
 
+import androidx.compose.runtime.getValue
+import dev.deeplinks.native.DshRadius
 import dev.deeplinks.core.DshType
 
 import androidx.compose.foundation.background
@@ -19,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.native.DshSpace
 
 // ============================================================
 // DshTextField —— 文本输入：48dp 高、聚焦仅加深描边（无 focus ring）、error 态红边
@@ -50,7 +52,7 @@ fun DshTextField(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(DshRadius.container)
 
     val borderColor = when {
         !enabled -> Dsh.borderSubtle
@@ -64,9 +66,9 @@ fun DshTextField(
             Text(
                 text = label,
                 color = Dsh.labelSecondary,
-                style = DshType.t12M,
+                style = DshType.label,
                 fontWeight = FontWeight(500),
-                modifier = Modifier.padding(bottom = 4.dp, start = 2.dp),
+                modifier = Modifier.padding(bottom = DshSpace.s4, start = DshSpace.s2),
             )
         }
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -77,7 +79,7 @@ fun DshTextField(
                 singleLine = singleLine,
                 visualTransformation = visualTransformation,
                 interactionSource = interaction,
-                textStyle = DshType.bodyDense.copy(
+                textStyle = DshType.body.copy(
                     color = if (enabled) Dsh.labelPrimary else Dsh.labelDimmed,
                 ),
                 modifier = Modifier
@@ -106,13 +108,13 @@ fun DshTextField(
                             Text(
                                 text = placeholder,
                                 color = Dsh.labelTertiary,
-                                style = DshType.bodyDense,
+                                style = DshType.body,
                             )
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.weight(1f)) { innerTextField() }
                             if (trailingIcon != null) {
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(DshSpace.s8))
                                 trailingIcon()
                             }
                         }
@@ -125,7 +127,7 @@ fun DshTextField(
                 text = errorText,
                 color = Dsh.error,
                 style = DshType.microRelaxed,
-                modifier = Modifier.padding(top = 4.dp, start = 2.dp),
+                modifier = Modifier.padding(top = DshSpace.s4, start = DshSpace.s2),
             )
         }
     }

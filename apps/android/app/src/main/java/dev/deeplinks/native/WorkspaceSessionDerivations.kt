@@ -1,13 +1,7 @@
 package dev.deeplinks.native
 
-import dev.deeplinks.native.util.SessionFilter
-import dev.deeplinks.native.util.classifySession
 import dev.deeplinks.native.util.normalizeWorkspacePath
 
-internal data class SessionFilterData(
-    val sessions: List<MobileSession>,
-    val counts: Map<SessionFilter, Int>,
-)
 
 /** Installs a committed workspace.create echo without waiting for the next catalog poll. */
 internal fun upsertCreatedWorkspace(
@@ -24,7 +18,6 @@ internal fun upsertCreatedWorkspace(
         if (position == index) normalized else current
     }
 }
-
 /**
  * 选择“按名称创建同级工作区”的服务端锚点。
  * 优先使用用户当前/最近选择的路径；路径失效时退回第一个仍有服务端 id 的注册工作区。
@@ -97,43 +90,4 @@ internal fun visibleHistorySessions(
     session.sessionId !in archivedIds &&
         session.sessionId !in deletedIds &&
         session.origin != "subagent"
-}
-
-internal fun buildSessionFilterData(
-    sessions: List<MobileSession>,
-    archivedIds: Set<String>,
-    deletedIds: Set<String>,
-    nowMillis: Long,
-): SessionFilterData {
-    val staleCutoff = nowMillis - 24 * 3600_000L
-    val visible = ArrayList<MobileSession>(sessions.size)
-    var running = 0
-    var stopped = 0
-
-    sessions.forEach { session ->
-        if (
-            session.sessionId in archivedIds ||
-            session.sessionId in deletedIds ||
-            session.origin == "subagent" ||
-            (session.blank && session.updatedAt < staleCutoff)
-        ) {
-            return@forEach
-        }
-
-        visible += session
-        when (classifySession(session)) {
-            SessionFilter.RUNNING -> running += 1
-            SessionFilter.STOPPED -> stopped += 1
-            SessionFilter.ALL -> Unit
-        }
-    }
-
-    return SessionFilterData(
-        sessions = visible,
-        counts = mapOf(
-            SessionFilter.ALL to visible.size,
-            SessionFilter.RUNNING to running,
-            SessionFilter.STOPPED to stopped,
-        ),
-    )
 }

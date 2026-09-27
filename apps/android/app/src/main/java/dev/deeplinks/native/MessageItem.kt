@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.AnimatedVisibility
@@ -30,25 +32,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Compress
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,6 +94,8 @@ internal fun MessageItem(
     onRetract: (() -> Unit)? = null,
     onFetchProducedFile: ((String) -> Pair<String, ByteArray>)? = null,
     onOpenChanges: ((seq: Long, fileIndex: Int?) -> Unit)? = null,
+    /** 复制 / 赞踩 / 时间一行：只在一轮的最后一条回复上显示。 */
+    showActions: Boolean = true,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var selectOpen by remember { mutableStateOf(false) }
@@ -137,12 +130,6 @@ internal fun MessageItem(
                     horizontalAlignment = Alignment.End,
                 ) {
                     UserBubble(msg.text, longPressModifier)
-                    Spacer(Modifier.height(4.dp))
-                    MessageActionRow(
-                        onCopy = onCopy,
-                        onFork = null,
-                        onRegenerate = null,
-                    )
                 }
             }
             msg.role == "reasoning" -> ReasoningRow(msg.text, running || msg.running == true, msg.durationMs)
@@ -189,8 +176,8 @@ internal fun MessageItem(
                             streaming = msg.running == true,
                         )
                     }
-                    // 助手消息底部：复制 / 分叉 / 重新生成（流式结束后淡入，对齐 Web）
-                    if (msg.role == "assistant") {
+                    // 助手消息底部：复制 / 赞踩 / 时间（流式结束后淡入，只挂在轮末）
+                    if (msg.role == "assistant" && showActions) {
                         AnimatedVisibility(
                             visible = msg.running != true,
                             enter = fadeIn(animationSpec = tween(motionDuration(400))),
@@ -200,9 +187,9 @@ internal fun MessageItem(
                                 buildAnswerMeta(msg.durationMs)
                             }
                             Row(
-                                modifier = Modifier.padding(top = 6.dp),
+                                modifier = Modifier.padding(top = DshSpace.s6),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
                             ) {
                                     MessageActionIcon(
                                         icon = CopyOutline16,
@@ -237,7 +224,7 @@ internal fun MessageItem(
                                             color = Dsh.labelTertiary,
                                             style = DshType.microRelaxed,
                                             maxLines = 1,
-                                            modifier = Modifier.padding(start = 6.dp),
+                                            modifier = Modifier.padding(start = DshSpace.s6),
                                         )
                                     }
                                 }
@@ -256,15 +243,15 @@ internal fun MessageItem(
                     dshHaptic(DshHaptic.Confirm)
                     onCopy()
                 })
-                add(DshMenuItem(Icons.Default.TextFields, L.selectText) {
+                add(DshMenuItem(FontOutline16, L.selectText) {
                     menuOpen = false
                     selectOpen = true
                 })
-                add(DshMenuItem(Icons.Default.Share, L.shareMessage) {
+                add(DshMenuItem(ShareOutline16, L.shareMessage) {
                     menuOpen = false
                     ShareIntents.shareText(context, msg.text, L.shareMessage)
                 })
-                add(DshMenuItem(Icons.Default.FormatQuote, L.quote) {
+                add(DshMenuItem(QuoteOutline16, L.quote) {
                     menuOpen = false
                     onQuote()
                 })
@@ -279,7 +266,7 @@ internal fun MessageItem(
                     })
                 }
                 if (onFeedback != null) {
-                    add(DshMenuItem(Icons.Default.Feedback, L.messageFeedback) {
+                    add(DshMenuItem(FeedbackOutline16, L.messageFeedback) {
                         menuOpen = false
                         onFeedback()
                     })
@@ -288,51 +275,6 @@ internal fun MessageItem(
         )
         if (selectOpen) {
             SelectTextDialog(text = msg.text, onDismiss = { selectOpen = false })
-        }
-    }
-}
-
-/** 消息底栏：复制 / 分叉 / 重新生成（按需显示） */
-@Composable
-private fun MessageActionRow(
-    onCopy: () -> Unit,
-    onFork: (() -> Unit)? = null,
-    onRegenerate: (() -> Unit)? = null,
-    onFeedback: (() -> Unit)? = null,
-) {
-    val haptic = rememberDshHaptic()
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MessageActionIcon(
-            icon = CopyOutline16,
-            contentDescription = L.copy,
-            onClick = {
-                haptic(DshHaptic.Confirm)
-                onCopy()
-            },
-        )
-        if (onFork != null) {
-            MessageActionIcon(
-                icon = BranchOutline16,
-                contentDescription = L.forkSession,
-                onClick = onFork,
-            )
-        }
-        if (onRegenerate != null) {
-            MessageActionIcon(
-                icon = RefreshOutline16,
-                contentDescription = L.regenerate,
-                onClick = onRegenerate,
-            )
-        }
-        if (onFeedback != null) {
-            MessageActionIcon(
-                icon = Icons.Default.Feedback,
-                contentDescription = L.messageFeedback,
-                onClick = onFeedback,
-            )
         }
     }
 }
@@ -358,7 +300,7 @@ private fun MessageActionIcon(
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(if (pressed) Dsh.pressed else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
@@ -392,10 +334,9 @@ private fun RawMessageCard(msg: MobileMessage) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
-            .padding(12.dp)
+            .padding(DshSpace.s12)
     ) {
         Row(
             modifier = Modifier
@@ -409,21 +350,21 @@ private fun RawMessageCard(msg: MobileMessage) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                if (expanded) ChevronDownOutline14 else ChevronRightOutline14,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(12.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 L.unsupportedMessageType.format(msg.role),
                 color = Dsh.labelSecondary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 lineHeight = 20.sp
             )
         }
         if (expanded) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(DshSpace.s6))
             Text(
                 detail,
                 fontFamily = FontFamily.Monospace,
@@ -443,13 +384,13 @@ private fun CompactionRow(summary: String, running: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .semantics {
                 role = Role.Button
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { expanded = !expanded }
-            .padding(vertical = 2.dp),
+            .padding(vertical = DshSpace.s2),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 16px leading 图标（上下文图标）
@@ -463,29 +404,29 @@ private fun CompactionRow(summary: String, running: Boolean) {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(Dsh.brand400)
+                        .background(Dsh.labelTertiary)
                 )
             } else {
                 Icon(
-                    Icons.Default.Compress,
+                    CompressOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
             }
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(DshSpace.s6))
         Text(
             if (running) L.compressing else L.contextCompressed,
             color = Dsh.labelPrimary.copy(alpha = 0.85f),
-            style = DshType.t14x24,
+            style = DshType.bodyLarge,
             lineHeight = 24.sp
         )
         if (!running) {
             // 分隔点：padding 在 size 外面（原来写在固定 2dp 盒内不生效，只剩一粒贴字的小点）
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 6.dp)
+                    .padding(horizontal = DshSpace.s6)
                     .size(3.dp)
                     .clip(CircleShape)
                     .background(Dsh.labelTertiary)
@@ -493,7 +434,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
             Text(
                 summary.lineSequence().firstOrNull().orEmpty(),
                 color = Dsh.labelTertiary,
-                style = DshType.t14x24,
+                style = DshType.bodyLarge,
                 lineHeight = 24.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -517,9 +458,9 @@ private fun CompactionRow(summary: String, running: Boolean) {
         Text(
             summary,
             color = Dsh.labelTertiary,
-            style = DshType.t14x24,
+            style = DshType.bodyLarge,
             lineHeight = 24.sp,
-            modifier = Modifier.padding(start = 22.dp, top = 4.dp, bottom = 4.dp)
+            modifier = Modifier.padding(start = 22.dp, top = DshSpace.s4, bottom = DshSpace.s4)
         )
     }
 }
@@ -534,13 +475,13 @@ private fun GoalRoundRow(text: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .semantics {
                 role = Role.Button
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable { expanded = !expanded }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4)
     ) {
         Row(
             modifier = Modifier
@@ -554,11 +495,11 @@ private fun GoalRoundRow(text: String) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(13.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 L.goalInjection,
                 color = Dsh.labelTertiary,
-                style = DshType.t12x18M,
+                style = DshType.captionMedium,
                 fontWeight = FontWeight(500),
             )
             progress?.let {
@@ -589,10 +530,10 @@ private fun GoalRoundRow(text: String) {
                 maxLines = 8,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(top = 6.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .padding(top = DshSpace.s6)
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp, vertical = DshSpace.s8)
             )
         }
     }
@@ -607,13 +548,13 @@ private fun ContextInjectionRow(text: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .semantics {
                 role = Role.Button
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable { expanded = !expanded }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4)
     ) {
         Row(
             modifier = Modifier
@@ -622,16 +563,16 @@ private fun ContextInjectionRow(text: String) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Default.Description,
+                FileOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(12.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 L.contextInjection,
                 color = Dsh.labelTertiary,
-                style = DshType.t12x18M,
+                style = DshType.captionMedium,
                 fontWeight = FontWeight(500),
                 lineHeight = 18.sp
             )
@@ -639,7 +580,6 @@ private fun ContextInjectionRow(text: String) {
                 " · ",
                 color = Dsh.labelTertiary,
                 style = DshType.captionRelaxed,
-                lineHeight = 18.sp
             )
             Text(
                 sources.joinToString(", "),
@@ -672,10 +612,10 @@ private fun ContextInjectionRow(text: String) {
                 maxLines = 16,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(top = 6.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .padding(top = DshSpace.s6)
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp, vertical = DshSpace.s8)
             )
         }
     }
@@ -691,9 +631,8 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
     ) {
         Row(
             modifier = Modifier
@@ -704,7 +643,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { expanded = !expanded }
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -717,7 +656,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             Text(
                 L.tasks,
                 color = Dsh.labelPrimary,
-                style = DshType.t13x24M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 lineHeight = 24.sp
             )
@@ -725,7 +664,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             Text(
                 L.todoCompleted.format(done, todos.size),
                 color = Dsh.labelTertiary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -743,8 +682,8 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             exit = shrinkVertically(animationSpec = tween(motionDuration(180), easing = FastOutSlowInEasing))
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
+                verticalArrangement = Arrangement.spacedBy(DshSpace.s8)
             ) {
                 todos.forEach { todo ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -753,7 +692,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                         Text(
                             todo.content,
                             color = Dsh.labelSecondary,
-                            style = DshType.bodyDense,
+                            style = DshType.body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -782,7 +721,7 @@ private fun TodoGlyph(status: String) {
                 Icon(
                     RefreshOutline16,
                     contentDescription = null,
-                    tint = Dsh.brand400,
+                    tint = Dsh.labelSecondary,
                     modifier = Modifier.size(14.dp).rotate(angle ?: 0f)
                 )
             }
@@ -810,33 +749,32 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.brandTint.copy(alpha = 0.06f))
-            .border(1.dp, Dsh.brand400.copy(alpha = 0.12f), RoundedCornerShape(DshRadius.md))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgSubtle)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
         ) {
             Icon(
                 GoalOutline16,
                 contentDescription = null,
-                tint = Dsh.brand400,
+                tint = Dsh.labelSecondary,
                 modifier = Modifier.size(15.dp),
             )
             Text(
                 text = L.goalRole,
-                color = Dsh.brand400,
-                style = DshType.t11M,
+                color = Dsh.labelSecondary,
+                style = DshType.microMedium,
             )
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(DshSpace.s4))
             Text(
                 text = if (expanded.value || displayText.length <= 60) displayText
                 else displayText.take(57) + "…",
                 color = Dsh.labelPrimary,
-                style = DshType.t13,
+                style = DshType.body,
                 maxLines = if (expanded.value) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -844,15 +782,15 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             // 展开/折叠按钮
             Text(
                 text = if (expanded.value) "收起" else "展开",
-                color = Dsh.brand400,
-                style = DshType.t11M,
+                color = Dsh.labelSecondary,
+                style = DshType.microMedium,
                 modifier = Modifier.clickable { expanded.value = !expanded.value },
             )
         }
     }
 }
 
-// 加载更早（DSH chat.loadOlder：居中圆角按钮）
+// 加载更早（DSH chat.loadOlder）：居中的一行灰字按钮，不另铺色块
 @Composable
 internal fun LoadOlderRow(
     loading: Boolean,
@@ -864,21 +802,25 @@ internal fun LoadOlderRow(
     val pressed by interaction.collectIsPressedAsState()
     val kind = loadOlderKind(loading, failed)
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Text(
-            text = when (kind) {
-                LoadOlderKind.Loading -> L.loadHistory
-                LoadOlderKind.Failed -> failedMessage?.takeIf { it.isNotBlank() } ?: L.loadOlderRetry
-                LoadOlderKind.Idle -> L.loadOlder
-            },
-            color = if (kind == LoadOlderKind.Failed) Dsh.error else Dsh.labelSecondary,
-            style = DshType.captionRelaxed,
+        Box(
             modifier = Modifier
                 .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.lg))
-                .background(if (pressed) Dsh.pressed else Dsh.bgInput)
+                .clip(RoundedCornerShape(DshRadius.container))
+                .background(if (pressed) Dsh.pressed else Color.Transparent)
                 .clickable(enabled = !loading, interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-        )
+                .padding(horizontal = DshSpace.s12),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = when (kind) {
+                    LoadOlderKind.Loading -> L.loadHistory
+                    LoadOlderKind.Failed -> failedMessage?.takeIf { it.isNotBlank() } ?: L.loadOlderRetry
+                    LoadOlderKind.Idle -> L.loadOlder
+                },
+                color = if (kind == LoadOlderKind.Failed) Dsh.error else Dsh.labelSecondary,
+                style = DshType.captionRelaxed,
+            )
+        }
     }
 }
 
@@ -939,7 +881,7 @@ private fun ReasoningRow(text: String, running: Boolean = false, durationMs: Lon
         Text(
             text,
             color = Dsh.labelTertiary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             fontStyle = FontStyle.Italic,
         )
     }
@@ -955,18 +897,18 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
                 .align(Alignment.CenterEnd)
                 .widthIn(max = maxBubble)
                 .clip(RoundedCornerShape(
-                    topStart = DshRadius.xl,
-                    topEnd = DshRadius.xl,
-                    bottomStart = DshRadius.xl,
-                    bottomEnd = 4.dp
+                    topStart = DshRadius.composer,
+                    topEnd = DshRadius.composer,
+                    bottomStart = DshRadius.composer,
+                    bottomEnd = DshRadius.control
                 ))
-                .background(Dsh.bubbleBg)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .background(Dsh.bgSubtle)
+                .padding(horizontal = DshSpace.s16, vertical = 10.dp)
         ) {
             Text(
                 text.trimEnd(),
                 color = Dsh.labelPrimary,
-                style = DshType.t15x23,
+                style = DshType.body,
                 lineHeight = 23.sp,
                 letterSpacing = (-0.1).sp
             )
@@ -995,20 +937,20 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .heightIn(min = 36.dp)
+                .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (running) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(13.dp),
+                    modifier = Modifier.size(12.dp),
                     color = Dsh.brand500,
                     strokeWidth = 1.5.dp,
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             } else {
                 Box(
                     modifier = Modifier
@@ -1016,28 +958,30 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                         .clip(CircleShape)
                         .background(Dsh.labelTertiary),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             }
             Text(
                 title,
                 color = if (running) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.t13M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             if (running) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
                 ShimmerLabel(text = runningLabel.trimEnd('…', '.', '。'), working = true)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
             }
-            Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
-                contentDescription = if (expanded) L.collapse else L.expand,
-                tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp),
-            )
+            if (!body.isNullOrBlank()) {
+                Icon(
+                    if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                    contentDescription = if (expanded) L.collapse else L.expand,
+                    tint = Dsh.labelTertiary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
         AnimatedVisibility(
             visible = expanded && !body.isNullOrBlank(),
@@ -1046,12 +990,12 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 7.dp, top = 2.dp)
+                    .padding(start = 7.dp, top = DshSpace.s2)
                     .drawBehind {
                         val x = 3.5.dp.toPx()
                         drawLine(rail, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
                     }
-                    .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = DshSpace.s16, top = DshSpace.s4, bottom = DshSpace.s4),
             ) {
                 Text(
                     body.orEmpty(),
@@ -1062,9 +1006,9 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(DshRadius.sm))
+                        .clip(RoundedCornerShape(DshRadius.control))
                         .background(Dsh.bgCode)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                 )
             }
         }

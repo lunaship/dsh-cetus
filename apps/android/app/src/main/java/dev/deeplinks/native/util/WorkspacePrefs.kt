@@ -19,13 +19,11 @@ data class SessionSnapshot(
  * 设计目标：
  * - **保留现有 key 不变**：archived_sessions / deleted_sessions / deleted_workspaces / notif_permission_asked。
  *   已有 App 升级到新版本时不会丢数据。
- * - **新增会话过滤**：sessionFilter，键名加 `workspace_` 前缀避免与现有键冲突。
  * - 集中暴露 typed 读写 API：调用方不再手动 `getStringSet("...")`。
  *
  * Prefs 文件名：`"dsh_workspace"` —— 与 [dev.deeplinks.native.WorkspaceActivity] / [dev.deeplinks.native.SettingsActivity] 既有调用保持一致。
  *
- * 单测：纯 Android API 路径无法 JVM 单测；行为通过设备集成测试覆盖；下游纯函数
- * （[filterSessions] / [classifySession] / [filterSlashCommands]）走 [WorkspacePrefsTest]。
+ * 单测：纯 Android API 路径无法 JVM 单测；行为通过设备集成测试覆盖。
  */
 class WorkspacePrefs(context: Context) {
 
@@ -82,17 +80,6 @@ class WorkspacePrefs(context: Context) {
             prefs.edit().putBoolean(KEY_NOTIF_ASKED, value).apply()
         }
 
-    // ===== 新增键：sessionFilter（WI-006） =====
-
-    /** 当前 chip 选中状态：序列化 / 反序列化走 [SessionFilter.name]。 */
-    var sessionFilter: SessionFilter
-        get() = SessionFilter.values().firstOrNull {
-            it.name == prefs.getString(KEY_SESSION_FILTER, SessionFilter.ALL.name)
-        } ?: SessionFilter.ALL
-        set(value) {
-            prefs.edit().putString(KEY_SESSION_FILTER, value.name).apply()
-        }
-
     /** 输入区工作区选择：记住上次选中的 cwd，避免始终显示排序第一项。 */
     var lastSelectedWorkspace: String?
         get() = prefs.getString(KEY_LAST_WORKSPACE, null)
@@ -114,7 +101,7 @@ class WorkspacePrefs(context: Context) {
                             SessionSnapshot(
                                 sessionId = key,
                                 title = obj.optString("title").ifBlank { key },
-                                cwd = obj.optString("cwd").takeIf { it.isNotBlank() },
+                                cwd = obj.optNullableString("cwd"),
                                 updatedAt = obj.optLong("updatedAt", 0L),
                             ),
                         )
@@ -151,6 +138,17 @@ class WorkspacePrefs(context: Context) {
             else editor.putString(KEY_PARKED_SEND, encodeParkedSend(toStore))
             editor.commit()
         }
+
+    /** 某台主机的落盘草稿（键 = [composerDraftKey]，新建会话为空串）。 */
+    fun composerDrafts(slotKey: String): Map<String, StoredDraft> =
+        decodeStoredDrafts(prefs.getString(KEY_COMPOSER_DRAFTS_PREFIX + slotKey, null))
+
+    fun saveComposerDrafts(slotKey: String, drafts: Map<String, StoredDraft>) {
+        val key = KEY_COMPOSER_DRAFTS_PREFIX + slotKey
+        val editor = prefs.edit()
+        if (drafts.isEmpty()) editor.remove(key) else editor.putString(key, encodeStoredDrafts(drafts))
+        editor.apply()
+    }
 
     fun rememberSessionSnapshot(sessionId: String, title: String, cwd: String?, updatedAt: Long) {
         val next = sessionSnapshots.toMutableMap()
@@ -217,10 +215,12 @@ class WorkspacePrefs(context: Context) {
         const val KEY_NOTIF_ASKED = "notif_permission_asked"
 
         // 新增键：加 `workspace_` 前缀避免与旧键混淆
-        const val KEY_SESSION_FILTER = "workspace_session_filter"
         const val KEY_LAST_WORKSPACE = "workspace_last_selected_cwd"
         const val KEY_SESSION_SNAPSHOTS = "workspace_session_snapshots"
         const val KEY_PARKED_SEND = "workspace_parked_send"
+
+        /** 每台主机一条：`workspace_composer_drafts:<slotKey>`。 */
+        const val KEY_COMPOSER_DRAFTS_PREFIX = "workspace_composer_drafts:"
 
         /** 每台设备一条：`last_session_id:<stable_host_identity>`。 */
         const val KEY_LAST_SESSION_PREFIX = "workspace_last_session_id:"

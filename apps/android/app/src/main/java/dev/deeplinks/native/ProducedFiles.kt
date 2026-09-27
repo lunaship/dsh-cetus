@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import android.graphics.Bitmap
@@ -7,7 +9,6 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,18 +29,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -82,7 +79,7 @@ internal fun decodeSampledBitmap(bytes: ByteArray, maxEdge: Int = PREVIEW_MAX_ED
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
 }
 
-private sealed interface ProducedPreview {
+internal sealed interface ProducedPreview {
     data class Image(val bitmap: Bitmap) : ProducedPreview
     data class Text(val path: String, val body: String) : ProducedPreview
 }
@@ -154,32 +151,31 @@ internal fun ProducedFilesRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s12, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Default.Description,
+                FileOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
             )
             Spacer(Modifier.width(10.dp))
             Text(
                 L.producedFiles,
                 color = Dsh.labelPrimary,
-                style = DshType.t13x24M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 lineHeight = 24.sp,
             )
         }
         if (files.isEmpty()) return@Column
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(DshSpace.s8))
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+            verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
         ) {
             files.forEach { path ->
                 val name = producedFileName(path)
@@ -197,7 +193,6 @@ internal fun ProducedFilesRow(
                         .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(DshRadius.full))
                         .background(Dsh.bgTrack)
-                        .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.full))
                         .semantics {
                             role = Role.Button
                             contentDescription = when {
@@ -209,7 +204,7 @@ internal fun ProducedFilesRow(
                             onClick = { if (!loading) openPath(path) },
                             onLongClick = { copyPath(path) },
                         )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -217,14 +212,14 @@ internal fun ProducedFilesRow(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
                                 strokeWidth = 1.5.dp,
-                                color = Dsh.brand400,
+                                color = Dsh.labelSecondary,
                             )
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(DshSpace.s8))
                         }
                         Text(
                             label,
                             color = if (failed) Dsh.error else Dsh.labelPrimary,
-                            style = DshType.t13,
+                            style = DshType.body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -234,8 +229,14 @@ internal fun ProducedFilesRow(
         }
     }
 
-    when (val current = preview) {
-        is ProducedPreview.Image -> Dialog(onDismissRequest = { preview = null }) {
+    preview?.let { current -> ProducedPreviewDialog(current) { preview = null } }
+}
+
+/** 图片 / 文本预览对话框（本轮产出与工作区文件浏览共用）。 */
+@Composable
+internal fun ProducedPreviewDialog(current: ProducedPreview, onDismiss: () -> Unit) {
+    when (current) {
+        is ProducedPreview.Image -> Dialog(onDismissRequest = { onDismiss() }) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -247,8 +248,8 @@ internal fun ProducedFilesRow(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = dshRipple(),
-                    ) { preview = null }
-                    .padding(16.dp),
+                    ) { onDismiss() }
+                    .padding(DshSpace.s16),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -256,24 +257,24 @@ internal fun ProducedFilesRow(
                     contentDescription = L.producedFiles,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(DshRadius.md)),
+                        .clip(RoundedCornerShape(DshRadius.container)),
                 )
             }
         }
-        is ProducedPreview.Text -> Dialog(onDismissRequest = { preview = null }) {
+        is ProducedPreview.Text -> Dialog(onDismissRequest = { onDismiss() }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .clip(RoundedCornerShape(DshRadius.lg))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
-                    .padding(16.dp),
+                    .padding(DshSpace.s16),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         producedFileName(current.path),
                         color = Dsh.labelPrimary,
-                        style = DshType.t14SB,
+                        style = DshType.bodyStrong,
                         fontWeight = FontWeight(600),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -282,16 +283,16 @@ internal fun ProducedFilesRow(
                     Box(
                         modifier = Modifier
                             .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
+                            .clip(RoundedCornerShape(DshRadius.control))
                             .semantics {
                                 role = Role.Button
                                 contentDescription = L.close
                             }
-                            .clickable { preview = null }
-                            .padding(horizontal = 8.dp),
+                            .clickable { onDismiss() }
+                            .padding(horizontal = DshSpace.s8),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(L.close, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp)
+                        Text(L.close, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -307,6 +308,5 @@ internal fun ProducedFilesRow(
                 )
             }
         }
-        null -> Unit
     }
 }

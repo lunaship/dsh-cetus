@@ -49,11 +49,14 @@ sealed interface PaletteCommand {
     val trigger: String
     /** Human description shown in the picker. */
     val description: String
+    /** 面板里的主名称（「计划」）；缺省时退回 trigger。 */
+    val title: String
 
     /** Submit the trigger verbatim to the server. Pick → submit. */
     data class Completable(
         override val trigger: String,
         override val description: String,
+        override val title: String = trigger,
     ) : PaletteCommand {
         override val id: String get() = "complete:$trigger"
     }
@@ -65,6 +68,7 @@ sealed interface PaletteCommand {
     data class Insertable(
         override val trigger: String,
         override val description: String,
+        override val title: String = trigger,
     ) : PaletteCommand {
         override val id: String get() = "insert:$trigger"
     }
@@ -81,6 +85,7 @@ sealed interface PaletteCommand {
         override val trigger: String,
         override val description: String,
         val kind: LocalKind,
+        override val title: String = trigger,
     ) : PaletteCommand {
         override val id: String get() = "local:${kind.name}:$trigger"
     }
@@ -104,20 +109,21 @@ enum class LocalKind {
     OPEN_PERMISSION_PICKER,
 }
 
-/** Top-level group in the picker UI; mirrors the DSH commands/skills/subagents buckets. */
+/**
+ * 面板分组：按「这条命令作用在谁身上」分，而不是按服务端的 commands / skills / subagents 桶。
+ * 智能体 = 让智能体换一种做法；会话 = 控制当前会话；应用 = 手机端本地动作。
+ */
 enum class PaletteGroup {
-    COMMANDS,
-    SKILLS,
-    SUBAGENTS,
-    ACTIONS,
+    AGENT,
+    SESSION,
+    APP,
     ;
 
     val displayName: String
         get() = when (this) {
-            COMMANDS -> L.paletteCommands
-            SKILLS -> L.paletteSkills
-            SUBAGENTS -> L.paletteSubagents
-            ACTIONS -> L.paletteActions
+            AGENT -> L.paletteGroupAgent
+            SESSION -> L.paletteGroupSession
+            APP -> L.paletteGroupApp
         }
 }
 
@@ -141,31 +147,27 @@ data class PaletteEntry(
  */
 val DSH_PALETTE: List<PaletteEntry>
     get() = listOf(
-    // ------- 服务端命令（直接发送） -------
-    // 注意：/permission 三条不可逆预设全部走本地 picker（见下方 ACTIONS），
-    // 不能让它们以 Completable 形式绕过 PermissionPickerSheet 的二次确认。
-    PaletteEntry(PaletteCommand.Insertable("/plan", L.palettePlan), PaletteGroup.COMMANDS),
-    PaletteEntry(PaletteCommand.Insertable("/goal", L.paletteGoal), PaletteGroup.COMMANDS),
-    PaletteEntry(PaletteCommand.Insertable("/feedback", L.paletteFeedback), PaletteGroup.COMMANDS),
-    PaletteEntry(PaletteCommand.Completable("/pause", L.palettePause), PaletteGroup.COMMANDS),
-    PaletteEntry(PaletteCommand.Completable("/resume", L.paletteResume), PaletteGroup.COMMANDS),
-    PaletteEntry(PaletteCommand.Completable("/clear", L.paletteClear), PaletteGroup.COMMANDS),
+    // ------- 智能体：换一种做法（插入式，等用户补参数） -------
+    PaletteEntry(PaletteCommand.Insertable("/plan", L.palettePlan, L.paletteTitlePlan), PaletteGroup.AGENT),
+    PaletteEntry(PaletteCommand.Insertable("/goal", L.paletteGoal, L.paletteTitleGoal), PaletteGroup.AGENT),
+    PaletteEntry(PaletteCommand.Insertable("/subagent", L.paletteSubagent, L.paletteTitleSubagent), PaletteGroup.AGENT),
+    PaletteEntry(PaletteCommand.Completable("/skills", L.paletteSkillsList, L.paletteTitleSkills), PaletteGroup.AGENT),
 
-    // ------- 技能 / 子智能体（插入式） -------
-    PaletteEntry(PaletteCommand.Completable("/skills", L.paletteSkillsList), PaletteGroup.SKILLS),
-    PaletteEntry(PaletteCommand.Insertable("/subagent", L.paletteSubagent), PaletteGroup.SUBAGENTS),
+    // ------- 会话：控制当前会话（服务端命令） -------
+    PaletteEntry(PaletteCommand.Completable("/pause", L.palettePause, L.paletteTitlePause), PaletteGroup.SESSION),
+    PaletteEntry(PaletteCommand.Completable("/resume", L.paletteResume, L.paletteTitleResume), PaletteGroup.SESSION),
+    PaletteEntry(PaletteCommand.Completable("/clear", L.paletteClear, L.paletteTitleClear), PaletteGroup.SESSION),
+    PaletteEntry(PaletteCommand.Insertable("/feedback", L.paletteFeedback, L.paletteTitleFeedback), PaletteGroup.SESSION),
 
-    // ------- 本地动作（直接生效，不走服务端） -------
-    PaletteEntry(PaletteCommand.Local("/search", L.paletteSearchSessions, LocalKind.SEARCH_SESSIONS), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/new-session", L.paletteNewSession, LocalKind.NEW_SESSION), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/settings", L.paletteOpenSettings, LocalKind.OPEN_SETTINGS), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/chat", L.paletteSwitchChat, LocalKind.SWITCH_CHAT), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/trace", L.paletteSwitchTrace, LocalKind.SWITCH_TRACE), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/model", L.paletteSelectModel, LocalKind.OPEN_MODEL_PICKER), PaletteGroup.ACTIONS),
-    // 三条权限预设只做发现入口：选中后打开 PermissionPickerSheet，由它完成写入与二次确认。
-    PaletteEntry(PaletteCommand.Local("/permission read-only", L.palettePermissionReadOnly, LocalKind.OPEN_PERMISSION_PICKER), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/permission workspace-write", L.palettePermissionWorkspaceWrite, LocalKind.OPEN_PERMISSION_PICKER), PaletteGroup.ACTIONS),
-    PaletteEntry(PaletteCommand.Local("/permission danger-full-access", L.palettePermissionFullAccess, LocalKind.OPEN_PERMISSION_PICKER), PaletteGroup.ACTIONS),
+    // ------- 应用：本地动作（直接生效，不走服务端） -------
+    PaletteEntry(PaletteCommand.Local("/new-session", L.paletteNewSession, LocalKind.NEW_SESSION, L.paletteTitleNewSession), PaletteGroup.APP),
+    PaletteEntry(PaletteCommand.Local("/search", L.paletteSearchSessions, LocalKind.SEARCH_SESSIONS, L.paletteTitleSearch), PaletteGroup.APP),
+    PaletteEntry(PaletteCommand.Local("/model", L.paletteSelectModel, LocalKind.OPEN_MODEL_PICKER, L.paletteTitleModel), PaletteGroup.APP),
+    // 权限只做发现入口：选中后打开 PermissionPickerSheet，由它完成写入与二次确认。
+    PaletteEntry(PaletteCommand.Local("/permission", L.palettePermission, LocalKind.OPEN_PERMISSION_PICKER, L.paletteTitlePermission), PaletteGroup.APP),
+    PaletteEntry(PaletteCommand.Local("/chat", L.paletteSwitchChat, LocalKind.SWITCH_CHAT, L.paletteTitleChat), PaletteGroup.APP),
+    PaletteEntry(PaletteCommand.Local("/trace", L.paletteSwitchTrace, LocalKind.SWITCH_TRACE, L.paletteTitleTrace), PaletteGroup.APP),
+    PaletteEntry(PaletteCommand.Local("/settings", L.paletteOpenSettings, LocalKind.OPEN_SETTINGS, L.paletteTitleSettings), PaletteGroup.APP),
 )
 
 /**
@@ -197,8 +199,9 @@ fun isDangerPermissionCommand(text: String): Boolean =
  * Rules (matching the original DSH semantics):
  *  - Empty / only-`/` query returns the full palette grouped normally.
  *  - A query longer than one character filters within each group by
- *    case-insensitive substring match on the trigger text (the leading
- *    `/` of the query is dropped before matching).
+ *    case-insensitive substring match on the trigger or the title (the leading
+ *    `/` of the query is dropped before matching). A query that already carries
+ *    arguments (`/permission read-only`) still matches its command.
  *  - Empty groups are dropped.
  *
  * Exposed as a pure function so the behavior can be exercised by JVM tests
@@ -215,7 +218,11 @@ fun filterPalette(
         val matches = if (query.length <= 1) {
             true
         } else {
-            entry.command.trigger.contains(needle, ignoreCase = true)
+            val cmd = entry.command
+            val bare = cmd.trigger.removePrefix("/")
+            cmd.trigger.contains(needle, ignoreCase = true) ||
+                cmd.title.contains(needle, ignoreCase = true) ||
+                needle.startsWith("$bare ", ignoreCase = true)
         }
         if (matches) {
             perGroup.getOrPut(entry.group) { mutableListOf() }.add(entry)

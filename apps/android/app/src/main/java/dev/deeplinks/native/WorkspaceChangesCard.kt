@@ -1,7 +1,7 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.core.tabularNums
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,7 +22,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,13 +39,12 @@ internal fun WorkspaceChangesCard(
     summary: WorkspaceChangesSummary,
     onOpen: (fileIndex: Int?) -> Unit,
 ) {
-    val shape = RoundedCornerShape(DshRadius.lg)
+    val shape = RoundedCornerShape(DshRadius.container)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, shape),
+            .background(Dsh.bgInput),
     ) {
         Row(
             modifier = Modifier
@@ -57,7 +55,7 @@ internal fun WorkspaceChangesCard(
                     role = Role.Button
                     contentDescription = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(summary)}"
                 }
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = DshSpace.s12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(EditOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
@@ -65,12 +63,12 @@ internal fun WorkspaceChangesCard(
             Text(
                 ChangesL.cardTitle(summary),
                 color = Dsh.labelPrimary,
-                style = DshType.t13M,
+                style = DshType.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             DiffStat(summary.added, summary.deleted)
         }
         val visible = summary.files.take(CHANGES_CARD_VISIBLE_FILES)
@@ -83,8 +81,8 @@ internal fun WorkspaceChangesCard(
             if (hidden > 0) {
                 Text(
                     ChangesL.moreFiles.format(hidden),
-                    color = Dsh.brand400,
-                    style = DshType.t12M,
+                    color = Dsh.labelPrimary,
+                    style = DshType.label,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 44.dp)
@@ -113,33 +111,69 @@ internal fun ChangedFileRow(
                 role = Role.Button
                 contentDescription = file.display
             }
-            .padding(start = startPadding, end = 12.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = startPadding, end = DshSpace.s12, top = DshSpace.s6, bottom = DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 file.name,
                 color = Dsh.labelPrimary,
-                style = DshType.t13,
+                style = DshType.body,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (file.directory.isNotEmpty()) {
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 Text(
                     file.directory,
                     color = Dsh.labelTertiary,
-                    style = DshType.t12,
+                    style = DshType.caption,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         when {
-            file.binary -> Text("BIN", color = Dsh.labelTertiary, style = DshType.t11M)
-            file.oversized -> Text("—", color = Dsh.labelTertiary, style = DshType.t11M)
+            file.binary -> Text("BIN", color = Dsh.labelTertiary, style = DshType.microMedium)
+            file.oversized -> Text("—", color = Dsh.labelTertiary, style = DshType.microMedium)
             else -> DiffStat(file.added, file.deleted)
+        }
+    }
+}
+
+/**
+ * 输入框上方的本轮改动：一行 `+n −n`，点开审查面。
+ * 只有二进制等没有行数的改动时写「已编辑 …」，不能让本轮改动没有入口。
+ */
+@Composable
+internal fun LatestChangesLine(
+    summary: WorkspaceChangesSummary,
+    onOpen: () -> Unit,
+) {
+    val title = ChangesL.cardTitle(summary)
+    Row(
+        modifier = Modifier
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
+            .heightIn(min = 36.dp)
+            .clickable(indication = dshRipple(), interactionSource = null, onClick = onOpen)
+            .semantics {
+                role = Role.Button
+                contentDescription = "${ChangesL.viewChanges}: $title"
+            }
+            .padding(horizontal = DshSpace.s4),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (summary.added > 0 || summary.deleted > 0) {
+            DiffStat(summary.added, summary.deleted)
+        } else {
+            Text(
+                title,
+                color = Dsh.labelSecondary,
+                style = DshType.label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -148,8 +182,8 @@ internal fun ChangedFileRow(
 @Composable
 internal fun DiffStat(added: Int, deleted: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (added > 0) Text("+$added", color = Dsh.success, style = DshType.t12M, fontFamily = FontFamily.Monospace)
-        if (added > 0 && deleted > 0) Spacer(Modifier.width(6.dp))
-        if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.t12M, fontFamily = FontFamily.Monospace)
+        if (added > 0) Text("+$added", color = Dsh.successContent, style = DshType.label.tabularNums())
+        if (added > 0 && deleted > 0) Spacer(Modifier.width(DshSpace.s6))
+        if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.label.tabularNums())
     }
 }

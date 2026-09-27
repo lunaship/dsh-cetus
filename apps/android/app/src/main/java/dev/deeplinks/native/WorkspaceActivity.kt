@@ -1,6 +1,6 @@
 package dev.deeplinks.native
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
@@ -11,31 +11,30 @@ import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.stableIdentity
-import dev.deeplinks.native.ui.DshSheetGrabber
 import androidx.activity.ComponentActivity
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -43,15 +42,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import android.util.Log
@@ -63,11 +57,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.*
-import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.util.MessageGroup
-import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.userTurnJumps
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
@@ -128,6 +119,9 @@ class WorkspaceActivity : ComponentActivity() {
 
 // ---------- 工作台主界面 ----------
 
+/** 手机 / Medium 上的目的地。宽屏常驻侧栏时忽略，列表和聊天同时在。 */
+private enum class PhoneDest { Sessions, Chat }
+
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun WorkspaceScreen(
@@ -146,7 +140,15 @@ fun WorkspaceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val launchIntoChat = !initialSessionId.isNullOrBlank() ||
+        !initialShareText.isNullOrBlank() ||
+        initialShareImages.isNotEmpty() ||
+        !initialShareNotice.isNullOrBlank()
+    var phoneDest by rememberSaveable {
+        mutableStateOf(if (launchIntoChat) PhoneDest.Chat.name else PhoneDest.Sessions.name)
+    }
+    fun showPhoneChat() { phoneDest = PhoneDest.Chat.name }
+    fun showPhoneSessions() { phoneDest = PhoneDest.Sessions.name }
     val hostIdentity = remember(host) { host.stableIdentity() }
     // 进入工作区即记录「最近使用设备」；设备重命名不影响该身份。
     LaunchedEffect(hostIdentity) { HostStore.rememberLastHost(context, host) }
@@ -246,7 +248,10 @@ fun WorkspaceScreen(
     val localStore = workspaceViewModel.local
     var archivedIds by localStore.archivedSessionIds
     var deletedIds by localStore.deletedSessionIds
-    fun setDeleted(id: String) = localStore.addDeletedSession(id)
+    fun setDeleted(id: String) {
+        localStore.addDeletedSession(id)
+        workspaceViewModel.repo.historyCache.remove(id)
+    }
     fun setArchived(id: String) = localStore.setArchivedSessionIds(
         if (id in archivedIds) archivedIds - id else archivedIds + id,
     )
@@ -263,7 +268,6 @@ fun WorkspaceScreen(
             workspacePrefs.forgetLastSession(hostIdentity, sid)
         }
     }
-    var sessionFilter by remember { mutableStateOf(workspacePrefs.sessionFilter) }
     var pendingSessionCwd by remember { mutableStateOf<String?>(null) }
     /** 用户点了「新建会话」、尚未发首条消息时为 true；此期间 refreshSessions 不得抢绑旧会话。 */
     var composeNewSession by remember { mutableStateOf(false) }
@@ -275,6 +279,15 @@ fun WorkspaceScreen(
         inputText = draft.text
         pendingImages = draft.images
     }
+    PersistComposerDrafts(
+        prefs = workspacePrefs,
+        slotKey = host.slotKey,
+        drafts = workspaceViewModel.composerDrafts,
+        ownerKey = ::composerOwnerKey,
+        live = ::liveComposerDraft,
+        deletedSessionIds = { deletedIds },
+        fillLiveText = { inputText = it },
+    )
     fun restoreComposerToOwner(ownerKey: String, draft: ComposerDraft) {
         if (composerOwnerKey() == ownerKey) applyLiveComposer(draft)
         else composerDrafts = putComposerDraft(composerDrafts, ownerKey, draft)
@@ -320,8 +333,6 @@ fun WorkspaceScreen(
     var showSubagentSheet by remember { mutableStateOf(false) }
     /** 新会话阶段的默认模型（create 后 selectModel）。 */
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
-    var expandedWorkspaces by remember { mutableStateOf(setOf<String>()) }
-    var expandedGroups by remember { mutableStateOf(setOf<String>()) } // 组内"显示全部"展开态
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
     var deleteWorkspaceSaving by remember { mutableStateOf(false) }
@@ -373,7 +384,9 @@ fun WorkspaceScreen(
     // searchQuery：侧边栏搜索文本（持久化文本，不持久化结果）
     var searchQuery by remember { mutableStateOf(localStore.historyQuery) }
     var sidebarSearchOpen by remember { mutableStateOf(localStore.historyQuery.isNotBlank()) }
-    var showSessionFilterSheet by remember { mutableStateOf(false) }
+    // 任务首页的工作区筛选属于 Workspace 状态，不能留在侧栏内部；否则旋转、分屏或
+    // 全屏首页 / 常驻侧栏互换时会回到「全部」。路径失效时由 WorkspaceSidebar 回退全部。
+    var selectedHomeWorkspace by rememberSaveable { mutableStateOf<String?>(null) }
     // WI-R2/R3：搜索结果与状态机、网络任务句柄（sessions/workspaces/history）
     // 一律由 WorkspaceViewModel 持有，组合重建不再中断数据流
     var searchResults by workspaceViewModel.searchResults
@@ -496,9 +509,12 @@ fun WorkspaceScreen(
         }
     }
     var showTurnJumpSheet by remember { mutableStateOf(false) }
+    var showFileBrowser by remember { mutableStateOf(false) }
     val changesPanel = remember { ChangesPanelState() }
     LaunchedEffect(currentSessionId) { changesPanel.reset() }
-    val changeSummaries = remember(olderMessages, messages) { sessionChangeSummaries(mergeHistoryPages(olderMessages, messages)) }
+    val historyForChanges = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
+    val changeSummaries = remember(historyForChanges) { sessionChangeSummaries(historyForChanges) }
+    val pinnedChanges = remember(historyForChanges) { pinnedTurnChanges(historyForChanges) }
     /** 停稳时是否贴在底部：web/SSE 新消息据此决定是否自动跟尾（比瞬时 isNearBottom 更稳）。 */
     var stickToBottom by remember { mutableStateOf(true) }
     // WI-004：服务端设置为配置源（默认 Agent 预设/权限等），启动与回前台时刷新
@@ -560,6 +576,7 @@ fun WorkspaceScreen(
     LaunchedEffect(initialSessionId) {
         val target = initialSessionId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         if (target != currentSessionId) selectSession(target)
+        showPhoneChat()
     }
 
     var appliedShareSeq by rememberSaveable { mutableStateOf(0L) }
@@ -574,6 +591,7 @@ fun WorkspaceScreen(
     val shareOwnerKey = composerOwnerKey()
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
+        showPhoneChat()
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
@@ -618,6 +636,7 @@ fun WorkspaceScreen(
             ParkedRestoreKind.SelectSession -> {
                 val target = parked.sessionId ?: return@LaunchedEffect
                 selectSession(target)
+                showPhoneChat()
             }
             ParkedRestoreKind.IntoCurrent -> {
                 val filledText = inputText.isBlank() && parked.text.isNotBlank()
@@ -628,6 +647,7 @@ fun WorkspaceScreen(
                 if (parkedRestoreComposerError(parked.droppedImages)) {
                     composerActionError = L.sendParkedImagesDropped
                 }
+                showPhoneChat()
             }
         }
     }
@@ -829,7 +849,7 @@ fun WorkspaceScreen(
                     }
                     selectSession(newId)
                     refreshSessions()
-                    if (closeDrawer) scope.launch { drawerState.close() }
+                    if (closeDrawer) showPhoneChat()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -997,7 +1017,6 @@ fun WorkspaceScreen(
     }
 
     // 会话筛选持久化（dsh_workspace；重启 App 后恢复上次选择）
-    LaunchedEffect(sessionFilter) { workspacePrefs.sessionFilter = sessionFilter }
 
     /**
      * 分发 palette 的本地动作。
@@ -1008,12 +1027,12 @@ fun WorkspaceScreen(
             LocalKind.SEARCH_SESSIONS -> {
                 sidebarSearchOpen = true
                 composerKeyboardController?.hide()
-                scope.launch { drawerState.open() }
+                showPhoneSessions()
             }
             LocalKind.NEW_SESSION -> {
                 startComposeSession(pendingSessionCwd)
                 selectViewMode("chat")
-                scope.launch { drawerState.close() }
+                showPhoneChat()
             }
             LocalKind.OPEN_SETTINGS -> {
                 // 与顶栏抽屉设置按钮共享入口；CONSUMED 显示可以放在 picker 选中后的 toast 中
@@ -1073,7 +1092,7 @@ fun WorkspaceScreen(
 
     fun createSessionIn(cwd: String?) {
         startComposeSession(cwd)
-        scope.launch { drawerState.close() }
+        showPhoneChat()
     }
 
     fun appendStreamMessage(m: MobileMessage) {
@@ -1371,7 +1390,7 @@ fun WorkspaceScreen(
                     text = data.optString("reason").ifBlank { L.approvalRequest.format(data.optString("toolName", L.toolFallbackName)) },
                     toolName = data.optString("toolName", "tool"),
                     approvalId = approvalId,
-                    callId = data.optString("callId").takeIf { it.isNotBlank() },
+                    callId = data.optNullableString("callId"),
                     time = item.time,
                     type = "approval",
                     seq = item.seq,
@@ -1490,6 +1509,7 @@ fun WorkspaceScreen(
         try {
             val (boot, refreshed) = workspaceViewModel.repo.bootstrap()
             bootstrapOk = true
+            workspaceViewModel.filesTreeSupported.value = boot.filesTree
             if (refreshed != host) {
                 runCatching {
                     if (host.hasRelay && !refreshed.hasRelay) HostStore.demoteRelay(context, host)
@@ -1741,7 +1761,7 @@ fun WorkspaceScreen(
     LaunchedEffect(running) {
         val sid = currentSessionId
         if (!running && wasRunning && !isForeground && sid != null) {
-            val title = currentSession?.title ?: L.sessionFallbackTitle
+            val title = currentSession?.title?.let(::displaySessionTitle) ?: L.sessionFallbackTitle
             val failReason = parseStoppedReason(stoppedReason)
             if (failReason == null) {
                 DshNotifier.notifyTaskDone(context, host, sid, title)
@@ -1766,21 +1786,32 @@ fun WorkspaceScreen(
         }
     }
 
-    // ===== 整体框架：侧边栏(抽屉) + 主区 =====
-    // 抽屉宽度：封顶 264dp 且不超过容器宽 - 96dp（留出足够的看到主区的边缘），
-    // 300dp 在窄屏手机上占比过大，会明显挤压主区视线。
+    // ===== 整体框架：宽屏常驻侧栏；手机/Medium 是会话列表 → 聊天的返回栈 =====
     // 用实际窗口容器宽度（LocalWindowInfo）而不是设备屏幕宽度：
     // 分屏、自由窗口和折叠屏下 screenWidthDp 会失真。
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val windowDensity = androidx.compose.ui.platform.LocalDensity.current
     val containerWidthDp = with(windowDensity) { windowInfo.containerSize.width.toDp() }
     val containerHeightDp = with(windowDensity) { windowInfo.containerSize.height.toDp() }
-    // 抽屉宽度对齐 M3：上限 340dp；手机取 85% 宽（264dp 偏窄，读起来像网页侧栏）
-    val sidebarWidth = minOf(340.dp, containerWidthDp * 0.85f).coerceAtLeast(240.dp)
-    // 自适应外壳：手机模态抽屉；Medium/Expanded 侧栏常驻（纯函数 DshLayout 推导）
     val dshLayout = remember(containerWidthDp, containerHeightDp) {
         deriveDshLayout(containerWidthDp.value.toInt(), containerHeightDp.value.toInt())
     }
+    var prevPersistent by remember { mutableStateOf(dshLayout.persistentSidebar) }
+    val collapsingToPhone = prevPersistent && !dshLayout.persistentSidebar
+    val displayDest = when {
+        dshLayout.persistentSidebar -> PhoneDest.Chat.name
+        collapsingToPhone && (currentSessionId != null || composeNewSession) -> PhoneDest.Chat.name
+        else -> phoneDest
+    }
+    SideEffect {
+        if (collapsingToPhone && (currentSessionId != null || composeNewSession)) {
+            phoneDest = PhoneDest.Chat.name
+        }
+        prevPersistent = dshLayout.persistentSidebar
+    }
+    val showSessionHome = !dshLayout.persistentSidebar && displayDest == PhoneDest.Sessions.name
+    val changesProgress by changesPanel.progress.asState()
+    val navMotionMs = motionDuration(DshDuration.slow)
     var sidebarCollapsed by remember { mutableStateOf(false) }
     // 归档撤销 Snackbar + 下拉刷新/输入区测量状态。
     // Snackbar 宿主在根 Box（DshAdaptiveShell 之外）——抽屉打开时仍可见可点（遮罩之上）；
@@ -1808,14 +1839,12 @@ fun WorkspaceScreen(
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
         onNewSession = {
-            scope.launch {
-                startComposeSession(null)
-                drawerState.close()
-            }
+            startComposeSession(null)
+            showPhoneChat()
         },
         onSelectSession = { sid ->
             selectSession(sid)
-            scope.launch { drawerState.close() }
+            showPhoneChat()
         },
         onRenameSession = { openRename(it) },
         onArchiveSession = { session ->
@@ -1831,10 +1860,6 @@ fun WorkspaceScreen(
         onForkSession = { forkNow(it, closeDrawer = true) },
         onCreateSessionIn = { createSessionIn(it) },
         onDeleteWorkspace = { openDeleteWorkspace(it) },
-        onToggleWorkspaceExpanded = { cwd ->
-            expandedWorkspaces = if (cwd in expandedWorkspaces) expandedWorkspaces - cwd else expandedWorkspaces + cwd
-        },
-        onExpandGroup = { expandedGroups = expandedGroups + it },
         onToggleSearch = {
             sidebarSearchOpen = !sidebarSearchOpen
             if (!sidebarSearchOpen && searchQuery.isBlank()) {
@@ -1855,7 +1880,6 @@ fun WorkspaceScreen(
         },
         onRetrySearch = { runSearchDebounced(searchQuery) },
         onRetrySessions = { refreshSessions() },
-        onOpenFilterSheet = { showSessionFilterSheet = true },
         onAddWorkspace = { showAddWorkspace = true },
         onOpenSettings = onOpenSettings,
     )
@@ -1868,23 +1892,7 @@ fun WorkspaceScreen(
     ) {
     DshAdaptiveShell(
         layout = dshLayout,
-        drawerState = drawerState,
-        compactDrawerWidth = sidebarWidth,
         sidebarCollapsed = sidebarCollapsed,
-        rail = {
-            WorkspaceNavigationRail(
-                hostName = host.name,
-                onOpenSessionList = { scope.launch { drawerState.open() } },
-                onNewSession = {
-                    scope.launch {
-                        startComposeSession(null)
-                        drawerState.close()
-                    }
-                },
-                onOpenDevice = { onOpenDevice(null) },
-                onOpenSettings = onOpenSettings,
-            )
-        },
         sidebar = {
             WorkspaceSidebar(
                 sessions = sessions,
@@ -1895,29 +1903,78 @@ fun WorkspaceScreen(
                 searchState = searchState,
                 searchResults = searchResults,
                 sidebarSearchOpen = sidebarSearchOpen,
-                sessionFilter = sessionFilter,
                 workspaceAccounts = workspaceAccounts,
                 deletedWorkspaces = deletedWorkspaces,
                 workspaceRegistry = workspaceRegistry,
                 workspaceRegistryReady = workspaceRegistryReady,
                 sessionsInitialLoad = sessionsInitialLoad,
                 sessionsLoadError = sessionsLoadError,
-                expandedWorkspaces = expandedWorkspaces,
-                expandedGroups = expandedGroups,
                 hostName = host.name,
+                selectedWorkspace = selectedHomeWorkspace,
+                onSelectWorkspace = { selectedHomeWorkspace = it },
+                containerColor = Dsh.bgDrawer,
                 collapsed = sidebarCollapsed,
                 goalSummaries = workspaceViewModel.goalSummaries.value,
                 actions = sidebarActions,
             )
         },
     ) {
-        Column(
+        BackHandler(enabled = !dshLayout.persistentSidebar && !showSessionHome && changesProgress <= 0f) {
+            showPhoneSessions()
+        }
+        AnimatedContent(
+            targetState = showSessionHome,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                if (targetState) {
+                    slideInHorizontally(tween(navMotionMs, easing = DshEasing.out)) { -it / 5 } togetherWith
+                        slideOutHorizontally(tween(navMotionMs, easing = DshEasing.out)) { it }
+                } else {
+                    slideInHorizontally(tween(navMotionMs, easing = DshEasing.out)) { it } togetherWith
+                        slideOutHorizontally(tween(navMotionMs, easing = DshEasing.out)) { -it / 5 }
+                }
+            },
+            label = "phoneWorkspace",
+        ) { showList ->
+        if (showList) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Dsh.bgBase)
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+            ) {
+                WorkspaceSidebar(
+                    sessions = sessions,
+                    archivedIds = archivedIds,
+                    deletedIds = deletedIds,
+                    currentSessionId = currentSessionId,
+                    searchQuery = searchQuery,
+                    searchState = searchState,
+                    searchResults = searchResults,
+                    sidebarSearchOpen = sidebarSearchOpen,
+                    workspaceAccounts = workspaceAccounts,
+                    deletedWorkspaces = deletedWorkspaces,
+                    workspaceRegistry = workspaceRegistry,
+                    workspaceRegistryReady = workspaceRegistryReady,
+                    sessionsInitialLoad = sessionsInitialLoad,
+                    sessionsLoadError = sessionsLoadError,
+                    hostName = host.name,
+                    selectedWorkspace = selectedHomeWorkspace,
+                    onSelectWorkspace = { selectedHomeWorkspace = it },
+                    containerColor = Dsh.bgBase,
+                    collapsed = false,
+                    goalSummaries = workspaceViewModel.goalSummaries.value,
+                    actions = sidebarActions,
+                )
+            }
+        } else Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Dsh.bgBase)
                 .statusBarsPadding()
         ) {
-            // ===== 顶栏（单行：≡ 侧栏 + 标题 + 模式分段 + 更多） =====
+            // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
             // 跳转轮次从悬浮按钮移到这里：≥3 轮才出现，不占输入区视觉重量
@@ -1929,6 +1986,7 @@ fun WorkspaceScreen(
                             toolSearchOpen = toolSearchOpen,
                             activeSubagentCount = activeSubagentCount,
                             turnJumpCount = turnJumpsForMenu.size,
+                            canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
                             onCloseMenu = { headerMenuOpen = false },
                             onOpenToolSearch = {
                                 toolSearchOpen = !toolSearchOpen
@@ -1936,6 +1994,7 @@ fun WorkspaceScreen(
                             },
                             onShowSubagents = { showSubagentSheet = true },
                             onShowTurnJump = { showTurnJumpSheet = true },
+                            onBrowseFiles = { showFileBrowser = true },
                             onRename = { currentSession?.let { openRename(it) } },
                             onFork = { currentSessionId?.let { forkNow(it) } },
                             onCopyTitle = {
@@ -1962,7 +2021,7 @@ fun WorkspaceScreen(
                             onShareImage = {
                                 val sid = currentSessionId
                                 if (sid != null) {
-                                    val title = currentSession?.title ?: L.sessionFallbackTitle
+                                    val title = currentSession?.title?.let(::displaySessionTitle) ?: L.sessionFallbackTitle
                                     val dark = shareDark
                                     scope.launch(Dispatchers.IO) {
                                         try {
@@ -2010,26 +2069,31 @@ fun WorkspaceScreen(
                                     }
                                 }
                             },
+                            onOpenDevice = { onOpenDevice(null) },
                             onDelete = { currentSession?.let { openDeleteSession(it) } },
             )
             WorkspaceTopBar(
                 running = running,
-                title = currentSession?.title ?: L.newSession,
-                onOpenDrawer = {
+                // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
+                title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
+                subtitle = if (currentSessionId == null) null else listOfNotNull(
+                    currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+                    host.name.takeIf { it.isNotBlank() },
+                ).joinToString(" · "),
+                showBack = !dshLayout.persistentSidebar,
+                onNavigate = {
                     if (dshLayout.persistentSidebar) {
                         sidebarCollapsed = !sidebarCollapsed
                     } else {
-                        scope.launch { drawerState.open() }
+                        showPhoneSessions()
                     }
                 },
                 viewMode = viewMode,
-                onSelectViewMode = { selectViewMode(it) },
+                showViewModeTabs = currentSessionId != null,
+                onSelectViewMode = ::selectViewMode,
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
                 menuItems = topBarMenuItems,
-                latestChanges = changeSummaries.firstOrNull(),
-                onOpenChanges = { scope.launch { changesPanel.open() } },
-                goalSummary = workspaceViewModel.currentGoalSummary.value,
             )
 
             // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
@@ -2077,11 +2141,10 @@ fun WorkspaceScreen(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
-            // 对话与轨迹的内容直接切换；视觉反馈只留在顶栏短下划线，
-            // 避免两张完整长列表在一次点按中同时测量、绘制和滑动。
+            // 对话与轨迹共用消息数据，只替换当前视图，避免同时测量和绘制两张长列表。
             ChangesSwipeArea(
                 state = changesPanel,
-                enabled = changeSummaries.isNotEmpty(),
+                enabled = changeSummaries.isNotEmpty() && dshLayout.persistentSidebar,
                 // 大屏（Medium / Expanded）把消息流封顶 760dp 居中，
                 // 而不是把手机布局无限拉宽；手机仍是全宽 16dp 边距。
                 modifier = Modifier
@@ -2105,8 +2168,10 @@ fun WorkspaceScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         ChatHistoryError(
-                            message = historyLoadError ?: L.loadConversationFailed,
+                            message = historyLoadError,
+                            hint = L.loadConversationFailedHint,
                             onRetry = { refreshMessages() },
+                            compact = false,
                         )
                     }
                     ChatCanvasKind.Working -> Box(
@@ -2176,9 +2241,9 @@ fun WorkspaceScreen(
                         }
                         chatListHeightPx = h
                     },
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
                 contentPadding = PaddingValues(
-                    horizontal = COMPOSER_SIDE_CLEARANCE + 8.dp,
+                    horizontal = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
                     vertical = 10.dp
                 )
             ) {
@@ -2218,6 +2283,7 @@ fun WorkspaceScreen(
                         goalSummary = latestGoalSummary(messagesForSummary),
                         todoProgress = latestTodoProgress(messagesForSummary),
                         isRunning = running,
+                        pinnedChangesSeq = pinnedChanges?.seq,
                     )
                     // 对齐网页 TurnStatus（Deep diving...）：整轮生成期间都在流尾显示思考中扫光
                     if (running || isSending) {
@@ -2244,7 +2310,7 @@ fun WorkspaceScreen(
                 visible = showScrollToBottom && currentSessionId != null && messages.isNotEmpty(),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = COMPOSER_SIDE_CLEARANCE, bottom = 12.dp),
+                    .padding(end = COMPOSER_SIDE_CLEARANCE, bottom = DshSpace.s12),
                 enter = fadeIn(animationSpec = tween(motionDuration(150))) +
                     scaleIn(animationSpec = tween(motionDuration(180))),
                 exit = fadeOut(animationSpec = tween(motionDuration(120))) +
@@ -2273,6 +2339,8 @@ fun WorkspaceScreen(
             if (viewMode == "chat" && commandModeActive) {
                 CommandSuggestions(
                     query = inputText,
+                    // 只吃剩余空间（与消息区 2:1 分），键盘弹起时让位，不挤扁输入框
+                    modifier = Modifier.weight(2f, fill = false),
                     onPick = { picked ->
                         // 无论哪种类型，先关掉 picker：清空输入文本以触发外层 `inputText.startsWith("/") == false`
                         when (picked) {
@@ -2317,6 +2385,10 @@ fun WorkspaceScreen(
                     }
                 )
             }
+            val goalLine = workspaceViewModel.currentGoalSummary.value?.takeIf { it.isNotBlank() }
+            if (viewMode == "chat" && running && goalLine != null) {
+                ChatGoalLine(goalLine)
+            }
             // ===== bottom chrome（WI-006：发送队列/输入卡/统计栏同一容器，统一安全区与 IME） =====
             // 输入卡带 8dp 阴影悬浮，底部留 10dp 让影子完整落在手势条上方。
             Column(
@@ -2328,10 +2400,11 @@ fun WorkspaceScreen(
                     // 键盘弹起时输入区上移，Snackbar 底部让位随之跟随
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
-                // 工作区 + Harness 模式（对标 web，置于输入卡上方）
-                // 新会话：模式仅在此处；已开聊：模式移到顶部「历史」旁，此处只保留工作区
-                if (viewMode == "chat") {
+                // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
+                if (viewMode == "chat" && currentSessionId == null) {
                     ComposerTopRow(
+                        setupTitle = L.newSession,
+                        setupCaption = host.name,
                         sessions = sessions,
                         deletedWorkspaces = deletedWorkspaces,
                         registeredPaths = workspaceRegistry,
@@ -2377,8 +2450,13 @@ fun WorkspaceScreen(
                         trailingContent = {},
                     )
                 }
-                // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（Grok：状态写进动作）
+                // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
+                pinnedChanges?.let { latest ->
+                    LatestChangesLine(latest) {
+                        scope.launch { changesPanel.open(latest.seq, null) }
+                    }
+                }
                 // 发送主体与高权限确认的共享状态：submitComposer 在 InputBar 之后赋值，
                 // onSend 与确认弹窗都通过同一个可变引用复用同一条发送路径。
                 var submitComposer: () -> Unit = {}
@@ -2644,6 +2722,7 @@ fun WorkspaceScreen(
 
             } // bottom chrome 容器结束
         }
+        }
     }
 
     WorkspaceChangesPanel(
@@ -2661,7 +2740,7 @@ fun WorkspaceScreen(
         hostState = snackbarHostState,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = DshSpace.s16)
             .padding(bottom = with(density) { clearancePx.toDp() } + 16.dp),
     )
     }
@@ -2738,23 +2817,6 @@ fun WorkspaceScreen(
         )
     }
 
-    if (showSessionFilterSheet) {
-        val filterData = remember(sessions, archivedIds, deletedIds, showSessionFilterSheet) {
-            buildSessionFilterData(
-                sessions = sessions,
-                archivedIds = archivedIds,
-                deletedIds = deletedIds,
-                nowMillis = System.currentTimeMillis(),
-            )
-        }
-        SessionFilterSheet(
-            selected = sessionFilter,
-            counts = filterData.counts,
-            onSelect = { sessionFilter = it },
-            onDismiss = { showSessionFilterSheet = false },
-        )
-    }
-
     // 访问模式选择（有会话 → 改当前会话；无会话 → 写全局默认）
     if (showPermissionPicker) {
         PermissionPickerSheet(
@@ -2796,14 +2858,13 @@ fun WorkspaceScreen(
                 workspaceRegistryReady = true
                 val committedPath = normalizeWorkspacePath(workspace.path)
                 persistDeletedWorkspaces(deletedWorkspaces - committedPath)
-                expandedWorkspaces = expandedWorkspaces + committedPath
                 workspacePrefs.lastSelectedWorkspace = committedPath
                 startComposeSession(committedPath)
                 selectViewMode("chat")
                 showAddWorkspace = false
                 refreshWorkspaces()
                 refreshSessions()
-                scope.launch { drawerState.close() }
+                showPhoneChat()
             },
         )
     }
@@ -2878,8 +2939,6 @@ fun WorkspaceScreen(
                                 if (workspacePrefs.lastSelectedWorkspace?.let(::normalizeWorkspacePath) == path) {
                                     workspacePrefs.lastSelectedWorkspace = null
                                 }
-                                expandedWorkspaces = expandedWorkspaces - path
-                                expandedGroups = expandedGroups - path
                                 refreshSessions()
                             }
                             deleteWorkspaceTarget = null
@@ -2902,7 +2961,7 @@ fun WorkspaceScreen(
     deleteSessionTarget?.let { target ->
         DshConfirmDialog(
             title = L.deleteSessionTitle,
-            message = L.deleteSessionMessage.format(target.title),
+            message = L.deleteSessionMessage.format(displaySessionTitle(target.title)),
             confirmLabel = L.delete,
             danger = true,
             error = deleteSessionError,
@@ -2931,157 +2990,38 @@ fun WorkspaceScreen(
     }
 
     if (showSubagentSheet) {
-        val anchorParent = currentSession?.parentSessionId ?: currentSessionId
-        val children = remember(sessions, anchorParent) {
-            sessions.filter { it.origin == "subagent" && it.parentSessionId == anchorParent }
-                .sortedByDescending { it.updatedAt }
-        }
-        val parentOfCurrent = currentSession?.parentSessionId
-        ModalBottomSheet(
-            onDismissRequest = { showSubagentSheet = false },
-            containerColor = Dsh.bgCard,
-            contentColor = Dsh.labelPrimary,
-            shape = DshSheetShape,
-            dragHandle = null,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp),
-            ) {
-                DshSheetGrabber()
-                Text(L.subagents, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = FontWeight(600))
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
-                    color = Dsh.labelTertiary,
-                    style = DshType.t13,
-                )
-                Spacer(Modifier.height(12.dp))
-                children.forEach { child ->
-                    val selected = child.sessionId == currentSessionId
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.md))
-                            .background(if (selected) Dsh.bgSelected else Color.Transparent)
-                            .clickable {
-                                showSubagentSheet = false
-                                selectSession(child.sessionId)
-                            }
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                child.title,
-                                color = Dsh.labelPrimary,
-                                style = DshType.t14M,
-                                fontWeight = FontWeight(500),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            if (child.running) {
-                                Text(L.runningStatus, color = Dsh.brand400, style = DshType.t11)
-                            }
-                        }
-                    }
-                }
-                if (!parentOfCurrent.isNullOrBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        L.returnToParentSession,
-                        color = Dsh.brand400,
-                        style = DshType.t13M,
-                        fontWeight = FontWeight(500),
-                        modifier = Modifier
-                            .clickable {
-                                showSubagentSheet = false
-                                selectSession(parentOfCurrent)
-                            }
-                            .padding(12.dp),
-                    )
-                }
-            }
-        }
+        SubagentBottomSheet(
+            sessions = sessions,
+            currentSession = currentSession,
+            currentSessionId = currentSessionId,
+            onSelectSession = { selectSession(it) },
+            onDismiss = { showSubagentSheet = false },
+        )
     }
 
     if (showTurnJumpSheet) {
-        val merged = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
-        val jumps = remember(merged) { userTurnJumps(merged) }
-        ModalBottomSheet(
-            onDismissRequest = { showTurnJumpSheet = false },
-            containerColor = Dsh.bgCard,
-            contentColor = Dsh.labelPrimary,
-            shape = DshSheetShape,
-            dragHandle = null,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp),
-            ) {
-                DshSheetGrabber()
-                Text(L.jumpToTurn, color = Dsh.labelPrimary, style = DshType.t18SB, fontWeight = FontWeight(600))
-                Spacer(Modifier.height(12.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    jumps.forEachIndexed { index, jump ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.md))
-                                .clickable {
-                                    val display = merged.filterNot {
-                                        it.role == "reasoning" && it.text.isBlank() && it.running != true
-                                    }
-                                    val groups = groupMessages(display)
-                                    val groupIndex = groups.indexOfFirst {
-                                        it is MessageGroup.Single && it.msg.id == jump.messageId
-                                    }
-                                    val offset = if (hasMoreMessages) 1 else 0
-                                    showTurnJumpSheet = false
-                                    if (groupIndex >= 0) {
-                                        stickToBottom = false
-                                        showScrollToBottom = true
-                                        scope.launch {
-                                            listState.scrollToItem(offset + groupIndex)
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "${index + 1}",
-                                color = Dsh.labelTertiary,
-                                style = DshType.t12,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(28.dp),
-                            )
-                            Text(
-                                jump.preview,
-                                color = Dsh.labelPrimary,
-                                style = DshType.t14,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+        TurnJumpBottomSheet(
+            olderMessages = olderMessages,
+            messages = messages,
+            onJumpToGroupIndex = { groupIndex ->
+                val offset = if (hasMoreMessages) 1 else 0
+                stickToBottom = false
+                showScrollToBottom = true
+                scope.launch {
+                    listState.scrollToItem(offset + groupIndex)
                 }
-            }
-        }
+            },
+            onDismiss = { showTurnJumpSheet = false },
+        )
+    }
+
+    val browseSessionId = currentSessionId
+    if (showFileBrowser && browseSessionId != null) {
+        WorkspaceFileBrowserSheet(
+            sessionId = browseSessionId,
+            loadDir = client::getWorkspaceTree,
+            fetchFile = client::getSessionFile,
+            onDismiss = { showFileBrowser = false },
+        )
     }
 }

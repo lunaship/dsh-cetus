@@ -22,6 +22,12 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
+import dev.deeplinks.native.LaptopOutline16
+import dev.deeplinks.native.PaletteOutline16
+import dev.deeplinks.native.SearchOutline16
+import dev.deeplinks.native.SettingsOutline16
+import dev.deeplinks.native.TranslateOutline16
+import dev.deeplinks.native.WalletOutline16
 
 /**
  * DSH 设计系统组件目录（@Preview catalog）—— 仅 debug 源集，不进入 Release。
@@ -126,6 +132,106 @@ private fun DshCatalogBannerPreview() {
 private fun DshCatalogChatLoadingSkeletonPreview() {
     DshPreview {
         ChatLoadingSkeleton()
+    }
+}
+
+@Preview(name = "StatusBadge — tones", widthDp = 360, showBackground = true)
+@Composable
+private fun DshCatalogStatusBadgePreview() {
+    DshPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                DshStatusBadge("等待确认", tone = DshStatusTone.Waiting, dot = true)
+                DshStatusBadge("运行中", tone = DshStatusTone.Running, dot = true)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                DshStatusBadge("已完成", tone = DshStatusTone.Success)
+                DshStatusBadge("失败", tone = DshStatusTone.Error)
+                DshStatusBadge("已归档", tone = DshStatusTone.Neutral)
+            }
+        }
+    }
+}
+
+@Preview(name = "IconAction — 48dp hotzone", widthDp = 360, showBackground = true)
+@Composable
+private fun DshCatalogIconActionPreview() {
+    DshPreview {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DshIconAction(icon = SearchOutline16, contentDescription = "搜索", onClick = {})
+            DshIconAction(icon = SettingsOutline16, contentDescription = "设置", onClick = {}, active = true)
+            DshPrimaryAction(label = "开始配对", onClick = {})
+        }
+    }
+}
+
+/**
+ * Section 两种容器策略（docs/visual-rules.md 第二节）：
+ * 默认 Flat——行直接落在画布上，行间发丝线分组；Tonal 只给总结/警告类独立数据块。
+ */
+@Preview(name = "Section — Flat vs Tonal", widthDp = 380, showBackground = true)
+@Composable
+private fun DshCatalogSectionPreview() {
+    DshPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().background(Dsh.bgBase).padding(vertical = 12.dp),
+        ) {
+            DshSection(header = "Flat（默认）") {
+                DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
+                DshListRow(title = "外观", icon = PaletteOutline16, value = "跟随系统", onClick = {})
+            }
+            DshSection(header = "Tonal（独立数据块）", container = DshSectionContainer.Tonal) {
+                DshListRow(title = "MacBook Pro", subtitle = "在线 · 24ms · 局域网", icon = LaptopOutline16)
+                DshListRow(title = "余额", subtitle = "思考令牌余量", icon = WalletOutline16, value = "18.7K")
+            }
+        }
+    }
+}
+
+/** 页面骨架：统一标题、返回热区与页面动作（设置 / 设备 / 任务首页同一件）。 */
+@Preview(name = "PageScaffold — title + back + action", widthDp = 380, heightDp = 360, showBackground = true)
+@Composable
+private fun DshCatalogPageScaffoldPreview() {
+    DshPreview {
+        DshPageScaffold(
+            title = "设置",
+            navigation = DshPageNavigation.Back,
+            onNavigateBack = {},
+            actions = {
+                DshIconAction(icon = SearchOutline16, contentDescription = "搜索", onClick = {})
+            },
+        ) {
+            DshSection(header = "通用") {
+                DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
+                DshListRow(title = "外观", icon = PaletteOutline16, value = "跟随系统", onClick = {})
+            }
+        }
+    }
+}
+
+/** 1.3 字号回归：标题、副标题与尾部值不得重叠或截断。 */
+@Preview(name = "Section — Flat vs Tonal · 1.3x", widthDp = 380, showBackground = true, fontScale = 1.3f)
+@Composable
+private fun DshCatalogSectionLargeFontPreview() {
+    DshPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().background(Dsh.bgBase).padding(vertical = 12.dp),
+        ) {
+            DshSection(header = "Flat（默认）") {
+                DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
+                DshListRow(title = "外观", icon = PaletteOutline16, value = "跟随系统", onClick = {})
+            }
+            DshSection(header = "Tonal（独立数据块）", container = DshSectionContainer.Tonal) {
+                DshListRow(title = "MacBook Pro", subtitle = "在线 · 24ms · 局域网", icon = LaptopOutline16)
+            }
+        }
     }
 }
 

@@ -18,3 +18,6 @@ DSH Links Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版�
 
 | 主题 | 文件 |
 |---|---|
+| 全仓架构总览（分层 / 目录契约 / 数据流） | `../../docs/ARCHITECTURE.md` |
+| 手机同步契约（字段级） | `../../docs/MOBILE_SYNC_CONTRACT.md` |
+| 兼容矩阵 / DSH 基线 | `../../docs/COMPATIBILITY.md` |

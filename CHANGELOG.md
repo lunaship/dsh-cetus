@@ -2,6 +2,60 @@
 
 ## dsh-links 未发布
 
+手机端补齐五项体验与工程能力（对照 lody-iOS 的做法，视觉仍以 DSH 为准）。
+
+- 草稿落盘：输入框正文按主机持久化，进程被系统杀掉后回到同一会话仍在；附件不落盘；14 天过期、最多 30 条；删除会话或解除配对时一并清掉。
+- 截图门禁：新增 `ChatFeedScreenshotTest`（一轮回复、流式中、审批卡、提问卡，亮 / 暗、中 / 英、1.3 字号）共 8 张基准图。
+- 词级 diff：改动面板里相邻的删除行与新增行配对后，标出行内真正变化的片段；整行重写不标，插入的注释行不再打乱配对。
+- 会话秒开：打开会话先显示上次的本地快照（Keystore 加密、按主机隔离、每主机最近 30 个会话），网络结果回来后整体接管；快照里未结束的审批 / 提问显示为「状态待确认」，不可提交。
+- 工作区文件浏览：插件新增 `GET /dsh-link/mobile/sessions/:id/tree`（`capabilities.files.tree`，与 `/file` 同沙箱与订阅门槛，单层最多 2000 条）；App 会话菜单新增「浏览文件」，按层进入目录，图片与文本就地预览，未知后缀按内容嗅探。需要重启 host 才生效。
+- 审批卡：提交栏不再单独铺白底，浅色模式下卡片不再像被截断，与提问卡一致。
+
+手机端第二轮打磨：设置与主界面统一成同一套层次。
+
+- 浅色模式改为「白底 + 浅灰分组卡」（与侧栏会话行、输入框同一层次），不再是灰底白卡；列表行首图标改中性灰，品牌蓝只留给操作行和选中勾。横幅去掉左侧竖色条。
+- 模型页的供应商合并为一个分组，展开的明细缩进到名称起点；模型的上下文大小移到副标题，模型名不再被折断。
+- 会话用量看板改为紧凑对话框：三个关键数一行、令牌构成一行、上下文一条进度；输入框下的统计行只保留一行浅色文字「7 轮 · 223 步 · 23.5M 令牌」。
+- 解析层不再把 JSON `null` 读成 `"null"`：新增 `optStringOrEmpty`（不修剪空白），`MobileApi` / `QuestionAnswers` / `WorkspaceChanges` 全部改用空安全读取；新增 `JsonNullSafetyTest`。
+
+修复手机切换会话模型必定失败：`445a21f` 拆分 `mobile-api.js` 时漏掉了 `selectSessionModel` 的定义，`POST /dsh-link/mobile/sessions/:id/model` 一直抛 `ReferenceError`，返回 502。已恢复原实现（按会话模型目录解析供应商 / 模型 id，推理等级不在允许列表时回落默认），`test/mobile-error-map.test.mjs` 新增回归用例。需要重启 host 才生效。
+
+手机设置、设备、模型和工作区面板改成分组列表。
+
+- 冷灰底上的白卡片，小标题和页脚放说明；一行里是着色图标、标题、当前值和箭头或勾选。
+- 外观增加深色背景：柔和或纯黑，纯黑只在深色主题下生效。
+- 侧栏会话行去掉左侧图标；进行中的会话在副标题前显示细环。
+
+手机端统一成一套设计语言：M3 做骨架，自有图标一套，细节对齐。
+
+- 图标：换掉 83 处 Material Icons，改为 Web 复刻集 `DshIcons` 加同笔法新画的 30 个 `DshGlyphs`（16 格满幅、线宽 1.35）；移除 `material-icons-extended` 依赖。新增 `iconsComeFromTheInHouseSetOnly` 门禁，截图墙新增 `IconsLight` / `IconsDark` 做基线。
+- 列表行：取值贴右，右箭头排成一条竖线；下拉尾标由 iOS 式上下箭头改为下箭头；图标统一 18dp。
+- 设备页按「设备 → 设置 → 操作 → 危险操作」排列，去掉与设备卡重复的在线状态。会话管理页去掉页眉红字「全部清除」，危险批量操作只保留底部「清除全部记录」一行。
+- 数字：概览用 `29.8K`，明细用 `18,400`，单位一律大写 K / M；统计数字用等宽数位（tnum），不再换成等宽字体。
+- 文案：`revision conflict` 这类服务端原文改为本地化提示；ASCII `...` 统一为 `…`；英文界面的预设名跟随界面语言。
+- 真机修正：模型弹层副标题不再显示「Null」（`defaultEffort` / 当前模型字段改用 `optNullableString`）；模型页「插件过旧」在余额和供应商两处统一为灰字提示；默认模型行只显示模型名，不再被截断；「解除配对」换成更易辨认的断链图标。
+- 空态 / 错误态：新增 `DshEmptyState` / `DshBrandMark` 模板，空会话、会话加载失败、无配对电脑共用；错误态居中，标题不再与说明重复，原始错误降为脚注。按钮统一为胶囊。
+- Token：业务代码的数字圆角清零（新增 `DshRadius.xs` / `tail`、`DshTileShape`），并加 `cornerRadiiComeFromTokens` 门禁；`DshType` 删除 12 个像素命名角色（剩 13 语义 + 6 密集档）；裸 `sp` 从 46 处降到 33 处。
+
+手机「模型」页对齐桌面版：余额恢复显示，供应商可在手机上补模型、填 API 密钥。
+
+- 恢复 `GET /dsh-link/mobile/balance`，这次代调真实存在的 `account/getBalance`（DSH 0.1.7 起），按充值 / 赠金钱包返回；未登录、平台失败、旧 DSH 分别给 `signed-out` / `failed` / `unavailable`，不再 404。
+- 新增 `GET /dsh-link/mobile/providers` 与 `POST .../providers/{models,credential,add,discover}`：供应商目录、增删模型、单向写 API 密钥、添加目录供应商、从供应商拉取可用模型。写入只落在 profile 的 `models` / `apiKeyEnv`，由插件自拼 `settings/mutate` ops；`baseURL` / `api` 不开放，密钥不回显。字段见 `docs/MOBILE_SYNC_CONTRACT.md`。
+- `RPC_METHOD_ALLOWLIST` 新增 `account.getBalance`、`credentials.describe`、`credentials.set`、`llm.discoverModels`、`llm.listConfigurableProviders`、`llm.listProviders`、`settings.mutate`。
+- 证据：新增 `test/mobile-models.test.mjs` 13 条（密钥校验、目录排序、余额三态、继承目录拒写、只读凭据、并发冲突、discover 忽略手机传入的 baseURL、响应不含密钥）。
+
+去「Web 套壳」味：字阶向原生 M3 收敛，容器分层改 tonal 色阶。
+
+- 排版：淘汰 1:1 平移 DSH Web CSS 的像素微字号——13sp 正文族（`t13`/`bodyDense` 等 10 个角色、约 150 处调用）并入语义角色 `body`/`title`/`bodyStrong`（15sp 起）；「小字号 + 松行高」角色（`t11`/`t12` 11/22、12/22 等）并入 `micro*`/`caption`/`label`（行高比收敛到 M3 最松的 bodyLarge 16/26 之内）。`DshType` 从 40+ 像素角色收敛为 13 语义 + 18 密集档，新增 `DshTypeScaleTest` 锁死契约（字号在字阶表内、行高比 ≤ 1.65、白名单制），Web 形态回流会直接红灯。
+- 容器分层：设置分组卡、设备卡、审批/问题卡、模型选择行、两处菜单浮层共 11 处「底色 + 1dp 发丝线描边」改为 tonal 填充（`bgSubtle`）或纯阴影（对话框）；`DshTag` 删除无人使用的 `borderColor` 死参数。新增 `SurfaceHierarchyTest`：容器再用 `borderSubtle` 描边即红灯（白名单仅留媒体取景框）。
+- 影响面：聊天/列表/设置/设备页的正文与次级文本字号、行高、卡片底色属有意的视觉调整；已逐一核对截图基线只渲染 `SettingsHome` 与组件墙（语义字阶 + FilterChip），不覆盖本轮改动，无需重录；仍建议真机过一眼。
+
+收紧手机对主机工作区边界和设备吊销的权限。
+
+- 绝对路径注册工作区不再直接调用 `workspace.create`。手机提交已存在目录的 realpath（符号链接展开成目标），电脑「手机连接」面板批准后才注册；拒绝、过期或该设备被吊销则丢弃。单层名称仍在当前工作区同级立即创建。
+- `POST /mobile/sessions` 的 `cwd` 包含性检查会跟随符号链接：末段尚不存在时，对最深的已存在祖先做 `realpath` 再接回后缀。
+- `POST /dsh-link/mobile/revoke` 只能吊销当前这台设备。吊销其他设备或全部设备仍只在回环面板。
+
 解决「App 卸载重装后重新扫码连不上」：把同名设备冲突从死胡同变成显式替换流程，并给二维码加时效戳。
 
 - 配对 409 结构化：`POST /dsh-link/pair` 同名冲突时返回 `code: "SAME_NAME"` 与 `existing {deviceId, name, status}`，旧 App 只读 `error` 文本不受影响。409 验码通过但不消费配对码，同一张码可直接重试。

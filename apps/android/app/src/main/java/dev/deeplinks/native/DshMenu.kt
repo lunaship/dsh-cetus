@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,7 +33,7 @@ import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 
-// ---------- DSH 风格菜单浮层（12dp 圆角 + L2 细边框 + 图标菜单项） ----------
+// ---------- DSH 风格菜单浮层（M3 DropdownMenu：容器色 + 阴影分层，无描边） ----------
 
 internal data class DshMenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -55,15 +54,14 @@ internal fun DshMenu(
         onDismissRequest = onDismiss,
         offset = offset,
         containerColor = Dsh.bgCard,
-        shape = RoundedCornerShape(DshRadius.lg),
+        shape = RoundedCornerShape(DshRadius.container),
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
-        border = BorderStroke(1.dp, Dsh.borderSubtle)
     ) {
         Column(
             modifier = Modifier
                 .width(220.dp)
-                .padding(vertical = 4.dp)
+                .padding(vertical = DshSpace.s4)
         ) {
             items.forEach { item ->
                 val interaction = remember { MutableInteractionSource() }
@@ -72,7 +70,7 @@ internal fun DshMenu(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(DshRadius.md))
+                        .clip(RoundedCornerShape(DshRadius.control))
                         .background(if (pressed) Dsh.pressed else Color.Transparent)
                         .semantics {
                             role = Role.Button
@@ -92,7 +90,7 @@ internal fun DshMenu(
                     Text(
                         item.label,
                         color = if (item.danger) Dsh.error else Dsh.labelPrimary,
-                        style = DshType.bodyDense,
+                        style = DshType.body,
                         lineHeight = 20.sp
                     )
                 }

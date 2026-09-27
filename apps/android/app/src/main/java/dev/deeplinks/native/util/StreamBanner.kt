@@ -1,7 +1,7 @@
 package dev.deeplinks.native.util
 
 /**
- * SSE 断线横幅（对照 Grok：健康连上时不堆 chrome；失败才出现）。
+ * SSE 断线横幅：健康连上时不堆 chrome，失败才出现（Chrome 安静原则）。
  *
  * 首次进入会话的 Connecting 静默 [quietMs]，避免每次切会话闪一条「正在连接」。
  * 曾经连上后再掉线，立刻提示。鉴权/服务端失败立刻提示。

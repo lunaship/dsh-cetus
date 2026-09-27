@@ -331,9 +331,9 @@ fun MermaidDiagramBlock(
         Text(
             source,
             color = Dsh.labelTertiary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             fontFamily = FontFamily.Monospace,
-            modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+            modifier = modifier.fillMaxWidth().padding(vertical = DshSpace.s4),
         )
         return
     }
@@ -357,7 +357,7 @@ fun MermaidDiagramBlock(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = DshSpace.s4)
             .heightIn(max = 480.dp)
             .horizontalScroll(rememberScrollState()),
         contentAlignment = Alignment.CenterStart,
@@ -384,11 +384,11 @@ fun MermaidDiagramBlock(
         Text(
             error,
             color = Dsh.error,
-            style = DshType.t12x17,
+            style = DshType.caption,
             lineHeight = 17.sp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp)
+                .padding(top = DshSpace.s4)
                 .semantics { contentDescription = error },
         )
     }
@@ -420,16 +420,16 @@ private fun MermaidZoomDialog(
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
                 .navigationBarsPadding()
-                .padding(12.dp)
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .padding(DshSpace.s12)
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
-                .padding(12.dp),
+                .padding(DshSpace.s12),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     L.mermaidDiagram,
                     color = Dsh.labelPrimary,
-                    style = DshType.t14,
+                    style = DshType.body,
                     modifier = Modifier.weight(1f),
                 )
                 DshHeaderAction(L.save, onClick = onSave)
@@ -439,11 +439,11 @@ private fun MermaidZoomDialog(
                 Text(
                     error,
                     color = Dsh.error,
-                    style = DshType.t12x17,
+                    style = DshType.caption,
                     lineHeight = 17.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp)
+                        .padding(top = DshSpace.s4)
                         .semantics { contentDescription = error },
                 )
             }
@@ -451,7 +451,7 @@ private fun MermaidZoomDialog(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, zoom, _ ->

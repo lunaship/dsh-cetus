@@ -1,6 +1,63 @@
 package dev.deeplinks.screenshot
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
+import dev.deeplinks.native.util.HomeSection
+import dev.deeplinks.native.HomeNewTaskBar
+import dev.deeplinks.native.HomeSectionHeader
+import dev.deeplinks.native.WorkspaceChips
+import dev.deeplinks.native.HomeHeader
+import dev.deeplinks.native.SparkleOutline16
+import dev.deeplinks.native.ArchiveBoxOutline16
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import dev.deeplinks.native.SettingsOutline16
+import dev.deeplinks.native.PlusOutline16
+import dev.deeplinks.native.CloseOutline16
+import dev.deeplinks.native.EllipsisOutline16
+import dev.deeplinks.native.TrashOutline16
+import dev.deeplinks.native.ShareOutline16
+import dev.deeplinks.native.CopyOutline16
+import dev.deeplinks.native.EditOutline16
+import dev.deeplinks.native.LinkOutline16
+import dev.deeplinks.native.RefreshOutline16
+import dev.deeplinks.native.SendOutline16
+import dev.deeplinks.native.Sparkle16
+import dev.deeplinks.native.AgentPresetOutline16
+import dev.deeplinks.native.ArchiveOutline20
+import dev.deeplinks.native.FolderOpenOutline16
+import dev.deeplinks.native.ChevronRightOutline14
+import dev.deeplinks.native.ChevronDownOutline14
+import dev.deeplinks.native.CheckOutline16
+import dev.deeplinks.native.WarningOutline16
+import dev.deeplinks.native.ArrowLeftOutline16
+import dev.deeplinks.native.CameraOutline16
+import dev.deeplinks.native.ClockOutline16
+import dev.deeplinks.native.CompressOutline16
+import dev.deeplinks.native.ContrastOutline16
+import dev.deeplinks.native.DevicesOutline16
+import dev.deeplinks.native.FeedbackOutline16
+import dev.deeplinks.native.FileOutline16
+import dev.deeplinks.native.FontOutline16
+import dev.deeplinks.native.GiftOutline16
+import dev.deeplinks.native.ImageOutline16
+import dev.deeplinks.native.InfoOutline16
+import dev.deeplinks.native.KeyOutline16
+import dev.deeplinks.native.KeyboardOutline16
+import dev.deeplinks.native.LaptopOutline16
+import dev.deeplinks.native.MessageOutline16
+import dev.deeplinks.native.MicOutline16
+import dev.deeplinks.native.PaletteOutline16
+import dev.deeplinks.native.QuoteOutline16
+import dev.deeplinks.native.ScanOutline16
+import dev.deeplinks.native.ShieldOutline16
+import dev.deeplinks.native.SwapOutline16
+import dev.deeplinks.native.TextSizeOutline16
+import dev.deeplinks.native.TranslateOutline16
+import dev.deeplinks.native.UnarchiveOutline16
+import dev.deeplinks.native.UnlinkOutline16
+import dev.deeplinks.native.WalletOutline16
+import dev.deeplinks.native.WrapOutline16
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,20 +100,39 @@ import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.dshTypography
+import androidx.compose.foundation.layout.ColumnScope
+import dev.deeplinks.core.Host
+import dev.deeplinks.devices.DeviceDetailSections
+import dev.deeplinks.devices.DeviceState
+import dev.deeplinks.devices.DeviceUi
+import dev.deeplinks.native.AboutSettings
 import dev.deeplinks.native.AppSettings
+import dev.deeplinks.native.AppearanceSettings
+import dev.deeplinks.native.ConversationSettings
+import dev.deeplinks.native.SessionsSettingsContent
 import dev.deeplinks.native.SettingsDest
 import dev.deeplinks.native.SettingsHome
+import dev.deeplinks.native.SettingsPageCanvas
+import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshPageNavigation
+import dev.deeplinks.native.ui.DshPageScaffold
+import dev.deeplinks.native.ui.DshSection
+import dev.deeplinks.native.ui.DshSectionContainer
+import dev.deeplinks.native.ui.DshStatusBadge
+import dev.deeplinks.native.ui.DshStatusTone
+import dev.deeplinks.native.ui.DshSwitchRow
+import dev.deeplinks.native.util.SessionListKind
+import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
+import dev.deeplinks.native.CommandSuggestions
+import dev.deeplinks.native.SessionStatsLine
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
+import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
-import dev.deeplinks.native.SidebarFooter
-import dev.deeplinks.native.SidebarHostRow
-import dev.deeplinks.native.SidebarNewSessionRow
+import dev.deeplinks.native.SessionStatsDetailDialog
 import dev.deeplinks.native.SidebarSearchField
-import dev.deeplinks.native.SidebarSectionHeader
-import dev.deeplinks.native.SidebarWorkspaceRow
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
 import dev.deeplinks.native.ComposerSeatsRow
@@ -174,7 +250,6 @@ private fun TokenWall() {
         "traceReasoning" to Dsh.traceReasoning,
         "traceApproval" to Dsh.traceApproval,
         "traceTodo" to Dsh.traceTodo,
-        "bubbleBg" to Dsh.bubbleBg,
         "borderStrong" to Dsh.borderStrong,
         "successContent" to Dsh.successContent,
         "successContainer" to Dsh.successContainer,
@@ -228,9 +303,11 @@ private fun ChromeWall() {
     StreamReconnectBanner(kind = StreamBannerKind.Connecting, onRetry = {})
     StreamReconnectBanner(kind = StreamBannerKind.Failed, onRetry = {})
     SectionTitle("Context meter rows")
-    ContextMeterRow(label = "System prompt", value = "5.1k", swatchColor = Dsh.systemAccent)
-    ContextMeterRow(label = "Tools", value = "2.4k", swatchColor = Dsh.toolsAccent)
-    ContextMeterRow(label = "Messages", value = "18.7k", swatchColor = Dsh.brand400)
+    ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
+    ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)
+    ContextMeterRow(label = "Messages", value = "18.7K", swatchColor = Dsh.brand400)
+    SectionTitle("Session stats line")
+    SessionStatsLine(MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167))
     SectionTitle("Composer seats")
     ComposerSeatsRow(
         modelName = "DeepSeek V4 Flash",
@@ -271,8 +348,10 @@ private fun TopBarWall() {
     WorkspaceTopBar(
         running = true,
         title = "调研 t3code 移动端设计并对比项目",
-        onOpenDrawer = {},
+        showBack = true,
+        onNavigate = {},
         viewMode = "chat",
+        showViewModeTabs = true,
         onSelectViewMode = {},
         menuExpanded = false,
         onMenuExpandedChange = {},
@@ -284,10 +363,49 @@ private fun TopBarWall() {
 }
 
 @PreviewTest
-@Preview(name = "workspace top bar light", showBackground = true, widthDp = 412, heightDp = 80)
+@Preview(name = "workspace top bar light", showBackground = true, widthDp = 412, heightDp = 140)
 @Composable
 internal fun WorkspaceTopBarLight() {
     Wall(dark = false, english = false) { TopBarWall() }
+}
+
+@PreviewTest
+@Preview(name = "session usage light zh", showBackground = true, widthDp = 412, heightDp = 980)
+@Composable
+internal fun SessionUsageLightZh() {
+    SessionUsageWall(dark = false, english = false)
+}
+
+@PreviewTest
+@Preview(name = "session usage dark en", showBackground = true, widthDp = 412, heightDp = 980)
+@Composable
+internal fun SessionUsageDarkEn() {
+    SessionUsageWall(dark = true, english = true)
+}
+
+@Composable
+private fun SessionUsageWall(dark: Boolean, english: Boolean) {
+    Wall(dark = dark, english = english) {
+        SessionStatsDetailDialog(
+            stats = MobileSessionStats(
+                turns = 12,
+                steps = 31,
+                llmMs = 82_000,
+                toolMs = 43_000,
+                decodeMs = 19_000,
+                decodeTokens = 1_900,
+                uncachedInputTokens = 18_400,
+                cacheReadTokens = 2_600,
+                outputTokens = 8_800,
+                contextPressureTokens = 24_500,
+                contextWindow = 128_000,
+                systemTokens = 2_800,
+                toolsTokens = 6_400,
+                messageTokens = 15_300,
+            ),
+            onDismiss = {},
+        )
+    }
 }
 
 @Composable
@@ -316,7 +434,7 @@ internal fun ChatEmptyHero() {
 @Preview(name = "chat empty error", showBackground = true, widthDp = 412, heightDp = 600)
 @Composable
 internal fun ChatEmptyError() {
-    ChatCanvasFrame(ChatCanvasKind.Error, error = "加载会话失败")
+    ChatCanvasFrame(ChatCanvasKind.Error)
 }
 
 @PreviewTest
@@ -344,7 +462,7 @@ internal fun ChatEmptyHeroDarkEn() {
 @Preview(name = "chat empty error dark en", showBackground = true, widthDp = 412, heightDp = 600)
 @Composable
 internal fun ChatEmptyErrorDarkEn() {
-    ChatCanvasFrame(ChatCanvasKind.Error, dark = true, english = true, error = "Failed to load conversation")
+    ChatCanvasFrame(ChatCanvasKind.Error, dark = true, english = true, error = "timeout")
 }
 
 @PreviewTest
@@ -369,118 +487,383 @@ internal fun ComponentsDarkEn() {
     }
 }
 
+/**
+ * 图标墙：App 只有一套图标（Web 复刻集 DshIcons + 同笔法补充 DshGlyphs），
+ * 统一 18dp 满幅绘制；新增或改笔画时这里会出 diff，方便对齐粗细与视觉大小。
+ */
+private val IconWallGlyphs: List<ImageVector> = listOf(
+    SearchOutline16,
+    SettingsOutline16,
+    PlusOutline16,
+    CloseOutline16,
+    EllipsisOutline16,
+    TrashOutline16,
+    ShareOutline16,
+    CopyOutline16,
+    EditOutline16,
+    LinkOutline16,
+    RefreshOutline16,
+    SendOutline16,
+    Sparkle16,
+    AgentPresetOutline16,
+    ArchiveOutline20,
+    FolderOpenOutline16,
+    ChevronRightOutline14,
+    ChevronDownOutline14,
+    CheckOutline16,
+    WarningOutline16,
+    ArchiveBoxOutline16,
+    ArrowLeftOutline16,
+    CameraOutline16,
+    ClockOutline16,
+    CompressOutline16,
+    ContrastOutline16,
+    DevicesOutline16,
+    FeedbackOutline16,
+    FileOutline16,
+    FontOutline16,
+    GiftOutline16,
+    ImageOutline16,
+    InfoOutline16,
+    KeyOutline16,
+    KeyboardOutline16,
+    LaptopOutline16,
+    MessageOutline16,
+    MicOutline16,
+    PaletteOutline16,
+    QuoteOutline16,
+    ScanOutline16,
+    ShieldOutline16,
+    SparkleOutline16,
+    SwapOutline16,
+    TextSizeOutline16,
+    TranslateOutline16,
+    UnarchiveOutline16,
+    UnlinkOutline16,
+    WalletOutline16,
+    WrapOutline16,
+)
+
+@Composable
+private fun IconWall() {
+    SectionTitle("Icons · DshIcons + DshGlyphs")
+    IconWallGlyphs.chunked(8).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            row.forEach { icon ->
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+            repeat(8 - row.size) { Box(Modifier.size(44.dp)) }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "icons light", showBackground = true, widthDp = 412, heightDp = 460)
+@Composable
+internal fun IconsLight() {
+    Wall(dark = false, english = false) { IconWall() }
+}
+
+@PreviewTest
+@Preview(name = "icons dark", showBackground = true, widthDp = 412, heightDp = 460)
+@Composable
+internal fun IconsDark() {
+    Wall(dark = true, english = true) { IconWall() }
+}
+
+@PreviewTest
+@Preview(name = "command palette light zh", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun CommandPaletteLightZh() {
+    Wall(dark = false, english = false) {
+        CommandSuggestions(query = "/", onPick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "command palette filtered dark en", showBackground = true, widthDp = 412, heightDp = 300)
+@Composable
+internal fun CommandPaletteFilteredDarkEn() {
+    Wall(dark = true, english = true) {
+        CommandSuggestions(query = "/c", onPick = {})
+    }
+}
+
+/**
+ * 设置内容画布（与 SettingsRoute 同一件）：画布底 + 16dp 边距 + 独立滚动，
+ * Section 默认扁平；设置页用它截图。
+ */
+@Composable
+private fun GroupedWall(dark: Boolean, english: Boolean, content: @Composable ColumnScope.() -> Unit) {
+    ShotFrame(dark = dark, english = english) {
+        SettingsPageCanvas(content = content)
+    }
+}
+
+/**
+ * Section 容器策略墙（docs/visual-rules.md 第二节）：
+ * Flat（默认，行落画布 + 发丝线分组）与 Tonal（bgSubtle 容器，独立数据块）。
+ */
+@Composable
+private fun SectionWall(dark: Boolean, english: Boolean) {
+    Wall(dark = dark, english = english) {
+        DshSection(header = "Flat · 默认") {
+            DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
+            DshListRow(title = "外观", icon = PaletteOutline16, value = "跟随系统", onClick = {})
+            DshSwitchRow(title = "系统字体", icon = FontOutline16, checked = true, onCheckedChange = {})
+        }
+        DshSection(header = "Tonal · 独立数据块", container = DshSectionContainer.Tonal) {
+            DshListRow(title = "MacBook Pro", subtitle = "在线 · 24ms · 局域网", icon = LaptopOutline16)
+            DshListRow(title = "思考令牌", subtitle = "上下文余量", icon = WalletOutline16, value = "18.7K")
+        }
+        DshSection(header = "状态语义") {
+            DshListRow(
+                title = "等待确认",
+                subtitle = "权限申请待处理",
+                leading = { DshStatusBadge("等待", tone = DshStatusTone.Waiting, dot = true) },
+            )
+            DshListRow(
+                title = "运行中",
+                subtitle = "正在执行工具调用",
+                leading = { DshStatusBadge("运行", tone = DshStatusTone.Running, dot = true) },
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "section flat tonal light zh", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun SectionFlatTonalLightZh() {
+    SectionWall(dark = false, english = false)
+}
+
+@PreviewTest
+@Preview(name = "section flat tonal dark en", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun SectionFlatTonalDarkEn() {
+    SectionWall(dark = true, english = true)
+}
+
+/** 1.3 字号：标题 / 副标题 / 尾部值不得重叠或截断。 */
+@PreviewTest
+@Preview(name = "section flat tonal large", showBackground = true, widthDp = 412, heightDp = 760, fontScale = 1.3f)
+@Composable
+internal fun SectionFlatTonalLarge() {
+    SectionWall(dark = false, english = false)
+}
+
 @PreviewTest
 @Preview(name = "settings light zh", showBackground = true, widthDp = 412, heightDp = 1100)
 @Composable
 internal fun SettingsLightZh() {
-    Wall(dark = false, english = false) { SettingsHomeWall() }
+    GroupedWall(dark = false, english = false) { SettingsHomeWall() }
 }
 
 @PreviewTest
 @Preview(name = "settings dark en large", showBackground = true, widthDp = 412, heightDp = 1100, fontScale = 1.3f)
 @Composable
 internal fun SettingsDarkEnLarge() {
-    Wall(dark = true, english = true) { SettingsHomeWall() }
+    GroupedWall(dark = true, english = true) { SettingsHomeWall() }
+}
+
+@PreviewTest
+@Preview(name = "settings home paired light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun SettingsHomePairedLightZh() {
+    GroupedWall(dark = false, english = false) {
+        SettingsHome(appSettings = AppSettings(), onOpen = {}, host = PreviewHost)
+    }
 }
 
 /**
- * 抽屉行墙：收紧后的抽屉规格（48dp 行 / 20dp 图标 / CornerFull 选中胶囊 / bgDrawer 容器
- * 与 bgSidePanel 同档）。只用 blank 会话，避免相对时间随时钟漂移导致基线抖动。
+ * 设置页整壳（批次 2）：DshPageScaffold 标题 + 返回热区 + 页面内容，
+ * 与任务首页 / 设备页同一骨架；内容走 SettingsPageCanvas。
  */
+@PreviewTest
+@Preview(name = "settings page shell light zh", showBackground = true, widthDp = 412, heightDp = 900)
 @Composable
-private fun SidebarWall() {
-    val hairline = Dsh.borderSubtle
-    Column(
-        modifier = Modifier
-            .width(304.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Dsh.bgDrawer)
-            // 与真实抽屉一致：末缘发丝线（DshAdaptiveShell 的 SidebarEdgeHairline）
-            .drawWithContent {
-                drawContent()
-                val stroke = 1.dp.toPx()
-                val x = size.width - stroke / 2
-                drawLine(hairline, Offset(x, 0f), Offset(x, size.height), strokeWidth = stroke)
+internal fun SettingsPageShellLightZh() {
+    ShotFrame(dark = false, english = false) {
+        DshPageScaffold(
+            title = DshS.settingsTitle,
+            navigation = DshPageNavigation.Back,
+            onNavigateBack = {},
+        ) {
+            SettingsPageCanvas {
+                SettingsHome(appSettings = AppSettings(), onOpen = { _: SettingsDest -> }, host = PreviewHost)
             }
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        SectionTitle("Header")
-        SidebarHostRow(hostName = "MacBook Pro", onOpenDevice = {})
-        SectionTitle("Primary action")
-        SidebarNewSessionRow(onClick = {})
-        SectionTitle("Section header")
-        SidebarSectionHeader(
-            title = "工作区",
-            searchActive = false,
-            filterActive = true,
-            onToggleSearch = {},
-            onOpenFilterSheet = {},
-            onAddWorkspace = {},
-        )
-        SectionTitle("Search")
-        SidebarSearchField(value = "", onValueChange = {}, onClear = {}, loading = false)
-        SectionTitle("Rows")
-        SessionRowItem(
-            session = MobileSession(
-                sessionId = "s1",
-                title = "重构侧边栏行组件",
-                updatedAt = 0L,
-                running = true,
-                blank = true,
-                cwd = null,
-                agentPreset = null,
-            ),
-            isSelected = true,
-            onClick = {},
-            onRename = {},
-            onFork = {},
-        )
-        SessionRowItem(
-            session = MobileSession(
-                sessionId = "s2",
-                title = "修复图片附件回退",
-                updatedAt = 0L,
-                running = false,
-                blank = true,
-                cwd = null,
-                agentPreset = null,
-            ),
-            isSelected = false,
-            onClick = {},
-            onRename = {},
-            onFork = {},
-        )
-        SidebarWorkspaceRow(
-            name = "deeplinks",
-            collapsed = false,
-            sessionCount = 3,
-            onToggle = {},
-            onCreateSession = {},
-            onDeleteWorkspace = {},
-        )
-        SidebarWorkspaceRow(
-            name = "dsh-links",
-            collapsed = true,
-            sessionCount = 0,
-            onToggle = {},
-            onCreateSession = {},
-            onDeleteWorkspace = {},
-        )
-        SectionTitle("Footer")
-        SidebarFooter(isDarkTheme = false, onOpenSettings = {}, onToggleTheme = {})
+        }
     }
 }
 
 @PreviewTest
-@Preview(name = "sidebar light zh", showBackground = true, widthDp = 340, heightDp = 900)
+@Preview(name = "settings appearance light zh", showBackground = true, widthDp = 412, heightDp = 980)
+@Composable
+internal fun SettingsAppearanceLightZh() {
+    GroupedWall(dark = false, english = false) {
+        AppearanceSettings(savingNs = null, saveErrors = emptyMap(), onSave = { _, _, _ -> })
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings appearance dark en", showBackground = true, widthDp = 412, heightDp = 980)
+@Composable
+internal fun SettingsAppearanceDarkEn() {
+    GroupedWall(dark = true, english = true) {
+        AppearanceSettings(savingNs = null, saveErrors = emptyMap(), onSave = { _, _, _ -> })
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings conversation light zh", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun SettingsConversationLightZh() {
+    GroupedWall(dark = false, english = false) {
+        ConversationSettings(
+            appSettings = AppSettings(),
+            savingNs = null,
+            saveErrors = mapOf("permission" to DshS.settingsChangedElsewhere),
+            onShowFullAccessConfirm = {},
+            onSave = { _, _, _ -> },
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings sessions light zh", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun SettingsSessionsLightZh() {
+    GroupedWall(dark = false, english = false) {
+        SessionsSettingsContent(
+            listKind = SessionListKind.Content,
+            loadError = null,
+            archivedRows = listOf(
+                SessionSnapshot("a1", "重构设置页为分组列表", "/Users/me/dsh-links", 0L),
+                SessionSnapshot("a2", "Relay 超时排查", "/Users/me/relay", 0L),
+            ),
+            deletedRows = emptyList(),
+            onRetry = {},
+            onRestore = {},
+            onClear = {},
+            onClearAll = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings about dark en", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun SettingsAboutDarkEn() {
+    GroupedWall(dark = true, english = true) { AboutSettings(onOpenLegal = { _, _ -> }) }
+}
+
+private val PreviewHost = Host(
+    name = "MacBook Pro",
+    baseUrl = "https://192.168.1.8:18640",
+    token = "preview",
+    relayClient = "preview",
+    relayRouteId = "route",
+    relayRouteSecret = "secret",
+)
+
+@Composable
+private fun DevicesWall() {
+    // 批次 3：设备页与设置同一骨架（DshPageScaffold），副标题降为页首导语
+    DshPageScaffold(title = DshS.pairingManage) {
+        Text(
+            DshS.manageYourLinks,
+            color = Dsh.labelTertiary,
+            style = DshType.body,
+            modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+        )
+        DeviceDetailSections(
+            device = DeviceUi(PreviewHost, DeviceState.ONLINE, latencyMs = 24),
+            notice = null,
+            onOpen = {},
+            onRecheck = {},
+            onTogglePreferRelay = {},
+            onRescan = {},
+            onRescanLater = {},
+            onReplace = {},
+            onUnpair = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "devices light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun DevicesLightZh() {
+    GroupedWall(dark = false, english = false) { DevicesWall() }
+}
+
+@PreviewTest
+@Preview(name = "devices dark en", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun DevicesDarkEn() {
+    GroupedWall(dark = true, english = true) { DevicesWall() }
+}
+
+/**
+ * 首页（任务中心）墙：顶栏 → 工作区筛选条 → 等待确认 / 进行中 / 今天 / 昨天 → 开始新任务。
+ * 会话时间都给 0，避免相对时间随时钟漂移导致基线抖动。
+ */
+@Composable
+private fun SidebarWall() {
+    fun session(id: String, title: String, running: Boolean = false, awaiting: Boolean = false) = MobileSession(
+        sessionId = id,
+        title = title,
+        updatedAt = 0L,
+        running = running,
+        blank = false,
+        cwd = "/Users/me/dsh-links",
+        agentPreset = null,
+        awaitingInput = awaiting,
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        HomeHeader(hostName = "MacBook Pro", searchActive = false, onOpenDevice = {}, onToggleSearch = {}, onOpenSettings = {})
+        WorkspaceChips(
+            workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
+            // 选中态入基线：浅灰底，不是品牌蓝胶囊
+            selected = "/Users/me/dsh-links",
+            onSelect = {},
+            onAddWorkspace = {},
+            onCreateSessionIn = {},
+            onDeleteWorkspace = {},
+        )
+        HomeSectionHeader(HomeSection.AWAITING)
+        SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.RUNNING)
+        SessionRowItem(session("s2", "完善审批状态同步", running = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.TODAY)
+        SessionRowItem(session("s3", "修复手机模型切换"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s4", "整理工作区导航"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.YESTERDAY)
+        SessionRowItem(session("s6", "补齐移动端测试"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        Spacer(Modifier.height(24.dp))
+        HomeNewTaskBar(workspaceName = "dsh-links", onClick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "sidebar light zh", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SidebarLightZh() {
     Wall(dark = false, english = false) { SidebarWall() }
 }
 
 @PreviewTest
-@Preview(name = "sidebar dark en", showBackground = true, widthDp = 340, heightDp = 900)
+@Preview(name = "sidebar dark en", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SidebarDarkEn() {
     Wall(dark = true, english = true) { SidebarWall() }

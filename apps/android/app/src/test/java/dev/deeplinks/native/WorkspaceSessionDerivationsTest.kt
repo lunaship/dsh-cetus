@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-import dev.deeplinks.native.util.SessionFilter
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -264,28 +263,6 @@ class WorkspaceSessionDerivationsTest {
         assertEquals(listOf("visible"), result.map { it.sessionId })
     }
 
-    @Test
-    fun buildSessionFilterData_filtersStaleBlanksAndCountsInOnePass() {
-        val now = 2 * 24 * 3600_000L
-        val sessions = listOf(
-            session("running", running = true, updatedAt = now),
-            session("stopped", running = false, updatedAt = now),
-            session("stale-blank", blank = true, updatedAt = 0L),
-            session("archived", updatedAt = now),
-        )
-
-        val result = buildSessionFilterData(
-            sessions = sessions,
-            archivedIds = setOf("archived"),
-            deletedIds = emptySet(),
-            nowMillis = now,
-        )
-
-        assertEquals(listOf("running", "stopped"), result.sessions.map { it.sessionId })
-        assertEquals(2, result.counts[SessionFilter.ALL])
-        assertEquals(1, result.counts[SessionFilter.RUNNING])
-        assertEquals(1, result.counts[SessionFilter.STOPPED])
-    }
 
     private fun session(
         id: String,

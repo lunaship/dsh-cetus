@@ -161,7 +161,7 @@ object PairClient {
     /** 将配对 HTTP 错误转为用户可读文案。 */
     fun friendlyPairError(code: Int, body: String): String {
         val hint = runCatching {
-            JSONObject(body).optString("error").takeIf { it.isNotBlank() }
+            JSONObject(body).let { o -> if (o.isNull("error")) null else o.optString("error").takeIf { it.isNotBlank() } }
         }.getOrNull()
         return when (code) {
             401 -> hint ?: LocaleManager.strings.pairCodeInvalid

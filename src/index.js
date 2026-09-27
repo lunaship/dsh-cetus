@@ -7,9 +7,10 @@
  *   3. 配对采用一次性 6 位配对码（默认 10 分钟有效）。默认扫码即批准；
  *      开启「配对需本机确认」后，token 先发、API 要等面板点批准才放行。
  */
+import { createAwaitingInput } from "./awaiting-input.js"
 import { createServer as createHttpsServer } from "node:https"
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, join, resolve, sep } from "node:path"
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
 import { homedir, hostname, networkInterfaces } from "node:os"
 import { randomBytes } from "node:crypto"
 import z from "@deepseek-ai/schemastery"
@@ -18,7 +19,6 @@ import QRCode from "qrcode"
 import { workspaceChangesService } from "./workspace-changes.js"
 import { resolveSessionLogPath } from "./session-log-path.js"
 
-import { optionalString } from "./optional-string.js"
 import {
   consumePairingCode, ensurePairingCode, ensureTokenKey, findDeviceByToken, hmacDeviceToken, hydratePairing,
   persistablePairing, randomToken, readDeviceToken, revokeDevice, verifyPairingCode,
@@ -27,11 +27,8 @@ import { loadOrCreateTls } from "./tls.js"
 import { assessForCursor, loadEventsAfter, sseMessageFrame, sseNamedFrame, sseResyncFrame } from "./stream-cursor.js"
 import { flushSeedQueue, startMuxQuestionBridge } from "./question-bridge.js"
 import { bindLocalRpcRuntime, callLocalRpc, unbindLocalRpcRuntime } from "./local-rpc.js"
-import {
-  MobileWorkspaceCreateError,
-  ensureMobileWorkspaceDirectory,
-  planMobileWorkspaceCreate,
-} from "./workspace-create.js"
+import { approveQueuedWorkspace, createWorkspaceApprovalQueue, rejectQueuedWorkspace } from "./workspace-approval.js"
+import { validateSessionCreateWorkspace } from "./workspace-path.js"
 import {
   DEVICE_MUTATION_REVOKED,
   DeviceMutationGate,
@@ -437,6 +434,17 @@ export function requireJsonWrite(req, res) {
   return true
 }
 
+/** 回环面板的 JSON POST。响应已写出时返回 null。 */
+async function readLoopbackPost(req, res) {
+  if (!requireLoopbackSameOrigin(req, res)) return null
+  if (req.method !== "POST") {
+    json(res, 405, { error: "method not allowed" })
+    return null
+  }
+  if (!requireJsonWrite(req, res)) return null
+  return readJson(req, res)
+}
+
 /** 手机端 permission.defaultPreset 的安全取值；danger 需宿主显式开启。 */
 const SAFE_PERMISSION_PRESETS = new Set(["read-only", "workspace-write"])
 
@@ -462,39 +470,7 @@ export function filterSettingsPatch(ns, patch, config) {
   return { ok: true }
 }
 
-/** 归一化客户端路径用于工作区包含性校验：优先 realpath，失败时退回 resolve。 */
-function canonicalClientPath(p) {
-  const resolved = resolve(p)
-  try { return realpathSync(resolved) } catch { return resolved }
-}
-
-/** target 是否等于 root 或位于 root 之内（两者均已归一化）。 */
-function isPathWithinRoot(target, root) {
-  if (target === root) return true
-  const prefix = root.endsWith(sep) ? root : root + sep
-  return target.startsWith(prefix)
-}
-
-/**
- * 校验手机端 session.create 的 cwd / workspaceId 必须落在当前已注册工作区内。
- * 两者都未提供时保持原语义：交给 DSH 决定默认工作区。
- * 返回值：{ ok:true } / { cwd } / { workspaceId } / { error }。
- */
-export function validateSessionCreateWorkspace({ cwd, workspaceId, workspaces }) {
-  const roots = (Array.isArray(workspaces) ? workspaces : [])
-    .map((item) => ({ workspaceId: String(item?.workspaceId ?? "").trim(), path: optionalString(item?.path) }))
-    .filter((w) => w.path && isAbsolute(w.path))
-  if (workspaceId) {
-    const hit = roots.find((w) => w.workspaceId && w.workspaceId === workspaceId)
-    if (!hit) return { error: "workspaceId 未注册或不可用" }
-    return { workspaceId }
-  }
-  if (!cwd) return { ok: true }
-  const target = canonicalClientPath(cwd)
-  const inside = roots.some((w) => isPathWithinRoot(target, canonicalClientPath(w.path)))
-  if (!inside) return { error: "cwd 不在已注册工作区内" }
-  return { cwd: target }
-}
+export { validateSessionCreateWorkspace }
 
 class HttpBodyError extends Error {
   constructor(status, message) {
@@ -765,7 +741,7 @@ async function handlePair(req, res, config, state, stateFile, rt, logger) {
 const MAX_SSE_GLOBAL = 64
 const MAX_SSE_PER_DEVICE = 8
 
-function createRuntime() {
+function createRuntime(config) {
   const requests = createRequestRegistry()
   return {
     sessionStreams: new Map(),
@@ -781,7 +757,12 @@ function createRuntime() {
     deviceRequests: new Map(),
     pairingRequests: new Map(),
     deviceMutations: new DeviceMutationGate(),
+    workspaceApprovals: createWorkspaceApprovalQueue({
+      ttlMs: (config?.pairingTtlSeconds ?? 600) * 1000,
+    }),
     requests,
+    // sessionId → 未结束的审批 / 澄清问题数（含交给电脑端的），首页「等待确认」用
+    awaiting: createAwaitingInput(),
   }
 }
 
@@ -1168,6 +1149,7 @@ function dropDevice(state, rt, device, exceptReq) {
   revokeDevice(null, device.deviceId)
   closeSseForDevice(rt, device.deviceId)
   closeRequestsForDevice(rt, device.deviceId, exceptReq)
+  rt.workspaceApprovals.dropDevice(device.deviceId)
 }
 
 export async function revokeDeviceEntry(state, stateFile, rt, { name, deviceId }, exceptReq) {
@@ -1272,6 +1254,9 @@ const PANEL_ONLY_PATHS = new Set([
   "/dsh-link/relay-reconnect",
   "/dsh-link/relay-release",
   "/dsh-link/relay-ack-replaced",
+  "/dsh-link/workspace-approvals",
+  "/dsh-link/workspace-approve",
+  "/dsh-link/workspace-reject",
 ])
 
 function sessionEvents(session) {
@@ -1309,7 +1294,7 @@ function findApprovalId(req) {
 }
 
 export function apply(ctx, config) {
-  const rt = createRuntime()
+  const rt = createRuntime(config)
   // 可选服务：旧 Host 没有 workspaceChanges，不能进 inject（会阻止插件加载），按请求取。
   rt.workspaceChanges = () => ctx.get("workspaceChanges")
   const web = ctx.get("webServer")
@@ -1531,6 +1516,44 @@ export function apply(ctx, config) {
           ctx.logger.info(
             `dsh-links: device replace approve device=${String(result.body.deviceId).slice(0, 8)} replaced=${result.body.replacedDeviceIds.map((x) => String(x).slice(0, 8)).join(",")}`,
           )
+        }
+        json(res, result.status, result.body)
+      },
+    }),
+    web.register({
+      kind: "exact",
+      path: "/dsh-link/workspace-approvals",
+      handler: (req, res) => {
+        if (!requireLoopbackSameOrigin(req, res)) return
+        if (req.method !== "GET") return json(res, 405, { error: "method not allowed" })
+        json(res, 200, { approvals: rt.workspaceApprovals.list() })
+      },
+    }),
+    web.register({
+      kind: "exact",
+      path: "/dsh-link/workspace-approve",
+      handler: async (req, res) => {
+        const body = await readLoopbackPost(req, res)
+        if (!body) return
+        const result = await approveQueuedWorkspace(rt.workspaceApprovals, body.requestId, (path) =>
+          callLocalRpc(targetPort, "workspace.create", { path }))
+        if (result.deviceId) {
+          ctx.logger.info(`dsh-links: workspace approve device=${String(result.deviceId).slice(0, 8)}`)
+        } else if (result.error) {
+          ctx.logger.warn(`dsh-links: workspace approve: ${result.error?.message ?? result.error}`)
+        }
+        json(res, result.status, result.body)
+      },
+    }),
+    web.register({
+      kind: "exact",
+      path: "/dsh-link/workspace-reject",
+      handler: async (req, res) => {
+        const body = await readLoopbackPost(req, res)
+        if (!body) return
+        const result = rejectQueuedWorkspace(rt.workspaceApprovals, body.requestId)
+        if (result.status === 200) {
+          ctx.logger.info(`dsh-links: workspace reject request=${String(body.requestId).trim().slice(0, 8)}`)
         }
         json(res, result.status, result.body)
       },
@@ -1802,7 +1825,7 @@ export function apply(ctx, config) {
    * 签名是 (req, next)，不是元事件 "waterfall"）。无手机 SSE 时必须 next()，
    * 否则会把桌面审批一并挂死。
    */
-  ctx.on("approval/request", (req, next) => {
+  ctx.on("approval/request", (req, next) => rt.awaiting.track(req?.agent?.session?.id, () => {
     if (req?.signal?.aborted === true) return Promise.resolve("cancelled")
     const sessionId = req?.agent?.session?.id
     const writers = sessionId ? rt.sessionStreams.get(sessionId) : null
@@ -1836,13 +1859,13 @@ export function apply(ctx, config) {
       rt.requests.addApproval(rec)
       req.signal?.addEventListener("abort", rec.onAbort, { once: true })
     })
-  })
+  }))
 
   /**
    * 0.1.2 起澄清卡走 `user-questions/request` waterfall，不再经 /api/events.mux。
    * 有手机 SSE 时由插件代答；否则 next() 把问题交给网页 UI。
    */
-  ctx.on("user-questions/request", (req, next) => {
+  ctx.on("user-questions/request", (req, next) => rt.awaiting.track(req?.agent?.session?.id, () => {
     if (req?.signal?.aborted === true) return next()
     const sessionId = req?.agent?.session?.id
     const writers = sessionId ? rt.sessionStreams.get(sessionId) : null
@@ -1878,7 +1901,7 @@ export function apply(ctx, config) {
       writeSse(new Set(targets), `event: question\ndata: ${body}\n\n`)
       ctx.logger.info(`dsh-links: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${rpcId.slice(0, 8)}`)
     })
-  })
+  }))
 
   // ---------- 手机接入代理（0.0.0.0:<port> HTTPS）：仅 health / pair / mobile/* ----------
   const requestHandler = async (req, res) => {

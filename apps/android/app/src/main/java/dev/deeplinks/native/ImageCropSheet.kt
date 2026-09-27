@@ -67,18 +67,18 @@ fun CameraCropSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(20.dp)
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .padding(DshSpace.s20)
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
-                .padding(16.dp),
+                .padding(DshSpace.s16),
         ) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md)),
+                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.container)),
             ) {
                 viewW = constraints.maxWidth.toFloat().coerceAtLeast(1f)
                 viewH = constraints.maxHeight.toFloat().coerceAtLeast(1f)
@@ -102,10 +102,10 @@ fun CameraCropSheet(
                         },
                 )
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(DshSpace.s12))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
             ) {
                 CropAction(L.retakePhoto, Modifier.weight(1f), onRetake)
                 CropAction(L.usePhoto, Modifier.weight(1f)) {
@@ -127,7 +127,7 @@ private fun CropAction(
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
             .semantics {
                 role = Role.Button
@@ -136,6 +136,6 @@ private fun CropAction(
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = Dsh.labelPrimary, style = DshType.t14)
+        Text(label, color = Dsh.labelPrimary, style = DshType.body)
     }
 }

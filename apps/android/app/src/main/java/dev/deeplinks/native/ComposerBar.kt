@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.animateColorAsState
@@ -32,29 +34,24 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -107,7 +104,7 @@ internal fun InputBar(
         // 输入卡主体：底部悬浮卡——6dp 阴影浮在消息流之上；
         // 浅色灰底 + 发丝描边，聚焦加深描边（不用蓝色 focus ring）。
         var composerFocused by remember { mutableStateOf(false) }
-        // 录音只在设备真的有语音识别服务时出现（Grok：不可用的能力不占位）
+        // 录音只在设备真的有语音识别服务时出现（不可用的能力不占位）
         val voiceContext = androidx.compose.ui.platform.LocalContext.current
         val voiceAvailable = remember(voiceContext) {
             runCatching { android.speech.SpeechRecognizer.isRecognitionAvailable(voiceContext) }
@@ -127,10 +124,11 @@ internal fun InputBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(elevation = 2.dp, shape = composerShape, ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
                 .clip(composerShape)
                 .background(composerBg)
-                .border(1.dp, composerBorder, composerShape)
-                .padding(top = 4.dp)
+                .border(0.5.dp, composerBorder, composerShape)
+                .padding(top = DshSpace.s4)
                 .onFocusChanged { composerFocused = it.hasFocus }
         ) {
             // 待发送图片缩略图（DSH 待发送图片行）
@@ -138,8 +136,8 @@ internal fun InputBar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 12.dp, top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(start = DshSpace.s16, end = DshSpace.s12, top = DshSpace.s8),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)
                 ) {
                     pendingImages.forEachIndexed { index, (_, data) ->
                         val preview = remember(data) { android.util.Base64.decode(data, android.util.Base64.DEFAULT) }
@@ -152,7 +150,7 @@ internal fun InputBar(
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                 modifier = Modifier
                                     .size(56.dp)
-                                    .clip(RoundedCornerShape(DshRadius.md))
+                                    .clip(RoundedCornerShape(DshRadius.container))
                             )
                             Box(
                                 modifier = Modifier
@@ -200,30 +198,25 @@ internal fun InputBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 40.dp, max = 200.dp)
-                    .padding(start = 16.dp, end = 12.dp, top = 2.dp)
+                    .padding(start = DshSpace.s16, end = DshSpace.s12, top = DshSpace.s2)
                     .let { base ->
                         if (composerFocusRequester != null) base.focusRequester(composerFocusRequester) else base
                     },
             )
 
-
-
-
-            // 底部工具行：左侧控件可压缩，发送键固定在最右，永不被挤出
-            val composerIdle = inputText.isBlank() && pendingImages.isEmpty()
+            // 底部工具行：附件、模型选择与发送
+            val composerIdle = inputText.isNullOrBlank() && pendingImages.isEmpty()
             Box(Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, top = 0.dp, bottom = 4.dp),
+                    .padding(start = DshSpace.s8, end = DshSpace.s8, top = 0.dp, bottom = DshSpace.s4),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .horizontalScroll(rememberScrollState()),
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
                 ) {
                     // 左侧：+ 按钮（DSH input add：图片/附件）
                     if (!running) {
@@ -239,29 +232,74 @@ internal fun InputBar(
                                 expanded = attachOpen,
                                 onDismiss = { attachOpen = false },
                                 items = listOf(
-                                    DshMenuItem(Icons.Default.PhotoLibrary, L.choosePhoto) {
+                                    DshMenuItem(ImageOutline16, L.choosePhoto) {
                                         attachOpen = false
                                         onPickImage()
                                     },
-                                    DshMenuItem(Icons.Default.PhotoCamera, L.takePhoto) {
+                                    DshMenuItem(CameraOutline16, L.takePhoto) {
                                         attachOpen = false
                                         onTakePhoto()
+                                    },
+                                    DshMenuItem(composerPermissionGlyph(permissionPreset), permissionLabel) {
+                                        attachOpen = false
+                                        onOpenPermissionPicker()
                                     },
                                 ),
                             )
                         }
 
-                        // DSH 输入条座位：模型座 + 访问模式座（原来自己发明的「工作模式
-                        // 对话/规划/目标」plan 档已撤掉：DSH 里 plan / goal 是命令，不是模式）
-                        ComposerSeatsRow(
-                            modelName = modelName,
-                            modelEffort = modelEffort,
-                            permissionPreset = permissionPreset,
-                            permissionLabel = permissionLabel,
-                            compact = compact,
-                            onOpenModelPicker = onOpenModelPicker,
-                            onOpenPermissionPicker = onOpenPermissionPicker,
-                        )
+                        // 模型胶囊标签（轻量次级文字，低干扰）
+                        val modelLabel = if (!modelName.isNullOrBlank()) modelName else L.selectModel
+                        val effortLabel = if (!modelEffort.isNullOrBlank() && !modelEffort.equals("null", ignoreCase = true)) formatEffortLabel(modelEffort) else null
+                        val modelAria = when {
+                            modelName.isNullOrBlank() -> L.selectModel
+                            effortLabel == null -> L.modelSeatAria.format(modelName)
+                            else -> L.modelSeatAriaEffort.format(modelName, modelEffort)
+                        }
+                        val modelPillInteraction = remember { MutableInteractionSource() }
+                        val modelPillPressed by modelPillInteraction.collectIsPressedAsState()
+                        Row(
+                            modifier = Modifier
+                                .heightIn(min = 32.dp)
+                                .clip(RoundedCornerShape(DshRadius.control))
+                                .background(if (modelPillPressed) Dsh.pressed else Color.Transparent)
+                                .clickable(
+                                    interactionSource = modelPillInteraction,
+                                    indication = dshRipple(),
+                                    onClick = onOpenModelPicker,
+                                )
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = modelAria
+                                }
+                                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                modelLabel,
+                                color = Dsh.labelSecondary,
+                                style = DshType.captionMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (effortLabel != null) {
+                                Spacer(Modifier.width(DshSpace.s4))
+                                Text(
+                                    effortLabel,
+                                    color = Dsh.labelTertiary,
+                                    style = DshType.microRelaxed,
+                                    maxLines = 1,
+                                )
+                            }
+                            Spacer(Modifier.width(3.dp))
+                            Icon(
+                                ChevronDownOutline14,
+                                contentDescription = null,
+                                tint = Dsh.labelTertiary,
+                                modifier = Modifier.size(11.dp),
+                            )
+                        }
                     }
                 }
 
@@ -326,7 +364,7 @@ internal fun InputBar(
                 }
                 Box(
                     modifier = Modifier
-                        .padding(start = 4.dp)
+                        .padding(start = DshSpace.s4)
                         .size(48.dp)
                         .dshPressScale(sendInteraction)
                         .semantics {
@@ -380,7 +418,7 @@ internal fun InputBar(
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
-                                        .clip(RoundedCornerShape(2.dp))
+                                        .clip(RoundedCornerShape(DshRadius.micro))
                                         .background(Color.White)
                                 )
                             }
@@ -396,10 +434,10 @@ internal fun InputBar(
                             showMic -> {
                                 // 与 + / 设置 同灰阶图标（圆钮比它们大一号，图标同步 16dp）
                                 Icon(
-                                    Icons.Default.Mic,
+                                    MicOutline16,
                                     contentDescription = null,
                                     tint = Dsh.labelPrimary,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                             else -> {
@@ -423,7 +461,7 @@ internal fun InputBar(
                     style = DshType.caption,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 12.dp, bottom = 8.dp)
+                        .padding(start = DshSpace.s16, end = DshSpace.s12, bottom = DshSpace.s8)
                         .semantics { contentDescription = shownActionError },
                 )
             }
@@ -442,6 +480,12 @@ internal fun InputBar(
  *
  * plan / goal 在 DSH 里是 `/plan` `/goal` 命令，不是座位，所以这里不再有「工作模式」。
  */
+private fun composerPermissionGlyph(preset: String) = when (canonicalComposerPermission(preset)) {
+    "read-only" -> BrowseOutline16
+    "danger-full-access" -> WarningOutline16
+    else -> FolderOpenOutline16
+}
+
 @Composable
 internal fun ComposerSeatsRow(
     modelName: String?,
@@ -454,7 +498,7 @@ internal fun ComposerSeatsRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
     ) {
         ComposerModelSeat(
             name = modelName,
@@ -509,25 +553,26 @@ private fun ComposerModelSeat(
         Row(
             modifier = Modifier
                 .height(28.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
+                // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(composerSeatBackground(pressed))
-                .padding(start = 8.dp, end = 4.dp),
+                .padding(start = DshSpace.s8, end = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             // DSH 默认藏图标、窄档才只显示图标
             if (compact) {
                 Icon(
                     Sparkle16,
                     contentDescription = null,
-                    tint = if (hasModel) Dsh.brand500 else Dsh.labelTertiary,
+                    tint = if (hasModel) Dsh.labelSecondary else Dsh.labelTertiary,
                     modifier = Modifier.size(14.dp),
                 )
             } else {
                 Text(
                     text = name ?: L.selectModel,
                     color = Dsh.labelSecondary,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -537,7 +582,7 @@ private fun ComposerModelSeat(
                     Text(
                         text = formatEffortLabel(effort),
                         color = Dsh.labelTertiary,
-                        style = DshType.t13,
+                        style = DshType.body,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -587,11 +632,12 @@ private fun ComposerAccessSeat(
         Row(
             modifier = Modifier
                 .height(28.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
+                // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(composerSeatBackground(pressed))
-                .padding(start = 8.dp, end = 4.dp),
+                .padding(start = DshSpace.s8, end = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             Icon(
                 glyph,
@@ -603,7 +649,7 @@ private fun ComposerAccessSeat(
                 Text(
                     text = label,
                     color = contentTint,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -620,11 +666,7 @@ private fun ComposerAccessSeat(
  */
 @Composable
 private fun composerRoundButtonBg(pressed: Boolean): Color =
-    if (pressed) {
-        if (Dsh.isDark) Dsh.brand400.copy(alpha = 0.18f) else Dsh.brand500.copy(alpha = 0.12f)
-    } else {
-        Dsh.bgTrack
-    }
+    if (pressed) Dsh.pressed else Dsh.bgTrack
 
 @Composable
 internal fun RoundIconButton(
@@ -674,6 +716,9 @@ internal fun ComposerTopRow(
     onRetryWorkspaces: () -> Unit = {},
     onOpenHarnessPicker: (() -> Unit)? = null,
     onStartSession: (String?) -> Unit,
+    /** 新会话起始块的标题与小字（如「新任务」「192.168.10.20」）；为空时不画标题。 */
+    setupTitle: String? = null,
+    setupCaption: String? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val workspaces = remember(sessions, deletedWorkspaces, registeredPaths, registryReady) {
@@ -694,123 +739,49 @@ internal fun ComposerTopRow(
         ?: lastCwd?.takeIf { it in workspaces }
     val showSetup = composerShowsSetupRow(workspaceEditable, showHarness, harnessLabel)
 
+    // 新会话：输入框上方一块起始区——标题 + 工作区 / 智能体预设竖排，整块贴近拇指。
+    // 已有会话：这一行只剩 trailingContent。
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s2),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (showSetup) Modifier.heightIn(min = 48.dp) else Modifier)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (workspaceEditable) {
-            val workspaceLabel = displayCwd?.substringAfterLast('/') ?: L.selectWorkspaceShort
-            Row(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(DshRadius.md))
-                    .heightIn(min = 48.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = workspaceLabel
-                    }
-                    .clickable { showPicker = true }
-                    .padding(horizontal = 2.dp)
-                    .wrapContentHeight(Alignment.CenterVertically),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    FolderOpenOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelPrimary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(6.dp))
+        if (showSetup && !setupTitle.isNullOrBlank()) {
+            Column(modifier = Modifier.padding(horizontal = DshSpace.s4)) {
                 Text(
-                    workspaceLabel,
+                    setupTitle,
                     color = Dsh.labelPrimary,
-                    style = DshType.t13x20M,
-                    fontWeight = FontWeight(500),
-                    lineHeight = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    // 与首页「任务」同一档页面标题
+                    style = DshType.headlineMedium,
+                    modifier = Modifier.semantics { heading() },
                 )
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    ChevronDownOutline14,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-            }
-
-            if (showHarness && harnessLabel.isNotBlank()) {
-                val harnessInteraction = remember { MutableInteractionSource() }
-                val harnessPressed by harnessInteraction.collectIsPressedAsState()
-                val harnessBg = when {
-                    harnessPressed -> Dsh.pressed
-                    else -> Color.Transparent
-                }
-                Row(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(DshRadius.md))
-                        .background(harnessBg)
-                        .then(
-                            if (harnessEditable && onOpenHarnessPicker != null) {
-                                Modifier
-                                    .semantics {
-                                        role = Role.Button
-                                        contentDescription = harnessLabel
-                                    }
-                                    .clickable(
-                                        interactionSource = harnessInteraction,
-                                        indication = dshRipple(),
-                                        onClick = onOpenHarnessPicker,
-                                    )
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .padding(horizontal = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        AgentPresetOutline16,
-                        contentDescription = null,
-                        tint = if (harnessEditable) Dsh.labelPrimary else Dsh.labelSecondary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
+                if (!setupCaption.isNullOrBlank()) {
                     Text(
-                        harnessLabel,
-                        color = if (harnessEditable) Dsh.labelPrimary else Dsh.labelSecondary,
-                        style = DshType.t13x20M,
-                        fontWeight = FontWeight(500),
-                        lineHeight = 20.sp,
+                        setupCaption,
+                        color = Dsh.labelTertiary,
+                        style = DshType.captionRelaxed,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (harnessEditable && onOpenHarnessPicker != null) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            ChevronDownOutline14,
-                            contentDescription = null,
-                            tint = Dsh.labelTertiary,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
                 }
             }
+            Spacer(Modifier.height(DshSpace.s12))
+        }
+        if (workspaceEditable) {
+            ComposerSetupRow(
+                icon = FolderOpenOutline16,
+                label = displayCwd?.substringAfterLast('/') ?: L.selectWorkspaceShort,
+                onClick = { showPicker = true },
+            )
+        }
+        if (showHarness && harnessLabel.isNotBlank()) {
+            ComposerSetupRow(
+                icon = AgentPresetOutline16,
+                label = harnessLabel,
+                onClick = if (harnessEditable) onOpenHarnessPicker else null,
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
             trailingContent()
         }
@@ -833,5 +804,51 @@ internal fun ComposerTopRow(
                 onStartSession(cwd)
             },
         )
+    }
+}
+
+/** 新会话起始区的一行：图标 + 当前取值 + 下拉箭头；不可改时只显示取值。 */
+@Composable
+private fun ComposerSetupRow(
+    icon: ImageVector,
+    label: String,
+    onClick: (() -> Unit)?,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Row(
+        modifier = Modifier
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(if (pressed) Dsh.pressed else Color.Transparent)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = label
+                        }
+                        .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = DshSpace.s4),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            label,
+            color = if (onClick != null) Dsh.labelPrimary else Dsh.labelSecondary,
+            style = DshType.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (onClick != null) {
+            Spacer(Modifier.width(DshSpace.s4))
+            Icon(ChevronDownOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+        }
     }
 }

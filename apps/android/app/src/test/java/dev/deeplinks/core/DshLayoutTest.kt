@@ -54,15 +54,15 @@ class DshLayoutTest {
         // Compact：纯内容 + 临时面板
         assertFalse(deriveDshLayout(412, 915).persistentSidebar)
         assertFalse(deriveDshLayout(412, 915).railNavigation)
-        // Medium：窄 Rail + 临时面板，不常驻完整列表
+        // Medium 与手机同一条栈：列表是首页，不常驻、不加 Rail
         val medium = deriveDshLayout(700, 1000)
         assertFalse(medium.persistentSidebar)
-        assertTrue(medium.railNavigation)
+        assertFalse(medium.railNavigation)
         // 宽但矮（横屏手机）也落在 Medium：仍不常驻侧栏
         val wideShort = deriveDshLayout(900, 599)
         assertEquals(DshShell.Medium, wideShort.shell)
         assertFalse(wideShort.persistentSidebar)
-        assertTrue(wideShort.railNavigation)
+        assertFalse(wideShort.railNavigation)
         // Expanded：常驻侧栏 master-detail
         val expanded = deriveDshLayout(1200, 900)
         assertTrue(expanded.persistentSidebar)
@@ -70,9 +70,10 @@ class DshLayoutTest {
     }
 
     @Test
-    fun mediumContentStaysWiderThanAPersistentListPane() {
-        // 700dp 窗口：如果保留 240dp 常驻侧栏，内容只剩 460dp。Rail 只占 72dp。
+    fun mediumUsesTheSameStackAsThePhone() {
         val layout = deriveDshLayout(700, 1000)
-        assertTrue(700 - DSH_RAIL_WIDTH_DP > 700 - layout.listPaneWidthDp)
+        assertEquals(DshShell.Medium, layout.shell)
+        assertFalse(layout.persistentSidebar)
+        assertFalse(layout.railNavigation)
     }
 }

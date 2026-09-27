@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.native.util.optStringOrEmpty
 import org.json.JSONObject
 
 /**
@@ -70,11 +71,11 @@ sealed interface WorkspaceFileDiff {
 }
 
 internal fun parseChangedFile(obj: JSONObject): ChangedFile? {
-    val path = obj.optString("path").trim()
+    val path = obj.optStringOrEmpty("path").trim()
     if (path.isEmpty()) return null
     return ChangedFile(
         path = path,
-        display = obj.optString("display").trim().ifEmpty { path },
+        display = obj.optStringOrEmpty("display").trim().ifEmpty { path },
         added = obj.optInt("added", 0).coerceAtLeast(0),
         deleted = obj.optInt("deleted", 0).coerceAtLeast(0),
         binary = obj.optBoolean("binary", false),
@@ -98,9 +99,9 @@ internal fun parseWorkspaceChanges(obj: JSONObject, seq: Long): WorkspaceChanges
 }
 
 internal fun parseWorkspaceFileDiff(obj: JSONObject): WorkspaceFileDiff? {
-    val path = obj.optString("path")
-    val display = obj.optString("display").ifEmpty { path }
-    return when (obj.optString("kind")) {
+    val path = obj.optStringOrEmpty("path")
+    val display = obj.optStringOrEmpty("display").ifEmpty { path }
+    return when (obj.optStringOrEmpty("kind")) {
         "binary" -> WorkspaceFileDiff.Binary(path, display)
         "oversized" -> WorkspaceFileDiff.Oversized(path, display)
         "text" -> {
@@ -172,12 +173,30 @@ fun sessionChangeSummaries(messages: List<MobileMessage>): List<WorkspaceChanges
         .mapNotNull { if (it.role == ROLE_WORKSPACE_CHANGES) it.changes else null }
         .sortedByDescending { it.seq }
 
-/** 渲染行：hunk 头 / 上下文 / 新增 / 删除，带双列行号。 */
-data class DiffRow(val kind: Kind, val oldNo: Int?, val newNo: Int?, val text: String) {
+/**
+ * 钉在输入框上方的本轮改动：最后一条用户消息之后的改动卡。
+ * 用户再发消息，这张卡就回到消息流原位；新一轮没改文件时不钉任何卡。
+ * [messages] 为旧→新顺序、已合并去重的历史（[mergeHistoryPages] 的输出）。
+ */
+fun pinnedTurnChanges(messages: List<MobileMessage>): WorkspaceChangesSummary? {
+    val lastUser = messages.indexOfLast { it.role == "user" }
+    return messages.drop(lastUser + 1).lastOrNull { it.role == ROLE_WORKSPACE_CHANGES }?.changes
+}
+
+/** 渲染行：hunk 头 / 上下文 / 新增 / 删除，带双列行号；[emphasis] 为行内变化片段（见 IntralineDiff.kt）。 */
+data class DiffRow(
+    val kind: Kind,
+    val oldNo: Int?,
+    val newNo: Int?,
+    val text: String,
+    val emphasis: List<IntRange> = emptyList(),
+) {
     enum class Kind { HUNK, CONTEXT, ADD, DELETE }
 }
 
-fun diffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
+fun diffRows(hunks: List<DiffHunk>): List<DiffRow> = withIntralineEmphasis(plainDiffRows(hunks))
+
+private fun plainDiffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
     for (hunk in hunks) {
         add(DiffRow(DiffRow.Kind.HUNK, null, null, "@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@"))
         var oldNo = hunk.oldStart

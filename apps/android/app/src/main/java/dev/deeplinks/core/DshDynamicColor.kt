@@ -10,7 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
  * 把系统动态色的关键槽位映射进 DshColors 的**语义角色**，而不是直接用 M3 槽位，
  * 这样所有组件无需改动即可跟随壁纸取色。气泡类角色做轻微 hand-tune。
  *
- * 品牌强调色（DeepSeek Blue）永远保留静态基线：壁纸只动表面 / 灰阶文字，
+ * 品牌强调色（DSH deepseek 蓝）永远保留静态基线：壁纸只动表面 / 灰阶文字，
  * 不劫持 `brand400` / `brand500` / `brandTint` / 推理轨与用户气泡蓝系底。
  *
  * Android 12（S）以下没有系统动态色，返回 null，由调用方回退静态调色板。
@@ -20,7 +20,7 @@ fun dynamicDshColors(context: Context, dark: Boolean): DshColors? {
     val scheme = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     val base = if (dark) DarkDshColors else LightDshColors
     // base.copy：未覆盖的字段（brand* / brandTint / toolsAccent / bgRecessed /
-    // traceReasoning / bubbleBg / bubbleHighlight 等）保持 DeepSeek 静态色。
+    // traceReasoning 等）保持 DSH 静态色。
     return base.copy(
         bgBase = scheme.background,
         bgSidePanel = scheme.surfaceContainerLow,

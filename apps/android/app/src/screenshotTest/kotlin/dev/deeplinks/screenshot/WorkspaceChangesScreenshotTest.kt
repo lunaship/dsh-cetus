@@ -112,13 +112,14 @@ private fun CardWall() {
         WorkspaceTopBar(
             running = false,
             title = "对照 Paseo 设计左滑改动面板",
-            onOpenDrawer = {},
-            viewMode = "chat",
+            showBack = true,
+            onNavigate = {},
+            viewMode = "trace",
+            showViewModeTabs = true,
             onSelectViewMode = {},
             menuExpanded = false,
             onMenuExpandedChange = {},
             menuItems = emptyList(),
-            latestChanges = multi,
         )
         Text("Multi-file card", color = Dsh.labelTertiary, style = DshType.label)
         WorkspaceChangesCard(summary = multi, onOpen = {})

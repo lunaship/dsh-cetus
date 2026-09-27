@@ -191,12 +191,17 @@ object HostStore {
         return save(ctx, host)
     }
 
-    /** 解除配对（本机侧）。只在存的还是这台时清空，避免误删刚换上的新设备。 */
+    /** 解除配对（本机侧）。只在存的还是这台时清空，避免误删刚换上的新设备。本机的会话快照与草稿一并清掉。 */
     @Synchronized
     fun remove(ctx: Context, host: Host): Boolean {
         val current = current(ctx) ?: return true
         if (current.slotKey != host.slotKey && current.baseUrl != host.baseUrl) return true
-        return save(ctx, null)
+        val ok = save(ctx, null)
+        if (ok) {
+            runCatching { dev.deeplinks.native.SessionHistoryCache.clearHost(ctx.cacheDir, current.slotKey) }
+            runCatching { dev.deeplinks.native.util.WorkspacePrefs(ctx).saveComposerDrafts(current.slotKey, emptyMap()) }
+        }
+        return ok
     }
 
     /** 云端路由失效：降级为仅局域网，并标记需要重新扫码恢复云端。 */

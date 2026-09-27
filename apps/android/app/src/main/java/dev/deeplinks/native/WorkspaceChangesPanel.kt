@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
@@ -31,8 +33,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.WrapText
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +47,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +68,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -324,8 +327,8 @@ internal fun WorkspaceChangesPanel(
             val file = index?.let { current?.files?.getOrNull(it) }
             if (current == null) {
                 PanelHeader(title = ChangesL.changes, onClose = { scope.launch { state.settle(false) } })
-                Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Text(ChangesL.empty, color = Dsh.labelTertiary, style = DshType.bodyDense)
+                Box(Modifier.fillMaxSize().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
+                    Text(ChangesL.empty, color = Dsh.labelTertiary, style = DshType.body)
                 }
             } else if (file == null) {
                 TurnHeader(
@@ -374,14 +377,14 @@ private fun PanelHeader(title: String, onClose: () -> Unit, subtitle: String? = 
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PanelIconButton(CloseOutline16, L.close, onClose)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.t14SB, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
+            Text(title, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
-                Text(subtitle, color = Dsh.labelTertiary, style = DshType.t12, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         trailing()
@@ -404,7 +407,7 @@ private fun TurnHeader(
     ) {
         DiffStat(summary.added, summary.deleted)
         if (summaries.size > 1) {
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(DshSpace.s4))
             val older = summaries.getOrNull(position + 1)
             val newer = if (position > 0) summaries[position - 1] else null
             PanelIconButton(
@@ -420,7 +423,7 @@ private fun TurnHeader(
                 tint = if (newer != null) Dsh.labelSecondary else Dsh.labelDimmed,
             )
         } else {
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(DshSpace.s12))
         }
     }
 }
@@ -436,8 +439,8 @@ private fun FileList(summary: WorkspaceChangesSummary, onOpenFile: (Int) -> Unit
                 Text(
                     ChangesL.moreFiles.format(summary.total - summary.files.size),
                     color = Dsh.labelTertiary,
-                    style = DshType.t12,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = DshType.caption,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
                 )
             }
         }
@@ -458,23 +461,23 @@ private fun FileHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PanelIconButton(ChevronLeftOutline14, ChangesL.backToFiles, onBack)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-            Text(file.name, color = Dsh.labelPrimary, style = DshType.t14SB, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
+            Text(file.name, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (file.directory.isNotEmpty()) {
                     Text(
                         file.directory,
                         color = Dsh.labelTertiary,
-                        style = DshType.t12,
+                        style = DshType.caption,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(DshSpace.s6))
                 }
                 DiffStat(file.added, file.deleted)
             }
@@ -493,10 +496,10 @@ private fun FileHeader(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.AutoMirrored.Outlined.WrapText,
+                WrapOutline16,
                 contentDescription = null,
                 tint = if (wrap) Dsh.brand500 else Dsh.labelSecondary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
             )
         }
         if (count > 1) {
@@ -552,23 +555,23 @@ private fun FileDiffBody(
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Dsh.brand400)
         }
         is DiffLoad.Failed -> Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(DshSpace.s24),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.t14)
+            Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.body)
             if (current.message.isNotBlank()) {
-                Text(current.message, color = Dsh.labelTertiary, style = DshType.t12, modifier = Modifier.padding(top = 4.dp))
+                Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = DshSpace.s4))
             }
             Text(
                 L.retry,
                 color = Dsh.brand400,
-                style = DshType.t13M,
+                style = DshType.title,
                 modifier = Modifier
-                    .padding(top = 12.dp)
+                    .padding(top = DshSpace.s12)
                     .heightIn(min = 44.dp)
                     .clip(RoundedCornerShape(DshRadius.full))
                     .clickable(interactionSource = null, indication = dshRipple()) { attempt++ }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
             )
         }
         is DiffLoad.Ready -> when (val diff = current.diff) {
@@ -584,11 +587,11 @@ private fun DiffNoteRow(text: String) {
     Text(
         text,
         color = Dsh.labelSecondary,
-        style = DshType.t12,
+        style = DshType.caption,
         modifier = Modifier
             .fillMaxWidth()
             .background(Dsh.bgTrack)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s16, vertical = 10.dp),
     )
 }
 
@@ -599,7 +602,7 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
     val digits = remember(rows) {
         rows.maxOfOrNull { maxOf(it.oldNo ?: 0, it.newNo ?: 0) }?.toString()?.length?.coerceAtLeast(2) ?: 2
     }
-    val codeStyle = DshType.t12x17.copy(fontFamily = FontFamily.Monospace)
+    val codeStyle = DshType.caption.copy(fontFamily = FontFamily.Monospace)
     val measurer = rememberTextMeasurer()
     val charWidthPx = remember(codeStyle) { measurer.measure("0", codeStyle).size.width.toFloat() }
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Dsh.bgCode)) {
@@ -640,7 +643,7 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
         modifier = Modifier
             .fillMaxWidth()
             .background(bg)
-            .padding(horizontal = 8.dp, vertical = 1.dp),
+            .padding(horizontal = DshSpace.s8, vertical = 1.dp),
     ) {
         if (row.kind == DiffRow.Kind.HUNK) {
             Text(row.text, color = Dsh.labelTertiary, style = style, maxLines = 1, softWrap = false)
@@ -655,7 +658,7 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
         )
         Text(" $sign ", color = signColor, style = style, maxLines = 1, softWrap = false)
         Text(
-            row.text.replace("\t", "    "),
+            remember(row, signColor) { diffLineText(row, signColor.copy(alpha = 0.3f)) },
             color = Dsh.labelPrimary,
             style = style,
             softWrap = wrap,
@@ -664,4 +667,18 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
             modifier = Modifier.weight(1f),
         )
     }
+}
+
+/** 行文本：tab 展开为 4 空格；行内变化片段叠一层更深的同色底（区间按原串计，逐段展开以免错位）。 */
+private fun diffLineText(row: DiffRow, emphasis: Color): AnnotatedString = buildAnnotatedString {
+    fun put(from: Int, to: Int) = append(row.text.substring(from, to).replace("\t", "    "))
+    var cursor = 0
+    for (r in row.emphasis) {
+        val start = r.first.coerceIn(cursor, row.text.length)
+        val end = (r.last + 1).coerceIn(start, row.text.length)
+        put(cursor, start)
+        withStyle(SpanStyle(background = emphasis)) { put(start, end) }
+        cursor = end
+    }
+    put(cursor, row.text.length)
 }

@@ -31,23 +31,39 @@ import kotlinx.coroutines.delay
 /**
  * DSH 设计系统：排版、圆角、动效 token。
  * 排版对齐 DSH Web `--dsw-font-family` 体系；
- * 圆角统一为 4 档 + pill（取代散布的 5/6/7/8/10/12/13/14/24dp）；
+ * 圆角收敛为 6 个用途命名角色（docs/visual-rules.md 第三节：micro / control /
+ * container / composer / modal / full），取代早期按来源与尺寸命名的 xs…xl 档位；
  * 动效时长与 easing 对齐 `--ds-transition-duration*` 系列。
  */
 object DshRadius {
-    val sm = 6.dp
-    val md = 10.dp
-    val lg = 12.dp
-    val xl = 18.dp
-    /** 输入卡圆角（签名形状：比卡片软、比弹层收）。 */
+    /** 微型（2dp）：进度条、小色块。 */
+    val micro = 2.dp
+
+    /** 控件（8dp）：菜单行、小按钮、缩略图。 */
+    val control = 8.dp
+
+    /** 容器（12dp）：普通卡片、状态面板、菜单。 */
+    val container = 12.dp
+
+    /** Composer（22dp）：聊天输入卡与任务入口——少量品牌签名形状，普通卡片不得复制。 */
     val composer = 22.dp
-    val sheet = 28.dp   // 底部弹层顶部圆角：M3 bottom sheet 标准 28dp（原 14dp iOS 观感偏"浮层化"）
-    val dialog = 28.dp  // 对话框卡片圆角：M3 dialog 标准 28dp
+
+    /** 弹层（28dp）：Dialog、Bottom sheet（M3 标准）。 */
+    val modal = 28.dp
+
+    /** 全圆（999dp）：Filter chip、状态 pill、圆形按钮、进度轨道。 */
     val full = 999.dp
 }
 
-/** 底部弹层通用 shape：顶部两角 [DshRadius.sheet]（M3 28dp）。 */
-val DshSheetShape = RoundedCornerShape(topStart = DshRadius.sheet, topEnd = DshRadius.sheet)
+/**
+ * 图标底板：按边长 28% 取圆角，不同尺寸比例一致，不再各自写 16dp、20dp、22dp。
+ * 只允许品牌 mark、头像和确实需要方形底板的设备图标使用（docs/visual-rules.md 第三节）；
+ * 普通列表行用 24dp 线性图标，不走底板。
+ */
+val DshTileShape = RoundedCornerShape(percent = 28)
+
+/** 底部弹层通用 shape：顶部两角 [DshRadius.modal]（M3 28dp）。 */
+val DshSheetShape = RoundedCornerShape(topStart = DshRadius.modal, topEnd = DshRadius.modal)
 
 object DshDuration {
     const val fast = 100

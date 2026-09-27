@@ -1,17 +1,18 @@
 import { readFileSync, statSync } from "node:fs"
 import { readFile as readFileAsync } from "node:fs/promises"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 import { randomBytes } from "node:crypto"
 import { homedir, hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
 import { mobileSessionSummary } from "./mobile-session-summary.js"
+import { handleMobileModelsApi } from "./mobile-models.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
 import { relayPairSnapshot } from "./relay/crypto.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
-import { mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
+import { listWorkspaceDir, mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
 import { optionalString, omitNullFields } from "./optional-string.js"
-import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory } from "./workspace-create.js"
+import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory, resolveAbsoluteWorkspaceDirectory } from "./workspace-create.js"
 import { normalizeQuestions, validateAnswers } from "./question-answers.js"
 import { canDeviceHandle, requestBelongsToSession, mapApprovalUiStatus } from "./request-lifecycle.js"
 import { resolveSessionLogPath } from "./session-log-path.js"
@@ -70,6 +71,11 @@ function mapModelGroups(groups) {
   }))
 }
 
+/** 会话摘要 + 插件侧运行时状态（等待确认）。 */
+function summarizeSession(rt, item) {
+  return mobileSessionSummary(item, { awaitingInput: rt?.awaiting?.has(item?.sessionId) })
+}
+
 function uniqueRpcPayloads(payloads) {
   const seen = new Set()
   const out = []
@@ -81,6 +87,56 @@ function uniqueRpcPayloads(payloads) {
     out.push(payload)
   }
   return out
+}
+
+/**
+ * 切换会话模型：先按会话模型目录把供应商 / 模型解析成 id（手机可能传展示名），
+ * 推理等级不在该模型允许列表里时回落到默认等级；再按候选载荷依次尝试 session.selectModel。
+ * （445a21f 拆分 mobile-api.js 时曾漏掉本函数，接口一直 ReferenceError，见 mobile-error-map 测试。）
+ */
+async function selectSessionModel(targetPort, sessionId, provider, model, reasoningEffort, stillAuthorized = () => true) {
+  let groups = []
+  try {
+    const catalog = await callLocalRpc(targetPort, "session.models", { sessionId })
+    if (!stillAuthorized()) throw new Error("设备已被吊销")
+    groups = catalog?.groups ?? []
+  } catch {
+    groups = []
+  }
+  const group =
+    groups.find((g) => g.id === provider) ||
+    groups.find((g) => g.name === provider) ||
+    groups.find((g) => (g.models ?? []).some((m) => m.id === model || m.name === model))
+  const resolvedProvider = group?.id || provider
+  const resolvedModel = (group?.models ?? []).find((m) => m.id === model || m.name === model)?.id || model
+  const modelMeta = (group?.models ?? []).find((m) => m.id === resolvedModel)
+  const allowed = (modelMeta?.reasoning?.efforts ?? [])
+    .map((e) => (typeof e === "string" ? e : e.id))
+    .filter(Boolean)
+  const defaultEffort = modelMeta?.reasoning?.defaultEffort
+  const requested = typeof reasoningEffort === "string" && reasoningEffort.trim() ? reasoningEffort.trim() : null
+  const effort = requested && (allowed.length === 0 || allowed.includes(requested))
+    ? requested
+    : defaultEffort && (allowed.length === 0 || allowed.includes(defaultEffort))
+      ? defaultEffort
+      : null
+  const base = { sessionId, provider: resolvedProvider, model: resolvedModel }
+  const attempts = uniqueRpcPayloads([
+    effort ? { ...base, reasoningEffort: effort } : base,
+    base,
+    group?.id ? { sessionId, provider: group.id, model: resolvedModel } : null,
+    group?.name ? { sessionId, provider: group.name, model: resolvedModel } : null,
+  ])
+  let lastErr
+  for (const payload of attempts) {
+    if (!stillAuthorized()) throw new Error("设备已被吊销")
+    try {
+      return await callLocalRpc(targetPort, "session.selectModel", payload)
+    } catch (err) {
+      lastErr = err
+    }
+  }
+  throw lastErr ?? new Error("切换模型失败")
 }
 
 async function readSessionLogText(path) {
@@ -136,7 +192,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     }
     if (req.method === "GET" && pathname === "/dsh-link/mobile/bootstrap") {
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
-      const sessions = items.map(mobileSessionSummary)
+      const sessions = items.map((item) => summarizeSession(rt, item))
       return json(res, 200, {
         version: 1,
         protocol: PLUGIN_PROTOCOL,
@@ -154,7 +210,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
       return json(res, 200, {
         version: 1,
-        sessions: items.map(mobileSessionSummary),
+        sessions: items.map((item) => summarizeSession(rt, item)),
         archivedSessionIds,
       })
     }
@@ -264,9 +320,26 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const body = await readAuthorizedJson(req, res, state, device)
   if (!body) return
       try {
+        const rawInput = body.input ?? body.path
+        if (isAbsolute(String(rawInput ?? "").trim())) {
+          const real = resolveAbsoluteWorkspaceDirectory(rawInput)
+          const pending = rt.workspaceApprovals.submit({
+            deviceId: device.deviceId,
+            deviceName: device.name,
+            path: real,
+          })
+          return json(res, 202, {
+            ok: true,
+            pending: true,
+            requestId: pending.requestId,
+            path: pending.path,
+            inputKind: "absolute-path",
+            expiresAt: pending.expiresAt,
+          })
+        }
         const list = await callLocalRpc(targetPort, "workspace.list", {})
         const plan = planMobileWorkspaceCreate({
-          input: body.input ?? body.path,
+          input: rawInput,
           parentWorkspaceId: body.parentWorkspaceId,
           workspaces: list.items ?? [],
         })
@@ -395,9 +468,14 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     if (req.method === "POST" && pathname === "/dsh-link/mobile/revoke") {
       const body = await readAuthorizedJson(req, res, state, device)
       if (!body) return
+      const targetId = String(body.deviceId ?? "").trim()
+      const targetName = String(body.name ?? "").trim()
+      if (!targetId && !targetName) return json(res, 400, { error: "缺少设备名或 deviceId" })
+      if ((targetId && targetId !== device.deviceId) || (targetName && targetName !== device.name)) {
+        return json(res, 403, { error: "只能吊销当前设备" })
+      }
       const result = await revokeDeviceEntry(state, stateFile, rt, {
-        name: body.name,
-        deviceId: body.deviceId,
+        deviceId: device.deviceId,
       }, req)
       if (result.status === 200 && logger) {
         logger.info(`dsh-links: device revoke device=${String(result.body?.deviceId ?? body.deviceId ?? "").slice(0, 8)}`)
@@ -593,6 +671,30 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       return
     }
 
+    // 工作区文件树：按层列目录，与 /file 同一沙箱与订阅门槛（只有正在查看该会话的设备可列）。
+    const treeMatch = pathname.match(/^\/dsh-link\/mobile\/sessions\/([^/]+)\/tree$/)
+    if (req.method === "GET" && treeMatch) {
+      const sessionId = decodeURIComponent(treeMatch[1])
+      if (!isDeviceSubscribedToSession(rt, sessionId, device.deviceId)) {
+        return json(res, 403, { error: "仅正在查看该会话的设备可浏览文件" })
+      }
+      const requested = String(new URL(req.url ?? "/", "http://x").searchParams.get("path") ?? "").trim()
+      try {
+        const list = await callLocalRpc(targetPort, "session.list", {})
+        const item = (list.items ?? []).find((s) => s.sessionId === sessionId)
+        if (!item) {
+          const err = new Error("会话不存在")
+          err.status = 404
+          throw err
+        }
+        return json(res, 200, { ok: true, ...listWorkspaceDir(optionalString(item?.cwd), requested) })
+      } catch (err) {
+        const status = Number.isInteger(err?.status) ? err.status : 500
+        const message = status >= 500 ? "读取目录失败" : (err?.message || "读取目录失败")
+        return json(res, status, { error: message })
+      }
+    }
+
     // 本轮改动文件：转发 Host workspaceChanges（摘要 = 路径 + 行数；对比 = 按需取的 hunk）。
     const changesMatch = pathname.match(/^\/dsh-link\/mobile\/sessions\/([^/]+)\/changes(\/diff)?$/)
     if (req.method === "GET" && changesMatch) {
@@ -755,6 +857,8 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         return json(res, 200, result ?? { ok: true })
       }
     }
+
+    if (await handleMobileModelsApi(req, res, targetPort, state, device, pathname, rt, deps)) return
 
     return json(res, 404, { error: "mobile endpoint not found" })
   } catch (error) {

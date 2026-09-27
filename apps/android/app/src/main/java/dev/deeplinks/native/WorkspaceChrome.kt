@@ -1,6 +1,15 @@
 package dev.deeplinks.native
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import dev.deeplinks.native.ui.DshErrorState
+import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
+import dev.deeplinks.core.DshS
+import dev.deeplinks.native.ui.DshSheetHeader
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -8,15 +17,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,10 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -58,16 +61,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import dev.deeplinks.core.dshRipple
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.draw.drawBehind
@@ -75,19 +77,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.stateDescription
 import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshBanner
-import dev.deeplinks.native.ui.DshBannerTone
+import dev.deeplinks.native.ui.DshTopSegment
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.foundation.layout.navigationBarsPadding
-import dev.deeplinks.native.ui.DshSheetGrabber
 import androidx.compose.ui.draw.shadow
 
 /**
@@ -113,32 +105,31 @@ internal fun ToolSearchBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 4.dp),
+                .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgInput)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
                     singleLine = true,
-                    textStyle = DshType.bodyDense.copy(color = Dsh.labelPrimary),
+                    textStyle = DshType.body.copy(color = Dsh.labelPrimary),
                     cursorBrush = SolidColor(Dsh.brand400),
                     modifier = Modifier.weight(1f),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
-                                Text(L.toolSearchPlaceholder, color = Dsh.labelTertiary, style = DshType.t13, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(L.toolSearchPlaceholder, color = Dsh.labelTertiary, style = DshType.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             inner()
                         }
@@ -169,55 +160,40 @@ internal fun ToolSearchBar(
 }
 
 /**
- * 断线重连横幅（从 WorkspaceScreen 抽出，COM-001 拆解）。
- * SSE 断开时提示，客户端自动退避重连；复用 [DshBanner]。
+ * 断线重连：顶栏下面一行字。失败时字变红，「重试」是文字按钮。
  */
 @Composable
 internal fun StreamReconnectBanner(
     kind: StreamBannerKind,
     onRetry: () -> Unit,
 ) {
+    val text = when (kind) {
+        StreamBannerKind.Connecting -> L.connecting
+        StreamBannerKind.Failed -> L.connectionFailedReconnecting
+        else -> L.disconnectedReconnecting
+    }
+    val description = when (kind) {
+        StreamBannerKind.Connecting -> L.connecting
+        StreamBannerKind.Failed -> L.connectionFailedReconnecting
+        else -> L.disconnectedReconnectingContentDescription
+    }
     AnimatedVisibility(
         visible = kind != StreamBannerKind.Hidden,
         enter = expandVertically(animationSpec = tween(motionDuration(200))) + fadeIn(animationSpec = tween(motionDuration(200))),
         exit = shrinkVertically(animationSpec = tween(motionDuration(180))) + fadeOut(animationSpec = tween(motionDuration(180)))
     ) {
-        DshBanner(
-            text = when (kind) {
-                StreamBannerKind.Connecting -> L.connecting
-                StreamBannerKind.Failed -> L.connectionFailedReconnecting
-                else -> L.disconnectedReconnecting
-            },
-            tone = if (kind == StreamBannerKind.Failed)
-                DshBannerTone.Error else DshBannerTone.Info,
-            actionLabel = L.retry,
-            onAction = onRetry,
-            leading = {
-                val reconnRotation = rememberMotionSpin(900, label = "reconnRot")
-                Icon(
-                    RefreshOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier
-                        .size(12.dp)
-                        .rotate(reconnRotation ?: 0f)
-                )
-            },
-            contentDescription = when (kind) {
-                StreamBannerKind.Connecting -> L.connecting
-                StreamBannerKind.Failed -> L.connectionFailedReconnecting
-                else -> L.disconnectedReconnectingContentDescription
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+        QuietStatusLine(
+            text = text,
+            alert = kind == StreamBannerKind.Failed,
+            contentDescription = description,
+        ) {
+            QuietStatusAction(L.retry, onRetry)
+        }
     }
 }
 
 /**
- * 设备不可达横幅（方案 §4.6）：最近设备离线时不强制跳回设备页，
- * Workspace 仍然打开，内容区顶部给出「重试 / 设备与配对」两个明确下一步。
+ * 设备不可达：一行字加两个文字动作。离线时不强制跳回设备页。
  */
 @Composable
 internal fun DeviceUnreachableBanner(
@@ -226,6 +202,7 @@ internal fun DeviceUnreachableBanner(
     onRetry: () -> Unit,
     onOpenDevice: () -> Unit,
 ) {
+    val message = L.cannotConnectHost.format(hostName)
     AnimatedVisibility(
         visible = visible,
         enter = expandVertically(animationSpec = tween(motionDuration(200))) +
@@ -233,181 +210,88 @@ internal fun DeviceUnreachableBanner(
         exit = shrinkVertically(animationSpec = tween(motionDuration(180))) +
             fadeOut(animationSpec = tween(motionDuration(180))),
     ) {
-        val message = L.cannotConnectHost.format(hostName)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .background(Dsh.bgCard)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .semantics { contentDescription = message },
-        ) {
-            Text(
-                message,
-                color = Dsh.labelSecondary,
-                style = DshType.captionRelaxed,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BannerAction(label = L.deviceAndPairing, onClick = onOpenDevice)
-                Spacer(Modifier.width(4.dp))
-                BannerAction(label = L.retry, primary = true, onClick = onRetry)
-            }
+        QuietStatusLine(text = message, alert = false, contentDescription = message) {
+            QuietStatusAction(L.deviceAndPairing, onOpenDevice)
+            QuietStatusAction(L.retry, onRetry)
         }
     }
 }
 
 @Composable
-private fun BannerAction(label: String, primary: Boolean = false, onClick: () -> Unit) {
+private fun QuietStatusLine(
+    text: String,
+    alert: Boolean,
+    contentDescription: String,
+    actions: @Composable () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s2)
+            .semantics { this.contentDescription = contentDescription },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            color = if (alert) Dsh.error else Dsh.labelSecondary,
+            style = DshType.captionRelaxed,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        actions()
+    }
+}
+
+@Composable
+private fun QuietStatusAction(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.full))
-            // 实心主按钮统一 brand500（brand400 底配白色小字在暗色下不足 AA）
-            .background(if (primary) Dsh.brand500 else Color.Transparent)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = DshSpace.s8)
             .semantics {
                 role = Role.Button
-                contentDescription = label
-            }
-            .padding(horizontal = 12.dp),
+                this.contentDescription = label
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
-            color = if (primary) Dsh.onBrand else Dsh.labelPrimary,
-            style = DshType.microRelaxed,
+            color = Dsh.labelPrimary,
+            style = DshType.captionRelaxed,
             fontWeight = FontWeight.Medium,
         )
     }
 }
 
 @Composable
-internal fun HeroShell() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // 品牌图形：与设备页空态同一枚 mark（ic_dsh_mark），弱蓝底 + 发丝描边
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Dsh.brand400.copy(alpha = 0.12f))
-                .border(1.dp, Dsh.brand400.copy(alpha = 0.28f), RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(dev.deeplinks.R.drawable.ic_dsh_mark),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(
-            L.heroSlogan,
-            color = Dsh.labelPrimary,
-            // 字重/行高由 token 自带，不在调用点重复覆盖（避免 token 演进被拽回旧值）
-            style = DshType.t20x28SB,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            L.heroHint,
-            color = Dsh.labelTertiary,
-            style = DshType.t13,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
 internal fun ChatHistoryError(
-    message: String,
+    message: String?,
     onRetry: () -> Unit,
-    title: String = L.loadConversationFailed,
+    title: String = DshS.loadConversationFailed,
+    hint: String? = null,
+    compact: Boolean = true,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-            Text(
-                title,
-                color = Dsh.labelPrimary,
-                style = DshType.t16SB,
-                fontWeight = FontWeight(600),
-                lineHeight = 22.sp,
-            )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            message,
-            color = Dsh.labelTertiary,
-            style = DshType.titleSmall,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-        Spacer(Modifier.height(16.dp))
-        Box(
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(Dsh.brand400)
-                .clickable(onClick = onRetry)
-                .padding(horizontal = 20.dp)
-                .semantics { role = Role.Button },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(L.retry, color = Dsh.onBrand, style = DshType.t13M, fontWeight = FontWeight(500))
-        }
-    }
+    // 兜底文案常与标题相同（「加载失败 / 加载失败」），这种不算细节
+    val detail = message?.takeUnless { it.isBlank() || it == title }
+    // 错误态：错误图标 + 简短错误 + 重试，不挂欢迎插画（docs/visual-rules.md 第五节）
+    DshErrorState(
+        title = title,
+        // 有提示语时它是主说明，原始错误（常是 timeout 这类技术文本）降为脚注
+        message = hint ?: detail,
+        footnote = detail.takeIf { hint != null },
+        actionLabel = DshS.retry,
+        onAction = onRetry,
+        compact = compact,
+    )
 }
 
+/** 工具搜索失败：一行字加文字重试，不另做色块按钮。 */
 @Composable
 internal fun SearchStatusBanner(message: String, onRetry: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.bgCard)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            message,
-            color = Dsh.labelSecondary,
-            style = DshType.captionRelaxed,
-            modifier = Modifier.weight(1f),
-        )
-        Box(
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(Dsh.brand400)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = L.retry
-                }
-                .clickable(onClick = onRetry)
-                .padding(horizontal = 12.dp)
-                .wrapContentHeight(Alignment.CenterVertically),
-        ) {
-            Text(L.retry, color = Dsh.onBrand, style = DshType.t12M, fontWeight = FontWeight(500))
-        }
+    QuietStatusLine(text = message, alert = false, contentDescription = message) {
+        QuietStatusAction(L.retry, onRetry)
     }
 }
 
@@ -439,7 +323,7 @@ internal fun ContextMeterButton(
         Row(
             modifier = Modifier
                 .height(48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(if (pressed) Dsh.pressed else Color.Transparent)
                 .semantics {
                     role = Role.Button
@@ -447,9 +331,9 @@ internal fun ContextMeterButton(
                     stateDescription = "${percent.toInt()}%"
                 }
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = true }
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             Canvas(modifier = Modifier.size(14.dp)) {
                 val stroke = 2.dp.toPx()
@@ -479,7 +363,7 @@ internal fun ContextMeterButton(
                 Text(
                     text = "${percent.toInt()}%",
                     color = Dsh.labelTertiary,
-                    style = DshType.t12x20,
+                    style = DshType.caption,
                     lineHeight = 20.sp,
                     maxLines = 1,
                 )
@@ -491,28 +375,27 @@ internal fun ContextMeterButton(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             containerColor = Dsh.bgSubtle,
-            shape = RoundedCornerShape(DshRadius.lg)
+            shape = RoundedCornerShape(DshRadius.container)
         ) {
-            Column(modifier = Modifier.width(240.dp).padding(12.dp)) {
+            Column(modifier = Modifier.width(240.dp).padding(DshSpace.s12)) {
                 // header：上下文已用 + 百分比 + 用量数字
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(L.contextUsed, color = Dsh.labelTertiary, style = DshType.t12x20, lineHeight = 20.sp)
-                    Spacer(Modifier.width(6.dp))
+                    Text(L.contextUsed, color = Dsh.labelTertiary, style = DshType.caption)
+                    Spacer(Modifier.width(DshSpace.s6))
                     Text(
                         "${percent.toInt()}%",
                         color = Dsh.labelPrimary,
-                        style = DshType.t12x20M,
+                        style = DshType.label,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(500)
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "~${compactTokens(used)} / ${compactTokens(window)}",
+                        "~${compactTokens(used)} / ${compactTokens(window)} ${L.tokenUnitShort}",
                         color = Dsh.labelPrimary,
-                        style = DshType.t12x20M,
+                        style = DshType.label.tabularNums(),
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(500),
-                        fontFamily = FontFamily.Monospace
                     )
                 }
                 Spacer(Modifier.height(10.dp))
@@ -521,7 +404,7 @@ internal fun ContextMeterButton(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
+                        .clip(RoundedCornerShape(DshRadius.full))
                         .background(Dsh.pressed)
                 ) {
                     if (hasBreakdown) {
@@ -550,12 +433,12 @@ internal fun ContextMeterButton(
                         )
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(DshSpace.s12))
                 // 明细行（系统提示词/工具/对话消息 + 色块 + tok 数）
                 ContextMeterRow(L.systemPrompt, compactTokens(stats.systemTokens), Dsh.systemAccent)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(DshSpace.s4))
                 ContextMeterRow(L.tools, compactTokens(stats.toolsTokens), Dsh.toolsAccent)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(DshSpace.s4))
                 ContextMeterRow(L.chatMessages, compactTokens(stats.messageTokens), Dsh.brand400)
             }
         }
@@ -571,80 +454,140 @@ internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(DshRadius.micro))
                 .background(swatchColor)
         )
-        Spacer(Modifier.width(6.dp))
-        Text(label, color = Dsh.labelSecondary, style = DshType.captionRelaxed, lineHeight = 18.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Dsh.labelPrimary, style = DshType.captionRelaxed, lineHeight = 18.sp, fontFamily = FontFamily.Monospace)
+        Spacer(Modifier.width(DshSpace.s6))
+        Text(label, color = Dsh.labelSecondary, style = DshType.captionRelaxed, modifier = Modifier.weight(1f))
+        Text(value, color = Dsh.labelPrimary, style = DshType.captionRelaxed.tabularNums(),)
     }
 }
 
+/** 命令图标：按 trigger 映射到自有图标集（模型层保持纯数据，便于 JVM 单测）。 */
+private fun paletteIcon(command: PaletteCommand): ImageVector = when (command.trigger) {
+    "/plan" -> ListPenOutline16
+    "/goal" -> GoalOutline16
+    "/subagent" -> BranchOutline16
+    "/skills" -> SkillOutline16
+    "/pause" -> PauseOutline16
+    "/resume" -> PlayOutline16
+    "/clear" -> EraserOutline16
+    "/feedback" -> FeedbackOutline16
+    "/new-session" -> NewChatOutline16
+    "/search" -> SearchOutline16
+    "/model" -> SparkleOutline16
+    "/permission" -> ShieldOutline16
+    "/chat" -> MessageOutline16
+    "/trace" -> ChecklistOutline14
+    "/settings" -> SettingsOutline16
+    else -> CodeOutline16
+}
+
+/**
+ * 斜杠命令面板：从输入框上方浮起的卡片，最多约半屏，对话仍然看得见。
+ * 每行「图标块 · 中文名 + 灰色 trigger · 一句说明」；没输入时按分组展示，
+ * 输入后只留匹配项并高亮第一条（它就是点「发送」时最可能想要的那条）。
+ */
 @Composable
 internal fun CommandSuggestions(
     query: String,
     onPick: (PaletteCommand) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val grouped = remember(query) { filterPalette(DSH_PALETTE, query) }
-    // 兜底：query 与输入文本同步；只有至少一组有结果才显示 picker
+    val filtering = query.length > 1
+    // 过滤时不再分组：拍平后「trigger 以输入开头」的排前面（/c → 清除上下文、对话视图，再到 /feedback）
+    val grouped = remember(query) {
+        val raw = filterPalette(DSH_PALETTE, query)
+        if (!filtering) raw else {
+            val needle = query.removePrefix("/").lowercase()
+            val flat = raw.flatMap { it.second }.sortedByDescending { it.command.trigger.removePrefix("/").lowercase().startsWith(needle) }
+            if (flat.isEmpty()) emptyList() else listOf(flat.first().group to flat)
+        }
+    }
     if (grouped.isEmpty()) return
-    Column(
-        modifier = Modifier
+    val first = grouped.first().second.first().command
+    Box(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s6),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .heightIn(max = 340.dp)
+                .shadow(12.dp, RoundedCornerShape(DshRadius.container), clip = false)
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCard)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
-                .padding(vertical = 6.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(DshSpace.s6),
         ) {
             grouped.forEach { (group, entries) ->
-                Text(
-                    group.displayName,
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
-                )
+                if (!filtering) {
+                    Text(
+                        group.displayName,
+                        color = Dsh.labelTertiary,
+                        style = DshType.microMedium,
+                        modifier = Modifier.padding(start = 10.dp, top = DshSpace.s8, bottom = DshSpace.s4),
+                    )
+                }
                 entries.forEach { entry ->
-                    val interaction = remember { MutableInteractionSource() }
-                    val pressed by interaction.collectIsPressedAsState()
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .background(if (pressed) Dsh.pressed else Color.Transparent)
-                            .clickable(interactionSource = interaction, indication = dshRipple()) { onPick(entry.command) }
-                            .padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            entry.command.trigger,
-                            color = Dsh.labelPrimary,
-                            style = DshType.bodyDense,
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            // 触发词与描述分列：固定 220dp 会把 412dp 上的描述压到两三个字
-                            modifier = Modifier
-                                .widthIn(max = 160.dp)
-                                .weight(0.45f, fill = false)
-                        )
-                        Text(
-                            entry.command.description,
-                            color = Dsh.labelTertiary,
-                            style = DshType.captionRelaxed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    PaletteRow(
+                        command = entry.command,
+                        highlighted = filtering && entry.command == first,
+                        onClick = { onPick(entry.command) },
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(if (highlighted) Dsh.bgSubtle else Color.Transparent)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(if (highlighted) Dsh.brandTint else Dsh.bgSubtle),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                paletteIcon(command),
+                contentDescription = null,
+                tint = if (highlighted) Dsh.brand500 else Dsh.labelSecondary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Spacer(Modifier.width(DshSpace.s12))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(command.title, color = Dsh.labelPrimary, style = DshType.body, maxLines = 1)
+                Spacer(Modifier.width(DshSpace.s6))
+                Text(
+                    command.trigger,
+                    color = Dsh.labelTertiary,
+                    style = DshType.captionRelaxed,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                command.description,
+                color = Dsh.labelTertiary,
+                style = DshType.captionRelaxed,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -693,19 +636,20 @@ internal fun ToolGroupHeader(
     val groupRunning = sweepingId != null && group.items.any { it.id == sweepingId }
     val pressTint = Dsh.pressed
     val rail = Dsh.borderStrong
+    val summaryTitle = dev.deeplinks.native.util.formatToolGroupSummary(group.items) { L.toolCallCount.format(it) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .heightIn(min = 36.dp)
+                .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .semantics {
                     role = Role.Button
-                    contentDescription = L.toolCallCount.format(group.items.size)
+                    contentDescription = summaryTitle
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (groupRunning) {
@@ -722,29 +666,28 @@ internal fun ToolGroupHeader(
                     tint = Dsh.labelTertiary,
                     modifier = Modifier.size(14.dp),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             }
             Text(
-                L.toolCallCount.format(group.items.size),
+                summaryTitle,
                 color = if (groupRunning) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.t13M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             if (groupRunning) {
                 ShimmerLabel(text = L.executing.trimEnd('…', '.'), working = true)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
             } else if (totalDuration != null) {
                 Text(
                     formatTraceDuration(totalDuration),
                     color = Dsh.labelTertiary,
-                    style = DshType.t11,
-                    fontFamily = FontFamily.Monospace,
+                    style = DshType.microRelaxed.tabularNums(),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(DshSpace.s6))
             }
             Icon(
                 if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
@@ -761,14 +704,14 @@ internal fun ToolGroupHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 7.dp, top = 2.dp)
+                    .padding(start = 7.dp, top = DshSpace.s2)
                     .drawBehind {
                         val x = 3.5.dp.toPx()
                         drawLine(rail, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
                     }
-                    .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                    .padding(start = DshSpace.s16, top = DshSpace.s4, bottom = DshSpace.s4),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
                     group.items.forEach { item ->
                         MessageItem(
                             msg = item,
@@ -785,220 +728,140 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 单行顶栏（原生化）：≡ 侧栏按钮 + 标题▾（点按开会话抽屉）+ 对话/轨迹分段 + 更多菜单。
- * 纯展示：菜单项由调用方通过 [workspaceHeaderMenuItems] 构建后传入。
+ * 会话顶栏：导航、会话名（下挂「项目 · 电脑」一行）、对话/轨迹胶囊分段和溢出菜单。
+ * 标题被分段挤窄时，副标题仍交代这是哪个项目、哪台电脑。
+ * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
  */
 @Composable
 internal fun WorkspaceTopBar(
     running: Boolean,
     title: String,
-    onOpenDrawer: () -> Unit,
+    subtitle: String? = null,
+    showBack: Boolean,
+    onNavigate: () -> Unit,
     viewMode: String,
+    showViewModeTabs: Boolean,
     onSelectViewMode: (String) -> Unit,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     menuItems: List<DshMenuItem>,
-    /** 本会话最新一轮改动；null 时不出入口（旧插件 / 没改过文件）。 */
-    latestChanges: WorkspaceChangesSummary? = null,
-    onOpenChanges: () -> Unit = {},
-    /** 活动目标文本；非空时在标题旁显示一个紧凑的目标胶囊。 */
-    goalSummary: String? = null,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // ≡ 侧栏按钮（始终可见，作为抽屉/侧栏的主入口）
-        val sidebarInteraction = remember { MutableInteractionSource() }
-        val sidebarPressed by sidebarInteraction.collectIsPressedAsState()
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (sidebarPressed) Dsh.pressed else Color.Transparent)
-                .clickable(interactionSource = sidebarInteraction, indication = dshRipple()) { onOpenDrawer() }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = L.sessionMenu
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                PanelLeftOutline16,
-                contentDescription = null,
-                tint = Dsh.labelSecondary,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-
-        // 标题 = 会话切换入口（点按开抽屉，充分释放横向阅读空间）
-        val titleInteraction = remember { MutableInteractionSource() }
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .clickable(interactionSource = titleInteraction, indication = dshRipple()) { onOpenDrawer() }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = title
-                }
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (running) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(Dsh.brand400),
-                )
-                Spacer(Modifier.width(6.dp))
-            }
-            Text(
-                title,
-                color = Dsh.labelPrimary,
-                style = DshType.titleLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        // 改动入口：左滑手势的显式替身（手势不能是唯一入口），只写最新一轮的文件数
-        if (latestChanges != null) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .clickable(indication = dshRipple(), interactionSource = null, onClick = onOpenChanges)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(latestChanges)}"
-                    }
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(EditOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text("${latestChanges.total}", color = Dsh.labelSecondary, style = DshType.t12M, maxLines = 1)
-                }
-            }
-        }
-
-        // 活动目标摘要胶囊：仅运行中且 goal 非空时出现
-        val activeGoal = goalSummary?.takeIf { running && it.isNotBlank() }
-        if (activeGoal != null) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 28.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(Dsh.brand400.copy(alpha = 0.1f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Icon(
-                        GoalOutline16,
-                        contentDescription = null,
-                        tint = Dsh.brand400,
-                        modifier = Modifier.size(13.dp),
-                    )
-                    Text(
-                        text = activeGoal.take(28) + if (activeGoal.length > 28) "…" else "",
-                        color = Dsh.brand400,
-                        style = DshType.t11M,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-
-        // 对话 / 轨迹：紧凑微胶囊切换（图标+文字明确语义，触控48dp，视觉仅~56dp，不挤占标题）
-        val isTrace = viewMode == "trace"
-        val viewModeInteraction = remember { MutableInteractionSource() }
-        val viewModePressed by viewModeInteraction.collectIsPressedAsState()
-        Box(
-            modifier = Modifier
-                .heightIn(min = 44.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .clickable(interactionSource = viewModeInteraction, indication = dshRipple()) {
-                    onSelectViewMode(if (isTrace) "chat" else "trace")
-                }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = if (isTrace) L.tabChat else L.tabTrace
-                }
-                .padding(horizontal = 4.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(
-                        when {
-                            viewModePressed -> Dsh.pressed
-                            isTrace -> Dsh.brandTint
-                            else -> Dsh.bgTrack
-                        }
-                    )
-                    .border(
-                        1.dp,
-                        if (isTrace) Dsh.brand400.copy(alpha = 0.35f) else Dsh.borderSubtle,
-                        RoundedCornerShape(DshRadius.full)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    if (isTrace) Icons.Outlined.ChatBubbleOutline else CodeOutline16,
-                    contentDescription = null,
-                    tint = if (isTrace) Dsh.brand500 else Dsh.labelSecondary,
-                    modifier = Modifier.size(13.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = if (isTrace) L.tabChat else L.tabTrace,
-                    color = if (isTrace) Dsh.brand500 else Dsh.labelSecondary,
-                    style = DshType.t12M,
-                    fontWeight = if (isTrace) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                )
-            }
-        }
-
-        Spacer(Modifier.width(2.dp))
-
-        Box {
-            val moreInteraction = remember { MutableInteractionSource() }
-            val morePressed by moreInteraction.collectIsPressedAsState()
+            val navInteraction = remember { MutableInteractionSource() }
+            val navPressed by navInteraction.collectIsPressedAsState()
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (morePressed) Dsh.pressed else Color.Transparent)
-                    .clickable(interactionSource = moreInteraction, indication = dshRipple()) { onMenuExpandedChange(true) },
+                    .background(if (navPressed) Dsh.pressed else Color.Transparent)
+                    .clickable(interactionSource = navInteraction, indication = dshRipple()) { onNavigate() }
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = if (showBack) L.back else L.sessionList
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    EllipsisOutline16,
-                    contentDescription = L.moreActions,
+                    if (showBack) ArrowLeftOutline16 else PanelLeftOutline16,
+                    contentDescription = null,
                     tint = Dsh.labelSecondary,
                     modifier = Modifier.size(18.dp),
                 )
             }
-            DshMenu(
-                expanded = menuExpanded,
-                onDismiss = { onMenuExpandedChange(false) },
-                items = menuItems,
-            )
+
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (running) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Dsh.brand400),
+                    )
+                    Spacer(Modifier.width(DshSpace.s6))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        color = Dsh.labelPrimary,
+                        style = if (subtitle.isNullOrBlank()) DshType.titleLarge else DshType.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            subtitle,
+                            color = Dsh.labelTertiary,
+                            style = DshType.captionRelaxed,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            if (showViewModeTabs) {
+                DshTopSegment(
+                    labels = listOf(L.tabChat, L.tabTrace),
+                    selectedIndex = if (viewMode == "trace") 1 else 0,
+                    onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
+                )
+            }
+
+            Box {
+                val moreInteraction = remember { MutableInteractionSource() }
+                val morePressed by moreInteraction.collectIsPressedAsState()
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(if (morePressed) Dsh.pressed else Color.Transparent)
+                        .clickable(interactionSource = moreInteraction, indication = dshRipple()) { onMenuExpandedChange(true) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        EllipsisOutline16,
+                        contentDescription = L.moreActions,
+                        tint = Dsh.labelSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                DshMenu(
+                    expanded = menuExpanded,
+                    onDismiss = { onMenuExpandedChange(false) },
+                    items = menuItems,
+                )
+            }
         }
     }
 }
+
+/** 进行中的目标：一行次要文字，贴在输入区上方，不进顶栏。 */
+@Composable
+internal fun ChatGoalLine(text: String) {
+    Text(
+        text,
+        color = Dsh.labelSecondary,
+        style = DshType.body,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DshSpace.s20, vertical = DshSpace.s2),
+    )
+}
+
 /**
  * 空会话画布（从 WorkspaceScreen 的 LazyColumn 抽出，COM-001 拆解）：
  * 加载 / 运行 / 失败 / 空态四选一，属于 LazyListScope 所以做成扩展。
@@ -1017,20 +880,24 @@ internal fun LazyListScope.chatEmptyCanvas(
             ThinkingStatusRow(elapsedSec)
         }
         ChatCanvasKind.Error -> item(key = "chat-load-error") {
-            ChatHistoryError(
-                message = historyLoadError ?: L.loadConversationFailed,
-                onRetry = onRetry,
-            )
-        }
-        ChatCanvasKind.Empty, ChatCanvasKind.Content -> item(key = "empty-hero") {
+            // 与空态 hero 同一骨架：整屏居中，而不是贴在顶部
             Box(
                 modifier = Modifier
                     .fillParentMaxSize()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = DshSpace.s8),
                 contentAlignment = Alignment.Center,
             ) {
-                HeroShell()
+                ChatHistoryError(
+                    message = historyLoadError,
+                    hint = DshS.loadConversationFailedHint,
+                    onRetry = onRetry,
+                    compact = false,
+                )
             }
+        }
+        // 空会话只留白：起点是输入框占位句，不放标语和品牌标志
+        ChatCanvasKind.Empty, ChatCanvasKind.Content -> item(key = "empty-hero") {
+            Box(Modifier.fillParentMaxSize())
         }
     }
 }
@@ -1063,10 +930,10 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Default.KeyboardArrowDown,
+                ChevronDownOutline14,
                 contentDescription = null,
                 tint = Dsh.labelPrimary,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
         if (unread > 0) {
@@ -1075,13 +942,13 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
                     .align(Alignment.TopEnd)
                     .defaultMinSize(minWidth = 18.dp)
                     .clip(CircleShape)
-                    .background(Dsh.brand500)
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                    .background(Dsh.labelPrimary)
+                    .padding(horizontal = 5.dp, vertical = DshSpace.s2),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     if (unread > 99) "99+" else unread.toString(),
-                    color = Dsh.onBrand,
+                    color = Dsh.bgBase,
                     style = DshType.microRelaxed,
                     fontWeight = FontWeight.Medium,
                 )
@@ -1091,368 +958,171 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
 }
 
 /**
- * 会话级统计（输入框下方）：累计信息在此处紧凑显示，避免挂在某一条历史回复上。
- * 居中胶囊（轮次·步骤 / Token / 速率，分段圆点分隔），点按展开 Paseo 式用量与性能看板。
+ * 会话级统计（输入框下方）：一行浅色文字「7 轮 · 223 步 · 23.5M 令牌」，不加底色和图标，
+ * 点按打开用量看板。速率、缓存等细项只在看板里出现，这里不抢输入框的视线。
  */
 @Composable
 internal fun SessionStatsLine(stats: MobileSessionStats?) {
     val s = stats ?: return
+    val strings = DshS
     var detailOpen by remember { mutableStateOf(false) }
 
-    val inputTokens = s.uncachedInputTokens + s.cacheReadTokens
-    val totalTokens = inputTokens + s.outputTokens
-    val parts = buildList {
-        if (s.turns > 0 || s.steps > 0) add(L.statsTurnsSteps.format(s.turns, s.steps))
-        if (totalTokens > 0) {
-            add("${compactTokens(totalTokens)} tok")
-        } else if (inputTokens > 0 || s.outputTokens > 0) {
-            add(L.inputOutputTokens.format(compactTokens(inputTokens), compactTokens(s.outputTokens)))
-        }
-        if (s.decodeMs > 0 && s.decodeTokens > 0) {
-            add(String.format(java.util.Locale.US, "%.0f tok/s", s.decodeTokens * 1000.0 / s.decodeMs))
-        }
-    }
-    if (parts.isEmpty()) return
-
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
+    val totalTokens = s.uncachedInputTokens + s.cacheReadTokens + s.outputTokens
+    val text = buildList {
+        if (s.turns > 0 || s.steps > 0) add(strings.statsTurnsSteps.format(s.turns, s.steps))
+        if (totalTokens > 0) add("${compactTokens(totalTokens)} ${strings.tokenUnitShort}")
+    }.joinToString(" · ")
+    if (text.isEmpty()) return
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 2.dp),
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
+        Text(
+            text = text,
+            color = Dsh.labelTertiary,
+            style = DshType.microRelaxed.tabularNums(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(if (pressed) Dsh.pressed else Dsh.bgTrack.copy(alpha = 0.6f))
-                .semantics {
-                    role = Role.Button
-                    contentDescription = L.statsViewDetails
-                }
-                .clickable(
-                    interactionSource = interaction,
-                    indication = dshRipple(),
-                    onClick = { detailOpen = true },
-                )
-                .padding(horizontal = 12.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            parts.forEachIndexed { index, part ->
-                if (index > 0) {
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 7.dp)
-                            .size(2.5.dp)
-                            .clip(CircleShape)
-                            .background(Dsh.labelTertiary.copy(alpha = 0.45f)),
-                    )
-                }
-                Text(
-                    text = part,
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Icon(
-                Icons.Default.Info,
-                contentDescription = null,
-                tint = Dsh.labelTertiary.copy(alpha = 0.6f),
-                modifier = Modifier.size(11.dp),
-            )
-        }
+                .clip(RoundedCornerShape(DshRadius.control))
+                .clickable(role = Role.Button, onClickLabel = strings.statsViewDetails, onClick = { detailOpen = true })
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
+        )
     }
 
     if (detailOpen) {
-        SessionStatsDetailSheet(
-            stats = s,
-            onDismiss = { detailOpen = false },
-        )
+        SessionStatsDetailDialog(stats = s, onDismiss = { detailOpen = false })
     }
 }
 
 /**
- * 会话用量与执行性能看板（Paseo 式 HUD BottomSheet）：
- * 完整结构化展示交互轮次、耗时、缓存命中、解码吞吐速率与 Token 明细，彻底解决单行挤占与截断问题。
+ * 会话用量看板：紧凑对话框——三个关键数一行、上下文一条进度、令牌构成一行小字。
+ * 精确到个位的明细不再逐行列出（概览已经够用，整屏看板反而难读）。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SessionStatsDetailSheet(
+internal fun SessionStatsDetailDialog(
     stats: MobileSessionStats,
     onDismiss: () -> Unit,
 ) {
-    val s = stats
-    val inputTokens = s.uncachedInputTokens + s.cacheReadTokens
-    val totalTokens = inputTokens + s.outputTokens
-    val cacheHitPercent = if (inputTokens > 0) ((s.cacheReadTokens * 100) / inputTokens).toInt() else 0
-    val speedToks = if (s.decodeMs > 0 && s.decodeTokens > 0) {
-        s.decodeTokens * 1000.0 / s.decodeMs
-    } else 0.0
-
-    ModalBottomSheet(
+    val strings = DshS
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = Dsh.bgCard,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth(),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // 与 DshDialogFrame 同一套弹层外壳：modal 28dp + bgCard + 阴影（真浮层）
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
+                .widthIn(max = 380.dp)
+                .fillMaxWidth(0.9f)
+                .shadow(16.dp, RoundedCornerShape(DshRadius.modal), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
+                .clip(RoundedCornerShape(DshRadius.modal))
+                .background(Dsh.bgCard)
+                .padding(start = DshSpace.s20, end = DshSpace.s8, top = DshSpace.s8, bottom = DshSpace.s20),
         ) {
-            DshSheetGrabber()
-
-            Text(
-                text = L.sessionStatsSheetTitle,
-                style = DshType.titleLarge,
-                color = Dsh.labelPrimary,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            DshSheetHeader(
+                title = strings.sessionStatsSheetTitle,
+                subtitle = strings.statsTurnsSteps.format(stats.turns, stats.steps),
+                onClose = onDismiss,
             )
-            Text(
-                text = L.statsTurnsCount.format(s.turns) + " · " + L.statsStepsCount.format(s.steps),
-                style = DshType.captionRelaxed,
-                color = Dsh.labelSecondary,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
-
-            // ===== 核心概览卡片 (2x2 Grid) =====
-            Text(
-                text = L.statsOverview,
-                style = DshType.t14SB,
-                color = Dsh.labelPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StatsMetricCard(
-                    title = "${s.turns} / ${s.steps}",
-                    label = L.statsTurnsStepsLabel,
-                    sub = if (s.llmMs > 0 || s.toolMs > 0) {
-                        L.statsTotalTimeSeconds.format((s.llmMs + s.toolMs) / 1000.0)
-                    } else L.statsInteractionTotal,
-                    modifier = Modifier.weight(1f),
-                )
-                StatsMetricCard(
-                    title = if (cacheHitPercent > 0) "$cacheHitPercent%" else "--",
-                    label = L.statsCacheHitLabel,
-                    sub = if (s.cacheReadTokens > 0) L.statsCacheHitSub.format(compactTokens(s.cacheReadTokens)) else L.statsCacheMiss,
-                    accent = cacheHitPercent > 0,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StatsMetricCard(
-                    title = if (speedToks > 0) String.format(java.util.Locale.US, "%.1f", speedToks) else "--",
-                    label = L.statsDecodeSpeedLabel,
-                    sub = if (s.outputTokens > 0) L.statsOutputSub.format(compactTokens(s.outputTokens)) else L.statsDecodeSpeedHint,
-                    modifier = Modifier.weight(1f),
-                )
-                StatsMetricCard(
-                    title = compactTokens(totalTokens),
-                    label = L.statsTotalTokensLabel,
-                    sub = L.statsInputPlusOutput,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ===== Token 消耗明细 =====
-            Text(
-                text = L.statsTokensBreakdown,
-                style = DshType.t14SB,
-                color = Dsh.labelPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(DshRadius.md))
-                    .background(Dsh.bgBase)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                StatsDetailRow(
-                    label = L.statsUncachedInput,
-                    value = "${s.uncachedInputTokens} tok",
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
-                StatsDetailRow(
-                    label = L.statsCachedInput,
-                    value = "${s.cacheReadTokens} tok",
-                    tag = if (cacheHitPercent > 0) "$cacheHitPercent%" else null,
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
-                StatsDetailRow(
-                    label = L.statsOutputTokens,
-                    value = "${s.outputTokens} tok",
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
-                StatsDetailRow(
-                    label = L.statsTotalTokens,
-                    value = "$totalTokens tok",
-                    highlight = true,
-                )
-            }
-
-            // ===== 上下文窗口气压 =====
-            if (s.contextWindow > 0) {
-                Spacer(Modifier.height(16.dp))
-                val used = s.contextPressureTokens
-                val window = s.contextWindow
-                val windowPercent = ((used * 100) / window).toInt().coerceIn(0, 100)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = L.statsContextWindow,
-                        style = DshType.t14SB,
-                        color = Dsh.labelPrimary,
-                    )
-                    Text(
-                        text = "${compactTokens(used)} / ${compactTokens(window)} ($windowPercent%)",
-                        style = DshType.captionRelaxed,
-                        color = if (windowPercent > 80) Dsh.warn else Dsh.labelSecondary,
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // 进度条
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Dsh.bgTrack)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth((windowPercent / 100f).coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(if (windowPercent > 80) Dsh.warn else Dsh.brand500)
-                    )
-                }
-
-                val breakdownTotal = s.systemTokens + s.toolsTokens + s.messageTokens
-                if (breakdownTotal > 0) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = L.statsContextBreakdownLine.format(
-                            compactTokens(s.systemTokens),
-                            compactTokens(s.toolsTokens),
-                            compactTokens(s.messageTokens),
-                        ),
-                        style = DshType.microRelaxed,
-                        color = Dsh.labelTertiary,
-                    )
-                }
+            Column(Modifier.padding(end = DshSpace.s12)) {
+                StatsDetailSections(stats)
             }
         }
     }
 }
 
 @Composable
-private fun StatsMetricCard(
-    title: String,
-    label: String,
-    sub: String,
-    accent: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.bgBase)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
-        Text(
-            text = label,
-            style = DshType.microRelaxed,
-            color = Dsh.labelSecondary,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = title,
-            style = DshType.title,
-            color = if (accent) Dsh.brand500 else Dsh.labelPrimary,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = sub,
-            style = DshType.microRelaxed,
-            color = Dsh.labelTertiary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
+private fun StatsDetailSections(s: MobileSessionStats) {
+    val strings = DshS
+    val inputTokens = s.uncachedInputTokens + s.cacheReadTokens
+    val totalTokens = inputTokens + s.outputTokens
+    val cacheHitPercent = if (inputTokens > 0) ((s.cacheReadTokens * 100) / inputTokens).toInt() else null
+    val speed = if (s.decodeMs > 0 && s.decodeTokens > 0) s.decodeTokens * 1000.0 / s.decodeMs else null
 
-@Composable
-private fun StatsDetailRow(
-    label: String,
-    value: String,
-    tag: String? = null,
-    highlight: Boolean = false,
-) {
+    Spacer(Modifier.height(DshSpace.s12))
+    // 三个关键数：一张 tonal 卡片里三等分，不再各占一张卡
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgSubtle)
+            .padding(vertical = 14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = label,
-                style = if (highlight) DshType.t13SB else DshType.bodyDense,
-                color = if (highlight) Dsh.labelPrimary else Dsh.labelSecondary,
-            )
-            if (tag != null) {
-                Spacer(Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(DshRadius.full))
-                        .background(Dsh.brandTint)
-                        .padding(horizontal = 6.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = tag,
-                        style = DshType.microRelaxed,
-                        color = Dsh.brand500,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-            }
-        }
-        Text(
-            text = value,
-            style = if (highlight) DshType.t14SB else DshType.bodyDense,
-            color = if (highlight) Dsh.brand500 else Dsh.labelPrimary,
+        StatsFigure(compactTokens(totalTokens), strings.statsTotalTokens, Modifier.weight(1f))
+        StatsFigure(cacheHitPercent?.let { "$it%" } ?: "—", strings.statsCacheHitLabel, Modifier.weight(1f))
+        StatsFigure(
+            speed?.let { String.format(java.util.Locale.US, "%.0f", it) } ?: "—",
+            strings.tokenRateUnit,
+            Modifier.weight(1f),
         )
+    }
+    Spacer(Modifier.height(10.dp))
+    Text(
+        strings.statsCompositionLine.format(
+            compactTokens(s.uncachedInputTokens),
+            compactTokens(s.cacheReadTokens),
+            compactTokens(s.outputTokens),
+        ),
+        color = Dsh.labelTertiary,
+        style = DshType.captionRelaxed.tabularNums(),
+        modifier = Modifier.padding(horizontal = DshSpace.s4),
+    )
+
+    if (s.contextWindow > 0) {
+        val used = s.contextPressureTokens
+        val percent = ((used * 100) / s.contextWindow).toInt().coerceIn(0, 100)
+        val tight = percent > 80
+        Spacer(Modifier.height(DshSpace.s20))
+        Row(Modifier.padding(horizontal = DshSpace.s4), verticalAlignment = Alignment.CenterVertically) {
+            Text(strings.statsContextWindow, color = Dsh.labelSecondary, style = DshType.titleSmall, modifier = Modifier.weight(1f))
+            Text(
+                "${compactTokens(used)} / ${compactTokens(s.contextWindow)} · $percent%",
+                color = if (tight) Dsh.warn else Dsh.labelSecondary,
+                style = DshType.captionRelaxed.tabularNums(),
+            )
+        }
+        Spacer(Modifier.height(DshSpace.s8))
+        Box(
+            modifier = Modifier
+                .padding(horizontal = DshSpace.s4)
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(DshRadius.full))
+                .background(Dsh.bgTrack),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(percent / 100f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(DshRadius.full))
+                    .background(if (tight) Dsh.warn else Dsh.brand500),
+            )
+        }
+        if (s.systemTokens + s.toolsTokens + s.messageTokens > 0) {
+            Spacer(Modifier.height(DshSpace.s8))
+            Text(
+                strings.statsContextBreakdownLine.format(
+                    compactTokens(s.systemTokens),
+                    compactTokens(s.toolsTokens),
+                    compactTokens(s.messageTokens),
+                ),
+                color = Dsh.labelTertiary,
+                style = DshType.captionRelaxed.tabularNums(),
+                modifier = Modifier.padding(horizontal = DshSpace.s4),
+            )
+        }
+    }
+}
+
+/** 看板里的一个关键数：数值在上、标签在下，居中。 */
+@Composable
+private fun StatsFigure(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = Dsh.labelPrimary, style = DshType.titleLarge.tabularNums(), maxLines = 1)
+        Spacer(Modifier.height(DshSpace.s2))
+        Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

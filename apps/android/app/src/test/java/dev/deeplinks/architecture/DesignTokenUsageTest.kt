@@ -12,7 +12,7 @@ import java.io.File
  * - 任何文件的裸字号数量超过基线 -> 失败；
  * - 迁移使数量下降后应把基线调小（允许收敛，禁止回涨）。
  *
- * 白名单只放 token 定义文件（DshTheme / DshTypography / DshSyntaxPalette）。
+ * 白名单只放 token 定义文件（DshTheme / DshTypography / DshSyntaxPalette / DswPalette）。
  */
 class DesignTokenUsageTest {
 
@@ -23,6 +23,7 @@ class DesignTokenUsageTest {
         "dev/deeplinks/core/DshTheme.kt",
         "dev/deeplinks/core/DshTypography.kt",
         "dev/deeplinks/core/DshSyntaxPalette.kt",
+        "dev/deeplinks/core/DswPalette.kt",
     )
 
     private fun mainSourceRoot(): File {
@@ -46,6 +47,17 @@ class DesignTokenUsageTest {
 
     private fun relative(root: File, file: File): String =
         file.relativeTo(root).path.replace(File.separatorChar, '/')
+
+    private fun countMatches(file: File, regex: Regex): Int {
+        var count = 0
+        file.forEachLine { line ->
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("import ")) return@forEachLine
+            if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return@forEachLine
+            if (regex.containsMatchIn(line)) count++
+        }
+        return count
+    }
 
     @Test
     fun noRawFontSizesOrColorsOutsideTokenLayer() {
@@ -76,6 +88,74 @@ class DesignTokenUsageTest {
                 "\n\n修复：改用 Dsh.* 颜色角色 / DshType.* 排版；" +
                 "若迁移减少了存量，请同步调小 app/src/test/resources/design-token-baseline.txt",
             violations.isEmpty()
+        )
+    }
+
+    /**
+     * 弃用形状角色零容忍（docs/visual-rules.md 第三节）。
+     *
+     * 2026-09-27 批次 6：xs/sm/md/lg/xl/tail/sheet/dialog/group 已全部删除，
+     * DshRadius 只剩 micro/control/container/composer/modal/full 六个用途角色。
+     * 旧名（含定义处的别名）在任何源文件里出现都失败。
+     */
+    @Test
+    fun retiredRadiusRolesStayDeleted() {
+        val root = mainSourceRoot()
+        val retired = setOf("xs", "sm", "md", "lg", "xl", "tail", "sheet", "dialog", "group")
+        val violations = mutableListOf<String>()
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val rel = relative(root, file)
+            for (role in retired) {
+                val used = countMatches(file, Regex("""DshRadius\.$role\b"""))
+                if (used > 0) {
+                    violations += "$rel: DshRadius.$role $used 处——旧档位已删除，" +
+                        "请改用六个用途角色（micro/control/container/composer/modal/full）"
+                }
+            }
+        }
+        assertTrue(
+            "废弃形状名回潮（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
+
+    /**
+     * 图标只有一套：Web 复刻集（DshIcons.kt）+ 同笔法自绘补充（DshGlyphs.kt）。
+     * Material Icons 自带 24 格内边距、笔画粗细也不同，混用会让同一行里的图标大小不一。
+     */
+    @Test
+    fun iconsComeFromTheInHouseSetOnly() {
+        val root = mainSourceRoot()
+        val offenders = root.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { file -> file.readText().contains("androidx.compose.material.icons") }
+            .map { relative(root, it) }
+            .toList()
+        assertTrue(
+            "这些文件引入了 Material Icons，请改用 DshIcons / DshGlyphs（缺的图标在 DshGlyphs.kt 按同一笔法补）：\n" +
+                offenders.joinToString("\n"),
+            offenders.isEmpty()
+        )
+    }
+
+    /**
+     * 圆角只能取 DshRadius / DshTileShape / CircleShape：细条与进度条用 full，
+     * 色块用 xs，卡片用 group，图标底板用 DshTileShape。存量已清零，不设基线。
+     */
+    @Test
+    fun cornerRadiiComeFromTokens() {
+        val root = mainSourceRoot()
+        val raw = Regex("""RoundedCornerShape\(\s*\d|(topStart|topEnd|bottomStart|bottomEnd)\s*=\s*\d+(\.\d+)?\.dp""")
+        val offenders = mutableListOf<String>()
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val rel = relative(root, file)
+            file.readLines().forEachIndexed { i, line ->
+                if (raw.containsMatchIn(line)) offenders += rel + ":" + (i + 1) + "  " + line.trim()
+            }
+        }
+        assertTrue(
+            "裸圆角（请改用 DshRadius.* / DshTileShape / CircleShape）：\n" + offenders.joinToString("\n"),
+            offenders.isEmpty()
         )
     }
 }

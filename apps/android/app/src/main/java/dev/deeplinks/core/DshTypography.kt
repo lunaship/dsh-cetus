@@ -132,6 +132,12 @@ fun dshTypography(family: FontFamily): Typography = Typography(
  * 16→bodyLarge、17→titleLarge、18→headlineSmall、20→headlineMedium、24→headlineLarge、
  * 28→displayMedium、34→displayLarge。
  */
+/**
+ * 数字用等宽数位（tnum）而不是换成等宽字体：统计、计数、耗时、增删行数都走这里，
+ * 字形与正文一致、列对齐稳定。等宽字体只留给代码、命令、路径和配对码这类标识符。
+ */
+fun TextStyle.tabularNums(): TextStyle = copy(fontFeatureSettings = "tnum")
+
 object DshType {
     val caption: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.bodySmall
@@ -144,6 +150,10 @@ object DshType {
 
     val body: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.bodyMedium
+
+    /** 15/22 · SemiBold：正文强调（行内重点、待办标题）。Web 移植期的 13sp 粗体已并入此角色。 */
+    val bodyStrong: TextStyle
+        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
 
     val title: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.titleMedium
@@ -166,7 +176,11 @@ object DshType {
     val displayLarge: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.displayLarge
 
-    // ===== 产品实际在用的密集字号（补齐后即可零视觉变化地替换裸 .sp）=====
+    // ===== 密集档（dense tier）：聊天与列表的次级文本 =====
+    // 与语义角色同一套 M3 字阶，只是更小的尺寸/更紧的行高。契约由
+    // DshTypeScaleTest 守护：尺寸必须落在字阶表内、行高 >= 1.3x字号、
+    // 且 >=13sp 的角色行高不得超过 18sp（防止 Web 移植期「小字号 + 松行高」的
+    // 正文回流）。新增角色前先读该测试。
 
     /** 12/18：密集次要文本（比 caption 松一行）。 */
     val captionRelaxed: TextStyle
@@ -176,17 +190,6 @@ object DshType {
             fontWeight = FontWeight.Normal,
             fontSize = 12.sp,
             lineHeight = 18.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/20：密集正文。 */
-    val bodyDense: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 13.sp,
-            lineHeight = 20.sp,
             letterSpacing = 0.01.sp,
         )
 
@@ -201,77 +204,8 @@ object DshType {
             letterSpacing = 0.01.sp,
         )
 
-    val labelLarge: TextStyle
-        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.labelLarge
-
-    /** 11/12 · SemiBold */
-    val t11x12SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 11.sp,
-            lineHeight = 12.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/22 · Normal */
-    val t11: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/22 · Medium */
-    val t11M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/22 · SemiBold */
-    val t11SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 11.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/14 · SemiBold */
-    val t11x14SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 11.sp,
-            lineHeight = 14.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/15 · Medium */
-    val t11x15M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/16 · Medium */
-    val t11x16M: TextStyle
+    /** 11/16 · Medium：微标签强调。 */
+    val microMedium: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
@@ -281,63 +215,22 @@ object DshType {
             letterSpacing = 0.01.sp,
         )
 
-    /** 11/17 · Normal */
-    val t11x17: TextStyle
+    /** 11/16 · SemiBold：微标签强强调（徽章/计数）。 */
+    val microStrong: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 11.sp,
-            lineHeight = 17.sp,
+            lineHeight = 16.sp,
             letterSpacing = 0.01.sp,
         )
 
-    /** 11/18 · Normal */
-    val t11x18: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
-            lineHeight = 18.sp,
-            letterSpacing = 0.01.sp,
-        )
+    val labelLarge: TextStyle
+        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.labelLarge
 
-    /** 12/22 · Normal */
-    val t12: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 12.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 12/22 · Medium */
-    val t12M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 12/17 · Normal */
-    val t12x17: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 12.sp,
-            lineHeight = 17.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 12/18 · Medium */
-    val t12x18M: TextStyle
+    /** 12/18 · Medium：次级标签（附件名、压缩提示）。 */
+    val captionMedium: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
@@ -347,151 +240,8 @@ object DshType {
             letterSpacing = 0.01.sp,
         )
 
-    /** 12/20 · Normal */
-    val t12x20: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 12.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 12/20 · Medium */
-    val t12x20M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 12/24 · SemiBold */
-    val t12x24SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp,
-            lineHeight = 24.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/22 · Normal */
-    val t13: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 13.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/22 · Medium */
-    val t13M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 13.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/22 · SemiBold */
-    val t13SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/18 · Normal */
-    val t13x18: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/18 · SemiBold */
-    val t13x18SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/20 · Medium */
-    val t13x20M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 13.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 13/24 · Medium */
-    val t13x24M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 13.sp,
-            lineHeight = 24.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/22 · Normal */
-    val t14: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/22 · Medium */
-    val t14M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/22 · SemiBold */
-    val t14SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/20 · Normal */
-    val t14x20: TextStyle
+    /** 14/20：列表行副标题、弹层副标题、设备卡次行（M3 列表 supporting text 规格）。 */
+    val supporting: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
@@ -501,157 +251,4 @@ object DshType {
             letterSpacing = 0.01.sp,
         )
 
-    /** 14/20 · SemiBold */
-    val t14x20SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/24 · Normal */
-    val t14x24: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            lineHeight = 24.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/22 · SemiBold */
-    val t15SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/20 · Normal */
-    val t15x20: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 15.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/20 · Medium */
-    val t15x20M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/21 · Medium */
-    val t15x21M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/21 · SemiBold */
-    val t15x21SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/23 · Normal */
-    val t15x23: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 15.sp,
-            lineHeight = 23.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 16/22 · SemiBold */
-    val t16SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 16.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 16/28 · Normal */
-    val t16x28: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            lineHeight = 28.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 17/22 · SemiBold */
-    val t17SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 17.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 18/22 · SemiBold */
-    val t18SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 18.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 20/28 · SemiBold */
-    val t20x28SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 20.sp,
-            lineHeight = 28.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 26/32 · Medium */
-    val t26x32M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 26.sp,
-            lineHeight = 32.sp,
-            letterSpacing = 0.01.sp,
-        )
 }

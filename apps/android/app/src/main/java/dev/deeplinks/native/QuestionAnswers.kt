@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.native.util.optStringOrEmpty
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -37,15 +38,15 @@ internal fun parseClarifyingQuestions(payloadJson: String?): List<ClarifyingQues
 internal fun parseClarifyingQuestions(array: JSONArray): List<ClarifyingQuestion> {
     return (0 until array.length()).mapNotNull { index ->
         val obj = array.optJSONObject(index) ?: return@mapNotNull null
-        val type = obj.optString("type")
+        val type = obj.optStringOrEmpty("type")
         val unsupported = type.isNotBlank() && type != "select" && type != "text" && type != "input"
         val optionsArr = obj.optJSONArray("options") ?: JSONArray()
         val options = (0 until optionsArr.length()).map { optionIndex ->
             val option = optionsArr.opt(optionIndex)
             when (option) {
                 is JSONObject -> {
-                    val id = option.optString("id").ifBlank { option.optString("value") }.ifBlank { option.optString("label") }.ifBlank { "opt$optionIndex" }
-                    QuestionOption(id = id, label = option.optString("label").ifBlank { id })
+                    val id = option.optStringOrEmpty("id").ifBlank { option.optStringOrEmpty("value") }.ifBlank { option.optStringOrEmpty("label") }.ifBlank { "opt$optionIndex" }
+                    QuestionOption(id = id, label = option.optStringOrEmpty("label").ifBlank { id })
                 }
                 else -> {
                     val label = option?.toString().orEmpty()
@@ -54,9 +55,9 @@ internal fun parseClarifyingQuestions(array: JSONArray): List<ClarifyingQuestion
             }
         }
         ClarifyingQuestion(
-            id = obj.optString("id").ifBlank { "q$index" },
-            header = obj.optString("header"),
-            prompt = obj.optString("question").ifBlank { obj.optString("prompt") }.ifBlank { obj.optString("text") },
+            id = obj.optStringOrEmpty("id").ifBlank { "q$index" },
+            header = obj.optStringOrEmpty("header"),
+            prompt = obj.optStringOrEmpty("question").ifBlank { obj.optStringOrEmpty("prompt") }.ifBlank { obj.optStringOrEmpty("text") },
             options = options,
             multiple = obj.optBoolean("multiple") || obj.optBoolean("allowMultiple") || obj.optBoolean("allow_multiple"),
             optional = obj.optBoolean("optional") || obj.opt("required") == false,

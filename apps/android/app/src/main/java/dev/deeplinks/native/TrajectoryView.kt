@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.AnimatedVisibility
@@ -10,7 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,22 +32,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,7 +82,7 @@ private fun traceRoleVisual(role: String): TraceRoleVisual = when (role) {
     "approval" -> TraceRoleVisual(L.approvalRole, Dsh.warn, WarningOutline16)
     "todo" -> TraceRoleVisual(L.taskRole, Dsh.labelSecondary, ChecklistOutline14)
     "compaction" -> TraceRoleVisual(L.traceKindCompact, Dsh.labelTertiary, ArchiveOutline20)
-    "produced_files" -> TraceRoleVisual(L.traceKindOutput, Dsh.brand400, Icons.Default.Description)
+    "produced_files" -> TraceRoleVisual(L.traceKindOutput, Dsh.brand400, FileOutline16)
     ROLE_WORKSPACE_CHANGES -> TraceRoleVisual(ChangesL.changes, Dsh.brand400, EditOutline16)
     else -> TraceRoleVisual(L.traceKindAssistant, Dsh.brand400, Sparkle16)
 }
@@ -196,18 +188,18 @@ internal fun TrajectoryView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 2.dp),
+                    .padding(start = DshSpace.s12, end = DshSpace.s6, top = DshSpace.s8, bottom = DshSpace.s2),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
             ) {
                 TraceToggle(
-                    icon = Icons.Default.Schedule,
+                    icon = ClockOutline16,
                     label = L.traceToolbarDuration,
                     active = !actualDuration,
                     onClick = { actualDuration = !actualDuration },
                 )
                 TraceToggle(
-                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                    icon = ChecklistOutline14,
                     label = L.traceToolbarTurns,
                     active = allTurnsCollapsed,
                     onClick = {
@@ -216,7 +208,7 @@ internal fun TrajectoryView(
                     },
                 )
                 TraceToggle(
-                    icon = Icons.Default.Code,
+                    icon = CodeOutline16,
                     label = L.traceToolbarCalls,
                     active = allCallsExpanded,
                     onClick = {
@@ -241,7 +233,7 @@ internal fun TrajectoryView(
                         modifier = Modifier.size(40.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Search, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(18.dp))
+                        Icon(SearchOutline16, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -277,17 +269,17 @@ internal fun TrajectoryView(
                 Text(
                     L.noTraceFilterEmpty,
                     color = Dsh.labelTertiary,
-                    style = DshType.bodyDense,
+                    style = DshType.body,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                        .padding(horizontal = DshSpace.s24, vertical = DshSpace.s32),
                 )
             }
         } else {
             if (running) {
                 item(key = "trace-running") {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)) {
                         ThinkingStatusRow(elapsedSec)
                     }
                 }
@@ -320,7 +312,7 @@ internal fun TrajectoryView(
                     }
                 }
             }
-            item(key = "trace-bottom-space") { Spacer(Modifier.height(24.dp)) }
+            item(key = "trace-bottom-space") { Spacer(Modifier.height(DshSpace.s24)) }
         }
     }
 }
@@ -344,13 +336,13 @@ private fun TraceEmptyState() {
         }
         Spacer(Modifier.height(14.dp))
         Text(L.noTrace, color = Dsh.labelPrimary, style = DshType.title, fontWeight = FontWeight(500))
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(DshSpace.s6))
         Text(
             L.noTraceEmpty,
             color = Dsh.labelTertiary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier.padding(horizontal = DshSpace.s24)
         )
     }
 }
@@ -382,9 +374,9 @@ private fun TraceToggle(icon: ImageVector, label: String, active: Boolean, onCli
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(14.dp))
+            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(5.dp))
-            Text(label, color = fg, style = DshType.t12M, fontWeight = FontWeight(500))
+            Text(label, color = fg, style = DshType.label, fontWeight = FontWeight(500))
         }
     }
 }
@@ -394,27 +386,26 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.Search, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(6.dp))
+        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(DshSpace.s6))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = DshType.bodyDense.copy(color = Dsh.labelPrimary),
+            textStyle = DshType.body.copy(color = Dsh.labelPrimary),
             cursorBrush = SolidColor(Dsh.brand400),
             modifier = Modifier.weight(1f),
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty()) {
-                        Text(L.traceSearchPlaceholder, color = Dsh.labelTertiary, style = DshType.t13, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(L.traceSearchPlaceholder, color = Dsh.labelTertiary, style = DshType.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     inner()
                 }
@@ -433,7 +424,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
                     modifier = Modifier.size(32.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+                    Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(12.dp))
                 }
             }
         }
@@ -452,7 +443,7 @@ private fun TraceTimeline(
         modifier = Modifier
             .fillMaxWidth()
             .height(30.dp)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -469,7 +460,7 @@ private fun TraceTimeline(
                 modifier = Modifier
                     .weight(weight)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(DshRadius.micro))
                     .background(visual.color.copy(alpha = alpha))
                     .clickable { onFocus(key) },
             )
@@ -484,18 +475,18 @@ private fun TraceTurnHeader(turn: TraceTurn, collapsed: Boolean, onToggle: () ->
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(start = 12.dp, end = 12.dp, top = 14.dp, bottom = 6.dp),
+            .padding(start = DshSpace.s12, end = DshSpace.s12, top = 14.dp, bottom = DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             L.traceTurnLabel.format(turn.index),
             color = Dsh.labelTertiary,
-            style = DshType.t11SB,
+            style = DshType.microStrong,
             fontWeight = FontWeight(600),
             fontFamily = FontFamily.Monospace,
         )
         if (preview.isNotBlank()) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 preview,
                 color = Dsh.labelSecondary,
@@ -510,7 +501,7 @@ private fun TraceTurnHeader(turn: TraceTurn, collapsed: Boolean, onToggle: () ->
         Text(
             if (collapsed) L.stepsCount.format(turn.steps.size) else L.collapse,
             color = Dsh.labelTertiary,
-            style = DshType.t11,
+            style = DshType.microRelaxed,
         )
     }
     HorizontalDivider(color = Dsh.borderSubtle, thickness = 0.5.dp)
@@ -538,7 +529,7 @@ private fun TraceTableRow(
             .fillMaxWidth()
             .background(bg)
             .clickable(onClick = onToggle)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
     ) {
         val name = primary.toolName ?: if (primary.role == "tool_result") L.executionResultRole else null
         Row(
@@ -546,18 +537,18 @@ private fun TraceTableRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(visual.icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
                 visual.label,
                 color = accent,
-                style = DshType.t11x15M,
+                style = DshType.microMedium,
                 fontWeight = FontWeight(600),
             )
             if (name != null) {
                 Text(
                     " · ",
                     color = Dsh.labelTertiary,
-                    style = DshType.t11x15M,
+                    style = DshType.microMedium,
                 )
                 Text(
                     name,
@@ -572,7 +563,7 @@ private fun TraceTableRow(
                 Spacer(Modifier.weight(1f))
             }
             if (durationMs != null && primary.role != "user") {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(DshSpace.s8))
                 Text(
                     formatTraceDuration(durationMs),
                     color = accent.copy(alpha = 0.85f),
@@ -581,9 +572,9 @@ private fun TraceTableRow(
                 )
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(DshSpace.s4))
         TraceRowBody(primary = primary, result = row.result, running = running, expanded = expanded)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(DshSpace.s6))
         HorizontalDivider(color = Dsh.borderSubtle, thickness = 0.5.dp)
     }
 }
@@ -593,7 +584,7 @@ private fun TraceRowBody(primary: MobileMessage, result: MobileMessage?, running
     when {
         primary.role == "tool_call" && result != null -> {
             TraceCodeBlock(primary.toolArgs ?: primary.text, running, expanded)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(DshSpace.s4))
             TraceCodeBlock(result.text, running = false, expanded = expanded)
         }
         primary.role == "tool_call" -> TraceCodeBlock(primary.toolArgs ?: primary.text, running, expanded)
@@ -604,21 +595,21 @@ private fun TraceRowBody(primary: MobileMessage, result: MobileMessage?, running
             Text(
                 if (primary.todos.isNotEmpty()) L.todoUpdate.format(done, primary.todos.size) else L.todoListUpdated,
                 color = Dsh.labelSecondary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 lineHeight = 20.sp
             )
         }
         primary.role == "compaction" -> Text(
             if (primary.running == true) L.compressing else primary.text.lineSequence().firstOrNull().orEmpty().ifBlank { L.contextCompressed },
             color = Dsh.labelSecondary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             maxLines = if (expanded) Int.MAX_VALUE else 2,
             overflow = TextOverflow.Ellipsis
         )
         primary.role == "produced_files" -> Text(
             primary.files.joinToString("\n").ifBlank { primary.text },
             color = Dsh.labelSecondary,
-            style = DshType.bodyDense,
+            style = DshType.body,
             lineHeight = 20.sp
         )
         primary.role == ROLE_WORKSPACE_CHANGES -> TraceExpandableText(
@@ -637,9 +628,9 @@ private fun TraceCodeBlock(text: String, running: Boolean, expanded: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCode)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp, vertical = DshSpace.s8)
     ) {
         TraceExpandableText(text, maxLines = 5, mono = true, forceExpanded = expanded)
     }
@@ -655,7 +646,7 @@ private fun TraceExpandableText(
     var localExpanded by rememberSaveable { mutableStateOf(false) }
     val expanded = forceExpanded || localExpanded
     // 走 DshType 字阶（12/17 mono、13/20 密集正文），不在业务代码里写裸字号
-    val style = if (mono) DshType.t12x17.copy(fontFamily = FontFamily.Monospace) else DshType.bodyDense
+    val style = if (mono) DshType.caption.copy(fontFamily = FontFamily.Monospace) else DshType.body
     Column {
         Text(
             text,
@@ -671,10 +662,10 @@ private fun TraceExpandableText(
                 style = DshType.microRelaxed,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .padding(top = 2.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .padding(top = DshSpace.s2)
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .clickable { localExpanded = !localExpanded }
-                    .padding(horizontal = 4.dp)
+                    .padding(horizontal = DshSpace.s4)
                     .wrapContentHeight(Alignment.CenterVertically)
             )
         }

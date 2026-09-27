@@ -24,6 +24,25 @@ class MessageGroupingTest {
     }
 
     @Test
+    fun `操作行只挂在每轮最后一条助手回复`() {
+        val groups = groupMessages(
+            listOf(
+                msg("u-1", "user", 1),
+                msg("a-1", "assistant", 2),
+                msg("t-1", "tool_call", 3),
+                msg("t-2", "tool_result", 4),
+                msg("a-2", "assistant", 5),
+                msg("u-2", "user", 6),
+                msg("a-3", "assistant", 7),
+                msg("t-3", "tool_call", 8),
+            ),
+        )
+        assertEquals(setOf("a-2", "a-3"), turnEndAssistantIds(groups, running = false))
+        // 最后一轮还在跑：只有已结束的上一轮挂操作行
+        assertEquals(setOf("a-2"), turnEndAssistantIds(groups, running = true))
+    }
+
+    @Test
     fun `非工具消息保持 Single`() {
         val msgs = listOf(
             msg("u-1", "user", 1),
@@ -118,5 +137,26 @@ class MessageGroupingTest {
     @Test
     fun userTurnJumps_skipsBlankUser() {
         assertEquals(emptyList<UserTurnJump>(), userTurnJumps(listOf(msg("u-1", "user", 1).copy(text = "  \n"))))
+    }
+
+    @Test
+    fun `formatToolGroupSummary 测试单一与多工具摘要`() {
+        val msgs1 = listOf(
+            msg("tc-1", "tool_call", 1).copy(toolName = "Read"),
+            msg("tr-1", "tool_result", 2),
+            msg("tc-2", "tool_call", 3).copy(toolName = "Read"),
+        )
+        assertEquals("Read (2)", formatToolGroupSummary(msgs1))
+
+        val msgs2 = listOf(
+            msg("tc-1", "tool_call", 1).copy(toolName = "Read"),
+            msg("tc-2", "tool_call", 2).copy(toolName = "bash"),
+        )
+        assertEquals("Read, bash (2)", formatToolGroupSummary(msgs2))
+
+        val msgsEmpty = listOf(
+            msg("tc-1", "tool_call", 1),
+        )
+        assertEquals("1 tool calls", formatToolGroupSummary(msgsEmpty))
     }
 }

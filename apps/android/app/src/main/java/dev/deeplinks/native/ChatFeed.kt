@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -22,14 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -38,8 +31,8 @@ import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileMessage
-import dev.deeplinks.native.MobileTodoItem
 import dev.deeplinks.native.util.MessageGroup
+import dev.deeplinks.native.util.turnEndAssistantIds
 import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.goalRoundObjective
 
@@ -121,35 +114,34 @@ internal fun StickyTaskSummaryCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput.copy(alpha = 0.92f))
-            .border(1.dp, Dsh.borderSubtle.copy(alpha = 0.5f), RoundedCornerShape(DshRadius.lg))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
             // 目标行
             if (hasGoal) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(
                         GoalOutline16,
                         contentDescription = null,
-                        tint = Dsh.brand400,
+                        tint = Dsh.labelSecondary,
                         modifier = Modifier.size(14.dp),
                     )
                     Text(
                         text = L.goalRole,
-                        color = Dsh.brand400,
-                        style = DshType.t11M,
+                        color = Dsh.labelSecondary,
+                        style = DshType.microMedium,
                     )
                     Text(
                         text = goalSummary.take(60) + if (goalSummary.length > 60) "…" else "",
                         color = Dsh.labelPrimary,
-                        style = DshType.t12,
+                        style = DshType.caption,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth(),
@@ -162,18 +154,18 @@ internal fun StickyTaskSummaryCard(
                 if (total > 0) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
                             text = "${todoProgress.done}/${total}",
                             color = Dsh.labelTertiary,
-                            style = DshType.t11,
+                            style = DshType.microRelaxed,
                             maxLines = 1,
                         )
                         val segments = buildList {
                             repeat(todoProgress.done) { add(Dsh.success) }
-                            repeat(todoProgress.inProgress) { add(Dsh.brand500) }
+                            repeat(todoProgress.inProgress) { add(Dsh.labelSecondary) }
                             repeat(todoProgress.pending) { add(Dsh.labelTertiary) }
                         }
                         if (segments.isNotEmpty()) {
@@ -181,7 +173,7 @@ internal fun StickyTaskSummaryCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp)),
+                                    .clip(RoundedCornerShape(DshRadius.full)),
                                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                             ) {
                                 segments.forEach { color ->
@@ -394,7 +386,18 @@ internal fun LazyListScope.chatMessageItems(
     goalSummary: String? = null,
     todoProgress: TodoProgress = TodoProgress(),
     isRunning: Boolean = false,
+    pinnedChangesSeq: Long? = null,
 ) {
+    val groups = if (pinnedChangesSeq == null) {
+        visibleGroups
+    } else {
+        visibleGroups.filterNot { group ->
+            group is MessageGroup.Single &&
+                group.msg.role == ROLE_WORKSPACE_CHANGES &&
+                group.msg.changes?.seq == pinnedChangesSeq
+        }
+    }
+    val turnEnds = turnEndAssistantIds(groups, isRunning)
     // 任务摘要卡片：运行中且有内容时作为列表首项显示
     if (isRunning && (!goalSummary.isNullOrBlank() || todoProgress.hasActive)) {
         item(key = "sticky-task-summary") {
@@ -407,7 +410,7 @@ internal fun LazyListScope.chatMessageItems(
         }
     }
     items(
-        items = visibleGroups,
+        items = groups,
         key = { it.groupKey },
         contentType = { group -> if (group is MessageGroup.ToolGroup) "toolgroup" else "single" },
     ) { group ->
@@ -436,6 +439,7 @@ internal fun LazyListScope.chatMessageItems(
                     onRetract = actions.onRetract(group.msg),
                     onFetchProducedFile = actions.onFetchProducedFile(group.msg),
                     onOpenChanges = actions.openChanges,
+                    showActions = group.msg.id in turnEnds,
                 )
                 is MessageGroup.ToolGroup -> ToolGroupHeader(
                     group = group,
@@ -450,11 +454,11 @@ internal fun LazyListScope.chatMessageItems(
             Text(
                 L.noMatchingToolCalls,
                 color = Dsh.labelTertiary,
-                style = DshType.bodyDense,
+                style = DshType.body,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = DshSpace.s24),
             )
         }
     }

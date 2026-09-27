@@ -39,7 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -101,17 +104,26 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
             }
             MarkdownBlockType.LIST -> {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("•  ", color = Dsh.labelTertiary, style = DshType.t16x28, lineHeight = 28.sp)
+                    Text("•  ", color = Dsh.labelTertiary, style = DshType.bodyLarge)
                     InlineMarkdownText(block.content, streaming = streamTail)
                 }
             }
             MarkdownBlockType.QUOTE -> {
+                val quoteBarColor = Dsh.brand400.copy(alpha = 0.5f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Dsh.bgCard)
-                        .border(2.dp, Dsh.borderSubtle)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .drawBehind {
+                            val barWidth = 3.dp.toPx()
+                            drawLine(
+                                color = quoteBarColor,
+                                start = Offset(barWidth / 2, 0f),
+                                end = Offset(barWidth / 2, size.height),
+                                strokeWidth = barWidth,
+                                cap = StrokeCap.Round,
+                            )
+                        }
+                        .padding(start = DshSpace.s12, top = DshSpace.s2, bottom = DshSpace.s2)
                 ) {
                     InlineMarkdownText(block.content, color = Dsh.labelSecondary, streaming = streamTail)
                 }
@@ -135,7 +147,7 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.lg))
+                            .clip(RoundedCornerShape(DshRadius.container))
                             .background(Dsh.bgCard)
                             .clickable {
                                 val uri = android.net.Uri.parse(imageUrl)
@@ -196,18 +208,17 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Dsh.bgCodeBanner)
-                .padding(horizontal = 12.dp, vertical = 2.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(L.tableLabel, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp, modifier = Modifier.weight(1f))
+            Text(L.tableLabel, color = Dsh.labelTertiary, style = DshType.microRelaxed, modifier = Modifier.weight(1f))
             DshHeaderAction(L.copy, onClick = { copyTable() })
             DshHeaderAction(L.tableDownload, onClick = { downloadTable() })
             DshHeaderAction(L.tableFullscreen) { fullscreen = true }
@@ -221,7 +232,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                 style = DshType.microRelaxed,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6)
                     .semantics { contentDescription = error },
             )
         }
@@ -233,12 +244,12 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .clip(RoundedCornerShape(DshRadius.lg))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgBase)
-                    .padding(12.dp),
+                    .padding(DshSpace.s12),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(L.tableLabel, color = Dsh.labelPrimary, style = DshType.t14, modifier = Modifier.weight(1f))
+                    Text(L.tableLabel, color = Dsh.labelPrimary, style = DshType.body, modifier = Modifier.weight(1f))
                     DshHeaderAction(L.copy) { copyTable() }
                     DshHeaderAction(L.tableDownload) { downloadTable() }
                     DshHeaderAction(L.close) { fullscreen = false }
@@ -248,7 +259,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 8.dp),
+                        .padding(top = DshSpace.s8),
                 ) {
                     TableGrid(rows, compact = false)
                 }
@@ -272,7 +283,7 @@ private fun TableGrid(rows: List<List<String>>, compact: Boolean = true) {
                         Text(
                             cell,
                             color = Dsh.labelPrimary,
-                            style = DshType.bodyDense,
+                            style = DshType.body,
                             fontWeight = if (rowIdx == 0) FontWeight(500) else FontWeight(400),
                         )
                     }
@@ -289,16 +300,15 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCode)
-            .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg))
     ) {
         // 语言标签 + 复制（DSH code-block-banner）
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Dsh.bgCodeBanner)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -313,7 +323,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             Row(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(if (copyPressed) Dsh.pressed else Color.Transparent)
                     .clickable(interactionSource = copyInteraction, indication = dshRipple()) {
                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -322,7 +332,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                             Toast.makeText(context, L.copied, Toast.LENGTH_SHORT).show()
                         }
                     }
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -331,8 +341,8 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                     tint = Dsh.labelTertiary,
                     modifier = Modifier.size(12.dp)
                 )
-                Spacer(Modifier.width(4.dp))
-                Text(L.copy, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp)
+                Spacer(Modifier.width(DshSpace.s4))
+                Text(L.copy, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
             }
         }
         val dark = Dsh.isDark
@@ -349,7 +359,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(codeScroll)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = DshSpace.s16, vertical = 10.dp)
         )
     }
 }

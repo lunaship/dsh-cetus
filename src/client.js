@@ -16,11 +16,11 @@ const createPanelModule = (require) => {
 
   function deviceSeenLabel(lastSeenAt) {
     if (!lastSeenAt) return '暂未连接'
-    const diff = Date.now() - lastSeenAt
-    if (diff < 60_000) return '刚刚在线'
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前在线`
-    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前在线`
-    return `${Math.floor(diff / 86_400_000)} 天前在线`
+    const d = Date.now() - lastSeenAt
+    if (d < 6e4) return '刚刚在线'
+    if (d < 36e5) return `${d / 6e4 | 0} 分钟前在线`
+    if (d < 864e5) return `${d / 36e5 | 0} 小时前在线`
+    return `${d / 864e5 | 0} 天前在线`
   }
 
   /** 默认 Agent/Client 端口不展示；自定义端口仍原样显示。 */
@@ -69,13 +69,11 @@ const createPanelModule = (require) => {
     if (!text || text.length > 512) return ''
     let parsed
     try { parsed = new URL(text) } catch { return '' }
-    if (parsed.protocol !== 'https:') return ''
-    if (parsed.username || parsed.password || parsed.search || parsed.hash) return ''
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash) return ''
     const host = String(parsed.hostname || '').toLowerCase().replace(/^\[|\]$/g, '')
     if (!host) return ''
-    if (host === 'localhost' || host === 'localhost.' || host === '::1' || host === '0.0.0.0' || host === '::') return ''
-    if (host === '0:0:0:0:0:0:0:0' || host === '0:0:0:0:0:0:0:1') return ''
-    if (host === '127.0.0.1' || host.startsWith('127.')) return ''
+    const locals = new Set(['localhost', 'localhost.', '::1', '0.0.0.0', '::', '0:0:0:0:0:0:0:0', '0:0:0:0:0:0:0:1'])
+    if (locals.has(host) || host === '127.0.0.1' || host.startsWith('127.')) return ''
     const path = String(parsed.pathname || '').replace(/\/+$/, '')
     return path && path !== '/' ? `https://${parsed.host}${path}` : `https://${parsed.host}`
   }
@@ -444,6 +442,8 @@ const createPanelModule = (require) => {
     .dshlink-device-name { font-size: 13.5px; font-weight: 600; color: var(--cl-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .dshlink-device-badge { flex: none; font-size: 10px; font-weight: 600; line-height: 1; color: var(--cl-warn); background: var(--cl-warn-soft); border: 1px solid var(--cl-warn-line); padding: 2px 6px; border-radius: 999px; }
     .dshlink-device-time { font-size: 11.5px; color: var(--cl-faint); }
+    .dshlink-approvals { margin-bottom: 14px; }
+    .dshlink-approval-path { font-size: 12px; line-height: 1.35; color: var(--cl-ink); overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .dshlink-device-actions { display: flex; gap: 6px; flex: none; }
     .dshlink-approve, .dshlink-revoke {
       flex: none; appearance: none; cursor: pointer; border-radius: 7px; padding: 4px 10px;
@@ -658,18 +658,15 @@ const createPanelModule = (require) => {
     ],
   })
 
-  function connectionStatus(info, relay, devices) {
+  function connectionStatus({ info, relay, devices, workspaceApprovals }) {
     const pending = (devices ?? []).filter((d) => d?.status === 'pending')
-    if (pending.length > 0) {
-      return { tone: 'warn', text: `${pending.length} 台待确认` }
-    }
+    if (pending.length) return { tone: 'warn', text: `${pending.length} 台待确认` }
+    const waiting = (workspaceApprovals ?? []).length
+    if (waiting) return { tone: 'warn', text: `${waiting} 个工作区待批准` }
     const paired = (devices ?? []).filter((d) => d && d.status !== 'pending')
-    if (paired.length > 0) {
-      return { tone: 'ok', text: `${paired.length} 台手机在线` }
-    }
+    if (paired.length) return { tone: 'ok', text: `${paired.length} 台手机在线` }
     if (relay?.status === 'online') return { tone: 'accent', text: '中继就绪 · 等待扫码' }
     if (info) return { tone: 'ok', text: '局域网就绪' }
-    return null
   }
 
   function BrandHeader({ status }) {
@@ -1307,6 +1304,58 @@ const createPanelModule = (require) => {
     })
   }
 
+  function WorkspaceApprovalSection({ approvals, approveWorkspace, rejectWorkspace }) {
+    const rows = approvals ?? []
+    if (!rows.length) return null
+    return jsxs('div', {
+      className: 'dshlink-section dshlink-approvals',
+      children: [
+        jsxs('div', {
+          className: 'dshlink-section-head',
+          children: [
+            jsxs('div', {
+              className: 'dshlink-section-label',
+              children: ['待批准的工作区', jsx('span', { className: 'dshlink-section-count', children: rows.length })],
+            }),
+          ],
+        }),
+        jsx('div', {
+          className: 'dshlink-group',
+          children: rows.map((item) => jsxs('div', {
+            className: 'dshlink-device is-pending',
+            children: [
+              jsx('span', { className: 'dshlink-device-dot is-pending', 'aria-hidden': true }),
+              jsxs('div', {
+                className: 'dshlink-device-copy',
+                children: [
+                  jsx('div', { className: 'dshlink-approval-path', children: item.path }),
+                  jsx('div', { className: 'dshlink-device-time', children: `来自 ${item.deviceName || '手机'} · 批准后才会加入工作区` }),
+                ],
+              }),
+              jsxs('div', {
+                className: 'dshlink-device-actions',
+                children: [
+                  jsx('button', {
+                    type: 'button',
+                    className: 'dshlink-approve',
+                    onClick: () => approveWorkspace(item.requestId),
+                    children: [APPROVE_MICRO_GLYPH, '批准'],
+                  }),
+                  jsx('button', {
+                    type: 'button',
+                    className: 'dshlink-revoke',
+                    onClick: () => rejectWorkspace(item.requestId),
+                    children: [REJECT_MICRO_GLYPH, '拒绝'],
+                  }),
+                ],
+              }),
+            ],
+          }, item.requestId)),
+        }),
+      ],
+    })
+  }
+
   function ConnectionTabs({ active, onChange, relayOnline }) {
     return jsxs('div', {
       className: 'dshlink-tabs',
@@ -1336,7 +1385,7 @@ const createPanelModule = (require) => {
     })
   }
 
-  function ConnectionBody({ info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint }) {
+  function ConnectionBody({ info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint, workspaceApprovals, approveWorkspace, rejectWorkspace }) {
     const [active, setActive] = React.useState('lan')
     React.useEffect(() => { load?.() }, [active, load])
     if (starting) return jsx('div', { className: 'dshlink-status', children: '手机连接正在启动…' })
@@ -1346,6 +1395,7 @@ const createPanelModule = (require) => {
     return jsxs('div', {
       className: 'dshlink-connection',
       children: [
+        jsx(WorkspaceApprovalSection, { approvals: workspaceApprovals, approveWorkspace, rejectWorkspace }),
         jsx(ConnectionTabs, { active, onChange: setActive, relayOnline }),
         active === 'lan'
           ? jsx(LanBody, { info, devices, approve, revoke, revokeAll, setRequireConfirm })
@@ -1360,6 +1410,7 @@ const createPanelModule = (require) => {
   function usePairData(active) {
     const [info, setInfo] = React.useState(null)
     const [devices, setDevices] = React.useState([])
+    const [workspaceApprovals, setWorkspaceApprovals] = React.useState([])
     const [relay, setRelay] = React.useState(null)
     const [err, setErr] = React.useState('')
     const [phoneHint, setPhoneHint] = React.useState('')
@@ -1395,11 +1446,14 @@ const createPanelModule = (require) => {
         startRetries.current = 0
         setStarting(false)
         const resDevices = await fetch('/dsh-link/devices')
+        const resApprovals = await fetch('/dsh-link/workspace-approvals')
         const resRelay = await fetch('/dsh-link/relay-status')
-        if (!resInfo.ok || !resDevices.ok) throw new Error(`HTTP ${resInfo.status}/${resDevices.status}`)
+        if (!resInfo.ok || !resDevices.ok || !resApprovals.ok) throw new Error(`HTTP ${resInfo.status}/${resDevices.status}/${resApprovals.status}`)
         setInfo(await resInfo.json())
         const data = await resDevices.json()
         setDevices(data.devices ?? [])
+        const approvalData = await resApprovals.json()
+        setWorkspaceApprovals(approvalData.approvals ?? [])
         if (resRelay.ok) setRelay(await resRelay.json())
         setErr('')
       } catch (e) {
@@ -1408,7 +1462,7 @@ const createPanelModule = (require) => {
       }
     }, [])
 
-    const pendingCount = devices.filter((d) => d.status === 'pending').length
+    const pendingCount = devices.filter((d) => d.status === 'pending').length + workspaceApprovals.length
 
     React.useEffect(() => {
       if (!active) return undefined
@@ -1417,54 +1471,25 @@ const createPanelModule = (require) => {
       return () => clearInterval(timer)
     }, [active, load, pendingCount, starting])
 
-    const revoke = async (target) => {
-      const body = typeof target === 'string' ? { name: target } : (target ?? {})
+    const postPanel = async (path, body) => {
       try {
-        await fetch('/dsh-link/revoke', {
+        await fetch(path, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify(body ?? {}),
         })
       } finally {
         load()
       }
     }
-
-    const approve = async (deviceId) => {
-      try {
-        await fetch('/dsh-link/pair-approve', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ deviceId }),
-        })
-      } finally {
-        load()
-      }
-    }
-
+    const revoke = (target) => postPanel('/dsh-link/revoke', typeof target === 'string' ? { name: target } : (target ?? {}))
+    const approve = (deviceId) => postPanel('/dsh-link/pair-approve', { deviceId })
+    const approveWorkspace = (requestId) => postPanel('/dsh-link/workspace-approve', { requestId })
+    const rejectWorkspace = (requestId) => postPanel('/dsh-link/workspace-reject', { requestId })
+    const setRequireConfirm = (requireConfirm) => postPanel('/dsh-link/pair-settings', { requireConfirm })
     const revokeAll = async () => {
       if (!window.confirm('吊销全部已配对设备？手机需要重新扫码。')) return
-      try {
-        await fetch('/dsh-link/revoke-all', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: '{}',
-        })
-      } finally {
-        load()
-      }
-    }
-
-    const setRequireConfirm = async (requireConfirm) => {
-      try {
-        await fetch('/dsh-link/pair-settings', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ requireConfirm }),
-        })
-      } finally {
-        load()
-      }
+      await postPanel('/dsh-link/revoke-all', {})
     }
 
     const onEnroll = async ({ address, inviteCode, insecureTls, tlsFingerprint, controlUrl }, confirmRelaySwitch = false) => {
@@ -1509,12 +1534,12 @@ const createPanelModule = (require) => {
       await fetch('/dsh-link/relay-ack-replaced', { method: 'POST' })
       await load()
     }
-    return { info, devices, err, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint }
+    return { info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint, workspaceApprovals, approveWorkspace, rejectWorkspace }
   }
 
   function LinkPanel() {
     const [open, setOpen] = React.useState(false)
-    const { info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint } = usePairData(open)
+    const pair = usePairData(open)
 
     React.useEffect(() => {
       window.__dshlinkOpenPanel = () => setOpen(true)
@@ -1543,8 +1568,8 @@ const createPanelModule = (require) => {
                 className: 'dshlink-panel dshlink-root',
                 onClick: (e) => e.stopPropagation(),
                 children: [
-                  jsx(BrandHeader, { status: connectionStatus(info, relay, devices) }),
-                  jsx(ConnectionBody, { info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint }),
+                  jsx(BrandHeader, { status: connectionStatus(pair) }),
+                  jsx(ConnectionBody, pair),
                   jsx('button', {
                     type: 'button',
                     className: 'dshlink-close',
@@ -1560,7 +1585,7 @@ const createPanelModule = (require) => {
   }
 
   function DshLinkSettingsSection() {
-    const { info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint } = usePairData(true)
+    const pair = usePairData(true)
 
     return jsxs(React.Fragment, {
       children: [
@@ -1568,8 +1593,8 @@ const createPanelModule = (require) => {
         jsxs('div', {
           className: 'dshlink-settings dshlink-root',
           children: [
-            jsx(BrandHeader, { status: connectionStatus(info, relay, devices) }),
-            jsx(ConnectionBody, { info, devices, err, starting, revoke, approve, revokeAll, setRequireConfirm, relay, onEnroll, onDisconnect, onReconnect, onRelease, onAckReplaced, load, phoneHint }),
+            jsx(BrandHeader, { status: connectionStatus(pair) }),
+            jsx(ConnectionBody, pair),
           ],
         }),
       ],

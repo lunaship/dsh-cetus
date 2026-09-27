@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.foundation.background
@@ -22,19 +24,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -104,19 +101,18 @@ internal fun ApprovalCard(
         Text(
             L.openApproval,
             color = Dsh.labelPrimary,
-            style = DshType.t13M,
+            style = DshType.title,
             fontWeight = FontWeight(500),
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.sm))
-                .background(if (pressed) Dsh.pressed else Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
                 .clickable(interactionSource = interaction, indication = dshRipple()) { open = true }
                 .semantics {
                     role = Role.Button
                     contentDescription = L.openApproval
                 }
                 .heightIn(min = 48.dp)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         )
         return
     }
@@ -132,12 +128,11 @@ internal fun ApprovalCard(
         Text(
             L.approvalStatusUnknown,
             color = Dsh.labelSecondary,
-            style = DshType.t13,
+            style = DshType.body,
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.sm))
-                .background(Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.sm))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(Dsh.bgSubtle)
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         )
         return
     }
@@ -148,15 +143,14 @@ internal fun ApprovalCard(
             .fillMaxWidth()
             .heightIn(min = 160.dp),
     ) {
+        // 默认 tonal 容器（bgSubtle + container 圆角）：审批卡是行内卡片，不浮起，去掉阴影
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(6.dp, RoundedCornerShape(DshRadius.lg), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-                .clip(RoundedCornerShape(DshRadius.lg))
-                .background(Dsh.bgSurface)
-                .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.lg)),
+                .clip(RoundedCornerShape(DshRadius.container))
+                .background(Dsh.bgSubtle),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = DshSpace.s12)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
@@ -169,28 +163,27 @@ internal fun ApprovalCard(
                             fontWeight = FontWeight(500),
                             lineHeight = 18.sp,
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(DshSpace.s4))
                         Text(
                             msg.text.ifBlank {
                                 L.approvalRequest.format(msg.toolName ?: L.toolFallbackName)
                             },
                             color = Dsh.labelSecondary,
-                            style = DshType.t13x18,
-                            lineHeight = 18.sp,
+                            style = DshType.titleSmall,
                         )
                         msg.toolName?.takeIf { it.isNotBlank() }?.let { name ->
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(DshSpace.s6))
                             Text(
                                 name,
                                 color = Dsh.labelTertiary,
-                                style = DshType.t11,
+                                style = DshType.microRelaxed,
                                 fontFamily = FontFamily.Monospace,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(DshSpace.s8))
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -204,7 +197,7 @@ internal fun ApprovalCard(
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
-                                .clip(RoundedCornerShape(DshRadius.sm)),
+                                .clip(RoundedCornerShape(DshRadius.control)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -217,7 +210,7 @@ internal fun ApprovalCard(
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(DshSpace.s8))
 
                 ApprovalOptionRow(
                     label = L.allowOnce,
@@ -249,17 +242,17 @@ internal fun ApprovalCard(
                     style = DshType.caption,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = DshSpace.s4)
                         .semantics { contentDescription = shownError },
                 )
             }
 
-            // footer：步骤点 + 上箭头提交
+            // footer：步骤点 + 上箭头提交。与提问卡一致，留在卡片同一层底色里——
+            // 单独铺 bgCard 在浅色下与页面白底连成一片，卡片看起来像被截断。
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Dsh.bgCard.copy(alpha = if (Dsh.isDark) 0.5f else 1f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -289,15 +282,15 @@ internal fun ApprovalCard(
                     Box(
                         modifier = Modifier
                             .size(28.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(CircleShape)
                             .background(if (canSend) Dsh.labelPrimary else Dsh.bgTrack),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Default.KeyboardArrowUp,
+                            ChevronUpOutline14,
                             contentDescription = null,
                             tint = if (canSend) Dsh.bgSurface else Dsh.labelTertiary,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(14.dp),
                         )
                     }
                 }
@@ -318,7 +311,7 @@ private fun ApprovalOptionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .background(if (pressed) Dsh.pressed else Color.Transparent)
             .selectable(
                 selected = selected,
@@ -331,16 +324,16 @@ private fun ApprovalOptionRow(
                 contentDescription = label
             }
             .heightIn(min = 48.dp)
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+            .padding(horizontal = DshSpace.s6, vertical = DshSpace.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(16.dp)
-                .clip(if (radio) CircleShape else RoundedCornerShape(5.dp))
+                .clip(if (radio) CircleShape else RoundedCornerShape(DshRadius.control))
                 .then(
                     if (selected) Modifier.background(Dsh.labelPrimary)
-                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(5.dp)),
+                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(DshRadius.control)),
                 ),
             contentAlignment = Alignment.Center,
         ) {
@@ -360,7 +353,7 @@ private fun ApprovalOptionRow(
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         Text(
             label,
             color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
@@ -387,7 +380,7 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
         modifier = Modifier
             .clip(RoundedCornerShape(DshRadius.full))
             .background(tint.copy(alpha = 0.14f))
-            .padding(start = 4.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = DshSpace.s4, end = 10.dp, top = DshSpace.s4, bottom = DshSpace.s4),
     ) {
         Box(
             modifier = Modifier
@@ -403,11 +396,11 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
                 modifier = Modifier.size(11.dp),
             )
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(DshSpace.s6))
         Text(
             label,
             color = tint,
-            style = DshType.t13M,
+            style = DshType.title,
             fontWeight = FontWeight(500),
         )
     }

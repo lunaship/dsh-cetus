@@ -6,7 +6,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { createServer } from "node:http"
 import https from "node:https"
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Readable } from "node:stream"
@@ -166,6 +166,9 @@ const revokeAllRoute = () => registered.find((r) => r.path === "/dsh-link/revoke
 const pairApproveRoute = () => registered.find((r) => r.path === "/dsh-link/pair-approve")
 const pairSettingsRoute = () => registered.find((r) => r.path === "/dsh-link/pair-settings")
 const devicesRoute = () => registered.find((r) => r.path === "/dsh-link/devices")
+const workspaceApprovalsRoute = () => registered.find((r) => r.path === "/dsh-link/workspace-approvals")
+const workspaceApproveRoute = () => registered.find((r) => r.path === "/dsh-link/workspace-approve")
+const workspaceRejectRoute = () => registered.find((r) => r.path === "/dsh-link/workspace-reject")
 
 test("18640 匿名 pair-info / qr.png 被拒", async () => {
   const r1 = await proxyFetch(`/dsh-link/pair-info`)
@@ -182,7 +185,7 @@ test("health 不返回设备指纹", async () => {
 })
 
 test("主端口 Host 非回环 → 403", async () => {
-  for (const route of [pairInfoRoute(), qrRoute(), revokeRoute(), revokeAllRoute(), pairApproveRoute(), pairSettingsRoute(), devicesRoute()]) {
+  for (const route of [pairInfoRoute(), qrRoute(), revokeRoute(), revokeAllRoute(), pairApproveRoute(), pairSettingsRoute(), devicesRoute(), workspaceApprovalsRoute(), workspaceApproveRoute(), workspaceRejectRoute()]) {
     const r = await callRoute(route, { headers: { host: "evil.com:3080" }, body: route === revokeRoute() ? { name: "x" } : undefined })
     assert.equal(r.status, 403, route.path)
     assert.equal(r.body?.pairingCode, undefined)
@@ -469,6 +472,9 @@ test("带 token 的 GET/POST revoke、devices → 404", async () => {
     "/dsh-link/pair-approve",
     "/dsh-link/pair-settings",
     "/dsh-link/devices",
+    "/dsh-link/workspace-approvals",
+    "/dsh-link/workspace-approve",
+    "/dsh-link/workspace-reject",
   ]) {
     for (const method of ["GET", "POST"]) {
       const r = await proxyFetch(`${path}`, {
@@ -508,7 +514,7 @@ test("mobile GET /devices 列出已配对设备", async () => {
   assert.equal(self.via, "lan")
 })
 
-test("mobile POST /revoke 可吊销其他设备", async () => {
+test("mobile POST /revoke 只能吊销当前设备", async () => {
   const info = await callRoute(pairInfoRoute())
   const code = info.body.pairingCode
   const pair = await proxyFetch(`/dsh-link/pair`, {
@@ -519,19 +525,98 @@ test("mobile POST /revoke 可吊销其他设备", async () => {
   assert.equal(pair.status, 200)
   const extra = await pair.json()
 
-  const revoke = await proxyFetch(`/dsh-link/mobile/revoke`, {
+  const denied = await proxyFetch(`/dsh-link/mobile/revoke`, {
     method: "POST",
     headers: tokenHeaders(globalThis.__testDevice.token),
     body: JSON.stringify({ deviceId: extra.deviceId }),
   })
-  assert.equal(revoke.status, 200)
+  assert.equal(denied.status, 403)
 
+  const named = await proxyFetch(`/dsh-link/mobile/revoke`, {
+    method: "POST",
+    headers: tokenHeaders(globalThis.__testDevice.token),
+    body: JSON.stringify({ name: "测试机-吊销" }),
+  })
+  assert.equal(named.status, 403)
+
+  const dir = mkdtempSync(join(tmpdir(), "dsh-revoke-ws-"))
+  try {
+    const pending = await proxyFetch(`/dsh-link/mobile/workspaces`, {
+      method: "POST",
+      headers: tokenHeaders(extra.token),
+      body: JSON.stringify({ input: dir }),
+    })
+    assert.equal(pending.status, 202)
+    const self = await proxyFetch(`/dsh-link/mobile/revoke`, {
+      method: "POST",
+      headers: tokenHeaders(extra.token),
+      body: JSON.stringify({ deviceId: extra.deviceId }),
+    })
+    assert.equal(self.status, 200)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+
+  const listed = await callRoute(workspaceApprovalsRoute())
+  assert.equal(listed.body.approvals.length, 0)
   const list = await proxyFetch(`/dsh-link/mobile/devices`, {
     headers: tokenHeaders(globalThis.__testDevice.token),
   })
   const body = await list.json()
   assert.ok(!body.devices.some((d) => d.deviceId === extra.deviceId))
   assert.ok(body.devices.some((d) => d.deviceId === globalThis.__testDevice.deviceId))
+})
+
+test("绝对路径注册工作区必须经本机批准", async () => {
+  const root = mkdtempSync(join(tmpdir(), "dsh-ws-approve-"))
+  try {
+    const real = join(root, "real")
+    const link = join(root, "link")
+    mkdirSync(real)
+    symlinkSync(real, link)
+    const submitted = await proxyFetch(`/dsh-link/mobile/workspaces`, {
+      method: "POST",
+      headers: tokenHeaders(globalThis.__testDevice.token),
+      body: JSON.stringify({ input: link }),
+    })
+    assert.equal(submitted.status, 202)
+    const body = await submitted.json()
+    assert.equal(body.pending, true)
+    assert.equal(body.path, realpathSync(real))
+    const listed = await callRoute(workspaceApprovalsRoute())
+    assert.equal(listed.status, 200)
+    assert.equal(listed.body.approvals[0]?.path, realpathSync(real))
+    const viaProxy = await proxyFetch(`/dsh-link/workspace-approve`, {
+      method: "POST",
+      headers: tokenHeaders(globalThis.__testDevice.token),
+      body: JSON.stringify({ requestId: body.requestId }),
+    })
+    assert.equal(viaProxy.status, 404)
+    const approve = await callRoute(workspaceApproveRoute(), { body: { requestId: body.requestId } })
+    assert.equal(approve.status, 502)
+    const still = await callRoute(workspaceApprovalsRoute())
+    assert.equal(still.body.approvals.length, 1)
+    const rejected = await callRoute(workspaceRejectRoute(), { body: { requestId: body.requestId } })
+    assert.equal(rejected.status, 200)
+    const after = await callRoute(workspaceApprovalsRoute())
+    assert.equal(after.body.approvals.length, 0)
+    const missing = await proxyFetch(`/dsh-link/mobile/workspaces`, {
+      method: "POST",
+      headers: tokenHeaders(globalThis.__testDevice.token),
+      body: JSON.stringify({ input: join(root, "missing") }),
+    })
+    assert.equal(missing.status, 404)
+    const file = join(root, "file")
+    writeFileSync(file, "x")
+    const notDir = await proxyFetch(`/dsh-link/mobile/workspaces`, {
+      method: "POST",
+      headers: tokenHeaders(globalThis.__testDevice.token),
+      body: JSON.stringify({ input: file }),
+    })
+    assert.equal(notDir.status, 400)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test("带 token 的未知路径 → 404（catch-all 已删）", async () => {

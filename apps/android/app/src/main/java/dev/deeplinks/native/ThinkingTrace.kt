@@ -113,7 +113,7 @@ internal fun ThinkingTrace(
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val rail = Dsh.brand500
-    val panelShape = RoundedCornerShape(DshRadius.md)
+    val panelShape = RoundedCornerShape(DshRadius.container)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -150,7 +150,7 @@ internal fun ThinkingTrace(
                 ) + fadeOut(animationSpec = tween(motionDuration(180))),
             ) {
                 Column(
-                    modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 6.dp),
+                    modifier = Modifier.padding(start = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s6),
                     content = body,
                 )
             }
@@ -174,12 +174,12 @@ internal fun ThinkingStatusRow(
             tint = Dsh.brand400,
             modifier = Modifier.size(16.dp),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         ShimmerLabel(text = L.thinkingActive, working = true)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(DshSpace.s8))
         Text(
             formatThinkingElapsed(elapsedSec),
-            style = DshType.t12M,
+            style = DshType.label,
             color = Dsh.labelTertiary,
             maxLines = 1,
         )
@@ -213,7 +213,7 @@ private fun ThinkingHeader(
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .clickable(
                 interactionSource = interaction,
                 indication = dshRipple(),
@@ -231,7 +231,7 @@ private fun ThinkingHeader(
                     if (pressed) Modifier.drawBehind { drawRect(pressTint) }
                     else Modifier,
                 )
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -240,7 +240,7 @@ private fun ThinkingHeader(
                 tint = if (working) Dsh.brand400 else Dsh.labelTertiary,
                 modifier = Modifier.size(16.dp),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             AnimatedContent(
                 targetState = working,
                 transitionSpec = {
@@ -253,14 +253,14 @@ private fun ThinkingHeader(
                 } else {
                     Text(
                         doneLabel,
-                        style = DshType.t13M,
+                        style = DshType.title,
                         fontWeight = FontWeight(600),
                         color = Dsh.labelPrimary,
                         maxLines = 1,
                     )
                 }
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DshSpace.s6))
             Icon(
                 ChevronDownOutline14,
                 contentDescription = expandLabel,
@@ -279,7 +279,7 @@ private fun ThinkingHeader(
  */
 @Composable
 internal fun ShimmerLabel(text: String, working: Boolean) {
-    val style = DshType.t13M
+    val style = DshType.title
     if (!working || isReduceMotionEnabled()) {
         Text(text, style = style, color = Dsh.labelSecondary, maxLines = 1)
         return

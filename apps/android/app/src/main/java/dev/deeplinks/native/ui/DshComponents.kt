@@ -1,12 +1,14 @@
 package dev.deeplinks.native.ui
 
+import androidx.compose.runtime.getValue
+import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -25,11 +27,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -47,8 +50,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.dshRipple
@@ -59,6 +62,7 @@ import dev.deeplinks.native.DshDuration
 import dev.deeplinks.native.DshEasing
 import dev.deeplinks.native.DshHaptic
 import dev.deeplinks.native.DshRadius
+import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.motionDuration
 import dev.deeplinks.native.rememberDshHaptic
 
@@ -81,12 +85,15 @@ fun DshFilterChip(
     count: Int? = null,
     enabled: Boolean = true,
     contentDescription: String? = null,
+    /** 长按 extras（如工作区胶囊的「新建会话 / 移除」菜单）；为空时退化为普通点击。 */
+    onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    // 选中是浅灰底上的深字。品牌蓝不进筛选。
     val bg = when {
         !enabled -> Color.Transparent
-        selected -> Dsh.bgSelected
+        selected -> Dsh.bgSubtle
         pressed -> Dsh.pressed
         else -> Color.Transparent
     }
@@ -99,13 +106,26 @@ fun DshFilterChip(
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .selectable(
-                selected = selected,
-                interactionSource = interaction,
-                indication = dshRipple(),
-                enabled = enabled,
-                role = Role.Tab,
-                onClick = onClick,
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(
+                        interactionSource = interaction,
+                        indication = dshRipple(),
+                        enabled = enabled,
+                        role = Role.Tab,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
+                } else {
+                    Modifier.selectable(
+                        selected = selected,
+                        interactionSource = interaction,
+                        indication = dshRipple(),
+                        enabled = enabled,
+                        role = Role.Tab,
+                        onClick = onClick,
+                    )
+                },
             )
             .semantics {
                 if (contentDescription != null) {
@@ -119,23 +139,22 @@ fun DshFilterChip(
                 .height(32.dp)
                 .clip(RoundedCornerShape(DshRadius.full))
                 .background(bg)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = DshSpace.s12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 label,
                 color = textColor,
-                style = DshType.t13x20M,
+                style = DshType.title,
                 fontWeight = FontWeight(500),
                 lineHeight = 20.sp,
             )
             if (count != null) {
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(DshSpace.s4))
                 Text(
                     count.toString(),
-                    color = if (selected) Dsh.labelPrimary.copy(alpha = 0.7f) else Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    fontFamily = FontFamily.Monospace,
+                    color = if (selected) Dsh.labelSecondary else Dsh.labelTertiary,
+                    style = DshType.captionRelaxed.tabularNums(),
                 )
             }
         }
@@ -180,7 +199,7 @@ fun DshTopSegment(
     val pressTint = Dsh.pressed
     // 文字是 sp、药丸是 dp：fontScale 1.3+ 不放大会把字顶出胶囊，
     // 所以按「标签行高 × fontScale」撑大药丸/轨道，1.0 时仍是 26/30dp。
-    val labelStyle = DshType.t13M
+    val labelStyle = DshType.title
     val lineSp = if (labelStyle.lineHeight.isSp) {
         labelStyle.lineHeight.value
     } else {
@@ -252,13 +271,13 @@ fun DshTopSegment(
                             onSelect(index)
                         },
                     )
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = DshSpace.s12),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     label,
                     color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
-                    style = DshType.t13M,
+                    style = DshType.title,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     maxLines = 1,
                 )
@@ -283,7 +302,7 @@ fun DshTextTabs(
 ) {
     if (labels.isEmpty()) return
     val safeIndex = selectedIndex.coerceIn(0, labels.lastIndex)
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
         labels.forEachIndexed { index, label ->
             val selected = index == safeIndex
             val interaction = remember { MutableInteractionSource() }
@@ -291,7 +310,7 @@ fun DshTextTabs(
                 modifier = Modifier
                     // M3 触控目标 ≥48dp（原 44dp 不达标）
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(
                         interactionSource = interaction,
                         indication = dshRipple(),
@@ -309,7 +328,7 @@ fun DshTextTabs(
                     Text(
                         label,
                         color = if (selected) dev.deeplinks.core.Dsh.labelPrimary else dev.deeplinks.core.Dsh.labelTertiary,
-                        style = DshType.t13,
+                        style = DshType.body,
                         fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                         letterSpacing = 0.sp,
                         maxLines = 1,
@@ -320,8 +339,8 @@ fun DshTextTabs(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(2.dp)
-                            .clip(RoundedCornerShape(1.dp))
-                            .background(if (selected) dev.deeplinks.core.Dsh.brand400 else Color.Transparent),
+                            .clip(RoundedCornerShape(DshRadius.full))
+                            .background(if (selected) dev.deeplinks.core.Dsh.labelPrimary else Color.Transparent),
                     )
                 }
             }
@@ -334,7 +353,7 @@ fun DshSheetGrabber() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(top = DshSpace.s8, bottom = DshSpace.s4),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -357,15 +376,13 @@ fun DshTag(
     modifier: Modifier = Modifier,
     color: Color = Dsh.bgSubtle,
     contentColor: Color = Dsh.labelSecondary,
-    borderColor: Color? = null,
-    shape: Shape = RoundedCornerShape(DshRadius.sm),
+    shape: Shape = RoundedCornerShape(DshRadius.control),
     contentDescription: String? = null,
 ) {
     val mod = modifier
         .clip(shape)
         .background(color)
-        .let { if (borderColor != null) it.border(1.dp, borderColor, shape) else it }
-        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2)
         .semantics {
             if (contentDescription != null) this.contentDescription = contentDescription
         }
@@ -425,7 +442,7 @@ fun DshBadge(
                 text = label,
                 // 徽章底色任意（默认 error）：内容色朝底色的高对比侧收敛，保证 AA
                 color = readableTextColor(contentColor, listOf(color)),
-                style = DshType.t11x14SB,
+                style = DshType.label,
                 lineHeight = 14.sp,
                 fontWeight = FontWeight(600),
             )
@@ -454,44 +471,38 @@ fun DshBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(bg)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
             .semantics {
                 liveRegion = LiveRegionMode.Polite
                 if (contentDescription != null) this.contentDescription = contentDescription
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // tone 指示条
-        Box(
-            modifier = Modifier
-                .size(width = 3.dp, height = 16.dp)
-                .background(accent, RoundedCornerShape(2.dp))
-        )
-        Spacer(Modifier.width(8.dp))
+        // 语气只靠 tonal 底色 + 文字色表达；左侧竖色条是网页 callout 写法，不用
         if (leading != null) {
             leading()
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
         }
         Text(
             text = text,
             color = fg,
-            style = DshType.bodyDense,
+            style = DshType.body,
             modifier = Modifier.weight(1f),
         )
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DshSpace.s8))
             val interaction = remember { MutableInteractionSource() }
             val pressed by interaction.collectIsPressedAsState()
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(if (pressed) Dsh.pressed else Color.Transparent)
                     .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onAction)
                     .heightIn(min = 48.dp)
                     .widthIn(min = 48.dp)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
                     .semantics {
                         role = Role.Button
                         this.contentDescription = actionLabel
@@ -501,7 +512,7 @@ fun DshBanner(
                 Text(
                     text = actionLabel,
                     color = accent,
-                    style = DshType.bodyDense,
+                    style = DshType.body,
                     fontWeight = FontWeight(500),
                 )
             }
@@ -525,7 +536,7 @@ fun ChatLoadingSkeleton(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12)
             .semantics { this.contentDescription = loadingLabel },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -541,7 +552,7 @@ fun ChatLoadingSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(widthFrac)
                     .height(14.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(Dsh.bgSubtle)
             )
         }
@@ -554,7 +565,7 @@ fun ChatLoadingSkeleton(
                 modifier = Modifier
                     .width(120.dp)
                     .height(28.dp)
-                    .clip(RoundedCornerShape(DshRadius.lg))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle)
             )
         }
@@ -563,7 +574,7 @@ fun ChatLoadingSkeleton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCode)
         )
     }
@@ -586,16 +597,147 @@ fun DshHeaderAction(
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .background(if (pressed) Dsh.pressed else Color.Transparent)
             .semantics {
                 role = Role.Button
                 contentDescription = label
             }
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = DshSpace.s8),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp)
+        Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
+    }
+}
+
+// ============================================================
+// DshIconAction —— 页面/卡片内的图标按钮（统一 48dp 热区与按压态）
+// 语义角色：Button；顶栏、Section 头、列表行尾的图标动作共用这一件
+// ============================================================
+@Composable
+fun DshIconAction(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    iconSize: Dp = 20.dp,
+    active: Boolean = false,
+    tint: Color = Dsh.labelSecondary,
+    /** 实心模式（如任务入口的 + 钮）：容器用品牌色，图标用 onBrand。 */
+    containerColor: Color? = null,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(
+                when {
+                    containerColor != null -> containerColor
+                    active -> Dsh.bgNavSelected
+                    pressed -> Dsh.bgPressed
+                    else -> Color.Transparent
+                },
+            )
+            .semantics {
+                role = Role.Button
+                if (contentDescription != null) this.contentDescription = contentDescription
+            }
+            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (containerColor != null) Dsh.onBrand else if (active) Dsh.brand500 else tint,
+            modifier = Modifier.size(iconSize),
+        )
+    }
+}
+
+// ============================================================
+// DshPrimaryAction —— 实心主操作（每个表面最多一个）
+// 语义角色：Button；品牌蓝实心 + 全圆，禁用降透明
+// ============================================================
+@Composable
+fun DshPrimaryAction(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    danger: Boolean = false,
+) {
+    val container = if (danger) Dsh.error else Dsh.brand500
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(DshRadius.full))
+            .background(if (enabled) container else container.copy(alpha = 0.55f))
+            .clickable(
+                interactionSource = interaction,
+                indication = dshRipple(),
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(horizontal = DshSpace.s24, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = Dsh.onBrand, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(DshSpace.s8))
+        }
+        Text(label, color = Dsh.onBrand, style = DshType.labelLarge, maxLines = 1)
+    }
+}
+
+// ============================================================
+// DshStatusBadge —— 状态 pill（等待 / 运行 / 成功 / 错误 / 中性）
+// 状态必须「颜色 + 文字」双通道，不得只靠色点；由 DshStatusBadge 统一语义
+// ============================================================
+enum class DshStatusTone { Neutral, Waiting, Running, Success, Error }
+
+@Composable
+fun DshStatusBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    tone: DshStatusTone = DshStatusTone.Neutral,
+    dot: Boolean = false,
+    contentDescription: String? = null,
+) {
+    val (bg, fg, accent) = when (tone) {
+        DshStatusTone.Neutral -> Triple(Dsh.bgSubtle, Dsh.labelSecondary, Dsh.labelTertiary)
+        // 与 DshBanner 同一套容器/内容配对，保证 AA 对比
+        DshStatusTone.Waiting -> Triple(Dsh.warn.copy(alpha = 0.12f), Dsh.warnLabel, Dsh.warn)
+        DshStatusTone.Running -> Triple(Dsh.brandTint, Dsh.brand400, Dsh.brand400)
+        DshStatusTone.Success -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.successContent, Dsh.success)
+        DshStatusTone.Error -> Triple(Dsh.errorBg, Dsh.error, Dsh.error)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(DshRadius.full))
+            .background(bg)
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+            .semantics {
+                if (contentDescription != null) this.contentDescription = contentDescription
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dot) {
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+            )
+            Spacer(Modifier.width(DshSpace.s6))
+        }
+        Text(text, color = fg, style = DshType.captionRelaxed, maxLines = 1)
     }
 }

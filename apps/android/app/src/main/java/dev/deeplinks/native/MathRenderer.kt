@@ -337,8 +337,7 @@ fun LatexDisplayBlock(latex: String, modifier: Modifier = Modifier) {
         Text(
             latex,
             color = Dsh.labelTertiary,
-            style = DshType.t14,
-            lineHeight = 22.sp,
+            style = DshType.body,
             fontFamily = FontFamily.Monospace,
             modifier = modifier.fillMaxWidth()
         )
@@ -350,7 +349,7 @@ fun LatexDisplayBlock(latex: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = DshSpace.s2),
         contentAlignment = Alignment.Center
     ) {
         LatexMathCanvas(drawn, Modifier.size(size))

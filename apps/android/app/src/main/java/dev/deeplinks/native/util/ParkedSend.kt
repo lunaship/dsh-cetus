@@ -47,7 +47,7 @@ fun decodeParkedSend(raw: String?): ParkedSend? {
         }
         ParkedSend(
             slotKey = obj.optString("slotKey"),
-            sessionId = obj.optString("sessionId").takeIf { it.isNotBlank() },
+            sessionId = obj.optNullableString("sessionId"),
             text = obj.optString("text"),
             images = images,
             droppedImages = obj.optBoolean("droppedImages", false),

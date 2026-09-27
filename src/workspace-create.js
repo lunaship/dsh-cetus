@@ -1,3 +1,4 @@
+import { realpathSync, statSync } from "node:fs"
 import { mkdir, stat } from "node:fs/promises"
 import { dirname, isAbsolute, join } from "node:path"
 
@@ -32,10 +33,34 @@ function validateWorkspaceName(name) {
   }
 }
 
+/** 已存在目录的 realpath。符号链接展开成目标；缺失或不是文件夹则抛错。 */
+export function resolveAbsoluteWorkspaceDirectory(input) {
+  const path = String(input ?? "").trim()
+  if (!isAbsolute(path)) {
+    throw new MobileWorkspaceCreateError("workspace-invalid-path", "请输入绝对路径", 400, { input: path })
+  }
+  let real
+  try {
+    real = realpathSync(path)
+  } catch (error) {
+    const missing = error?.code === "ENOENT"
+    throw new MobileWorkspaceCreateError(
+      missing ? "workspace-path-not-found" : "workspace-path-unavailable",
+      missing ? "目录不存在" : "无法解析该目录",
+      missing ? 404 : 400,
+      { path },
+    )
+  }
+  if (!statSync(real).isDirectory()) {
+    throw new MobileWorkspaceCreateError("workspace-not-a-directory", "该路径不是文件夹", 400, { path: real })
+  }
+  return real
+}
+
 /**
  * 将手机输入解析成 DSH workspace.create 接受的绝对路径。
- * - 绝对路径：沿用“注册电脑上已有目录”的语义，不创建目录；
- * - 单层名称：以当前工作区为锚点，在其同级目录创建，禁止手机任意指定父目录。
+ * - 绝对路径：不创建目录，调用方需先经本机批准再注册；
+ * - 单层名称：以当前工作区为锚点，在其同级目录创建。
  */
 export function planMobileWorkspaceCreate({ input, parentWorkspaceId, workspaces }) {
   const normalizedInput = String(input ?? "").trim()

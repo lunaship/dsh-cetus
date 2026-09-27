@@ -15,7 +15,7 @@
     "sync": { "resync": true, "catchupIntegrity": true },
     "questions": { "multi": true, "serverValidation": true },
     "requests": { "snapshot": true, "reconnectGraceMs": 30000 },
-    "files": { "workspace": true, "maxBytes": 8388608 }
+    "files": { "workspace": true, "maxBytes": 8388608, "tree": true, "treeMaxEntries": 2000 }
   },
   "archivedSessionIds": ["<session-id>"]
 }
@@ -27,9 +27,19 @@
 
 `GET /dsh-link/mobile/sessions` 也返回同名 `archivedSessionIds`。App 的后台会话刷新必须先应用该集合，再更新列表和当前选择，避免列表请求与工作区请求之间产生短暂不一致。
 
+会话行（`bootstrap.sessions` 与 `GET /dsh-link/mobile/sessions`）可带 `awaitingInput: true`：该会话有尚未结束的审批或澄清问题，不论它由手机接管还是交给电脑端网页处理。字段由插件在 `approval/request`、`user-questions/request` 钩子外层计数得出（DSH 的 `session.list` 不带这个状态），只在为真时下发，缺省即 `false`；旧 App 忽略该键。交给电脑端的请求手机只能看到状态，仍需在电脑上处理。
+
 `GET /dsh-link/mobile/sessions/search` 同样遵守该集合：成功搜索和降级的标题搜索都不会返回 Web 已归档的 `sessionId`。
 
 产出文件：历史投影可含 `role: "produced_files"` 与 `files` 路径列表。具备 `capabilities.files.workspace` 时，`GET /dsh-link/mobile/sessions/:id/file?path=` 在该会话 cwd 沙箱内返回原始字节（默认上限 8MB）。路径越出工作区返回 403。旧 App 忽略未知 role，仍可走工具结果文本。
+
+工作区文件树（`capabilities.files.tree`）：`GET /dsh-link/mobile/sessions/:id/tree?path=` 列出该会话 cwd 沙箱内的**一层**目录，App 按层懒加载。与 `/file` 相同的门槛：只有持有该会话活跃 SSE 订阅的设备可调用，否则 403。
+
+- `path` 为工作区内相对路径，空串或 `.` 为根；绝对路径只要解析后仍在工作区内也接受。越出工作区（含经符号链接越出）403，不存在 404，不是目录 400。
+- 响应 `{ ok, path, total, truncated, entries }`：`path` 为解析后的真实相对路径（根为空串，经工作区内链接进入时给出目标路径）；`entries` 目录在前、同类按名称码元序，最多 `treeMaxEntries`（2000）条，超出时 `truncated: true`，`total` 为实际条数。
+- 条目 `{ name, type }`，`type` 为 `dir` / `file` / `symlink` / `other`；`file` 另带 `size`、`mtimeMs`。指向工作区内的符号链接按目标类型给出并带 `link: true`；指向工作区外或断开的链接为 `type: "symlink", outside: true`，App 不可进入也不可打开。
+- 不过滤隐藏文件（`.env`、`.git` 照常列出）：设备配对后本就能经 `/file` 读取工作区内任意文件，列目录不扩大可读范围。
+- 打开文件仍走 `/file?path=<目录 path>/<name>`。旧 App 不看该能力位，旧插件不宣告即不出现入口。
 
 ## 本轮改动文件（`capabilities.files.changes`）
 
@@ -136,6 +146,29 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 - 设备吊销、DSH abort、插件退出立即结束，不能借宽限恢复权限。
 - 插件重启后内存回调不可恢复，未决请求失效。
 - 澄清多题：旧 App 不声明 `multiQuestion` 时回落桌面，不在手机上构造未展示题目的答案。
+
+## 工作区注册与设备吊销
+
+- 单层名称：`POST /dsh-link/mobile/workspaces` 仍立即在锚点工作区的同级创建目录并注册，200 返回 `workspace`。
+- 绝对路径：目录必须已存在。插件把它解析成 realpath（符号链接展开成目标），**不**调用 `workspace.create`，返回 202：
+
+```json
+{ "ok": true, "pending": true, "requestId": "...", "path": "/realpath", "inputKind": "absolute-path", "expiresAt": 0 }
+```
+
+  电脑在「手机连接」面板批准后才注册；拒绝、过期或该设备被吊销则丢弃。旧 App 看到没有 `workspace` 对象时按原错误提示，不会静默注册。
+- `POST /dsh-link/mobile/revoke` 只能吊销调用方自己的设备。`deviceId` 或 `name` 指向其他设备时返回 403 `只能吊销当前设备`。跨设备吊销与全部吊销仍只在回环面板。
+
+## 模型页：余额与供应商（DSH 0.1.7 起）
+
+- `GET /dsh-link/mobile/balance?locale=` 代调 `account/getBalance`，恒回 200：`{ status, wallets, bonusWallets }`。`status` 为 `ready`（钱包 `{currency, balance}`，`balance` 为平台原样十进制字符串）、`signed-out`（主机未登录 DeepSeek 账户）、`failed`（平台查询失败）、`unavailable`（旧 DSH 没有该方法）。
+- `GET /dsh-link/mobile/providers` 返回 `{ writable, providers, addable }`，行序与桌面一致（`deepseek-account`、`deepseek-official` 置顶）。每行 `{ provider, displayName, kind: "account"|"api", active, custom, keyRef, credential: {configured, writable, source}|null, models: [{id, name, contextWindow, maxTokens}], modelsEditable, canDiscover }`。不下发 `baseURL` / `api` 等路由字段，更不下发密钥值。`addable` 是目录里尚未配置的供应商 `{provider, displayName}`。
+- 写接口都返回刷新后的同一形状（外加 `ok: true`），经设备变更闸门执行，吊销即 401：
+  - `POST .../providers/models {provider, add?: [{id, name?, contextWindow?, maxTokens?, inputModalities?}], remove?: [id]}`：只写该供应商 profile 的 `models` 数组，原有条目字段原样保留。仅 `modelsEditable` 为 true（profile 显式带 `models`）时可用，否则 409 `models-inherited`，避免手机把适配器默认目录整体替换掉。不允许清空为 0 个。
+  - `POST .../providers/credential {provider, apiKey}`：密钥规则与桌面相同（可见 ASCII、非 `NAME=value`、非引号包裹）。写入 profile 的 `apiKeyEnv`，没有则写入派生名 `<PROVIDER>_API_KEY` 并补记到 profile；值单向进 `credentials/set`，响应与日志均不回显。来源只读（如环境变量）时 409 `credential-read-only`。
+  - `POST .../providers/add {provider, apiKey?}`：只接受 `addable` 里的目录供应商。自定义接口（协议 + baseURL）仍只在电脑端添加。
+  - `POST .../providers/discover {provider}`：用已存 profile 的 `baseURL` / `api` 与已存密钥调 `llm/discoverModels`，忽略手机传来的路由字段；返回候选 `models`，由用户勾选后再走 `providers/models` 写入。
+- 所有写入带读到的 `expectedRevision`；电脑端同时修改时返回 409 `conflict`，App 刷新后重试。
 
 ## 错误与重试
 
