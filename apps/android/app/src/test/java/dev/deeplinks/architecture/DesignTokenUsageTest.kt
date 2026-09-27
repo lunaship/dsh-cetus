@@ -78,4 +78,44 @@ class DesignTokenUsageTest {
             violations.isEmpty()
         )
     }
+
+    /**
+     * 图标只有一套：Web 复刻集（DshIcons.kt）+ 同笔法自绘补充（DshGlyphs.kt）。
+     * Material Icons 自带 24 格内边距、笔画粗细也不同，混用会让同一行里的图标大小不一。
+     */
+    @Test
+    fun iconsComeFromTheInHouseSetOnly() {
+        val root = mainSourceRoot()
+        val offenders = root.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { file -> file.readText().contains("androidx.compose.material.icons") }
+            .map { relative(root, it) }
+            .toList()
+        assertTrue(
+            "这些文件引入了 Material Icons，请改用 DshIcons / DshGlyphs（缺的图标在 DshGlyphs.kt 按同一笔法补）：\n" +
+                offenders.joinToString("\n"),
+            offenders.isEmpty()
+        )
+    }
+
+    /**
+     * 圆角只能取 DshRadius / DshTileShape / CircleShape：细条与进度条用 full，
+     * 色块用 xs，卡片用 group，图标底板用 DshTileShape。存量已清零，不设基线。
+     */
+    @Test
+    fun cornerRadiiComeFromTokens() {
+        val root = mainSourceRoot()
+        val raw = Regex("""RoundedCornerShape\(\s*\d|(topStart|topEnd|bottomStart|bottomEnd)\s*=\s*\d+(\.\d+)?\.dp""")
+        val offenders = mutableListOf<String>()
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val rel = relative(root, file)
+            file.readLines().forEachIndexed { i, line ->
+                if (raw.containsMatchIn(line)) offenders += rel + ":" + (i + 1) + "  " + line.trim()
+            }
+        }
+        assertTrue(
+            "裸圆角（请改用 DshRadius.* / DshTileShape / CircleShape）：\n" + offenders.joinToString("\n"),
+            offenders.isEmpty()
+        )
+    }
 }

@@ -429,7 +429,7 @@ private fun MermaidZoomDialog(
                 Text(
                     L.mermaidDiagram,
                     color = Dsh.labelPrimary,
-                    style = DshType.t14,
+                    style = DshType.body,
                     modifier = Modifier.weight(1f),
                 )
                 DshHeaderAction(L.save, onClick = onSave)

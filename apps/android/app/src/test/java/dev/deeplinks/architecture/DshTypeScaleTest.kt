@@ -21,6 +21,7 @@ import java.io.File
  * 微角色、286 处调用点——这是「像网页套壳」的最大单一来源。2026-09 重构把
  * 13sp 正文族与超松行高角色并入语义角色（body/bodyStrong 15sp 起）；
  * 本测试把成果锁死：违反契约的角色会红，白名单外的角色名也会红（防止静默回流）。
+ * 2026-09-27 起密集档只剩 6 个具名角色，`t14x20` 这类按像素命名的角色不再允许。
  */
 class DshTypeScaleTest {
 
@@ -42,11 +43,8 @@ class DshTypeScaleTest {
 
         /** 密集档白名单：次级文本专用，尺寸/行高受上面的规则约束。 */
         val DENSE_ROLES = setOf(
-            "captionRelaxed", "microRelaxed", "microMedium", "microStrong",
-            "t11x15M", "t11x16M", "t11x17", "t11x18",
-            "t12x18M",
-            "t14", "t14M", "t14SB", "t14x20",
-            "t15x20", "t15x20M", "t15x21M", "t15x21SB", "t15x23",
+            "captionRelaxed", "captionMedium", "supporting",
+            "microRelaxed", "microMedium", "microStrong",
         )
     }
 
@@ -93,7 +91,7 @@ class DshTypeScaleTest {
     @Test
     fun rolesStayOnTheNativeScale() {
         val roles = parseRoles(File(mainSourceRoot(), "dev/deeplinks/core/DshTypography.kt"))
-        assertTrue("DshType 一个角色都没解析到，扫描模式可能已失效", roles.size >= 30)
+        assertTrue("DshType 一个角色都没解析到，扫描模式可能已失效", roles.size >= 15)
         val violations = mutableListOf<String>()
 
         for (role in roles) {

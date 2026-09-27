@@ -337,8 +337,7 @@ fun LatexDisplayBlock(latex: String, modifier: Modifier = Modifier) {
         Text(
             latex,
             color = Dsh.labelTertiary,
-            style = DshType.t14,
-            lineHeight = 22.sp,
+            style = DshType.body,
             fontFamily = FontFamily.Monospace,
             modifier = modifier.fillMaxWidth()
         )

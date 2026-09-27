@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.AnimatedVisibility
@@ -10,7 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,22 +32,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,7 +82,7 @@ private fun traceRoleVisual(role: String): TraceRoleVisual = when (role) {
     "approval" -> TraceRoleVisual(L.approvalRole, Dsh.warn, WarningOutline16)
     "todo" -> TraceRoleVisual(L.taskRole, Dsh.labelSecondary, ChecklistOutline14)
     "compaction" -> TraceRoleVisual(L.traceKindCompact, Dsh.labelTertiary, ArchiveOutline20)
-    "produced_files" -> TraceRoleVisual(L.traceKindOutput, Dsh.brand400, Icons.Default.Description)
+    "produced_files" -> TraceRoleVisual(L.traceKindOutput, Dsh.brand400, FileOutline16)
     ROLE_WORKSPACE_CHANGES -> TraceRoleVisual(ChangesL.changes, Dsh.brand400, EditOutline16)
     else -> TraceRoleVisual(L.traceKindAssistant, Dsh.brand400, Sparkle16)
 }
@@ -201,13 +193,13 @@ internal fun TrajectoryView(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 TraceToggle(
-                    icon = Icons.Default.Schedule,
+                    icon = ClockOutline16,
                     label = L.traceToolbarDuration,
                     active = !actualDuration,
                     onClick = { actualDuration = !actualDuration },
                 )
                 TraceToggle(
-                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                    icon = ChecklistOutline14,
                     label = L.traceToolbarTurns,
                     active = allTurnsCollapsed,
                     onClick = {
@@ -216,7 +208,7 @@ internal fun TrajectoryView(
                     },
                 )
                 TraceToggle(
-                    icon = Icons.Default.Code,
+                    icon = CodeOutline16,
                     label = L.traceToolbarCalls,
                     active = allCallsExpanded,
                     onClick = {
@@ -241,7 +233,7 @@ internal fun TrajectoryView(
                         modifier = Modifier.size(40.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Search, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(18.dp))
+                        Icon(SearchOutline16, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -382,7 +374,7 @@ private fun TraceToggle(icon: ImageVector, label: String, active: Boolean, onCli
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(14.dp))
+            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(5.dp))
             Text(label, color = fg, style = DshType.label, fontWeight = FontWeight(500))
         }
@@ -401,7 +393,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.Search, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(12.dp))
         Spacer(Modifier.width(6.dp))
         BasicTextField(
             value = value,
@@ -432,7 +424,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
                     modifier = Modifier.size(32.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+                    Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(12.dp))
                 }
             }
         }
@@ -468,7 +460,7 @@ private fun TraceTimeline(
                 modifier = Modifier
                     .weight(weight)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(DshRadius.xs))
                     .background(visual.color.copy(alpha = alpha))
                     .clickable { onFocus(key) },
             )
@@ -549,14 +541,14 @@ private fun TraceTableRow(
             Text(
                 visual.label,
                 color = accent,
-                style = DshType.t11x15M,
+                style = DshType.microMedium,
                 fontWeight = FontWeight(600),
             )
             if (name != null) {
                 Text(
                     " · ",
                     color = Dsh.labelTertiary,
-                    style = DshType.t11x15M,
+                    style = DshType.microMedium,
                 )
                 Text(
                     name,

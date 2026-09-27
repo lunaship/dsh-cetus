@@ -35,16 +35,28 @@ import kotlinx.coroutines.delay
  * 动效时长与 easing 对齐 `--ds-transition-duration*` 系列。
  */
 object DshRadius {
+    /** 微型：色块、停止方块这类 10dp 以下的实心小形状。细条 / 进度条一律用 [full]。 */
+    val xs = 2.dp
+    /** 用户气泡贴近发送方向的那个角（右下），其余三角取 [xl]。 */
+    val tail = 4.dp
     val sm = 6.dp
     val md = 10.dp
     val lg = 12.dp
     val xl = 18.dp
+    /** 分组列表卡片（对照 lody-ios 的 26pt 连续圆角，圆弧圆角取 20dp 视觉等价）。 */
+    val group = 20.dp
     /** 输入卡圆角（签名形状：比卡片软、比弹层收）。 */
     val composer = 22.dp
     val sheet = 28.dp   // 底部弹层顶部圆角：M3 bottom sheet 标准 28dp（原 14dp iOS 观感偏"浮层化"）
     val dialog = 28.dp  // 对话框卡片圆角：M3 dialog 标准 28dp
     val full = 999.dp
 }
+
+/**
+ * 图标底板（品牌 mark、设备图标块）：按边长 28% 取圆角，52dp / 72dp 两种尺寸比例一致，
+ * 不再各自写 16dp、20dp、22dp。
+ */
+val DshTileShape = RoundedCornerShape(percent = 28)
 
 /** 底部弹层通用 shape：顶部两角 [DshRadius.sheet]（M3 28dp）。 */
 val DshSheetShape = RoundedCornerShape(topStart = DshRadius.sheet, topEnd = DshRadius.sheet)

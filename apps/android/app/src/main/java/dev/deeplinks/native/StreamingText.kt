@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,12 +14,10 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -135,7 +135,7 @@ internal fun rememberStreamCaretContent(): InlineTextContent {
                     .padding(start = 2.dp)
                     .width(2.dp)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(99.dp))
+                    .clip(RoundedCornerShape(DshRadius.full))
                     .background(ink),
             )
         }
@@ -177,7 +177,7 @@ internal fun StreamCaret(modifier: Modifier = Modifier) {
             .padding(start = 2.dp, top = 8.dp)
             .width(2.dp)
             .height(12.dp)
-            .clip(RoundedCornerShape(99.dp))
+            .clip(RoundedCornerShape(DshRadius.full))
             .background(ink),
     )
 }

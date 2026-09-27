@@ -3,14 +3,10 @@
 # 只允许下调：拆解后请把数字改小；新增文件默认上限由测试里的 DEFAULT_MAX_LINES 决定。
 dev/deeplinks/native/WorkspaceActivity.kt 3087
 dev/deeplinks/native/DshIcons.kt 4912
-dev/deeplinks/devices/DevicesActivity.kt 1124
-# SettingsActivity 一次性上调：when(dest) -> NavHost 的导航脚手架（8 个 composable + SettingsPage）。
-# 模型页已抽到 ModelsSettings.kt 并下调；ABOUT 子屏抽出后再下调。
-dev/deeplinks/native/SettingsActivity.kt 1535
-# AppLocale.kt 一次性上调：会话统计面板的中英文案（sessionStatsSheetTitle 等）。
-# 2026-09-25 撤掉自造的「工作模式」选择器（selectMode / modeChat / modePlan / modeGoal 共 11 个
-# key，-22 行），换成 DSH 座位的可读描述与输入提示（+1 行）；净减 21 行。
-# 2026-09-27 空画布 hero 提示（heroHint）与设置分区标题（sectionWorkspace）+6 行；
-# 后续把大段静态文案迁到资源文件后应继续下调。
-dev/deeplinks/core/AppLocale.kt 1640
+# 2026-09-27 设备页拆出 DeviceCard 分组段落后下调。
+dev/deeplinks/devices/DevicesActivity.kt 717
+# 2026-09-27 设置子页改分组列表，SettingsPage / 手写行助手删掉后下调。
+dev/deeplinks/native/SettingsActivity.kt 998
+# 文案表在 AppLocaleZh / AppLocaleEn；本文件只留取值。分组列表文案并入后仍远低于旧预算。
+dev/deeplinks/core/AppLocale.kt 668
 dev/deeplinks/native/WorkspaceSidebar.kt 347

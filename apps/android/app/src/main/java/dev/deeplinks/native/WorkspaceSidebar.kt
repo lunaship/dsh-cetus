@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
 import dev.deeplinks.native.util.SessionFilter
@@ -225,7 +224,7 @@ internal fun WorkspaceSidebar(
                 item(key = "sidebar-sessions-error") {
                     ChatHistoryError(
                         title = L.loadSessionListFailed,
-                        message = sessionsLoadError ?: L.loadSessionListFailed,
+                        message = sessionsLoadError,
                         onRetry = { actions.onRetrySessions() },
                     )
                 }
@@ -305,7 +304,6 @@ internal fun WorkspaceSidebar(
                                                 L.expandMoreSessions.format(groupSessions.size - 5),
                                                 color = Dsh.labelTertiary,
                                                 style = DshType.captionRelaxed,
-                                                lineHeight = 18.sp
                                             )
                                         }
                                     } else {

@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.foundation.background
@@ -22,15 +24,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -173,7 +171,6 @@ internal fun ApprovalCard(
                             },
                             color = Dsh.labelSecondary,
                             style = DshType.titleSmall,
-                            lineHeight = 18.sp,
                         )
                         msg.toolName?.takeIf { it.isNotBlank() }?.let { name ->
                             Spacer(Modifier.height(6.dp))
@@ -286,15 +283,15 @@ internal fun ApprovalCard(
                     Box(
                         modifier = Modifier
                             .size(28.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(CircleShape)
                             .background(if (canSend) Dsh.labelPrimary else Dsh.bgTrack),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Default.KeyboardArrowUp,
+                            ChevronUpOutline14,
                             contentDescription = null,
                             tint = if (canSend) Dsh.bgSurface else Dsh.labelTertiary,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(14.dp),
                         )
                     }
                 }
@@ -334,10 +331,10 @@ private fun ApprovalOptionRow(
         Box(
             modifier = Modifier
                 .size(16.dp)
-                .clip(if (radio) CircleShape else RoundedCornerShape(5.dp))
+                .clip(if (radio) CircleShape else RoundedCornerShape(DshRadius.sm))
                 .then(
                     if (selected) Modifier.background(Dsh.labelPrimary)
-                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(5.dp)),
+                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(DshRadius.sm)),
                 ),
             contentAlignment = Alignment.Center,
         ) {

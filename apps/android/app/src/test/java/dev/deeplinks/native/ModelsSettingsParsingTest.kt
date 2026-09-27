@@ -92,12 +92,12 @@ class ModelsSettingsParsingTest {
     }
 
     @Test
-    fun defaultModelLabelPrefersDisplayNames() {
+    fun defaultModelNamePrefersDisplayNames() {
         val groups = listOf(
             MobileModelGroup(provider = "stepfun", displayName = "StepFun", models = listOf(MobileModelOption("step-5", "Step 5", null, null))),
         )
-        assertEquals("StepFun · Step 5", defaultModelLabel(groups, "stepfun", "step-5"))
-        assertEquals("zai · glm-9", defaultModelLabel(groups, "zai", "glm-9"))
-        assertNull(defaultModelLabel(groups, "zai", null))
+        assertEquals("Step 5", defaultModelName(groups, "stepfun", "step-5"))
+        assertEquals("glm-9", defaultModelName(groups, "zai", "glm-9"))
+        assertNull(defaultModelName(groups, "zai", null))
     }
 }

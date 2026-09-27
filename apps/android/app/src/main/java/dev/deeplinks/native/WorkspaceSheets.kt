@@ -1,14 +1,12 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,48 +14,44 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshSheetGrabber
+import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.DshListNote
+import dev.deeplinks.native.ui.DshListRetry
+import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshListSection
+import dev.deeplinks.native.ui.DshListTrailing
+import dev.deeplinks.native.ui.DshSheet
+import dev.deeplinks.native.ui.DshSheetPrimaryButton
 import dev.deeplinks.native.util.abbreviateHomePath
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.visibleUserWorkspaces
@@ -67,7 +61,6 @@ import kotlinx.coroutines.withContext
 
 // ---------- 添加工作区 ----------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AddWorkspaceSheet(
     creationAnchor: MobileWorkspace?,
@@ -88,158 +81,109 @@ internal fun AddWorkspaceSheet(
         ?: ""
     val canSubmit = trimmedInput.isNotBlank() && !submitting && (isAbsolutePath || creationAnchor != null)
 
-    ModalBottomSheet(
-        onDismissRequest = { if (!submitting) onDismiss() },
-        containerColor = Dsh.bgCard,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth(),
+    DshSheet(
+        onDismiss = { if (!submitting) onDismiss() },
+        title = L.addWorkspace,
+        subtitle = L.addWorkspaceDesc,
+        skipPartiallyExpanded = true,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = workspaceInput,
+            onValueChange = {
+                workspaceInput = it
+                submitError = null
+                pendingNotice = null
+            },
+            enabled = !submitting,
+            singleLine = true,
+            label = { Text(L.workspaceNameOrPath) },
+            placeholder = { Text(L.workspacePathExample) },
+            leadingIcon = {
+                Icon(
+                    ProjectAddOutline16,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+            isError = submitError != null,
+            supportingText = {
+                val err = submitError
+                val notice = pendingNotice
+                val supporting = when {
+                    err != null -> L.addWorkspaceFailed.format(err)
+                    notice != null -> notice
+                    isAbsolutePath -> L.workspaceRegisterExistingPath
+                    creationAnchor != null -> L.workspaceCreateNextTo.format(anchorLabel)
+                    else -> L.workspaceNameRequiresAnchor
+                }
+                Text(supporting, style = DshType.captionRelaxed)
+            },
+            textStyle = DshType.body.copy(color = Dsh.labelPrimary),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Dsh.labelPrimary,
+                unfocusedTextColor = Dsh.labelPrimary,
+                disabledTextColor = Dsh.labelTertiary,
+                focusedContainerColor = Dsh.bgGroupedCard,
+                unfocusedContainerColor = Dsh.bgGroupedCard,
+                disabledContainerColor = Dsh.bgGroupedCard.copy(alpha = 0.6f),
+                cursorColor = Dsh.brand400,
+                focusedBorderColor = Dsh.brand400,
+                unfocusedBorderColor = Dsh.borderSubtle,
+                disabledBorderColor = Dsh.borderSubtle,
+                errorBorderColor = Dsh.error,
+                focusedLabelColor = Dsh.brand400,
+                unfocusedLabelColor = Dsh.labelTertiary,
+                errorLabelColor = Dsh.error,
+                focusedLeadingIconColor = Dsh.brand400,
+                unfocusedLeadingIconColor = Dsh.labelTertiary,
+                errorLeadingIconColor = Dsh.error,
+                focusedSupportingTextColor = Dsh.labelTertiary,
+                unfocusedSupportingTextColor = Dsh.labelTertiary,
+                errorSupportingTextColor = Dsh.error,
+            ),
+            shape = RoundedCornerShape(DshRadius.lg),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        DshSheetPrimaryButton(
+            label = when {
+                submitting -> L.addingWorkspace
+                isAbsolutePath -> L.addExistingWorkspace
+                else -> L.createAndAddWorkspace
+            },
+            enabled = canSubmit,
         ) {
-            DshSheetGrabber()
-            Text(
-                L.addWorkspace,
-                color = Dsh.labelPrimary,
-                style = DshType.headline,
-                fontWeight = FontWeight(600),
-                lineHeight = 24.sp,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(L.addWorkspaceDesc, color = Dsh.labelTertiary, style = DshType.body, lineHeight = 20.sp)
-            Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = workspaceInput,
-                onValueChange = {
-                    workspaceInput = it
-                    submitError = null
-                    pendingNotice = null
-                },
-                enabled = !submitting,
-                singleLine = true,
-                label = { Text(L.workspaceNameOrPath) },
-                placeholder = { Text(L.workspacePathExample) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.CreateNewFolder,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                },
-                isError = submitError != null,
-                supportingText = {
-                    val err = submitError
-                    val notice = pendingNotice
-                    val supporting = when {
-                        err != null -> L.addWorkspaceFailed.format(err)
-                        notice != null -> notice
-                        isAbsolutePath -> L.workspaceRegisterExistingPath
-                        creationAnchor != null -> L.workspaceCreateNextTo.format(anchorLabel)
-                        else -> L.workspaceNameRequiresAnchor
+            val requestedInput = workspaceInput.trim()
+            val parentWorkspaceId = if (requestedInput.startsWith("/")) null else creationAnchor?.workspaceId
+            submitting = true
+            submitError = null
+            sheetScope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) {
+                        createWorkspace(requestedInput, parentWorkspaceId)
                     }
-                    Text(supporting, style = DshType.caption, lineHeight = 17.sp)
-                },
-                textStyle = DshType.t14.copy(color = Dsh.labelPrimary),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Dsh.labelPrimary,
-                    unfocusedTextColor = Dsh.labelPrimary,
-                    disabledTextColor = Dsh.labelTertiary,
-                    focusedContainerColor = Dsh.bgInput,
-                    unfocusedContainerColor = Dsh.bgInput,
-                    disabledContainerColor = Dsh.bgInput.copy(alpha = 0.6f),
-                    cursorColor = Dsh.brand400,
-                    focusedBorderColor = Dsh.brand400,
-                    unfocusedBorderColor = Dsh.borderSubtle,
-                    disabledBorderColor = Dsh.borderSubtle,
-                    errorBorderColor = Dsh.error,
-                    focusedLabelColor = Dsh.brand400,
-                    unfocusedLabelColor = Dsh.labelTertiary,
-                    errorLabelColor = Dsh.error,
-                    focusedLeadingIconColor = Dsh.brand400,
-                    unfocusedLeadingIconColor = Dsh.labelTertiary,
-                    errorLeadingIconColor = Dsh.error,
-                    focusedSupportingTextColor = Dsh.labelTertiary,
-                    unfocusedSupportingTextColor = Dsh.labelTertiary,
-                    errorSupportingTextColor = Dsh.error,
-                ),
-                shape = RoundedCornerShape(DshRadius.lg),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.lg))
-                    .background(if (canSubmit) Dsh.brand400 else Dsh.buttonElevated.copy(alpha = 0.5f))
-                    .clickable(enabled = canSubmit) {
-                        val requestedInput = workspaceInput.trim()
-                        val parentWorkspaceId = if (requestedInput.startsWith("/")) null else creationAnchor?.workspaceId
-                        submitting = true
-                        submitError = null
-                        sheetScope.launch {
-                            try {
-                                val result = withContext(Dispatchers.IO) {
-                                    createWorkspace(requestedInput, parentWorkspaceId)
-                                }
-                                submitting = false
-                                val created = result.workspace
-                                if (result.pending || created == null) {
-                                    pendingNotice = L.workspaceApprovalPending
-                                } else {
-                                    onCreated(created)
-                                }
-                            } catch (error: Exception) {
-                                submitting = false
-                                if (isMobileAuthFailure(error)) {
-                                    onAuthExpired(error)
-                                } else {
-                                    submitError = error.message?.takeIf { it.isNotBlank() } ?: L.unknownError
-                                }
-                            }
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (submitting) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = Dsh.labelTertiary,
-                            strokeWidth = 2.dp,
-                        )
-                        Text(
-                            L.addingWorkspace,
-                            color = Dsh.labelTertiary,
-                            style = DshType.title,
-                            fontWeight = FontWeight(500),
-                        )
+                    submitting = false
+                    val created = result.workspace
+                    if (result.pending || created == null) {
+                        pendingNotice = L.workspaceApprovalPending
+                    } else {
+                        onCreated(created)
                     }
-                } else {
-                    Text(
-                        if (isAbsolutePath) L.addExistingWorkspace else L.createAndAddWorkspace,
-                        color = if (canSubmit) Dsh.onBrand else Dsh.labelTertiary,
-                        style = DshType.t14SB,
-                        fontWeight = FontWeight(600),
-                    )
+                } catch (error: Exception) {
+                    submitting = false
+                    if (isMobileAuthFailure(error)) {
+                        onAuthExpired(error)
+                    } else {
+                        submitError = error.message?.takeIf { it.isNotBlank() } ?: L.unknownError
+                    }
                 }
             }
         }
     }
 }
 
+// ---------- 选择工作区 ----------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun WorkspacePickerSheet(
     sessions: List<MobileSession>,
@@ -269,39 +213,18 @@ internal fun WorkspacePickerSheet(
             it.contains(query, ignoreCase = true) || it.substringAfterLast('/').contains(query, ignoreCase = true)
         }
     }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Dsh.bgCard,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    DshSheet(onDismiss = onDismiss, title = L.chooseWorkspaceTitle, subtitle = L.chooseWorkspaceDesc) {
+        if (workspaces.size > 6) {
+            Spacer(Modifier.height(8.dp))
+            SheetSearchField(value = query, onValueChange = { query = it }, placeholder = L.searchWorkspace)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp)
+                .heightIn(max = 460.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
-            DshSheetGrabber()
-            Text(L.chooseWorkspaceTitle, color = Dsh.labelPrimary, style = DshType.headline, fontWeight = FontWeight(600), lineHeight = 24.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(L.chooseWorkspaceDesc, color = Dsh.labelTertiary, style = DshType.titleSmall, lineHeight = 18.sp)
-            if (workspaces.size > 6) {
-                Spacer(Modifier.height(12.dp))
-                SheetSearchField(value = query, onValueChange = { query = it }, placeholder = L.searchWorkspace)
-            }
-            Spacer(Modifier.height(14.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+            DshListSection {
                 WorkspaceOptionRow(
                     title = L.ungrouped,
                     path = L.noWorkspaceBinding,
@@ -309,36 +232,11 @@ internal fun WorkspacePickerSheet(
                     onClick = {
                         onDismiss()
                         onPick(null)
-                    }
+                    },
                 )
                 when (catalogKind) {
-                    SessionListKind.Loading -> Text(
-                        L.loading,
-                        color = Dsh.labelTertiary,
-                        style = DshType.body,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
-                    )
-                    SessionListKind.Error -> Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            catalogError ?: L.loadWorkspaceListFailed,
-                            color = Dsh.error,
-                            style = DshType.titleSmall,
-                        )
-                        Text(
-                            L.retry,
-                            color = Dsh.brand400,
-                            style = DshType.t14M,
-                            fontWeight = FontWeight(500),
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.md))
-                                .clickable(onClick = onRetry)
-                                .padding(horizontal = 4.dp, vertical = 8.dp),
-                        )
-                    }
+                    SessionListKind.Loading -> DshListNote(L.loading)
+                    SessionListKind.Error -> DshListRetry(catalogError ?: L.loadWorkspaceListFailed, onRetry)
                     SessionListKind.Content, SessionListKind.Empty -> {
                         filtered.forEach { ws ->
                             WorkspaceOptionRow(
@@ -348,31 +246,26 @@ internal fun WorkspacePickerSheet(
                                 onClick = {
                                     onDismiss()
                                     onPick(ws)
-                                }
+                                },
                             )
                         }
                         if (query.isNotBlank() && filtered.isEmpty()) {
-                            Text(
-                                L.noMatchingWorkspace.format(query),
-                                color = Dsh.labelTertiary,
-                                style = DshType.body,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)
-                            )
+                            DshListNote(L.noMatchingWorkspace.format(query))
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(12.dp))
             AddWorkspaceRow(
                 onCreate = { path ->
                     onDismiss()
                     onPick(path)
-                }
+                },
             )
         }
     }
 }
 
+/** 面板里的搜索框：分组卡片同色的圆角输入条，放在冷灰面板底上。 */
 @Composable
 internal fun SheetSearchField(
     value: String,
@@ -382,10 +275,10 @@ internal fun SheetSearchField(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(DshRadius.lg))
-            .background(Dsh.bgTrack)
-            .padding(horizontal = 12.dp),
+            .background(Dsh.bgGroupedCard)
+            .padding(start = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
@@ -394,12 +287,14 @@ internal fun SheetSearchField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = DshType.t14x20.copy(color = Dsh.labelPrimary),
+            textStyle = DshType.body.copy(color = Dsh.labelPrimary),
             cursorBrush = SolidColor(Dsh.brand400),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = if (value.isEmpty()) 12.dp else 0.dp),
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) Text(placeholder, color = Dsh.labelTertiary, style = DshType.t14)
+                    if (value.isEmpty()) Text(placeholder, color = Dsh.labelTertiary, style = DshType.body)
                     inner()
                 }
             }
@@ -407,7 +302,7 @@ internal fun SheetSearchField(
         if (value.isNotEmpty()) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .semantics {
                         role = Role.Button
                         contentDescription = L.clearSearch
@@ -415,12 +310,7 @@ internal fun SheetSearchField(
                     .clickable { onValueChange("") },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    CloseOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(16.dp),
-                )
+                Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -433,101 +323,40 @@ internal fun WorkspaceOptionRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .background(if (selected) Dsh.brand400.copy(alpha = 0.16f) else Dsh.bgCard),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                FolderOpenOutline16,
-                contentDescription = null,
-                tint = if (selected) Dsh.brand400 else Dsh.labelSecondary,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                title,
-                color = Dsh.labelPrimary,
-                style = DshType.t15x20M,
-                fontWeight = FontWeight(500),
-                lineHeight = 20.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                abbreviateHomePath(path),
-                color = Dsh.labelTertiary,
-                style = DshType.caption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        if (selected) {
-            Spacer(Modifier.width(8.dp))
-            Icon(CheckOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(16.dp))
-        }
-    }
+    DshListRow(
+        title = title,
+        subtitle = abbreviateHomePath(path),
+        icon = FolderOpenOutline16,
+        iconTint = if (selected) Dsh.brand400 else Dsh.labelSecondary,
+        onClick = onClick,
+        trailing = if (selected) DshListTrailing.Check else DshListTrailing.None,
+    )
 }
 
+/** 「添加工作区」卡片：点按展开路径输入，输入行与按钮同在卡片里。 */
 @Composable
 internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var path by remember { mutableStateOf("") }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
-            .background(Dsh.bgInput)
-            .padding(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .clickable { expanded = !expanded }
-                .padding(vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Dsh.brand400.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(PlusOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(14.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(L.addWorkspace, color = Dsh.labelPrimary, style = DshType.labelLarge, fontWeight = FontWeight(500), lineHeight = 20.sp)
-            Spacer(Modifier.weight(1f))
-            Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
-                contentDescription = null,
-                tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp)
-            )
-        }
+    DshListSection {
+        DshListRow(
+            title = L.addWorkspace,
+            icon = PlusOutline16,
+            onClick = { expanded = !expanded },
+            trailing = DshListTrailing.None,
+            trailingContent = {
+                Icon(
+                    if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                    contentDescription = null,
+                    tint = Dsh.labelTertiary,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+        )
         AnimatedVisibility(visible = expanded) {
             Row(
-                modifier = Modifier.padding(top = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 BasicTextField(
                     value = path,
@@ -537,9 +366,10 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                     cursorBrush = SolidColor(Dsh.brand400),
                     modifier = Modifier
                         .weight(1f)
+                        .heightIn(min = 44.dp)
                         .clip(RoundedCornerShape(DshRadius.md))
                         .background(Dsh.bgSubtle)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (path.isEmpty()) Text(L.enterWorkspacePath, color = Dsh.labelTertiary, style = DshType.body)
@@ -548,23 +378,26 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                     }
                 )
                 Spacer(Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(DshRadius.md))
-                        .background(if (path.isBlank()) Dsh.buttonElevated.copy(alpha = 0.5f) else Dsh.brand400)
-                        .clickable(enabled = path.isNotBlank()) { onCreate(path.trim()) }
-                        .padding(horizontal = 14.dp),
-                    contentAlignment = Alignment.Center
+                Button(
+                    onClick = { onCreate(path.trim()) },
+                    enabled = path.isNotBlank(),
+                    shape = RoundedCornerShape(DshRadius.full),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Dsh.brand400,
+                        contentColor = Dsh.onBrand,
+                        disabledContainerColor = Dsh.bgTrack,
+                        disabledContentColor = Dsh.labelTertiary,
+                    ),
                 ) {
-                    Text(L.create, color = if (path.isBlank()) Dsh.labelTertiary else Dsh.onBrand, style = DshType.title, fontWeight = FontWeight(500))
+                    Text(L.create, style = DshType.labelLarge)
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ---------- 子智能体 ----------
+
 @Composable
 internal fun SubagentBottomSheet(
     sessions: List<MobileSession>,
@@ -579,79 +412,59 @@ internal fun SubagentBottomSheet(
             .sortedByDescending { it.updatedAt }
     }
     val parentOfCurrent = currentSession?.parentSessionId
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Dsh.bgCard,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth(),
+    DshSheet(
+        onDismiss = onDismiss,
+        title = L.subagents,
+        subtitle = if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-        ) {
-            DshSheetGrabber()
-            Text(L.subagents, color = Dsh.labelPrimary, style = DshType.headline, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
-            Spacer(Modifier.height(4.dp))
-            Text(
-                if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
-                color = Dsh.labelTertiary,
-                style = DshType.body,
-            )
-            Spacer(Modifier.height(12.dp))
-            children.forEach { child ->
-                val selected = child.sessionId == currentSessionId
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(DshRadius.md))
-                        .background(if (selected) Dsh.bgSelected else Color.Transparent)
-                        .clickable {
-                            onDismiss()
-                            onSelectSession(child.sessionId)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            child.title,
-                            color = Dsh.labelPrimary,
-                            style = DshType.t14M,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight(500),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        if (children.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                DshListSection {
+                    children.forEach { child ->
+                        DshListRow(
+                            title = child.title,
+                            subtitle = if (child.running) L.runningStatus else null,
+                            leading = {
+                                if (child.running) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        color = Dsh.brand400,
+                                        strokeWidth = 1.5.dp,
+                                    )
+                                } else {
+                                    Icon(BranchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(18.dp))
+                                }
+                            },
+                            onClick = {
+                                onDismiss()
+                                onSelectSession(child.sessionId)
+                            },
+                            trailing = if (child.sessionId == currentSessionId) DshListTrailing.Check else DshListTrailing.None,
                         )
-                        if (child.running) {
-                            Text(L.runningStatus, color = Dsh.brand400, style = DshType.microRelaxed)
-                        }
                     }
                 }
             }
-            if (!parentOfCurrent.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    L.returnToParentSession,
-                    color = Dsh.brand400,
-                    style = DshType.title,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight(500),
-                    modifier = Modifier
-                        .clickable {
-                            onDismiss()
-                            onSelectSession(parentOfCurrent)
-                        }
-                        .padding(12.dp),
+        }
+        if (!parentOfCurrent.isNullOrBlank()) {
+            DshListSection {
+                DshListActionRow(
+                    label = L.returnToParentSession,
+                    onClick = {
+                        onDismiss()
+                        onSelectSession(parentOfCurrent)
+                    },
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ---------- 跳到轮次 ----------
+
 @Composable
 internal fun TurnJumpBottomSheet(
     olderMessages: List<MobileMessage>,
@@ -661,68 +474,40 @@ internal fun TurnJumpBottomSheet(
 ) {
     val merged = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
     val jumps = remember(merged) { dev.deeplinks.native.util.userTurnJumps(merged) }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Dsh.bgCard,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    DshSheet(onDismiss = onDismiss, title = L.jumpToTurn) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
+                .heightIn(max = 460.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
-            DshSheetGrabber()
-            Text(L.jumpToTurn, color = Dsh.labelPrimary, style = DshType.headline, fontWeight = androidx.compose.ui.text.font.FontWeight(600))
-            Spacer(Modifier.height(12.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            DshListSection {
                 jumps.forEachIndexed { index, jump ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.md))
-                            .clickable {
-                                val display = merged.filterNot {
-                                    it.role == "reasoning" && it.text.isBlank() && it.running != true
-                                }
-                                val groups = dev.deeplinks.native.util.groupMessages(display)
-                                val groupIndex = groups.indexOfFirst {
-                                    it is dev.deeplinks.native.util.MessageGroup.Single && it.msg.id == jump.messageId
-                                }
-                                onDismiss()
-                                if (groupIndex >= 0) {
-                                    onJumpToGroupIndex(groupIndex)
-                                }
+                    DshListRow(
+                        title = jump.preview,
+                        leading = {
+                            Text(
+                                "${index + 1}",
+                                color = Dsh.labelTertiary,
+                                style = DshType.caption,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        },
+                        onClick = {
+                            val display = merged.filterNot {
+                                it.role == "reasoning" && it.text.isBlank() && it.running != true
                             }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "${index + 1}",
-                            color = Dsh.labelTertiary,
-                            style = DshType.caption,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            modifier = Modifier.width(28.dp),
-                        )
-                        Text(
-                            jump.preview,
-                            color = Dsh.labelPrimary,
-                            style = DshType.t14,
-                            maxLines = 2,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                    }
+                            val groups = dev.deeplinks.native.util.groupMessages(display)
+                            val groupIndex = groups.indexOfFirst {
+                                it is dev.deeplinks.native.util.MessageGroup.Single && it.msg.id == jump.messageId
+                            }
+                            onDismiss()
+                            if (groupIndex >= 0) {
+                                onJumpToGroupIndex(groupIndex)
+                            }
+                        },
+                        trailing = DshListTrailing.None,
+                    )
                 }
             }
         }

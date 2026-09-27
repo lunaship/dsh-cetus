@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.AnimatedVisibility
@@ -30,25 +32,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Compress
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -250,15 +241,15 @@ internal fun MessageItem(
                     dshHaptic(DshHaptic.Confirm)
                     onCopy()
                 })
-                add(DshMenuItem(Icons.Default.TextFields, L.selectText) {
+                add(DshMenuItem(FontOutline16, L.selectText) {
                     menuOpen = false
                     selectOpen = true
                 })
-                add(DshMenuItem(Icons.Default.Share, L.shareMessage) {
+                add(DshMenuItem(ShareOutline16, L.shareMessage) {
                     menuOpen = false
                     ShareIntents.shareText(context, msg.text, L.shareMessage)
                 })
-                add(DshMenuItem(Icons.Default.FormatQuote, L.quote) {
+                add(DshMenuItem(QuoteOutline16, L.quote) {
                     menuOpen = false
                     onQuote()
                 })
@@ -273,7 +264,7 @@ internal fun MessageItem(
                     })
                 }
                 if (onFeedback != null) {
-                    add(DshMenuItem(Icons.Default.Feedback, L.messageFeedback) {
+                    add(DshMenuItem(FeedbackOutline16, L.messageFeedback) {
                         menuOpen = false
                         onFeedback()
                     })
@@ -357,10 +348,10 @@ private fun RawMessageCard(msg: MobileMessage) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                if (expanded) ChevronDownOutline14 else ChevronRightOutline14,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(12.dp)
             )
             Spacer(Modifier.width(6.dp))
             Text(
@@ -415,10 +406,10 @@ private fun CompactionRow(summary: String, running: Boolean) {
                 )
             } else {
                 Icon(
-                    Icons.Default.Compress,
+                    CompressOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
             }
         }
@@ -506,7 +497,7 @@ private fun GoalRoundRow(text: String) {
             Text(
                 L.goalInjection,
                 color = Dsh.labelTertiary,
-                style = DshType.t12x18M,
+                style = DshType.captionMedium,
                 fontWeight = FontWeight(500),
             )
             progress?.let {
@@ -570,16 +561,16 @@ private fun ContextInjectionRow(text: String) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Default.Description,
+                FileOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(12.dp)
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 L.contextInjection,
                 color = Dsh.labelTertiary,
-                style = DshType.t12x18M,
+                style = DshType.captionMedium,
                 fontWeight = FontWeight(500),
                 lineHeight = 18.sp
             )
@@ -587,7 +578,6 @@ private fun ContextInjectionRow(text: String) {
                 " · ",
                 color = Dsh.labelTertiary,
                 style = DshType.captionRelaxed,
-                lineHeight = 18.sp
             )
             Text(
                 sources.joinToString(", "),
@@ -904,7 +894,7 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
                     topStart = DshRadius.xl,
                     topEnd = DshRadius.xl,
                     bottomStart = DshRadius.xl,
-                    bottomEnd = 4.dp
+                    bottomEnd = DshRadius.tail
                 ))
                 .background(Dsh.bubbleBg)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -912,7 +902,7 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
             Text(
                 text.trimEnd(),
                 color = Dsh.labelPrimary,
-                style = DshType.t15x23,
+                style = DshType.body,
                 lineHeight = 23.sp,
                 letterSpacing = (-0.1).sp
             )

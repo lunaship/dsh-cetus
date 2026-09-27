@@ -1,7 +1,19 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import dev.deeplinks.native.ui.DshBrandMark
+import dev.deeplinks.native.ui.DshEmptyState
+import dev.deeplinks.core.tabularNums
+import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.DshS
+import dev.deeplinks.native.ui.DshListHeader
+import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshListSection
+import dev.deeplinks.native.ui.DshSheetHeader
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -9,15 +21,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -39,8 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -59,16 +66,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.deeplinks.core.dshRipple
@@ -77,18 +81,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.stateDescription
 import dev.deeplinks.native.util.compactTokens
+import dev.deeplinks.native.util.exactTokens
 import dev.deeplinks.core.L
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.DshBannerTone
 import dev.deeplinks.native.ui.DshTopSegment
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.draw.shadow
 
 /**
@@ -291,88 +290,32 @@ private fun BannerAction(label: String, primary: Boolean = false, onClick: () ->
 
 @Composable
 internal fun HeroShell() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // 品牌图形：与设备页空态同一枚 mark（ic_dsh_mark），弱蓝底 + 发丝描边
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Dsh.brand400.copy(alpha = 0.12f))
-                .border(1.dp, Dsh.brand400.copy(alpha = 0.28f), RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(dev.deeplinks.R.drawable.ic_dsh_mark),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(
-            L.heroSlogan,
-            color = Dsh.labelPrimary,
-            // 字重/行高由 token 自带，不在调用点重复覆盖（避免 token 演进被拽回旧值）
-            style = DshType.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            L.heroHint,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    DshEmptyState(
+        title = DshS.heroSlogan,
+        message = DshS.heroHint,
+        graphic = { DshBrandMark() },
+    )
 }
 
 @Composable
 internal fun ChatHistoryError(
-    message: String,
+    message: String?,
     onRetry: () -> Unit,
-    title: String = L.loadConversationFailed,
+    title: String = DshS.loadConversationFailed,
+    hint: String? = null,
+    compact: Boolean = true,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-            Text(
-                title,
-                color = Dsh.labelPrimary,
-                style = DshType.titleLarge,
-                fontWeight = FontWeight(600),
-                lineHeight = 22.sp,
-            )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            message,
-            color = Dsh.labelTertiary,
-            style = DshType.titleSmall,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-        Spacer(Modifier.height(16.dp))
-        Box(
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(Dsh.brand400)
-                .clickable(onClick = onRetry)
-                .padding(horizontal = 20.dp)
-                .semantics { role = Role.Button },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(L.retry, color = Dsh.onBrand, style = DshType.title, fontWeight = FontWeight(500))
-        }
-    }
+    // 兜底文案常与标题相同（「加载失败 / 加载失败」），这种不算细节
+    val detail = message?.takeUnless { it.isBlank() || it == title }
+    DshEmptyState(
+        title = title,
+        // 有提示语时它是主说明，原始错误（常是 timeout 这类技术文本）降为脚注
+        message = hint ?: detail,
+        footnote = detail.takeIf { hint != null },
+        actionLabel = DshS.retry,
+        onAction = onRetry,
+        compact = compact,
+    )
 }
 
 @Composable
@@ -507,10 +450,9 @@ internal fun ContextMeterButton(
                     Text(
                         "~${compactTokens(used)} / ${compactTokens(window)} ${L.tokenUnitShort}",
                         color = Dsh.labelPrimary,
-                        style = DshType.label,
+                        style = DshType.label.tabularNums(),
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(500),
-                        fontFamily = FontFamily.Monospace
                     )
                 }
                 Spacer(Modifier.height(10.dp))
@@ -519,7 +461,7 @@ internal fun ContextMeterButton(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
+                        .clip(RoundedCornerShape(DshRadius.full))
                         .background(Dsh.pressed)
                 ) {
                     if (hasBreakdown) {
@@ -569,12 +511,12 @@ internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(DshRadius.xs))
                 .background(swatchColor)
         )
         Spacer(Modifier.width(6.dp))
-        Text(label, color = Dsh.labelSecondary, style = DshType.captionRelaxed, lineHeight = 18.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Dsh.labelPrimary, style = DshType.captionRelaxed, lineHeight = 18.sp, fontFamily = FontFamily.Monospace)
+        Text(label, color = Dsh.labelSecondary, style = DshType.captionRelaxed, modifier = Modifier.weight(1f))
+        Text(value, color = Dsh.labelPrimary, style = DshType.captionRelaxed.tabularNums(),)
     }
 }
 
@@ -739,8 +681,7 @@ internal fun ToolGroupHeader(
                 Text(
                     formatTraceDuration(totalDuration),
                     color = Dsh.labelTertiary,
-                    style = DshType.microRelaxed,
-                    fontFamily = FontFamily.Monospace,
+                    style = DshType.microRelaxed.tabularNums(),
                 )
                 Spacer(Modifier.width(6.dp))
             }
@@ -822,10 +763,10 @@ internal fun WorkspaceTopBar(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    if (showBack) Icons.AutoMirrored.Filled.ArrowBack else PanelLeftOutline16,
+                    if (showBack) ArrowLeftOutline16 else PanelLeftOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(if (showBack) 22.dp else 18.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
 
@@ -923,10 +864,20 @@ internal fun LazyListScope.chatEmptyCanvas(
             ThinkingStatusRow(elapsedSec)
         }
         ChatCanvasKind.Error -> item(key = "chat-load-error") {
-            ChatHistoryError(
-                message = historyLoadError ?: L.loadConversationFailed,
-                onRetry = onRetry,
-            )
+            // 与空态 hero 同一骨架：整屏居中，而不是贴在顶部
+            Box(
+                modifier = Modifier
+                    .fillParentMaxSize()
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                ChatHistoryError(
+                    message = historyLoadError,
+                    hint = DshS.loadConversationFailedHint,
+                    onRetry = onRetry,
+                    compact = false,
+                )
+            }
         }
         ChatCanvasKind.Empty, ChatCanvasKind.Content -> item(key = "empty-hero") {
             Box(
@@ -969,10 +920,10 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Default.KeyboardArrowDown,
+                ChevronDownOutline14,
                 contentDescription = null,
                 tint = Dsh.labelPrimary,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
         if (unread > 0) {
@@ -1066,10 +1017,10 @@ internal fun SessionStatsLine(stats: MobileSessionStats?) {
             }
             Spacer(Modifier.width(6.dp))
             Icon(
-                Icons.Default.Info,
+                InfoOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary.copy(alpha = 0.6f),
-                modifier = Modifier.size(11.dp),
+                modifier = Modifier.size(10.dp),
             )
         }
     }
@@ -1108,50 +1059,35 @@ internal fun SessionStatsDetailDialog(
                 .widthIn(max = 560.dp)
                 .fillMaxWidth(0.94f)
                 .clip(RoundedCornerShape(DshRadius.dialog))
-                .background(Dsh.bgCard)
-                .padding(16.dp),
+                .background(Dsh.bgGrouped)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 16.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = strings.sessionStatsSheetTitle,
-                        style = DshType.titleLarge,
-                        color = Dsh.labelPrimary,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = strings.statsTurnsCount.format(s.turns) + " · " + strings.statsStepsCount.format(s.steps),
-                        style = DshType.captionRelaxed,
-                        color = Dsh.labelSecondary,
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onDismiss)
-                        .semantics {
-                            role = Role.Button
-                            contentDescription = strings.close
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Dsh.labelSecondary)
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // ===== 核心概览卡片 (2x2 Grid) =====
-            Text(
-                text = strings.statsOverview,
-                style = DshType.t14SB,
-                color = Dsh.labelPrimary,
-                modifier = Modifier.padding(bottom = 6.dp),
+            DshSheetHeader(
+                title = strings.sessionStatsSheetTitle,
+                subtitle = strings.statsTurnsCount.format(s.turns) + " · " + strings.statsStepsCount.format(s.steps),
+                onClose = onDismiss,
             )
+            Column(Modifier.padding(end = 8.dp)) {
+                StatsDetailSections(s, inputTokens, totalTokens, cacheHitPercent, speedToks)
+            }
+        }
+    }
+}
+
+/** 看板内容：概览 2×2 指标块 → Token 明细分组 → 上下文窗口卡片。 */
+@Composable
+private fun StatsDetailSections(
+    s: MobileSessionStats,
+    inputTokens: Long,
+    totalTokens: Long,
+    cacheHitPercent: Int,
+    speedToks: Double,
+) {
+    val strings = DshS
+    Column {
+            Spacer(Modifier.height(8.dp))
+            DshListHeader(strings.statsOverview)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1173,14 +1109,14 @@ internal fun SessionStatsDetailDialog(
                 )
             }
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 StatsMetricCard(
-                    title = if (speedToks > 0) String.format(java.util.Locale.US, "%.1f", speedToks) else "--",
+                    title = if (speedToks > 0) String.format(java.util.Locale.US, "%.0f %s", speedToks, strings.tokenRateUnit) else "--",
                     label = strings.statsDecodeSpeedLabel,
                     sub = if (s.outputTokens > 0) strings.statsOutputSub.format(compactTokens(s.outputTokens)) else strings.statsDecodeSpeedHint,
                     modifier = Modifier.weight(1f),
@@ -1193,108 +1129,71 @@ internal fun SessionStatsDetailDialog(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            // ===== Token 消耗明细 =====
-            Text(
-                text = strings.statsTokensBreakdown,
-                style = DshType.t14SB,
-                color = Dsh.labelPrimary,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(DshRadius.md))
-                    .background(Dsh.bgInput)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
+            DshListSection(header = strings.statsTokensBreakdown) {
                 StatsDetailRow(
                     label = strings.statsUncachedInput,
-                    value = "${s.uncachedInputTokens} ${strings.tokenUnit}",
+                    value = "${exactTokens(s.uncachedInputTokens)} ${strings.tokenUnit}",
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
                 StatsDetailRow(
                     label = strings.statsCachedInput,
-                    value = "${s.cacheReadTokens} ${strings.tokenUnit}",
+                    value = "${exactTokens(s.cacheReadTokens)} ${strings.tokenUnit}",
                     tag = if (cacheHitPercent > 0) "$cacheHitPercent%" else null,
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
                 StatsDetailRow(
                     label = strings.statsOutputTokens,
-                    value = "${s.outputTokens} ${strings.tokenUnit}",
+                    value = "${exactTokens(s.outputTokens)} ${strings.tokenUnit}",
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
                 StatsDetailRow(
                     label = strings.statsTotalTokens,
-                    value = "$totalTokens ${strings.tokenUnit}",
+                    value = "${exactTokens(totalTokens)} ${strings.tokenUnit}",
                     highlight = true,
                 )
             }
 
-            // ===== 上下文窗口 =====
             if (s.contextWindow > 0) {
-                Spacer(Modifier.height(12.dp))
                 val used = s.contextPressureTokens
                 val window = s.contextWindow
                 val windowPercent = ((used * 100) / window).toInt().coerceIn(0, 100)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = strings.statsContextWindow,
-                        style = DshType.t14SB,
-                        color = Dsh.labelPrimary,
-                    )
-                    Text(
-                        text = "${compactTokens(used)} / ${compactTokens(window)} ${strings.tokenUnit} · $windowPercent%",
-                        style = DshType.captionRelaxed,
-                        color = if (windowPercent > 80) Dsh.warn else Dsh.labelSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                // 进度条
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Dsh.bgTrack)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth((windowPercent / 100f).coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(if (windowPercent > 80) Dsh.warn else Dsh.brand500)
-                    )
-                }
-
                 val breakdownTotal = s.systemTokens + s.toolsTokens + s.messageTokens
-                if (breakdownTotal > 0) {
-                    Spacer(Modifier.height(5.dp))
-                    Text(
-                        text = strings.statsContextBreakdownLine.format(
+                DshListSection(
+                    header = strings.statsContextWindow,
+                    footer = if (breakdownTotal > 0) {
+                        strings.statsContextBreakdownLine.format(
                             compactTokens(s.systemTokens),
                             compactTokens(s.toolsTokens),
                             compactTokens(s.messageTokens),
-                        ),
-                        style = DshType.microRelaxed,
-                        color = Dsh.labelTertiary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                        )
+                    } else {
+                        null
+                    },
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            text = "${compactTokens(used)} / ${compactTokens(window)} ${strings.tokenUnit} · $windowPercent%",
+                            style = DshType.body,
+                            color = if (windowPercent > 80) Dsh.warn else Dsh.labelPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(DshRadius.full))
+                                .background(Dsh.bgTrack)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth((windowPercent / 100f).coerceIn(0f, 1f))
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(DshRadius.full))
+                                    .background(if (windowPercent > 80) Dsh.warn else Dsh.brand500)
+                            )
+                        }
+                    }
                 }
             }
-        }
     }
 }
 
@@ -1309,9 +1208,9 @@ private fun StatsMetricCard(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.bgInput)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .clip(RoundedCornerShape(DshRadius.group))
+            .background(Dsh.bgGroupedCard)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
             text = label,
@@ -1345,38 +1244,20 @@ private fun StatsDetailRow(
     tag: String? = null,
     highlight: Boolean = false,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = label,
-                style = if (highlight) DshType.bodyStrong else DshType.body,
-                color = if (highlight) Dsh.labelPrimary else Dsh.labelSecondary,
-            )
-            if (tag != null) {
-                Spacer(Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(DshRadius.full))
-                        .background(Dsh.brandTint)
-                        .padding(horizontal = 6.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = tag,
-                        style = DshType.microRelaxed,
-                        color = Dsh.brand500,
-                        fontWeight = FontWeight.Medium,
-                    )
+    DshListRow(
+        title = label,
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (tag != null) {
+                    DshTag(text = tag, color = Dsh.brandTint, contentColor = Dsh.brand500)
+                    Spacer(Modifier.width(8.dp))
                 }
+                Text(
+                    text = value,
+                    style = (if (highlight) DshType.bodyStrong else DshType.body).tabularNums(),
+                    color = if (highlight) Dsh.brand500 else Dsh.labelSecondary,
+                )
             }
-        }
-        Text(
-            text = value,
-            style = if (highlight) DshType.t14SB else DshType.body,
-            color = if (highlight) Dsh.brand500 else Dsh.labelPrimary,
-        )
-    }
+        },
+    )
 }

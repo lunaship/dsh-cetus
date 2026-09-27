@@ -1,13 +1,12 @@
 package dev.deeplinks.native
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,18 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.Devices
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -90,7 +77,7 @@ import dev.deeplinks.native.util.relativeTime
  */
 // 抽屉行规格（internal：WorkspaceSidebar 的分组行也按同一套边距对齐）
 internal val DrawerItemHeight = 48.dp
-internal val DrawerIconSize = 18.dp
+internal val DrawerIconSize = 16.dp
 internal val DrawerEdgePadding = 6.dp
 /** 行内水平内边距（原 14dp）。 */
 internal val DrawerInnerPadding = 12.dp
@@ -225,58 +212,56 @@ internal fun SessionRowItem(
                             menuOpen = true
                         },
                     )
-                    .padding(horizontal = DrawerInnerPadding, vertical = 6.dp),
+                    .padding(horizontal = DrawerInnerPadding, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 状态指示（色 + 形）：运行中以 brand500 旋转进度表达；闲置/完成以气泡弱灰表达
-                Box(
-                    modifier = Modifier.size(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (session.running) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(15.dp),
-                            color = Dsh.brand500,
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Icon(
-                            Icons.Outlined.ChatBubbleOutline,
-                            contentDescription = null,
-                            tint = if (isSelected) Dsh.brand400 else Dsh.labelTertiary,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.width(DrawerLeadingGap))
+                // 对照 lody 的会话行：不再每行垫一个固定图标，标题独占首行、时间靠右；
+                // 次行是「状态 · 项目 · 目标」，运行中用品牌色细环表达（色 + 形）
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(
-                        session.title,
-                        color = Dsh.labelPrimary,
-                        style = DshType.titleSmall,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    val relTime = if (session.updatedAt > 0) relativeTime(session.updatedAt) else ""
-                    val subtitle = formatSessionSubtitle(
+                    val relTime = if (!session.running && session.updatedAt > 0) relativeTime(session.updatedAt) else ""
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            session.title,
+                            color = Dsh.labelPrimary,
+                            style = DshType.titleSmall,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (relTime.isNotBlank()) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(relTime, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1)
+                        }
+                    }
+                    val meta = formatSessionSubtitle(
                         session = session,
                         goalSummary = goalSummary,
                         runningLabel = L.runningStatus,
-                        relativeTimeFormatted = relTime,
                     )
-                    if (subtitle.isNotBlank()) {
-                        Text(
-                            subtitle,
-                            color = if (session.running) Dsh.brand400 else Dsh.labelTertiary,
-                            style = DshType.captionRelaxed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                    if (session.running || meta.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (session.running) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    color = Dsh.brand400,
+                                    trackColor = Dsh.brand400.copy(alpha = 0.2f),
+                                    strokeWidth = 1.5.dp,
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(
+                                meta,
+                                color = if (session.running) Dsh.brand400 else Dsh.labelTertiary,
+                                style = DshType.captionRelaxed,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
@@ -331,7 +316,7 @@ internal fun SidebarNewSessionRow(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Outlined.Add,
+            PlusOutline16,
             contentDescription = null,
             tint = Dsh.brand500,
             modifier = Modifier.size(DrawerIconSize),
@@ -365,10 +350,10 @@ internal fun SidebarSearchField(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            Icons.Outlined.Search,
+            SearchOutline16,
             contentDescription = null,
             tint = Dsh.labelTertiary,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(14.dp),
         )
         Spacer(Modifier.width(8.dp))
         BasicTextField(
@@ -409,7 +394,7 @@ internal fun SidebarSearchField(
                 onClick = onClear,
                 // 撑满搜索框高度当热区（32dp 不达触控下限）
                 size = 40.dp,
-                iconSize = 16.dp,
+                iconSize = 14.dp,
             )
         }
     }
@@ -441,20 +426,20 @@ internal fun SidebarSectionHeader(
             modifier = Modifier.weight(1f),
         )
         SidebarIconAction(
-            icon = Icons.Outlined.Search,
+            icon = SearchOutline16,
             contentDescription = L.searchSessions,
             onClick = onToggleSearch,
             size = 48.dp,
-            iconSize = 20.dp,
+            iconSize = 16.dp,
             active = searchActive,
         )
         Box {
             SidebarIconAction(
-                icon = Icons.Outlined.MoreVert,
+                icon = EllipsisOutline16,
                 contentDescription = if (filterActive) L.filterSessions else title,
                 onClick = { menuOpen = true },
                 size = 48.dp,
-                iconSize = 20.dp,
+                iconSize = 16.dp,
                 active = filterActive,
             )
             DshMenu(
@@ -526,7 +511,7 @@ internal fun SidebarWorkspaceRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Outlined.FolderOpen,
+                FolderOpenOutline16,
                 contentDescription = null,
                 tint = Dsh.labelSecondary,
                 modifier = Modifier.size(DrawerIconSize),
@@ -553,13 +538,13 @@ internal fun SidebarWorkspaceRow(
             // 展开箭头放行尾（M3 抽屉规范）：leading 图标才能与其他条目对齐
             Icon(
                 if (collapsed) {
-                    Icons.AutoMirrored.Outlined.KeyboardArrowRight
+                    ChevronRightOutline14
                 } else {
-                    Icons.Outlined.ExpandMore
+                    ChevronDownOutline14
                 },
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(14.dp),
             )
         }
         Box(modifier = Modifier.align(Alignment.CenterEnd)) {
@@ -627,7 +612,7 @@ internal fun SidebarFooter(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    Icons.Outlined.Settings,
+                    SettingsOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
                     modifier = Modifier.size(DrawerIconSize),
@@ -641,14 +626,14 @@ internal fun SidebarFooter(
                 )
             }
             SidebarIconAction(
-                icon = Icons.Outlined.Devices,
+                icon = DevicesOutline16,
                 contentDescription = "${L.deviceAndPairing} · $hostName",
                 onClick = onOpenDevice,
                 size = 48.dp,
                 iconSize = DrawerIconSize,
             )
             SidebarIconAction(
-                icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                icon = if (isDarkTheme) LightOutline16 else DarkOutline16,
                 contentDescription = if (isDarkTheme) L.switchToLight else L.switchToDark,
                 onClick = {
                     // 主题切换是状态切换：给 Tick（导航类点击不加震动）
@@ -669,7 +654,7 @@ internal fun SidebarIconAction(
     contentDescription: String,
     onClick: () -> Unit,
     size: Dp = 48.dp,
-    iconSize: Dp = 20.dp,
+    iconSize: Dp = 16.dp,
     active: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -713,28 +698,28 @@ internal fun WorkspaceSidebarCollapsed(actions: WorkspaceSidebarActions) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SidebarIconAction(
-            icon = Icons.Outlined.Add,
+            icon = PlusOutline16,
             contentDescription = L.newSession,
             onClick = { actions.onNewSession() },
         )
         SidebarIconAction(
-            icon = Icons.Outlined.Search,
+            icon = SearchOutline16,
             contentDescription = L.searchSessions,
             onClick = { actions.onToggleSearch() },
         )
         Spacer(Modifier.weight(1f))
         SidebarIconAction(
-            icon = Icons.Outlined.Settings,
+            icon = SettingsOutline16,
             contentDescription = L.settingsTitle,
             onClick = { actions.onOpenSettings() },
         )
         SidebarIconAction(
-            icon = Icons.Outlined.Devices,
+            icon = DevicesOutline16,
             contentDescription = L.deviceAndPairing,
             onClick = { actions.onOpenDevice() },
         )
         SidebarIconAction(
-            icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+            icon = if (isDarkTheme) LightOutline16 else DarkOutline16,
             contentDescription = if (isDarkTheme) L.switchToLight else L.switchToDark,
             onClick = { ThemeManager.toggleTheme(context, isDarkTheme) },
         )

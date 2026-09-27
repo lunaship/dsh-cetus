@@ -132,6 +132,12 @@ fun dshTypography(family: FontFamily): Typography = Typography(
  * 16→bodyLarge、17→titleLarge、18→headlineSmall、20→headlineMedium、24→headlineLarge、
  * 28→displayMedium、34→displayLarge。
  */
+/**
+ * 数字用等宽数位（tnum）而不是换成等宽字体：统计、计数、耗时、增删行数都走这里，
+ * 字形与正文一致、列对齐稳定。等宽字体只留给代码、命令、路径和配对码这类标识符。
+ */
+fun TextStyle.tabularNums(): TextStyle = copy(fontFeatureSettings = "tnum")
+
 object DshType {
     val caption: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.bodySmall
@@ -223,52 +229,8 @@ object DshType {
     val labelLarge: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.labelLarge
 
-    /** 11/15 · Medium */
-    val t11x15M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/16 · Medium */
-    val t11x16M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/17 · Normal */
-    val t11x17: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
-            lineHeight = 17.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 11/18 · Normal */
-    val t11x18: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
-            lineHeight = 18.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 12/18 · Medium */
-    val t12x18M: TextStyle
+    /** 12/18 · Medium：次级标签（附件名、压缩提示）。 */
+    val captionMedium: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
@@ -278,102 +240,14 @@ object DshType {
             letterSpacing = 0.01.sp,
         )
 
-    /** 14/22 · Normal */
-    val t14: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/22 · Medium */
-    val t14M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/22 · SemiBold */
-    val t14SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 14/20 · Normal */
-    val t14x20: TextStyle
+    /** 14/20：列表行副标题、弹层副标题、设备卡次行（M3 列表 supporting text 规格）。 */
+    val supporting: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Normal,
             fontSize = 14.sp,
             lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/20 · Normal */
-    val t15x20: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 15.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/20 · Medium */
-    val t15x20M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            lineHeight = 20.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/21 · Medium */
-    val t15x21M: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/21 · SemiBold */
-    val t15x21SB: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            letterSpacing = 0.01.sp,
-        )
-
-    /** 15/23 · Normal */
-    val t15x23: TextStyle
-        @Composable @ReadOnlyComposable
-        get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Normal,
-            fontSize = 15.sp,
-            lineHeight = 23.sp,
             letterSpacing = 0.01.sp,
         )
 

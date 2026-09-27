@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.animateColorAsState
@@ -32,18 +34,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -234,11 +230,11 @@ internal fun InputBar(
                                 expanded = attachOpen,
                                 onDismiss = { attachOpen = false },
                                 items = listOf(
-                                    DshMenuItem(Icons.Default.PhotoLibrary, L.choosePhoto) {
+                                    DshMenuItem(ImageOutline16, L.choosePhoto) {
                                         attachOpen = false
                                         onPickImage()
                                     },
-                                    DshMenuItem(Icons.Default.PhotoCamera, L.takePhoto) {
+                                    DshMenuItem(CameraOutline16, L.takePhoto) {
                                         attachOpen = false
                                         onTakePhoto()
                                     },
@@ -280,7 +276,7 @@ internal fun InputBar(
                             Text(
                                 modelLabel,
                                 color = Dsh.labelSecondary,
-                                style = DshType.t12x18M,
+                                style = DshType.captionMedium,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -420,7 +416,7 @@ internal fun InputBar(
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
-                                        .clip(RoundedCornerShape(2.dp))
+                                        .clip(RoundedCornerShape(DshRadius.xs))
                                         .background(Color.White)
                                 )
                             }
@@ -436,10 +432,10 @@ internal fun InputBar(
                             showMic -> {
                                 // 与 + / 设置 同灰阶图标（圆钮比它们大一号，图标同步 16dp）
                                 Icon(
-                                    Icons.Default.Mic,
+                                    MicOutline16,
                                     contentDescription = null,
                                     tint = Dsh.labelPrimary,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                             else -> {

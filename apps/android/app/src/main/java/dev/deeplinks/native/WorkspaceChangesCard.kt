@@ -1,7 +1,7 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.core.tabularNums
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,7 +22,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -147,8 +146,8 @@ internal fun ChangedFileRow(
 @Composable
 internal fun DiffStat(added: Int, deleted: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (added > 0) Text("+$added", color = Dsh.success, style = DshType.label, fontFamily = FontFamily.Monospace)
+        if (added > 0) Text("+$added", color = Dsh.success, style = DshType.label.tabularNums())
         if (added > 0 && deleted > 0) Spacer(Modifier.width(6.dp))
-        if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.label, fontFamily = FontFamily.Monospace)
+        if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.label.tabularNums())
     }
 }

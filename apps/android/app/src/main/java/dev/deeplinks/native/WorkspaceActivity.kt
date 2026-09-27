@@ -1,6 +1,6 @@
 package dev.deeplinks.native
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
@@ -11,7 +11,6 @@ import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.stableIdentity
-import dev.deeplinks.native.ui.DshSheetGrabber
 import androidx.activity.ComponentActivity
 import android.Manifest
 import android.content.Intent
@@ -32,15 +31,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -48,15 +42,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import android.util.Log
@@ -68,11 +57,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.*
-import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.util.MessageGroup
-import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.userTurnJumps
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
@@ -2166,8 +2152,10 @@ fun WorkspaceScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         ChatHistoryError(
-                            message = historyLoadError ?: L.loadConversationFailed,
+                            message = historyLoadError,
+                            hint = L.loadConversationFailedHint,
                             onRetry = { refreshMessages() },
+                            compact = false,
                         )
                     }
                     ChatCanvasKind.Working -> Box(

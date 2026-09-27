@@ -136,6 +136,6 @@ private fun CropAction(
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = Dsh.labelPrimary, style = DshType.t14)
+        Text(label, color = Dsh.labelPrimary, style = DshType.body)
     }
 }

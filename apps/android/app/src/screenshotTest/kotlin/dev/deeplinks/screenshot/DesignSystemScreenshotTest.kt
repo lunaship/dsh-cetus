@@ -1,6 +1,57 @@
 package dev.deeplinks.screenshot
 
 import androidx.compose.foundation.background
+import dev.deeplinks.native.SparkleOutline16
+import dev.deeplinks.native.ArchiveBoxOutline16
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import dev.deeplinks.native.SettingsOutline16
+import dev.deeplinks.native.PlusOutline16
+import dev.deeplinks.native.CloseOutline16
+import dev.deeplinks.native.EllipsisOutline16
+import dev.deeplinks.native.TrashOutline16
+import dev.deeplinks.native.ShareOutline16
+import dev.deeplinks.native.CopyOutline16
+import dev.deeplinks.native.EditOutline16
+import dev.deeplinks.native.LinkOutline16
+import dev.deeplinks.native.RefreshOutline16
+import dev.deeplinks.native.SendOutline16
+import dev.deeplinks.native.Sparkle16
+import dev.deeplinks.native.AgentPresetOutline16
+import dev.deeplinks.native.ArchiveOutline20
+import dev.deeplinks.native.FolderOpenOutline16
+import dev.deeplinks.native.ChevronRightOutline14
+import dev.deeplinks.native.ChevronDownOutline14
+import dev.deeplinks.native.CheckOutline16
+import dev.deeplinks.native.WarningOutline16
+import dev.deeplinks.native.ArrowLeftOutline16
+import dev.deeplinks.native.CameraOutline16
+import dev.deeplinks.native.ClockOutline16
+import dev.deeplinks.native.CompressOutline16
+import dev.deeplinks.native.ContrastOutline16
+import dev.deeplinks.native.DevicesOutline16
+import dev.deeplinks.native.FeedbackOutline16
+import dev.deeplinks.native.FileOutline16
+import dev.deeplinks.native.FontOutline16
+import dev.deeplinks.native.GiftOutline16
+import dev.deeplinks.native.ImageOutline16
+import dev.deeplinks.native.InfoOutline16
+import dev.deeplinks.native.KeyOutline16
+import dev.deeplinks.native.KeyboardOutline16
+import dev.deeplinks.native.LaptopOutline16
+import dev.deeplinks.native.MessageOutline16
+import dev.deeplinks.native.MicOutline16
+import dev.deeplinks.native.PaletteOutline16
+import dev.deeplinks.native.QuoteOutline16
+import dev.deeplinks.native.ScanOutline16
+import dev.deeplinks.native.ShieldOutline16
+import dev.deeplinks.native.SwapOutline16
+import dev.deeplinks.native.TextSizeOutline16
+import dev.deeplinks.native.TranslateOutline16
+import dev.deeplinks.native.UnarchiveOutline16
+import dev.deeplinks.native.UnlinkOutline16
+import dev.deeplinks.native.WalletOutline16
+import dev.deeplinks.native.WrapOutline16
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,9 +94,22 @@ import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.dshTypography
+import androidx.compose.foundation.layout.ColumnScope
+import dev.deeplinks.core.Host
+import dev.deeplinks.devices.DeviceDetailSections
+import dev.deeplinks.devices.DeviceState
+import dev.deeplinks.devices.DeviceUi
+import dev.deeplinks.native.AboutSettings
 import dev.deeplinks.native.AppSettings
+import dev.deeplinks.native.AppearanceSettings
+import dev.deeplinks.native.ConversationSettings
+import dev.deeplinks.native.SessionsSettingsContent
 import dev.deeplinks.native.SettingsDest
 import dev.deeplinks.native.SettingsHome
+import dev.deeplinks.native.ui.DshGroupedPage
+import dev.deeplinks.native.ui.DshLargeTitle
+import dev.deeplinks.native.util.SessionListKind
+import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
@@ -229,9 +293,9 @@ private fun ChromeWall() {
     StreamReconnectBanner(kind = StreamBannerKind.Connecting, onRetry = {})
     StreamReconnectBanner(kind = StreamBannerKind.Failed, onRetry = {})
     SectionTitle("Context meter rows")
-    ContextMeterRow(label = "System prompt", value = "5.1k", swatchColor = Dsh.systemAccent)
-    ContextMeterRow(label = "Tools", value = "2.4k", swatchColor = Dsh.toolsAccent)
-    ContextMeterRow(label = "Messages", value = "18.7k", swatchColor = Dsh.brand400)
+    ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
+    ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)
+    ContextMeterRow(label = "Messages", value = "18.7K", swatchColor = Dsh.brand400)
     SectionTitle("Composer seats")
     ComposerSeatsRow(
         modelName = "DeepSeek V4 Flash",
@@ -294,14 +358,14 @@ internal fun WorkspaceTopBarLight() {
 }
 
 @PreviewTest
-@Preview(name = "session usage light zh", showBackground = true, widthDp = 412, heightDp = 680)
+@Preview(name = "session usage light zh", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SessionUsageLightZh() {
     SessionUsageWall(dark = false, english = false)
 }
 
 @PreviewTest
-@Preview(name = "session usage dark en", showBackground = true, widthDp = 412, heightDp = 680)
+@Preview(name = "session usage dark en", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SessionUsageDarkEn() {
     SessionUsageWall(dark = true, english = true)
@@ -358,7 +422,7 @@ internal fun ChatEmptyHero() {
 @Preview(name = "chat empty error", showBackground = true, widthDp = 412, heightDp = 600)
 @Composable
 internal fun ChatEmptyError() {
-    ChatCanvasFrame(ChatCanvasKind.Error, error = "加载会话失败")
+    ChatCanvasFrame(ChatCanvasKind.Error)
 }
 
 @PreviewTest
@@ -386,7 +450,7 @@ internal fun ChatEmptyHeroDarkEn() {
 @Preview(name = "chat empty error dark en", showBackground = true, widthDp = 412, heightDp = 600)
 @Composable
 internal fun ChatEmptyErrorDarkEn() {
-    ChatCanvasFrame(ChatCanvasKind.Error, dark = true, english = true, error = "Failed to load conversation")
+    ChatCanvasFrame(ChatCanvasKind.Error, dark = true, english = true, error = "timeout")
 }
 
 @PreviewTest
@@ -411,18 +475,221 @@ internal fun ComponentsDarkEn() {
     }
 }
 
+/**
+ * 图标墙：App 只有一套图标（Web 复刻集 DshIcons + 同笔法补充 DshGlyphs），
+ * 统一 18dp 满幅绘制；新增或改笔画时这里会出 diff，方便对齐粗细与视觉大小。
+ */
+private val IconWallGlyphs: List<ImageVector> = listOf(
+    SearchOutline16,
+    SettingsOutline16,
+    PlusOutline16,
+    CloseOutline16,
+    EllipsisOutline16,
+    TrashOutline16,
+    ShareOutline16,
+    CopyOutline16,
+    EditOutline16,
+    LinkOutline16,
+    RefreshOutline16,
+    SendOutline16,
+    Sparkle16,
+    AgentPresetOutline16,
+    ArchiveOutline20,
+    FolderOpenOutline16,
+    ChevronRightOutline14,
+    ChevronDownOutline14,
+    CheckOutline16,
+    WarningOutline16,
+    ArchiveBoxOutline16,
+    ArrowLeftOutline16,
+    CameraOutline16,
+    ClockOutline16,
+    CompressOutline16,
+    ContrastOutline16,
+    DevicesOutline16,
+    FeedbackOutline16,
+    FileOutline16,
+    FontOutline16,
+    GiftOutline16,
+    ImageOutline16,
+    InfoOutline16,
+    KeyOutline16,
+    KeyboardOutline16,
+    LaptopOutline16,
+    MessageOutline16,
+    MicOutline16,
+    PaletteOutline16,
+    QuoteOutline16,
+    ScanOutline16,
+    ShieldOutline16,
+    SparkleOutline16,
+    SwapOutline16,
+    TextSizeOutline16,
+    TranslateOutline16,
+    UnarchiveOutline16,
+    UnlinkOutline16,
+    WalletOutline16,
+    WrapOutline16,
+)
+
+@Composable
+private fun IconWall() {
+    SectionTitle("Icons · DshIcons + DshGlyphs")
+    IconWallGlyphs.chunked(8).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            row.forEach { icon ->
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+            repeat(8 - row.size) { Box(Modifier.size(44.dp)) }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "icons light", showBackground = true, widthDp = 412, heightDp = 460)
+@Composable
+internal fun IconsLight() {
+    Wall(dark = false, english = false) { IconWall() }
+}
+
+@PreviewTest
+@Preview(name = "icons dark", showBackground = true, widthDp = 412, heightDp = 460)
+@Composable
+internal fun IconsDark() {
+    Wall(dark = true, english = true) { IconWall() }
+}
+
+/** 分组页底（冷灰 + 白卡片）：设置 / 设备这类 lody 式分组列表页用它截图。 */
+@Composable
+private fun GroupedWall(dark: Boolean, english: Boolean, content: @Composable ColumnScope.() -> Unit) {
+    ShotFrame(dark = dark, english = english) {
+        DshGroupedPage(content = content)
+    }
+}
+
 @PreviewTest
 @Preview(name = "settings light zh", showBackground = true, widthDp = 412, heightDp = 1100)
 @Composable
 internal fun SettingsLightZh() {
-    Wall(dark = false, english = false) { SettingsHomeWall() }
+    GroupedWall(dark = false, english = false) { SettingsHomeWall() }
 }
 
 @PreviewTest
 @Preview(name = "settings dark en large", showBackground = true, widthDp = 412, heightDp = 1100, fontScale = 1.3f)
 @Composable
 internal fun SettingsDarkEnLarge() {
-    Wall(dark = true, english = true) { SettingsHomeWall() }
+    GroupedWall(dark = true, english = true) { SettingsHomeWall() }
+}
+
+@PreviewTest
+@Preview(name = "settings home paired light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun SettingsHomePairedLightZh() {
+    GroupedWall(dark = false, english = false) {
+        SettingsHome(appSettings = AppSettings(), onOpen = {}, host = PreviewHost)
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings appearance light zh", showBackground = true, widthDp = 412, heightDp = 980)
+@Composable
+internal fun SettingsAppearanceLightZh() {
+    GroupedWall(dark = false, english = false) {
+        AppearanceSettings(savingNs = null, saveErrors = emptyMap(), onSave = { _, _, _ -> })
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings appearance dark en", showBackground = true, widthDp = 412, heightDp = 980)
+@Composable
+internal fun SettingsAppearanceDarkEn() {
+    GroupedWall(dark = true, english = true) {
+        AppearanceSettings(savingNs = null, saveErrors = emptyMap(), onSave = { _, _, _ -> })
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings conversation light zh", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun SettingsConversationLightZh() {
+    GroupedWall(dark = false, english = false) {
+        ConversationSettings(
+            appSettings = AppSettings(),
+            savingNs = null,
+            saveErrors = mapOf("permission" to DshS.settingsChangedElsewhere),
+            onShowFullAccessConfirm = {},
+            onSave = { _, _, _ -> },
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings sessions light zh", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun SettingsSessionsLightZh() {
+    GroupedWall(dark = false, english = false) {
+        SessionsSettingsContent(
+            listKind = SessionListKind.Content,
+            loadError = null,
+            archivedRows = listOf(
+                SessionSnapshot("a1", "重构设置页为分组列表", "/Users/me/dsh-links", 0L),
+                SessionSnapshot("a2", "Relay 超时排查", "/Users/me/relay", 0L),
+            ),
+            deletedRows = emptyList(),
+            onRetry = {},
+            onRestore = {},
+            onClear = {},
+            onClearAll = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings about dark en", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun SettingsAboutDarkEn() {
+    GroupedWall(dark = true, english = true) { AboutSettings(onOpenLegal = { _, _ -> }) }
+}
+
+private val PreviewHost = Host(
+    name = "MacBook Pro",
+    baseUrl = "https://192.168.1.8:18640",
+    token = "preview",
+    relayClient = "preview",
+    relayRouteId = "route",
+    relayRouteSecret = "secret",
+)
+
+@Composable
+private fun DevicesWall() {
+    DshLargeTitle(title = DshS.pairingManage, subtitle = DshS.manageYourLinks)
+    DeviceDetailSections(
+        device = DeviceUi(PreviewHost, DeviceState.ONLINE, latencyMs = 24),
+        notice = null,
+        onOpen = {},
+        onRecheck = {},
+        onTogglePreferRelay = {},
+        onRescan = {},
+        onRescanLater = {},
+        onReplace = {},
+        onUnpair = {},
+    )
+}
+
+@PreviewTest
+@Preview(name = "devices light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun DevicesLightZh() {
+    GroupedWall(dark = false, english = false) { DevicesWall() }
+}
+
+@PreviewTest
+@Preview(name = "devices dark en", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun DevicesDarkEn() {
+    GroupedWall(dark = true, english = true) { DevicesWall() }
 }
 
 /**

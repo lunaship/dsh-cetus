@@ -1,9 +1,5 @@
 package dev.deeplinks.native
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.Devices
 import dev.deeplinks.core.L
 
 /**
@@ -52,9 +48,9 @@ internal fun workspaceHeaderMenuItems(
         DshMenuItem(BranchOutline16, L.forkSession) { onCloseMenu(); onFork() },
         DshMenuItem(CopyOutline16, L.copySessionTitle) { onCloseMenu(); onCopyTitle() },
         DshMenuItem(ArchiveOutline20, L.archiveSession) { onCloseMenu(); onArchive() },
-        DshMenuItem(Icons.Default.Image, L.shareConversationImage) { onCloseMenu(); onShareImage() },
-        DshMenuItem(Icons.Default.Share, L.exportConversation) { onCloseMenu(); onExport() },
-        DshMenuItem(Icons.Outlined.Devices, L.deviceAndPairing) { onCloseMenu(); onOpenDevice() },
+        DshMenuItem(ImageOutline16, L.shareConversationImage) { onCloseMenu(); onShareImage() },
+        DshMenuItem(ShareOutline16, L.exportConversation) { onCloseMenu(); onExport() },
+        DshMenuItem(DevicesOutline16, L.deviceAndPairing) { onCloseMenu(); onOpenDevice() },
         DshMenuItem(TrashOutline16, L.deleteSession, danger = true) { onCloseMenu(); onDelete() },
     )
 }

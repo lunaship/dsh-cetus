@@ -53,6 +53,10 @@ data class DshColors(
     val bgOverlay: Color,
     /** 思考轨迹等「凹进」面板：比画布更深一档（DeepSeek 签名块）。 */
     val bgRecessed: Color = Color.Unspecified,
+    /** 分组列表页（设置 / 设备 / 面板）的底：比卡片暗一档，卡片才立得起来。 */
+    val bgGrouped: Color,
+    /** 分组列表里的卡片面。 */
+    val bgGroupedCard: Color,
     val labelPrimary: Color,
     val labelSecondary: Color,
     val labelTertiary: Color,
@@ -109,6 +113,8 @@ val DarkDshColors = DshColors(
     bgTrack = Color(0xFF2A2A2F),
     bgOverlay = Color(0x80000000),
     bgRecessed = Color(0xFF08080A),      // ThinkingTrace：比画布更深一档
+    bgGrouped = Color(0xFF0E0E10),
+    bgGroupedCard = Color(0xFF1C1C1F),
     bgSurface = Color(0xFF161618),
     labelPrimary = Color(0xFFF9FAFB),
     labelSecondary = Color(0xFFCFD3D6),
@@ -162,6 +168,9 @@ val LightDshColors = DshColors(
     bgTrack = Color(0xFFF1F3F5),
     bgOverlay = Color(0x52000000),
     bgRecessed = Color(0xFFF3F4F6),      // ThinkingTrace：比白画布略凹
+    // 白卡压白底会整块隐形：分组页底取冷灰一档（对照 iOS systemGroupedBackground）
+    bgGrouped = Color(0xFFF2F3F7),
+    bgGroupedCard = Color(0xFFFFFFFF),
     bgSurface = Color(0xFFFFFFFF),
     // 文字
     labelPrimary = Color(0xFF0F1115),
@@ -205,6 +214,20 @@ val LightDshColors = DshColors(
     cloudContainer = Color(0xFFE9EDFF),
 )
 
+/**
+ * 深色「纯黑」背景（OLED）：只压画布、侧栏、代码底这几层；卡片 / 输入 / 气泡保持原色阶，
+ * 分层靠卡片比底亮而不是底比卡片暗。
+ */
+fun DshColors.pureBlack(): DshColors = copy(
+    bgBase = Color.Black,
+    bgGrouped = Color.Black,
+    bgSidePanel = Color(0xFF0A0A0B),
+    bgDrawer = Color(0xFF0A0A0B),
+    bgCode = Color(0xFF0A0A0B),
+    bgRecessed = Color.Black,
+    bgSurface = Color(0xFF111113),
+)
+
 val LocalDshColors = staticCompositionLocalOf { DarkDshColors }
 
 // Shared Material shape roles. Screens may still use DSH-specific shapes for
@@ -224,6 +247,7 @@ object ThemeManager {
     private const val PREFS_NAME = "dsh_settings"
     private const val KEY_THEME = "theme"
     private const val KEY_DYNAMIC = "dynamic_color"
+    private const val KEY_PURE_BLACK = "dark_pure_black"
 
     var currentThemeMode by mutableStateOf("system")
         private set
@@ -232,10 +256,23 @@ object ThemeManager {
     var dynamicColor by mutableStateOf(false)
         private set
 
+    /** 深色背景用纯黑而不是近黑（仅本地，不进服务端 AppSettings）。 */
+    var pureBlack by mutableStateOf(false)
+        private set
+
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         currentThemeMode = prefs.getString(KEY_THEME, "system") ?: "system"
         dynamicColor = prefs.getBoolean(KEY_DYNAMIC, false)
+        pureBlack = prefs.getBoolean(KEY_PURE_BLACK, false)
+    }
+
+    fun setPureBlack(context: Context, enabled: Boolean) {
+        pureBlack = enabled
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_PURE_BLACK, enabled)
+            .apply()
     }
 
     fun setDynamicColor(context: Context, enabled: Boolean) {
@@ -367,13 +404,14 @@ fun DshTheme(
     }
 
     // Material You：开启且系统支持时用动态取色，否则回退静态调色板
-    val colors = if (ThemeManager.dynamicColor) {
+    val palette = if (ThemeManager.dynamicColor) {
         dynamicDshColors(context, isDark) ?: if (isDark) DarkDshColors else LightDshColors
     } else if (isDark) {
         DarkDshColors
     } else {
         LightDshColors
     }
+    val colors = if (isDark && ThemeManager.pureBlack) palette.pureBlack() else palette
     val lang = LocaleManager.language
     val strings = if (lang == "en") DshStringsEn else DshStringsZh
     val recentsLabel = stringResource(R.string.app_name)
@@ -581,6 +619,16 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.bgRecessed
+
+    val bgGrouped: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.bgGrouped
+
+    val bgGroupedCard: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.bgGroupedCard
 
     val labelPrimary: Color
         @Composable

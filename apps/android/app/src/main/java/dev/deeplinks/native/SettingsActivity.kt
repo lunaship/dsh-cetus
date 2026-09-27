@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 import dev.deeplinks.core.persist
-import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
@@ -12,20 +11,29 @@ import dev.deeplinks.core.UiFontManager
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.AppSettings
 import dev.deeplinks.native.MobileApiClient
+import dev.deeplinks.native.ui.DshGroupedPage
+import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.DshListCaption
+import dev.deeplinks.native.ui.DshListNote
+import dev.deeplinks.native.ui.DshListRetry
+import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshListSection
+import dev.deeplinks.native.ui.DshListTrailing
+import dev.deeplinks.native.ui.DshSelectRow
+import dev.deeplinks.native.ui.DshSwitchRow
 import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.catalogKind
-import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.AppSettingsStore
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.enableDshEdgeToEdge
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.resolveFromIntent
 import dev.deeplinks.devices.DevicesActivity
+import dev.deeplinks.devices.hostDisplayName
 import dev.deeplinks.BuildConfig
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import kotlin.text.Charsets
@@ -41,34 +49,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.deeplinks.core.applyDshSecureWindow
 import kotlinx.coroutines.Dispatchers
@@ -76,8 +66,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 设置页 —— 1:1 复刻 DeepSeek Harness Web UI 设置面板：
- * 通用设置（语言/主题/权限/Enter 行为）、模型、插件、Agent 预设、关于。
+ * 设置页 —— 分组列表（对照 lody-ios 设置）：首页只做分类导航，二级页是若干分组卡片，
+ * 说明文字放在分组页脚。数据与保存语义对齐 DeepSeek Harness Web UI 设置面板。
  */
 class SettingsActivity : ComponentActivity() {
 
@@ -203,7 +193,7 @@ private fun SettingsScreen(
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    saveErrors = saveErrors + (ns to (e.message ?: s.saveFailed))
+                    saveErrors = saveErrors + (ns to (e.message?.let { friendlyNetworkError(e) } ?: s.saveFailed))
                 }
             } finally {
                 withContext(Dispatchers.Main) { savingNs = null }
@@ -241,11 +231,11 @@ private fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Dsh.bgBase)
+            .background(Dsh.bgGrouped)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // 唯一 Top App Bar：首页只负责分类，二级页负责具体配置
+        // 唯一 Top App Bar：首页只负责分类，二级页负责具体配置；与分组底同色，不压一条色带
         TopAppBar(
             title = {
                 Text(
@@ -260,22 +250,19 @@ private fun SettingsScreen(
                 IconButton(
                     onClick = { if (dest == SettingsDest.HOME) onBack() else navController.popBackStack() },
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back, tint = Dsh.labelSecondary, modifier = Modifier.size(24.dp))
+                    Icon(ArrowLeftOutline16, contentDescription = s.back, tint = Dsh.labelSecondary, modifier = Modifier.size(20.dp))
                 }
             },
             windowInsets = WindowInsets(0, 0, 0, 0),
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Dsh.bgBase),
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Dsh.bgGrouped),
         )
 
-        // 分区内容：手机 16dp 边距；大屏最大宽度 720dp 居中
         // 站内转场：transition lambda 非 @Composable，时长在作用域预先捕获
         val navMotionMs = motionDuration(DshDuration.slow)
         NavHost(
             navController = navController,
             startDestination = SettingsDest.HOME.name,
             modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .widthIn(max = 720.dp)
                 .weight(1f)
                 .fillMaxWidth(),
             enterTransition = { slideInHorizontally(animationSpec = tween(navMotionMs, easing = DshEasing.out)) { it } },
@@ -285,19 +272,21 @@ private fun SettingsScreen(
             predictivePopEnterTransition = { EnterTransition.None },
             predictivePopExitTransition = { slideOutHorizontally(animationSpec = tween(navMotionMs, easing = DshEasing.out)) { it } },
         ) {
+            // 每页自带不透明分组底（DshGroupedPage）：pop 转场时下层页面的文字不会透上来
             composable(SettingsDest.HOME.name) {
-                SettingsPage {
-                        SettingsHome(
+                DshGroupedPage {
+                    SettingsHome(
                         appSettings = appSettings,
                         onOpen = { navController.navigate(it.name) },
+                        host = host,
+                        onOpenDevices = onOpenDevices,
                     )
                 }
             }
 
             composable(SettingsDest.GENERAL.name) {
-                SettingsPage {
-                        LanguageSettings(
-                        context = context,
+                DshGroupedPage {
+                    LanguageSettings(
                         appSettings = appSettings,
                         savingNs = savingNs,
                         saveErrors = saveErrors,
@@ -308,9 +297,8 @@ private fun SettingsScreen(
             }
 
             composable(SettingsDest.APPEARANCE.name) {
-                SettingsPage {
-                        AppearanceSettings(
-                        context = context,
+                DshGroupedPage {
+                    AppearanceSettings(
                         savingNs = savingNs,
                         saveErrors = saveErrors,
                         onSave = { ns, patch, onSuccess -> saveNamespace(ns, patch, onSuccess) },
@@ -319,8 +307,8 @@ private fun SettingsScreen(
             }
 
             composable(SettingsDest.CONVERSATION.name) {
-                SettingsPage {
-                        ConversationSettings(
+                DshGroupedPage {
+                    ConversationSettings(
                         appSettings = appSettings,
                         savingNs = savingNs,
                         saveErrors = saveErrors,
@@ -331,7 +319,7 @@ private fun SettingsScreen(
             }
 
             composable(SettingsDest.MODELS.name) {
-                SettingsPage {
+                DshGroupedPage {
                     ModelsSettingsPage(
                         host = host,
                         viewModel = settingsViewModel,
@@ -349,189 +337,69 @@ private fun SettingsScreen(
             }
 
             composable(SettingsDest.SESSIONS.name) {
-                SettingsPage {
-                        SessionsSettings(host = host)
+                DshGroupedPage {
+                    SessionsSettings(host = host)
                 }
             }
 
             composable(SettingsDest.ABOUT.name) {
-                SettingsPage {
-                        Text(
-                            text = s.unofficialNotice,
-                            color = Dsh.labelTertiary,
-                            style = DshType.captionRelaxed,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                        )
-                        DshSettingsGroup {
-                        SettingsItem(
-                            title = "DeepLinks",
-                            description = s.aboutVersion.replace("%s", BuildConfig.VERSION_NAME),
-                            onClick = {},
-                        )
-                        SettingsItem(
-                            title = s.openSourceLicense,
-                            description = "MIT License",
-                            onClick = { legalDoc = "LICENSE" to s.openSourceLicense },
-                        )
-                        SettingsItem(
-                            title = s.thirdPartyNotices,
-                            description = "THIRD_PARTY_NOTICES",
-                            onClick = { legalDoc = "THIRD_PARTY_NOTICES.md" to s.thirdPartyNotices },
-                        )
-                        }
+                DshGroupedPage {
+                    AboutSettings(onOpenLegal = { file, title -> legalDoc = file to title })
                 }
             }
-
         }
     }
 
-    // Full access 确认弹窗（DSH confirm 文案）
     if (showFullAccessConfirm) {
-        Dialog(
-            onDismissRequest = { showFullAccessConfirm = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Dsh.bgOverlay)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { showFullAccessConfirm = false },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = 360.dp)
-                        .fillMaxWidth(0.9f)
-                        .clip(RoundedCornerShape(DshRadius.lg))
-                        .background(Dsh.bgSubtle)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = dshRipple(),
-                            onClick = {},
-                        )
-                        .padding(18.dp)
-                ) {
-                    Text(s.confirmFullAccessTitle, color = Dsh.labelPrimary, style = DshType.t15x21M, fontWeight = FontWeight(500), lineHeight = 21.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        s.confirmFullAccessMessage,
-                        color = Dsh.labelTertiary,
-                        style = DshType.captionRelaxed,
-                        lineHeight = 18.sp
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.sm))
-                                .clickable { showFullAccessConfirm = false }
-                                .padding(horizontal = 14.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(s.cancel, color = Dsh.labelSecondary, style = DshType.label, fontWeight = FontWeight(500))
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.sm))
-                                .background(Dsh.error)
-                                .clickable {
-                                    showFullAccessConfirm = false
-                                    // WI-004：真实写入服务端 permission.defaultPreset（新会话由 DSH 服务端应用）
-                                    saveNamespace("permission", org.json.JSONObject().put("defaultPreset", "danger-full-access"))
-                                }
-                                .padding(horizontal = 14.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(s.enableFullAccess, color = Dsh.onBrand, style = DshType.label, fontWeight = FontWeight(500))
-                        }
-                    }
-                }
-            }
-        }
+        DshConfirmDialog(
+            title = s.confirmFullAccessTitle,
+            message = s.confirmFullAccessMessage,
+            confirmLabel = s.enableFullAccess,
+            danger = true,
+            onDismiss = { showFullAccessConfirm = false },
+            onConfirm = {
+                showFullAccessConfirm = false
+                // WI-004：真实写入服务端 permission.defaultPreset（新会话由 DSH 服务端应用）
+                saveNamespace("permission", org.json.JSONObject().put("defaultPreset", "danger-full-access"))
+            },
+        )
     }
 
     legalDoc?.let { (fileName, title) ->
-        val body = remember(fileName) {
-            runCatching {
-                context.assets.open("legal/$fileName").bufferedReader(Charsets.UTF_8).use { it.readText() }
-            }.getOrElse { s.legalLoadFailed.replace("%s", fileName) }
-        }
-        Dialog(
-            onDismissRequest = { legalDoc = null },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Dsh.bgOverlay)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = dshRipple(),
-                    ) { legalDoc = null },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = 420.dp)
-                        .fillMaxWidth(0.92f)
-                        .fillMaxHeight(0.8f)
-                        .clip(RoundedCornerShape(DshRadius.lg))
-                        .background(Dsh.bgSubtle)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = dshRipple(),
-                        ) {}
-                        .padding(18.dp)
-                ) {
-                    Text(title, color = Dsh.labelPrimary, style = DshType.title, fontWeight = FontWeight(500))
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = body,
-                        color = Dsh.labelSecondary,
-                        style = DshType.microRelaxed,
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .clickable { legalDoc = null }
-                            .padding(horizontal = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(s.close, color = Dsh.labelSecondary, style = DshType.label, fontWeight = FontWeight(500))
-                    }
-                }
-            }
-        }
+        LegalDocDialog(
+            fileName = fileName,
+            title = title,
+            onDismiss = { legalDoc = null },
+        )
     }
 }
 
-/** NavHost 每个目的地共用的页面容器：手机 16dp 边距、大屏 720dp 居中、独立滚动。 */
 @Composable
-private fun SettingsPage(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            // 不透明底是「二级页文字透出上一级」的兜底：NavHost 在 pop 时目标页 zIndex 在下层，
-            // 转场帧里只要有一层透明，下层页面的文字就会叠上来。每页自己铺满 bgBase 后，
-            // 无论转场怎么算，看到的永远只有最上层那一页。
-            .background(Dsh.bgBase)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 4.dp, bottom = 32.dp),
-        content = content,
-    )
+private fun LegalDocDialog(fileName: String, title: String, onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val s = DshS
+    val body = remember(fileName) {
+        runCatching {
+            context.assets.open("legal/$fileName").bufferedReader(Charsets.UTF_8).use { it.readText() }
+        }.getOrElse { s.legalLoadFailed.replace("%s", fileName) }
+    }
+    DshDialogFrame(
+        onDismiss = onDismiss,
+        maxWidth = 440.dp,
+        cardModifier = Modifier.fillMaxHeight(0.8f),
+    ) { requestDismiss ->
+        DshDialogTitle(title)
+        Text(
+            text = body,
+            color = Dsh.labelSecondary,
+            style = DshType.microRelaxed,
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+        )
+        DshDialogButtons(dismissLabel = s.close, onDismiss = requestDismiss)
+    }
 }
 
 // ---------- 设置首页（分类导航） ----------
@@ -540,97 +408,73 @@ private fun SettingsPage(content: @Composable ColumnScope.() -> Unit) {
 internal fun SettingsHome(
     appSettings: AppSettings,
     onOpen: (SettingsDest) -> Unit,
+    host: Host? = null,
+    onOpenDevices: () -> Unit = {},
 ) {
     val s = DshS
-    val agentPresetLabel = presetDisplayName(appSettings.agentPreset, null)
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
         "dark" -> s.themeDark
         else -> s.themeSystem
     }
 
-    SettingsSection(s.sectionGeneral)
-    DshSettingsGroup {
-        SettingsNavRow(
+    DshListSection(header = s.sectionPairedComputer) {
+        if (host != null) {
+            val address = hostDisplayName(host.baseUrl)
+            DshListRow(
+                title = host.name.ifBlank { address },
+                subtitle = address,
+                icon = LaptopOutline16,
+                onClick = onOpenDevices,
+            )
+        } else {
+            DshListRow(
+                title = s.noDevicesYet,
+                subtitle = s.addDeviceScanOrCode,
+                icon = ScanOutline16,
+                onClick = onOpenDevices,
+            )
+        }
+    }
+    DshListSection(header = s.sectionGeneral) {
+        DshListRow(
             title = s.language,
-            summary = if (appSettings.language == "zh") s.langZh else s.langEn,
+            icon = TranslateOutline16,
+            value = if (appSettings.language == "zh") s.langZh else s.langEn,
             onClick = { onOpen(SettingsDest.GENERAL) },
         )
-        DshSettingsDivider()
-        SettingsNavRow(
+        DshListRow(
             title = s.sectionAppearance,
-            summary = themeLabel,
+            icon = PaletteOutline16,
+            value = themeLabel,
             onClick = { onOpen(SettingsDest.APPEARANCE) },
         )
-        DshSettingsDivider()
-        SettingsNavRow(
+        DshListRow(
             title = s.settingsConversation,
-            summary = agentPresetLabel,
+            icon = MessageOutline16,
+            value = presetDisplayName(appSettings.agentPreset, null, s),
             onClick = { onOpen(SettingsDest.CONVERSATION) },
         )
     }
-    SettingsSection(s.sectionWorkspace)
-    DshSettingsGroup {
-        val modelSummary = appSettings.defaultModel ?: s.noneSelected
-        SettingsNavRow(
+    DshListSection(header = s.sectionWorkspace) {
+        DshListRow(
             title = s.tabModels,
-            summary = modelSummary,
+            icon = SparkleOutline16,
+            value = appSettings.defaultModel ?: s.noneSelected,
             onClick = { onOpen(SettingsDest.MODELS) },
         )
-        DshSettingsDivider()
-        SettingsNavRow(title = s.tabSessions, onClick = { onOpen(SettingsDest.SESSIONS) })
+        DshListRow(
+            title = s.tabSessions,
+            icon = ArchiveBoxOutline16,
+            onClick = { onOpen(SettingsDest.SESSIONS) },
+        )
     }
-    SettingsSection(s.sectionMore)
-    DshSettingsGroup {
-        SettingsNavRow(
+    DshListSection(header = s.sectionMore) {
+        DshListRow(
             title = s.tabAbout,
-            summary = BuildConfig.VERSION_NAME,
+            icon = InfoOutline16,
+            value = BuildConfig.VERSION_NAME,
             onClick = { onOpen(SettingsDest.ABOUT) },
-        )
-    }
-}
-
-/** 首页 / 分组入口行：标题 + 尾部当前值 + chevron，48dp 以上触控目标。 */
-@Composable
-private fun SettingsNavRow(
-    title: String,
-    onClick: () -> Unit,
-    summary: String? = null,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .semantics { role = Role.Button }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            title,
-            color = Dsh.labelPrimary,
-            style = DshType.title,
-            modifier = Modifier.weight(1f),
-        )
-        if (!summary.isNullOrBlank()) {
-            Text(
-                summary,
-                color = Dsh.labelTertiary,
-                style = DshType.body,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.width(6.dp))
-        }
-        Icon(
-            ChevronRightOutline14,
-            contentDescription = null,
-            tint = Dsh.labelTertiary,
-            modifier = Modifier.size(16.dp),
         )
     }
 }
@@ -638,19 +482,19 @@ private fun SettingsNavRow(
 // ---------- 通用：语言与配对（WI-004：服务端设置为唯一真实源，保存需读回校验） ----------
 
 @Composable
-private fun LanguageSettings(
-    context: Context,
+internal fun LanguageSettings(
     appSettings: AppSettings,
     savingNs: String?,
     saveErrors: Map<String, String>,
     onOpenDevices: () -> Unit,
     onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
-    DshSettingsGroup {
-        SettingsSelectItem(
+    DshListSection(footer = s.languageDesc) {
+        DshSelectRow(
             title = s.language,
-            description = s.languageDesc,
+            icon = TranslateOutline16,
             value = if (appSettings.language == "zh") s.langZh else s.langEn,
             options = listOf(s.langZh to "zh", s.langEn to "en"),
             selectedId = appSettings.language,
@@ -660,31 +504,33 @@ private fun LanguageSettings(
             onSelect = { _, id ->
                 LocaleManager.setLanguage(context, id)
                 onSave("locale", org.json.JSONObject().put("preference", id), {})
-            }
+            },
         )
-        DshSettingsDivider()
-        SettingsItem(
+    }
+    DshListSection(footer = s.manageYourLinks) {
+        DshListRow(
             title = s.pairingManage,
-            description = s.manageYourLinks,
+            icon = LinkOutline16,
             onClick = onOpenDevices,
         )
     }
 }
 
-// ---------- 外观：主题 / 字号 / 系统字体 ----------
+// ---------- 外观：主题 / 深色背景 / 字号 / 系统字体 / 动态取色 ----------
 
 @Composable
-private fun AppearanceSettings(
-    context: Context,
+internal fun AppearanceSettings(
     savingNs: String?,
     saveErrors: Map<String, String>,
     onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
     val haptic = rememberDshHaptic()
-    DshSettingsGroup {
-        SettingsSelectItem(
+    DshListSection(header = s.settingsTheme, footer = s.darkBackgroundDesc) {
+        DshSelectRow(
             title = s.settingsTheme,
+            icon = ContrastOutline16,
             value = when (ThemeManager.currentThemeMode) {
                 "light" -> s.themeLight
                 "dark" -> s.themeDark
@@ -702,11 +548,21 @@ private fun AppearanceSettings(
             onSelect = { _, id ->
                 ThemeManager.setThemeMode(context, id)
                 onSave("ui-theme", org.json.JSONObject().put("preference", id), {})
-            }
+            },
         )
-        DshSettingsDivider()
-        SettingsSelectItem(
+        DshSelectRow(
+            title = s.darkBackground,
+            icon = DarkOutline16,
+            value = if (ThemeManager.pureBlack) s.darkBackgroundBlack else s.darkBackgroundSoft,
+            options = listOf(s.darkBackgroundSoft to "soft", s.darkBackgroundBlack to "black"),
+            selectedId = if (ThemeManager.pureBlack) "black" else "soft",
+            onSelect = { _, id -> ThemeManager.setPureBlack(context, id == "black") },
+        )
+    }
+    DshListSection(header = s.sectionText, footer = s.systemFontDesc) {
+        DshSelectRow(
             title = s.settingsFontSize,
+            icon = TextSizeOutline16,
             value = when (FontScaleManager.currentScale) {
                 FontScaleManager.SMALL -> s.fontSizeSmall
                 FontScaleManager.LARGE -> s.fontSizeLarge
@@ -720,69 +576,29 @@ private fun AppearanceSettings(
             selectedId = FontScaleManager.currentScale,
             onSelect = { _, id -> FontScaleManager.setScale(context, id) },
         )
-        DshSettingsDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(s.systemFont, color = Dsh.labelPrimary, style = DshType.labelLarge, lineHeight = 20.sp, fontWeight = FontWeight(500))
-                Spacer(Modifier.height(2.dp))
-                Text(s.systemFontDesc, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp)
-            }
-            Spacer(Modifier.width(12.dp))
-            Switch(
-                checked = UiFontManager.useSystemFont,
-                onCheckedChange = { haptic(DshHaptic.Tick); UiFontManager.setUseSystemFont(context, it) },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Dsh.onBrand,
-                    checkedTrackColor = Dsh.brand400,
-                    checkedBorderColor = Dsh.brand400,
-                    uncheckedThumbColor = Dsh.labelSecondary,
-                    uncheckedTrackColor = Dsh.bgSubtle,
-                    uncheckedBorderColor = Dsh.borderStrong,
-                ),
+        DshSwitchRow(
+            title = s.systemFont,
+            icon = FontOutline16,
+            checked = UiFontManager.useSystemFont,
+            onCheckedChange = { haptic(DshHaptic.Tick); UiFontManager.setUseSystemFont(context, it) },
+        )
+    }
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        DshListSection(header = s.sectionColor, footer = s.dynamicColorDesc) {
+            DshSwitchRow(
+                title = s.dynamicColor,
+                icon = ImageOutline16,
+                checked = ThemeManager.dynamicColor,
+                onCheckedChange = { haptic(DshHaptic.Tick); ThemeManager.setDynamicColor(context, it) },
             )
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            DshSettingsDivider()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(s.dynamicColor, color = Dsh.labelPrimary, style = DshType.body, fontWeight = FontWeight(500))
-                    Spacer(Modifier.height(2.dp))
-                    Text(s.dynamicColorDesc, color = Dsh.labelTertiary, style = DshType.caption)
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(
-                    checked = ThemeManager.dynamicColor,
-                    onCheckedChange = { haptic(DshHaptic.Tick); ThemeManager.setDynamicColor(context, it) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Dsh.onBrand,
-                        checkedTrackColor = Dsh.brand400,
-                        checkedBorderColor = Dsh.brand400,
-                        uncheckedThumbColor = Dsh.labelSecondary,
-                        uncheckedTrackColor = Dsh.bgSubtle,
-                        uncheckedBorderColor = Dsh.borderStrong,
-                    ),
-                )
-            }
         }
     }
 }
 
-// ---------- 会话：预设 / 权限 / 繁忙行为 ----------
+// ---------- 对话：预设 / 权限 / 繁忙行为 ----------
 
 @Composable
-private fun ConversationSettings(
+internal fun ConversationSettings(
     appSettings: AppSettings,
     savingNs: String?,
     saveErrors: Map<String, String>,
@@ -790,11 +606,11 @@ private fun ConversationSettings(
     onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
 ) {
     val s = DshS
-    DshSettingsGroup {
-        SettingsSelectItem(
+    DshListSection(header = s.sectionNewSessionDefaults, footer = s.agentPresetDesc) {
+        DshSelectRow(
             title = s.agentPreset,
-            description = s.agentPresetDesc,
-            value = presetDisplayName(appSettings.agentPreset, null),
+            icon = AgentPresetOutline16,
+            value = presetDisplayName(appSettings.agentPreset, null, s),
             options = listOf(
                 s.presetStandard to "standard",
                 s.presetCode to "ptc",
@@ -807,12 +623,11 @@ private fun ConversationSettings(
             onRetry = { onSave("agent-presets", org.json.JSONObject().put("default", appSettings.agentPreset), {}) },
             onSelect = { _, id ->
                 onSave("agent-presets", org.json.JSONObject().put("default", id), {})
-            }
+            },
         )
-        DshSettingsDivider()
-        SettingsSelectItem(
+        DshSelectRow(
             title = s.permission,
-            description = s.permissionDesc,
+            icon = ShieldOutline16,
             value = when (appSettings.permissionPreset) {
                 "read-only" -> s.permReadOnly
                 "danger-full-access" -> s.permFullAccess
@@ -833,13 +648,14 @@ private fun ConversationSettings(
                 } else {
                     onSave("permission", org.json.JSONObject().put("defaultPreset", id), {})
                 }
-            }
+            },
         )
-        DshSettingsDivider()
-        val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
-        SettingsSelectItem(
+    }
+    val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
+    DshListSection(footer = s.busyEnterDesc) {
+        DshSelectRow(
             title = s.busyEnter,
-            description = s.busyEnterDesc,
+            icon = SendOutline16,
             value = when (busyEnterId) {
                 "send" -> s.busySend
                 "steer" -> s.busySteer
@@ -856,133 +672,35 @@ private fun ConversationSettings(
             onRetry = { onSave("ui-conversation", org.json.JSONObject().put("busyEnter", busyEnterId), {}) },
             onSelect = { _, id ->
                 onSave("ui-conversation", org.json.JSONObject().put("busyEnter", id), {})
-            }
+            },
         )
     }
 }
 
-/** 下拉选择设置项（DSH Select：菜单从右侧下拉角标弹出，选中项带品牌蓝勾选） */
+// ---------- 关于 ----------
+
 @Composable
-private fun SettingsSelectItem(
-    title: String,
-    value: String,
-    options: List<Pair<String, String>>,
-    description: String? = null,
-    selectedId: String? = null,
-    saving: Boolean = false,
-    error: String? = null,
-    onRetry: (() -> Unit)? = null,
-    onSelect: (label: String, id: String) -> Unit,
-) {
+internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Unit) {
     val s = DshS
-    var expanded by remember { mutableStateOf(false) }
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
-            .clickable(interactionSource = interaction, indication = dshRipple(), enabled = !saving) { expanded = true }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.t14x20)
-            if (description != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    description,
-                    color = Dsh.labelTertiary,
-                    style = DshType.caption,
-                    lineHeight = 17.sp
-                )
-            }
-            if (error != null) {
-                Spacer(Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(s.saveFailedWithMessage.format(error), color = Dsh.error, style = DshType.caption, lineHeight = 17.sp, modifier = Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .background(Dsh.bgCard)
-                            .clickable(enabled = onRetry != null) { onRetry?.invoke() }
-                            .padding(horizontal = 10.dp, vertical = 3.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(s.retry, color = Dsh.brand400, style = DshType.label, fontWeight = FontWeight(500))
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (saving) {
-                    Text(s.saving, color = Dsh.labelTertiary, style = DshType.caption)
-                } else {
-                    Text(value, color = Dsh.labelTertiary, style = DshType.body)
-                    Icon(
-                        ChevronDownOutline14,
-                        contentDescription = null,
-                        tint = Dsh.labelTertiary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                containerColor = Dsh.bgCard,
-                shape = RoundedCornerShape(DshRadius.lg),
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                offset = DpOffset(0.dp, 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(min = 160.dp, max = 240.dp)
-                        .padding(vertical = 4.dp)
-                ) {
-                    options.forEach { (label, id) ->
-                        val isSelected = id == (selectedId ?: value)
-                        val optInteraction = remember { MutableInteractionSource() }
-                        val optPressed by optInteraction.collectIsPressedAsState()
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.md))
-                                .background(if (optPressed || isSelected) Dsh.pressed else Color.Transparent)
-                                .clickable(interactionSource = optInteraction, indication = dshRipple()) {
-                                    onSelect(label, id)
-                                    expanded = false
-                                }
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                label,
-                                color = if (isSelected) Dsh.brand400 else Dsh.labelPrimary,
-                                style = DshType.body,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (isSelected) {
-                                Icon(
-                                    CheckOutline16,
-                                    contentDescription = null,
-                                    tint = Dsh.brand400,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    DshListSection(footer = s.unofficialNotice) {
+        DshListRow(
+            title = "DeepLinks",
+            subtitle = s.aboutVersion.replace("%s", BuildConfig.VERSION_NAME),
+            icon = InfoOutline16,
+        )
+    }
+    DshListSection(header = s.sectionLegal) {
+        DshListRow(
+            title = s.openSourceLicense,
+            icon = FileOutline16,
+            value = "MIT",
+            onClick = { onOpenLegal("LICENSE", s.openSourceLicense) },
+        )
+        DshListRow(
+            title = s.thirdPartyNotices,
+            icon = FileOutline16,
+            onClick = { onOpenLegal("THIRD_PARTY_NOTICES.md", s.thirdPartyNotices) },
+        )
     }
 }
 
@@ -1001,7 +719,7 @@ private fun SessionsSettings(host: Host?) {
     var loading by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var reloadEpoch by remember { mutableStateOf(0) }
-    var pendingClear by remember { mutableStateOf<ClearSessionsScope?>(null) }
+    var pendingClearAll by remember { mutableStateOf(false) }
 
     fun reloadLocal() {
         archivedIds = prefs.archivedSessionIds
@@ -1108,118 +826,75 @@ private fun SessionsSettings(host: Host?) {
         hasError = loadError != null,
     )
 
-    Text(
-        s.sessionsSettingsHint,
-        color = Dsh.labelTertiary,
-        style = DshType.captionRelaxed,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+    SessionsSettingsContent(
+        listKind = listKind,
+        loadError = loadError,
+        archivedRows = archivedRows,
+        deletedRows = deletedRows,
+        onRetry = { reloadEpoch += 1 },
+        onRestore = { restoreToSidebar(it) },
+        onClear = { clearLocalRecords(listOf(it)) },
+        onClearAll = { pendingClearAll = true },
     )
 
-    if (listKind == SessionListKind.Loading) {
-        Text(
-            s.loading,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
-        )
-    } else if (listKind == SessionListKind.Error) {
-        SettingsLoadRetry(
-            message = loadError ?: s.loadFailed,
-            onRetry = { reloadEpoch += 1 },
-        )
-    } else {
-
-    if (totalManaged > 0) {
-        SettingsItem(
-            title = s.clearAllLocalRecords,
-            description = s.clearAllLocalRecordsDesc,
-            onClick = { pendingClear = ClearSessionsScope.ALL },
-            danger = true,
-        )
-    }
-
-    SettingsSection(
-        title = s.sectionArchivedSessions,
-        actionLabel = if (archivedRows.isNotEmpty()) s.clearSectionRecords else null,
-        dangerAction = true,
-        onAction = { pendingClear = ClearSessionsScope.ARCHIVED },
-    )
-    if (archivedRows.isEmpty()) {
-        Text(
-            s.noArchivedSessions,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-        )
-    } else {
-        archivedRows.forEach { row ->
-            ManagedSessionRow(
-                snapshot = row,
-                onRestore = { restoreToSidebar(row.sessionId) },
-                onClear = { clearLocalRecords(listOf(row.sessionId)) },
-            )
-            Spacer(Modifier.height(2.dp))
-        }
-    }
-
-    SettingsSection(
-        title = s.sectionDeletedSessions,
-        actionLabel = if (deletedRows.isNotEmpty()) s.clearSectionRecords else null,
-        dangerAction = true,
-        onAction = { pendingClear = ClearSessionsScope.DELETED },
-    )
-    if (deletedRows.isEmpty()) {
-        Text(
-            s.noDeletedSessions,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-        )
-    } else {
-        deletedRows.forEach { row ->
-            ManagedSessionRow(
-                snapshot = row,
-                onRestore = { restoreToSidebar(row.sessionId) },
-                onClear = { clearLocalRecords(listOf(row.sessionId)) },
-            )
-            Spacer(Modifier.height(2.dp))
-        }
-    }
-    }
-
-    pendingClear?.let { scope ->
-        val (title, message, ids) = when (scope) {
-            ClearSessionsScope.ARCHIVED -> Triple(
-                s.clearArchivedTitle,
-                s.clearArchivedMessage.format(archivedRows.size),
-                archivedRows.map { it.sessionId },
-            )
-            ClearSessionsScope.DELETED -> Triple(
-                s.clearDeletedTitle,
-                s.clearDeletedMessage.format(deletedRows.size),
-                deletedRows.map { it.sessionId },
-            )
-            ClearSessionsScope.ALL -> Triple(
-                s.clearAllSessionsTitle,
-                s.clearAllSessionsMessage.format(totalManaged),
-                (archivedRows + deletedRows).map { it.sessionId },
-            )
-        }
-        SettingsConfirmDialog(
-            title = title,
-            message = message,
+    if (pendingClearAll) {
+        DshConfirmDialog(
+            title = s.clearAllSessionsTitle,
+            message = s.clearAllSessionsMessage.format(totalManaged),
             confirmLabel = s.clearAllLocalRecords,
             danger = true,
-            onDismiss = { pendingClear = null },
+            onDismiss = { pendingClearAll = false },
             onConfirm = {
-                pendingClear = null
-                clearLocalRecords(ids)
+                pendingClearAll = false
+                clearLocalRecords((archivedRows + deletedRows).map { it.sessionId })
             },
         )
     }
 }
 
-private enum class ClearSessionsScope { ARCHIVED, DELETED, ALL }
+/** 会话管理的纯展示层：已归档 / 已删除两组（单条在行菜单里处理），危险的批量清除只在底部一行。 */
+@Composable
+internal fun SessionsSettingsContent(
+    listKind: SessionListKind,
+    loadError: String?,
+    archivedRows: List<SessionSnapshot>,
+    deletedRows: List<SessionSnapshot>,
+    onRetry: () -> Unit,
+    onRestore: (String) -> Unit,
+    onClear: (String) -> Unit,
+    onClearAll: () -> Unit,
+) {
+    val s = DshS
+    DshListCaption(s.sessionsSettingsHint)
+    when (listKind) {
+        SessionListKind.Loading -> DshListSection { DshListNote(s.loading) }
+        SessionListKind.Error -> DshListSection { DshListRetry(loadError ?: s.loadFailed, onRetry) }
+        else -> {
+            DshListSection(header = s.sectionArchivedSessions) {
+                if (archivedRows.isEmpty()) DshListNote(s.noArchivedSessions)
+                archivedRows.forEach { row ->
+                    ManagedSessionRow(row, onRestore = { onRestore(row.sessionId) }, onClear = { onClear(row.sessionId) })
+                }
+            }
+            DshListSection(header = s.sectionDeletedSessions) {
+                if (deletedRows.isEmpty()) DshListNote(s.noDeletedSessions)
+                deletedRows.forEach { row ->
+                    ManagedSessionRow(row, onRestore = { onRestore(row.sessionId) }, onClear = { onClear(row.sessionId) })
+                }
+            }
+            if (archivedRows.size + deletedRows.size > 0) {
+                DshListSection(footer = s.clearAllLocalRecordsDesc) {
+                    DshListActionRow(
+                        label = s.clearAllLocalRecords,
+                        icon = TrashOutline16,
+                        destructive = true,
+                        onClick = onClearAll,
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun ManagedSessionRow(
@@ -1229,72 +904,36 @@ private fun ManagedSessionRow(
 ) {
     val s = DshS
     var menuOpen by remember { mutableStateOf(false) }
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(if (pressed) Dsh.pressed else Color.Transparent),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp)
-                .clickable(interactionSource = interaction, indication = dshRipple()) { menuOpen = true }
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    snapshot.title,
-                    color = Dsh.labelPrimary,
-                    style = DshType.t14x20,
-                    lineHeight = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val desc = buildList {
-                    snapshot.cwd?.substringAfterLast('/')?.takeIf { it.isNotBlank() }?.let { add(it) }
-                    if (snapshot.updatedAt > 0L) add(formatSessionTime(snapshot.updatedAt))
-                }.joinToString(" · ")
-                if (desc.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(desc, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Icon(
-                ChevronRightOutline14,
-                contentDescription = null,
-                tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-            DropdownMenu(
+    val desc = buildList {
+        snapshot.cwd?.substringAfterLast('/')?.takeIf { it.isNotBlank() }?.let { add(it) }
+        if (snapshot.updatedAt > 0L) add(formatSessionTime(snapshot.updatedAt))
+    }.joinToString(" · ")
+    Box {
+        DshListRow(
+            title = snapshot.title,
+            subtitle = desc.ifBlank { null },
+            onClick = { menuOpen = true },
+            trailing = DshListTrailing.None,
+            trailingContent = {
+                Icon(EllipsisOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(20.dp))
+            },
+        )
+        Box(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp)) {
+            DshMenu(
                 expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-                containerColor = Dsh.bgCard,
-                shape = RoundedCornerShape(DshRadius.lg),
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
+                onDismiss = { menuOpen = false },
                 offset = DpOffset(0.dp, 4.dp),
-            ) {
-                DropdownMenuItem(
-                    text = { Text(s.restoreToSidebar, color = Dsh.labelPrimary, style = DshType.body) },
-                    onClick = {
+                items = listOf(
+                    DshMenuItem(UnarchiveOutline16, s.restoreToSidebar) {
                         menuOpen = false
                         onRestore()
                     },
-                )
-                DropdownMenuItem(
-                    text = { Text(s.removeFromLocalList, color = Dsh.error, style = DshType.body) },
-                    onClick = {
+                    DshMenuItem(TrashOutline16, s.removeFromLocalList, danger = true) {
                         menuOpen = false
                         onClear()
                     },
-                )
-            }
+                ),
+            )
         }
     }
 }
@@ -1304,232 +943,4 @@ private fun formatSessionTime(timestamp: Long): String {
     val millis = if (timestamp < 1_000_000_000_000L) timestamp * 1000 else timestamp
     val sdf = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
     return sdf.format(java.util.Date(millis))
-}
-
-@Composable
-internal fun SettingsLoadRetry(
-    message: String,
-    onRetry: () -> Unit,
-) {
-    val s = DshS
-    Column(
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            message,
-            color = Dsh.error,
-            style = DshType.titleSmall,
-            lineHeight = 18.sp,
-        )
-        Text(
-            s.retry,
-            color = Dsh.brand400,
-            style = DshType.t14M,
-            fontWeight = FontWeight(500),
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .clickable(onClick = onRetry)
-                .padding(horizontal = 4.dp, vertical = 8.dp)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = s.retry
-                },
-        )
-    }
-}
-
-/** 设置分组：不再逐行套白卡，仅靠分组标题与间距建立层级（Material 3 结构）。 */
-@Composable
-internal fun DshSettingsGroup(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        content = content,
-    )
-}
-
-/** iOS 式组内分隔线：发丝级、左侧内缩（与行首文字对齐）。 */
-@Composable
-internal fun DshSettingsDivider() {
-    HorizontalDivider(
-        color = Dsh.borderSubtle,
-        thickness = 0.5.dp,
-        modifier = Modifier.padding(start = 16.dp),
-    )
-}
-
-/** iOS 式分区标题：小号灰字，与卡片左缘对齐。 */
-@Composable
-internal fun SettingsSection(
-    title: String,
-    actionLabel: String? = null,
-    actionEnabled: Boolean = true,
-    dangerAction: Boolean = false,
-    onAction: (() -> Unit)? = null,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 18.dp, bottom = 4.dp, start = 4.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            title,
-            color = Dsh.labelTertiary,
-            style = DshType.label,
-            modifier = Modifier.weight(1f),
-        )
-        if (actionLabel != null && onAction != null) {
-            val interaction = remember { MutableInteractionSource() }
-            val pressed by interaction.collectIsPressedAsState()
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
-                    .background(if (pressed && actionEnabled) Dsh.pressed else Color.Transparent)
-                    .clickable(interactionSource = interaction, indication = dshRipple(), enabled = actionEnabled, onClick = onAction)
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    actionLabel,
-                    color = if (!actionEnabled) Dsh.labelTertiary else if (dangerAction) Dsh.error else Dsh.brand400,
-                    style = DshType.t12x18M,
-                    fontWeight = FontWeight(500),
-                    lineHeight = 18.sp,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun SettingsItem(
-    title: String,
-    description: String,
-    onClick: (() -> Unit)?,
-    danger: Boolean = false,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val rowModifier = Modifier
-        .fillMaxWidth()
-        .heightIn(min = 52.dp)
-        .clip(RoundedCornerShape(DshRadius.md))
-        .background(if (onClick != null && pressed) Dsh.pressed else Color.Transparent)
-    val interactiveModifier = if (onClick != null) {
-        rowModifier.clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-    } else {
-        rowModifier
-    }
-    Row(
-        modifier = interactiveModifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                title,
-                color = if (danger) Dsh.error else Dsh.labelPrimary,
-                style = DshType.body,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (description.isNotBlank()) {
-                Spacer(Modifier.height(2.dp))
-                Text(description, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        if (onClick != null) {
-            Icon(
-                ChevronRightOutline14,
-                contentDescription = null,
-                tint = if (danger) Dsh.error else Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-@Composable
-internal fun SettingsConfirmDialog(
-    title: String,
-    message: String,
-    confirmLabel: String,
-    danger: Boolean = false,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val s = DshS
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Dsh.bgOverlay)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = dshRipple(),
-                    onClick = onDismiss,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 360.dp)
-                    .fillMaxWidth(0.9f)
-                    .clip(RoundedCornerShape(DshRadius.lg))
-                    .background(Dsh.bgSubtle)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = dshRipple(),
-                    ) {}
-                    .padding(18.dp)
-            ) {
-                Text(title, color = Dsh.labelPrimary, style = DshType.t15x21M, fontWeight = FontWeight(500), lineHeight = 21.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(message, color = Dsh.labelTertiary, style = DshType.captionRelaxed, lineHeight = 18.sp)
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = s.cancel
-                            }
-                            .clickable(onClick = onDismiss)
-                            .padding(horizontal = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(s.cancel, color = Dsh.labelSecondary, style = DshType.label, fontWeight = FontWeight(500))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .background(if (danger) Dsh.error else Dsh.brand400)
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = confirmLabel
-                            }
-                            .clickable(onClick = onConfirm)
-                            .padding(horizontal = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(confirmLabel, color = Dsh.onBrand, style = DshType.label, fontWeight = FontWeight(500))
-                    }
-                }
-            }
-        }
-    }
 }

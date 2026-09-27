@@ -47,7 +47,7 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
                 Text(
                     L.selectText,
                     color = Dsh.labelPrimary,
-                    style = DshType.t14,
+                    style = DshType.body,
                     modifier = Modifier.weight(1f),
                 )
                 DshHeaderAction(L.close, onClick = onDismiss)

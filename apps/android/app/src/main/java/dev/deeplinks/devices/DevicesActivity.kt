@@ -1,18 +1,14 @@
 package dev.deeplinks.devices
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import dev.deeplinks.native.ui.DshBrandMark
+import dev.deeplinks.native.ui.DshEmptyState
+import dev.deeplinks.native.KeyboardOutline16
+import dev.deeplinks.native.ScanOutline16
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.AppRoute
 import dev.deeplinks.native.MainActivity
-import dev.deeplinks.native.EditOutline16
-import dev.deeplinks.native.DshHaptic
-import dev.deeplinks.native.dshPressScale
-import dev.deeplinks.native.rememberDshHaptic
-import dev.deeplinks.native.rememberMotionSpin
-import dev.deeplinks.native.ChevronRightOutline14
-import dev.deeplinks.native.dialogMotionState
-import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostLoadResult
@@ -27,56 +23,37 @@ import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.shouldBlockLocalHostRemoval
 import dev.deeplinks.native.shouldDemoteRelayOnAuth
 import dev.deeplinks.native.DshRadius
-import dev.deeplinks.native.DshSheetShape
-import dev.deeplinks.native.ui.DshSheetGrabber
-import dev.deeplinks.native.util.RenameDialogKind
-import dev.deeplinks.native.util.renameDialogKind
+import dev.deeplinks.native.DshConfirmDialog
+import dev.deeplinks.native.DshDialogButtons
+import dev.deeplinks.native.DshDialogFrame
+import dev.deeplinks.native.DshDialogMessage
+import dev.deeplinks.native.DshDialogTitle
+import dev.deeplinks.native.ui.DshGroupedPage
+import dev.deeplinks.native.ui.DshLargeTitle
+import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshListSection
+import dev.deeplinks.native.ui.DshSheet
+import dev.deeplinks.native.ui.DshSheetPrimaryButton
+import dev.deeplinks.native.ui.DshTextField
 
 import androidx.activity.ComponentActivity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -306,27 +283,27 @@ fun DevicesScreen(
             unpairError = null
             reload()
         }
-        ConfirmDialog(
+        DshConfirmDialog(
             title = if (offlineOnly) s.removeLocalOnly else s.deleteDevice,
-            content = if (offlineOnly) {
+            message = if (offlineOnly) {
                 s.deleteDeviceOfflineContent.format(target.name)
             } else {
                 s.deleteDeviceContent.format(target.name)
             },
-            confirmText = if (offlineOnly) s.removeLocalOnly else s.delete,
+            confirmLabel = if (offlineOnly) s.removeLocalOnly else s.delete,
             danger = true,
             error = unpairError,
             saving = unpairSaving,
-            secondaryText = if (!offlineOnly && unpairError != null) s.removeLocalOnly else null,
+            secondaryLabel = if (!offlineOnly && unpairError != null) s.removeLocalOnly else null,
             onSecondary = {
-                if (unpairSaving) return@ConfirmDialog
+                if (unpairSaving) return@DshConfirmDialog
                 finishUnpair()
             },
             onConfirm = {
-                if (unpairSaving) return@ConfirmDialog
+                if (unpairSaving) return@DshConfirmDialog
                 if (offlineOnly) {
                     finishUnpair()
-                    return@ConfirmDialog
+                    return@DshConfirmDialog
                 }
                 unpairSaving = true
                 unpairError = null
@@ -363,7 +340,7 @@ fun DevicesScreen(
     }
 }
 
-/** 整页形态：设备卡 + 说明条 + 「配对新电脑」；下拉刷新重读本机设备。 */
+/** 整页形态：大标题 + 电脑分组；下拉刷新重读本机设备。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DevicesPage(
@@ -383,93 +360,42 @@ private fun DevicesPage(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Dsh.bgBase)
+            .background(Dsh.bgGrouped)
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
-        // 头部（固定，含安全区）
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Dsh.bgBase)
-                .statusBarsPadding()
-                .padding(top = 10.dp, start = 16.dp, end = 16.dp, bottom = 10.dp)
-        ) {
-            Text(
-                s.pairingManage,
-                color = Dsh.labelPrimary,
-                style = DshType.titleLarge,
+        val current = device
+        if (current == null) {
+            DshLargeTitle(
+                title = s.pairingManage,
+                subtitle = s.manageYourLinks,
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
-            Text(
-                s.manageYourLinks,
-                color = Dsh.labelSecondary,
-                style = DshType.captionRelaxed,
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp)
-        ) {
-            val current = device
-            if (current == null) {
-                Box(Modifier.weight(1f)) {
-                    EmptyDevicesState(onAdd = onAddDevice)
-                }
-                notice?.let { msg -> DevicesNotice(msg) }
-            } else {
-                PullToRefreshBox(
-                    isRefreshing = refreshing,
-                    onRefresh = onRefresh,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        DeviceCard(
-                            device = current,
-                            onOpen = { onOpen(current) },
-                            onTogglePreferRelay = onTogglePreferRelay,
-                            onUnpair = { onUnpair(current) },
-                        )
-                        if (current.host.needsCloudRescan) {
-                            DevicesNotice(
-                                message = s.relayRouteExpired,
-                                actionLabel = s.restoreCloudScan,
-                                onAction = onRescan,
-                                secondaryLabel = s.restoreCloudLater,
-                                onSecondary = onRescanLater,
-                            )
-                        }
-                        notice?.let { msg ->
-                            DevicesNotice(message = msg, actionLabel = s.resync, onAction = onRecheck)
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        // 单设备：配对新电脑 = 替换当前这台（文字按钮，不与设备卡抢主操作）
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterHorizontally)
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.full))
-                                .clickable(indication = dshRipple(), interactionSource = remember { MutableInteractionSource() }) {
-                                    onAddDevice()
-                                }
-                                .semantics { role = Role.Button }
-                                .padding(horizontal = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                s.replaceDevice,
-                                color = Dsh.brand400,
-                                style = DshType.body,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                    }
+            Box(Modifier.weight(1f)) {
+                EmptyDevicesState(onAdd = onAddDevice)
+            }
+            notice?.let { msg ->
+                Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) { DevicesNotice(msg) }
+            }
+        } else {
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.weight(1f),
+            ) {
+                DshGroupedPage {
+                    DshLargeTitle(title = s.pairingManage, subtitle = s.manageYourLinks)
+                    DeviceDetailSections(
+                        device = current,
+                        notice = notice,
+                        onOpen = { onOpen(current) },
+                        onRecheck = onRecheck,
+                        onTogglePreferRelay = onTogglePreferRelay,
+                        onRescan = onRescan,
+                        onRescanLater = onRescanLater,
+                        onReplace = onAddDevice,
+                        onUnpair = { onUnpair(current) },
+                    )
                 }
             }
         }
@@ -481,80 +407,20 @@ private fun DevicesPage(
 @Composable
 private fun EmptyDevicesState(onAdd: () -> Unit) {
     val s = DshS
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Dsh.brand400.copy(alpha = 0.12f))
-                .border(1.dp, Dsh.brand400.copy(alpha = 0.28f), RoundedCornerShape(24.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(dev.deeplinks.R.drawable.ic_dsh_mark),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-        Text(
-            s.noDevicesYet,
-            color = Dsh.labelPrimary,
-            style = DshType.titleLarge,
-            fontWeight = FontWeight(600),
-            letterSpacing = (-0.2).sp,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            s.noDevicesHint,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = 280.dp),
-        )
-        Spacer(Modifier.height(20.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 280.dp)
-                .height(48.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Dsh.brand500)
-                .clickable(onClick = onAdd)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = s.addDevice
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                s.addDevice,
-                color = Dsh.onBrand,
-                style = DshType.bodyStrong,
-                fontWeight = FontWeight(600),
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            s.addDeviceScanOrCode,
-            color = Dsh.labelTertiary,
-            style = DshType.microRelaxed,
-            textAlign = TextAlign.Center,
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        DshEmptyState(
+            title = s.noDevicesYet,
+            message = s.noDevicesHint,
+            graphic = { DshBrandMark() },
+            actionLabel = s.addDevice,
+            onAction = onAdd,
+            footnote = s.addDeviceScanOrCode,
         )
     }
 }
 
 // ---------- 配对面板（底部滑出） ----------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PairingPanel(
     /** 已有配对设备：配对新电脑会替换它，标题与说明据此改写。 */
@@ -566,116 +432,46 @@ private fun PairingPanel(
     val s = DshS
     var mode by remember { mutableStateOf<PairingMode>(PairingMode.CHOOSE) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Dsh.bgSidePanel,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        scrimColor = Dsh.bgOverlay,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth()
+    DshSheet(
+        onDismiss = onDismiss,
+        title = when {
+            mode != PairingMode.CHOOSE -> s.methodManual
+            replacing -> s.replaceDevice
+            else -> s.addDevice
+        },
+        subtitle = when {
+            mode != PairingMode.CHOOSE -> s.manualPairSheetHint
+            replacing -> s.replaceDeviceHint
+            else -> s.pairChooseHint
+        },
+        showClose = true,
+        skipPartiallyExpanded = true,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
-        ) {
-            DshSheetGrabber()
-            // 头部：标题 + 描述 + 关闭
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        when {
-                            mode != PairingMode.CHOOSE -> s.methodManual
-                            replacing -> s.replaceDevice
-                            else -> s.addDevice
-                        },
-                        color = Dsh.labelPrimary,
-                        style = DshType.headline,
-                        fontWeight = FontWeight(600),
-                        lineHeight = 24.sp
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        when {
-                            mode != PairingMode.CHOOSE -> s.manualPairSheetHint
-                            replacing -> s.replaceDeviceHint
-                            else -> s.pairChooseHint
-                        },
-                        color = Dsh.labelSecondary,
-                        style = DshType.t11x17,
-                        lineHeight = 17.sp
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable(onClick = onDismiss)
-                        .semantics {
-                            role = Role.Button
-                            contentDescription = s.close
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(Dsh.bgCard),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = null,
-                            tint = Dsh.labelSecondary,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
-                }
+        when (mode) {
+            PairingMode.CHOOSE -> DshListSection {
+                DshListRow(
+                    title = s.methodScan,
+                    subtitle = s.methodScanDesc,
+                    icon = ScanOutline16,
+                    onClick = onScan,
+                )
+                DshListRow(
+                    title = s.methodManual,
+                    subtitle = s.methodManualDesc,
+                    icon = KeyboardOutline16,
+                    onClick = { mode = PairingMode.MANUAL },
+                )
             }
 
-            when (mode) {
-                PairingMode.CHOOSE -> {
-                    // 方法列表
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        MethodOption(
-                            title = s.methodScan,
-                            description = s.methodScanDesc,
-                            icon = Icons.Default.QrCodeScanner,
-                            onClick = onScan
-                        )
-                        MethodOption(
-                            title = s.methodManual,
-                            description = s.methodManualDesc,
-                            icon = EditOutline16,
-                            onClick = { mode = PairingMode.MANUAL }
-                        )
-                    }
-                }
-
-                PairingMode.MANUAL -> {
-                    ManualPairForm(
-                        onPair = { name, url, code, fingerprint, onSuccess, onError ->
-                            onManualPair(name, url, code, fingerprint, { host ->
-                                onSuccess(host)
-                                onDismiss()
-                            }, onError)
-                        },
-                        onBack = { mode = PairingMode.CHOOSE }
-                    )
-                }
-            }
+            PairingMode.MANUAL -> ManualPairForm(
+                onPair = { name, url, code, fingerprint, onSuccess, onError ->
+                    onManualPair(name, url, code, fingerprint, { host ->
+                        onSuccess(host)
+                        onDismiss()
+                    }, onError)
+                },
+                onBack = { mode = PairingMode.CHOOSE },
+            )
         }
     }
 }
@@ -683,49 +479,7 @@ private fun PairingPanel(
 private enum class PairingMode { CHOOSE, MANUAL }
 
 @Composable
-private fun MethodOption(
-    title: String,
-    description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 68.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .semantics {
-                role = Role.Button
-                contentDescription = title
-            }
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(Dsh.bgCard),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.width(11.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.bodyStrong, fontWeight = FontWeight(600), lineHeight = 18.sp)
-            Spacer(Modifier.height(2.dp))
-            Text(description, color = Dsh.labelTertiary, style = DshType.captionRelaxed, lineHeight = 18.sp)
-        }
-        Icon(ChevronRightOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(20.dp))
-    }
-}
-
-@Composable
-private fun ManualPairForm(
+private fun ColumnScope.ManualPairForm(
     onPair: (name: String, url: String, code: String, fingerprint: String?, onSuccess: (Host) -> Unit, onError: (String) -> Unit) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -749,67 +503,40 @@ private fun ManualPairForm(
         }
     }
 
-    val fingerprint = tofuFingerprint
-    if (fingerprint != null) {
-        Dialog(
-            onDismissRequest = { if (!loading) tofuFingerprint = null },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Dsh.bgOverlay)
-                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                        if (!loading) tofuFingerprint = null
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = 360.dp)
-                        .fillMaxWidth(0.9f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Dsh.bgSubtle)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = dshRipple(),
-                            onClick = {},
-                        )
-                        .padding(18.dp)
-                ) {
-                    Text(s.verifyCertificateTitle, color = Dsh.labelPrimary, style = DshType.bodyStrong, fontWeight = FontWeight(600))
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        url.trim(),
-                        color = Dsh.labelSecondary,
-                        style = DshType.captionRelaxed,
-                        fontFamily = FontFamily.Monospace,
-                        maxLines = 2,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        s.verifyCertificateDesc,
-                        color = Dsh.labelTertiary,
-                        style = DshType.t11x17,
-                        lineHeight = 17.sp,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        PinnedSsl.formatFingerprint(fingerprint),
-                        color = Dsh.labelPrimary,
-                        style = DshType.captionRelaxed,
-                        fontFamily = FontFamily.Monospace,
-                        lineHeight = 18.sp,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        ConfirmButton(s.cancel, false, onClick = { tofuFingerprint = null })
-                        Spacer(Modifier.width(8.dp))
-                        ConfirmButton(s.fingerprintMatches, true, onClick = {
-                            tofuFingerprint.also { tofuFingerprint = null }?.let { submit(it) }
-                        })
-                    }
-                }
+    tofuFingerprint?.let { fingerprint ->
+        CertificateCheckDialog(
+            url = url.trim(),
+            fingerprint = fingerprint,
+            dismissible = !loading,
+            onDismiss = { tofuFingerprint = null },
+            onConfirm = {
+                tofuFingerprint = null
+                submit(fingerprint)
+            },
+        )
+    }
+
+    fun connect() {
+        val cleanUrl = url.trim()
+        val cleanCode = code.trim()
+        if (cleanUrl.isEmpty() || cleanCode.isEmpty()) {
+            error = s.pairAddressIncomplete
+            return
+        }
+        loading = true
+        error = null
+        if (!PinnedSsl.shouldPin(cleanUrl)) {
+            submit(null)
+            return
+        }
+        scope.launch {
+            try {
+                val fp = withContext(Dispatchers.IO) { PinnedSsl.peekFingerprint(cleanUrl) }
+                loading = false
+                tofuFingerprint = fp
+            } catch (e: Exception) {
+                loading = false
+                error = PinnedSsl.unwrap(e).message ?: s.cannotReadCertificate
             }
         }
     }
@@ -817,298 +544,90 @@ private fun ManualPairForm(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(top = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PairingField(
-            label = s.pairFieldName,
-            placeholder = s.pairFieldNamePlaceholder,
+        DshTextField(
             value = name,
             onValueChange = { name = it },
+            label = s.pairFieldName,
+            placeholder = s.pairFieldNamePlaceholder,
+            contentDescription = "${s.pairFieldName}，${s.pairFieldNamePlaceholder}",
         )
-        PairingField(
-            label = s.pairFieldAddress,
-            placeholder = s.pairFieldAddressPlaceholder,
+        DshTextField(
             value = url,
             onValueChange = { url = it },
-            monospace = true,
+            label = s.pairFieldAddress,
+            placeholder = s.pairFieldAddressPlaceholder,
+            contentDescription = "${s.pairFieldAddress}，${s.pairFieldAddressPlaceholder}",
         )
-        PairingField(
-            label = s.pairCodeLabel,
-            placeholder = s.pairFieldCodePlaceholder,
+        DshTextField(
             value = code,
             onValueChange = { if (it.length <= 8) code = it.trim() },
-            monospace = true,
+            label = s.pairCodeLabel,
+            placeholder = s.pairFieldCodePlaceholder,
+            contentDescription = "${s.pairCodeLabel}，${s.pairFieldCodePlaceholder}",
         )
-
         error?.let { msg ->
-            Text(msg, color = Dsh.error, style = DshType.captionRelaxed, lineHeight = 18.sp)
+            Text(msg, color = Dsh.error, style = DshType.captionRelaxed, modifier = Modifier.padding(horizontal = 4.dp))
         }
-
-        val angle = rememberMotionSpin(750, label = "spinAngle")
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(Dsh.brand500)
-                .clickable(
-                    enabled = !loading,
-                    onClick = {
-                        val cleanUrl = url.trim()
-                        val cleanCode = code.trim()
-                        if (cleanUrl.isEmpty() || cleanCode.isEmpty()) {
-                            error = s.pairAddressIncomplete
-                            return@clickable
-                        }
-                        loading = true
-                        error = null
-                        if (!PinnedSsl.shouldPin(cleanUrl)) {
-                            submit(null)
-                            return@clickable
-                        }
-                        scope.launch {
-                            try {
-                                val fp = withContext(Dispatchers.IO) { PinnedSsl.peekFingerprint(cleanUrl) }
-                                loading = false
-                                tofuFingerprint = fp
-                            } catch (e: Exception) {
-                                loading = false
-                                error = PinnedSsl.unwrap(e).message ?: s.cannotReadCertificate
-                            }
-                        }
-                    }
-                )
-                .semantics {
-                    role = Role.Button
-                    contentDescription = s.addDevice
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (loading) {
-                Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .rotate(angle ?: 0f)
-                        .border(1.5.dp, Color.White, CircleShape)
-                )
-            } else {
-                Text(s.connectDevice, color = Dsh.onBrand, style = DshType.bodyStrong, fontWeight = FontWeight(600))
-            }
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .clickable(onClick = onBack)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = s.back
-                }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        ) {
-            Text(s.back, color = Dsh.labelSecondary, style = DshType.microRelaxed)
-        }
+    }
+    DshSheetPrimaryButton(
+        label = if (loading) s.statusConnecting else s.connectDevice,
+        enabled = !loading,
+        onClick = ::connect,
+    )
+    TextButton(
+        onClick = onBack,
+        colors = ButtonDefaults.textButtonColors(contentColor = Dsh.labelSecondary),
+        modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .padding(top = 4.dp),
+    ) {
+        Text(s.back, style = DshType.labelLarge)
     }
 }
 
+/** 首次连接 HTTPS 地址时核对证书指纹（TOFU）：指纹等宽排版放在底色块里，方便逐段对照。 */
 @Composable
-private fun PairingField(
-    label: String,
-    placeholder: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    monospace: Boolean = false,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = Dsh.labelSecondary, style = DshType.t11x16M, fontWeight = FontWeight(500), lineHeight = 16.sp)
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            textStyle = TextStyle(
-                color = Dsh.labelPrimary,
-                fontSize = if (monospace) 12.sp else 13.sp,
-                fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-            ),
-            cursorBrush = SolidColor(Dsh.labelPrimary),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Dsh.bgInput)
-                .border(1.dp, Dsh.borderStrong, RoundedCornerShape(12.dp))
-                .semantics {
-                    contentDescription = "$label，$placeholder"
-                }
-                .padding(horizontal = 13.dp),
-            decorationBox = { inner ->
-                Box(contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) {
-                        Text(placeholder, color = Dsh.labelTertiary, fontSize = if (monospace) 12.sp else 13.sp)
-                    }
-                    inner()
-                }
-            }
-        )
-    }
-}
-
-// ---------- 确认弹窗 ----------
-
-@Composable
-private fun ConfirmDialog(
-    title: String,
-    content: String,
-    confirmText: String,
-    danger: Boolean = false,
-    error: String? = null,
-    saving: Boolean = false,
-    secondaryText: String? = null,
-    onSecondary: (() -> Unit)? = null,
-    onConfirm: () -> Unit,
+private fun CertificateCheckDialog(
+    url: String,
+    fingerprint: String,
+    dismissible: Boolean,
     onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
 ) {
     val s = DshS
-    val kind = renameDialogKind(saving, error)
-    val canConfirm = kind != RenameDialogKind.Saving
-    val motion = dialogMotionState(onDismiss)
-    // \u5173\u95ed\u5165\u53e3\u7edf\u4e00\u5148\u8d70\u51fa\u573a\u52a8\u753b\uff0c\u64ad\u5b8c\u624d\u56de\u8c03 onDismiss\uff08saving \u4e2d\u4e0d\u54cd\u5e94\u5173\u95ed\uff09
-    val requestDismiss = { if (canConfirm) motion.requestDismiss() }
-    Dialog(
-        onDismissRequest = requestDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
+    DshDialogFrame(onDismiss = onDismiss, dismissible = dismissible, maxWidth = 360.dp) { requestDismiss ->
+        DshDialogTitle(s.verifyCertificateTitle)
+        Text(
+            url,
+            color = Dsh.labelSecondary,
+            style = DshType.captionRelaxed,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 2,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        DshDialogMessage(s.verifyCertificateDesc)
+        Text(
+            PinnedSsl.formatFingerprint(fingerprint),
+            color = Dsh.labelPrimary,
+            style = DshType.captionRelaxed,
+            fontFamily = FontFamily.Monospace,
             modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = motion.alpha.value }
-                .background(Dsh.bgOverlay)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = dshRipple(),
-                    onClick = requestDismiss,
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 360.dp)
-                    .fillMaxWidth(0.9f)
-                    .graphicsLayer {
-                        alpha = motion.alpha.value
-                        scaleX = motion.scale.value
-                        scaleY = motion.scale.value
-                    }
-                    .shadow(12.dp, RoundedCornerShape(DshRadius.dialog), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-                    .clip(RoundedCornerShape(DshRadius.dialog))
-                    .background(Dsh.bgSidePanel)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    )
-                    .padding(18.dp)
-            ) {
-                Text(title, color = Dsh.labelPrimary, style = DshType.t15x21SB, fontWeight = FontWeight(600), lineHeight = 21.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(content, color = Dsh.labelTertiary, style = DshType.t11x17, lineHeight = 17.sp)
-                if (kind == RenameDialogKind.Failed && !error.isNullOrBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        error,
-                        color = Dsh.error,
-                        style = DshType.caption,
-                        lineHeight = 17.sp,
-                        modifier = Modifier.semantics { contentDescription = error },
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (secondaryText != null && onSecondary != null) {
-                        ConfirmButton(secondaryText, false, enabled = canConfirm, onClick = onSecondary)
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    ConfirmButton(s.cancel, false, enabled = canConfirm, onClick = onDismiss)
-                    Spacer(Modifier.width(8.dp))
-                    ConfirmButton(
-                        if (kind == RenameDialogKind.Saving) s.saving else confirmText,
-                        danger,
-                        enabled = canConfirm,
-                        onClick = onConfirm,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfirmButton(
-    label: String,
-    danger: Boolean,
-    onClick: () -> Unit,
-    primary: Boolean = false,
-    enabled: Boolean = true,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val haptic = rememberDshHaptic()
-    Box(
-        modifier = Modifier
-            .widthIn(min = 64.dp)
-            .heightIn(min = 48.dp)
-            .dshPressScale(interaction)
-            .clickable(
-                enabled = enabled,
-                interactionSource = interaction,
-                indication = dshRipple(),
-                onClick = {
-                    // 危险确认给负向触觉，普通确认给正向触觉
-                    haptic(if (danger) DshHaptic.Reject else DshHaptic.Confirm)
-                    onClick()
-                },
-            )
-            .semantics {
-                role = Role.Button
-                contentDescription = label
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .height(34.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
-                .background(
-                    when {
-                        !enabled -> Dsh.pressed
-                        danger -> Dsh.error
-                        primary -> Dsh.brand500
-                        pressed -> Dsh.pressed
-                        else -> Color.Transparent
-                    }
-                )
-                .padding(horizontal = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                label,
-                color = when {
-                    !enabled -> Dsh.labelTertiary
-                    danger || primary -> Color.White
-                    else -> Dsh.labelSecondary
-                },
-                style = DshType.label,
-                fontWeight = FontWeight(500)
-            )
-        }
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(DshRadius.md))
+                .background(Dsh.bgSubtle)
+                .padding(12.dp),
+        )
+        DshDialogButtons(
+            dismissLabel = s.cancel,
+            onDismiss = requestDismiss,
+            confirmLabel = s.fingerprintMatches,
+            onConfirm = onConfirm,
+        )
     }
 }
 

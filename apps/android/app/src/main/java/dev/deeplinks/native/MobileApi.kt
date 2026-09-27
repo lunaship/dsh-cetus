@@ -1,4 +1,5 @@
 package dev.deeplinks.native
+import dev.deeplinks.core.DshStrings
 import dev.deeplinks.core.BoundedIo
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostHttp
@@ -227,11 +228,11 @@ internal fun resolveHarnessLabel(
  * DSH 内置预设的本地化名称（对齐桌面版 ui-agent-preset 文案表）。
  * 内置预设在服务端没有 name，列表里只剩 id；自定义预设用它自己的 name。
  */
-internal fun builtinPresetName(id: String): String? = when (id) {
-    "standard" -> L.presetStandard
-    "ptc", "code" -> L.presetCode
-    "minimal" -> L.presetMinimal
-    "cordis", "creator" -> L.presetCreator
+internal fun builtinPresetName(id: String, strings: DshStrings = L): String? = when (id) {
+    "standard" -> strings.presetStandard
+    "ptc", "code" -> strings.presetCode
+    "minimal" -> strings.presetMinimal
+    "cordis", "creator" -> strings.presetCreator
     else -> null
 }
 
@@ -243,10 +244,10 @@ internal fun builtinPresetDescription(id: String): String? = when (id) {
     else -> null
 }
 
-internal fun presetDisplayName(id: String, serverName: String?): String {
+internal fun presetDisplayName(id: String, serverName: String?, strings: DshStrings = L): String {
     val name = serverName.presentOrNull()
     if (name != null && name != id) return name
-    return builtinPresetName(id) ?: name ?: id
+    return builtinPresetName(id, strings) ?: name ?: id
 }
 
 internal fun presetDisplayDescription(id: String, serverDescription: String?): String =
@@ -452,10 +453,11 @@ class MobileApiClient(private val host: Host) {
         val current = root.optJSONObject("current")
         val groups = parseModelGroups(root.optJSONArray("groups"))
         return MobileModelCatalog(
-            currentProvider = current?.optString("provider"),
-            currentModel = current?.optString("model"),
-            currentReasoningEffort = current?.optString("reasoningEffort")?.ifBlank { null }
-                ?: current?.optString("effort")?.ifBlank { null },
+            // optString 会把 JSON null 读成字符串 "null"（曾在模型弹层显示成「Null」）
+            currentProvider = current?.optNullableString("provider"),
+            currentModel = current?.optNullableString("model"),
+            currentReasoningEffort = current?.optNullableString("reasoningEffort")
+                ?: current?.optNullableString("effort"),
             groups = groups,
         )
     }
@@ -1039,6 +1041,7 @@ internal fun friendlyNetworkError(error: Throwable): String {
         msg.contains("route busy") -> L.relayRouteBusy
         msg.contains("bind timeout") -> L.relayBindTimeout
         msg.contains("truncated HTTP body") -> L.relayTruncatedBody
+        msg.contains("revision conflict", ignoreCase = true) -> L.settingsChangedElsewhere
         else -> msg.ifBlank { error.javaClass.simpleName }
     }
 }
@@ -1053,11 +1056,11 @@ private fun JSONObject.optStringList(key: String): List<String> {
 
 internal fun parseModelOption(m: JSONObject): MobileModelOption = MobileModelOption(
     id = m.optString("id", ""),
-    name = m.optString("name").takeIf { it.isNotBlank() },
+    name = m.optNullableString("name"),
     contextWindow = m.optPositiveLong("contextWindow"),
     maxTokens = m.optPositiveLong("maxTokens"),
     reasoningEfforts = m.optStringList("reasoningEfforts"),
-    defaultEffort = m.optString("defaultEffort").takeIf { it.isNotBlank() },
+    defaultEffort = m.optNullableString("defaultEffort"),
 )
 
 internal fun parseModelGroups(arr: org.json.JSONArray?): List<MobileModelGroup> {

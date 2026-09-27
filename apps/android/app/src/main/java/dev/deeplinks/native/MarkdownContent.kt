@@ -218,7 +218,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                 .padding(horizontal = 12.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(L.tableLabel, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp, modifier = Modifier.weight(1f))
+            Text(L.tableLabel, color = Dsh.labelTertiary, style = DshType.microRelaxed, modifier = Modifier.weight(1f))
             DshHeaderAction(L.copy, onClick = { copyTable() })
             DshHeaderAction(L.tableDownload, onClick = { downloadTable() })
             DshHeaderAction(L.tableFullscreen) { fullscreen = true }
@@ -249,7 +249,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                     .padding(12.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(L.tableLabel, color = Dsh.labelPrimary, style = DshType.t14, modifier = Modifier.weight(1f))
+                    Text(L.tableLabel, color = Dsh.labelPrimary, style = DshType.body, modifier = Modifier.weight(1f))
                     DshHeaderAction(L.copy) { copyTable() }
                     DshHeaderAction(L.tableDownload) { downloadTable() }
                     DshHeaderAction(L.close) { fullscreen = false }
@@ -342,7 +342,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                     modifier = Modifier.size(12.dp)
                 )
                 Spacer(Modifier.width(4.dp))
-                Text(L.copy, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp)
+                Text(L.copy, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
             }
         }
         val dark = Dsh.isDark

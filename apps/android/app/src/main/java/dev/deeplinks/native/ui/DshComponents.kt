@@ -1,11 +1,12 @@
 package dev.deeplinks.native.ui
 
+import androidx.compose.runtime.getValue
+import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,7 +30,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +47,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -134,8 +133,7 @@ fun DshFilterChip(
                 Text(
                     count.toString(),
                     color = if (selected) Dsh.labelPrimary.copy(alpha = 0.7f) else Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    fontFamily = FontFamily.Monospace,
+                    style = DshType.captionRelaxed.tabularNums(),
                 )
             }
         }
@@ -320,7 +318,7 @@ fun DshTextTabs(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(2.dp)
-                            .clip(RoundedCornerShape(1.dp))
+                            .clip(RoundedCornerShape(DshRadius.full))
                             .background(if (selected) dev.deeplinks.core.Dsh.brand400 else Color.Transparent),
                     )
                 }
@@ -465,7 +463,7 @@ fun DshBanner(
         Box(
             modifier = Modifier
                 .size(width = 3.dp, height = 16.dp)
-                .background(accent, RoundedCornerShape(2.dp))
+                .background(accent, RoundedCornerShape(DshRadius.full))
         )
         Spacer(Modifier.width(8.dp))
         if (leading != null) {
@@ -594,6 +592,6 @@ fun DshHeaderAction(
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp)
+        Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
     }
 }

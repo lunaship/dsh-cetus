@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
@@ -31,8 +33,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.WrapText
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +47,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -379,7 +377,7 @@ private fun PanelHeader(title: String, onClose: () -> Unit, subtitle: String? = 
     ) {
         PanelIconButton(CloseOutline16, L.close, onClose)
         Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.t14SB, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
                 Text(subtitle, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -463,7 +461,7 @@ private fun FileHeader(
     ) {
         PanelIconButton(ChevronLeftOutline14, ChangesL.backToFiles, onBack)
         Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-            Text(file.name, color = Dsh.labelPrimary, style = DshType.t14SB, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(file.name, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (file.directory.isNotEmpty()) {
                     Text(
@@ -493,10 +491,10 @@ private fun FileHeader(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.AutoMirrored.Outlined.WrapText,
+                WrapOutline16,
                 contentDescription = null,
                 tint = if (wrap) Dsh.brand500 else Dsh.labelSecondary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
             )
         }
         if (count > 1) {
@@ -555,7 +553,7 @@ private fun FileDiffBody(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.t14)
+            Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.body)
             if (current.message.isNotBlank()) {
                 Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = 4.dp))
             }

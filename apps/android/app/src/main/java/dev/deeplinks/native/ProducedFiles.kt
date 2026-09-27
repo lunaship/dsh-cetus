@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import android.graphics.Bitmap
@@ -7,7 +9,6 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,18 +29,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -160,10 +157,10 @@ internal fun ProducedFilesRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Default.Description,
+                FileOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
             )
             Spacer(Modifier.width(10.dp))
             Text(
@@ -271,7 +268,7 @@ internal fun ProducedFilesRow(
                     Text(
                         producedFileName(current.path),
                         color = Dsh.labelPrimary,
-                        style = DshType.t14SB,
+                        style = DshType.bodyStrong,
                         fontWeight = FontWeight(600),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -289,7 +286,7 @@ internal fun ProducedFilesRow(
                             .padding(horizontal = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(L.close, color = Dsh.labelTertiary, style = DshType.microRelaxed, lineHeight = 16.sp)
+                        Text(L.close, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
