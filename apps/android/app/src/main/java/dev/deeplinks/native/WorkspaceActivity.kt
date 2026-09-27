@@ -248,7 +248,10 @@ fun WorkspaceScreen(
     val localStore = workspaceViewModel.local
     var archivedIds by localStore.archivedSessionIds
     var deletedIds by localStore.deletedSessionIds
-    fun setDeleted(id: String) = localStore.addDeletedSession(id)
+    fun setDeleted(id: String) {
+        localStore.addDeletedSession(id)
+        workspaceViewModel.repo.historyCache.remove(id)
+    }
     fun setArchived(id: String) = localStore.setArchivedSessionIds(
         if (id in archivedIds) archivedIds - id else archivedIds + id,
     )

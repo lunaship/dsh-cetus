@@ -627,60 +627,18 @@ class MobileApiClient(private val host: Host) {
         )
     }
 
-    fun getSessionHistory(sessionId: String, beforeSeq: Long? = null, maxMessages: Int? = null): HistoryResult {
+    fun getSessionHistory(sessionId: String, beforeSeq: Long? = null, maxMessages: Int? = null): HistoryResult =
+        parseHistoryResponse(getSessionHistoryJson(sessionId, beforeSeq, maxMessages), beforeSeq)
+
+    /** 原始 history 响应：仓库据此落本地快照（见 SessionHistoryCache），再用 [parseHistoryResponse] 解析。 */
+    fun getSessionHistoryJson(sessionId: String, beforeSeq: Long? = null, maxMessages: Int? = null): JSONObject {
         var path = "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") + "/history"
         val query = buildList {
             beforeSeq?.let { add("beforeSeq=$it") }
             maxMessages?.let { add("maxMessages=$it") }
         }
         if (query.isNotEmpty()) path += "?" + query.joinToString("&")
-        val root = request("GET", path)
-        val rawList = root.optJSONArray("messages") ?: org.json.JSONArray()
-        val messages = (0 until rawList.length()).map { i ->
-            val obj = rawList.getJSONObject(i)
-            val todosArr = obj.optJSONArray("todos") ?: org.json.JSONArray()
-            MobileMessage(
-                id = obj.optStringOrEmpty("id").ifBlank { "msg-${beforeSeq ?: "tail"}-$i" },
-                role = obj.optStringOrEmpty("role", "assistant"),
-                text = obj.optStringOrEmpty("text", ""),
-                toolName = obj.optNullableString("name") ?: obj.optNullableString("toolName"),
-                toolArgs = obj.optNullableString("args"),
-                approvalId = obj.optNullableString("approvalId"),
-                callId = obj.optNullableString("callId"),
-                time = obj.optLong("time", 0L),
-                type = obj.optStringOrEmpty("type", "text"),
-                durationMs = if (obj.has("durationMs") && !obj.isNull("durationMs")) obj.optLong("durationMs") else null,
-                running = if (obj.has("running") && !obj.isNull("running")) obj.optBoolean("running") else null,
-                todos = (0 until todosArr.length()).map { j ->
-                    val t = todosArr.getJSONObject(j)
-                    MobileTodoItem(t.optStringOrEmpty("content", ""), t.optStringOrEmpty("status", "pending"))
-                },
-                seq = obj.optLong("seq", 0L),
-                questionRpcId = obj.optNullableString("questionRpcId"),
-                questionOptions = obj.optJSONArray("questionOptions")?.let { arr ->
-                    (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
-                } ?: emptyList(),
-                questionHeader = obj.optNullableString("questionHeader"),
-                questionPayloadJson = obj.optNullableString("questionPayloadJson")
-                    ?: obj.optJSONArray("questions")?.toString(),
-                requestStatus = obj.optNullableString("requestStatus"),
-                outcome = obj.optNullableString("outcome"),
-                files = parseHistoryFiles(obj),
-                turn = if (obj.has("turn") && !obj.isNull("turn")) obj.optInt("turn") else null,
-                changes = obj.optJSONObject("changes")?.let { parseWorkspaceChanges(it, obj.optLong("seq", 0L)) },
-            )
-        }
-        // stats（StatsLine：轮次/步骤/LLM 耗时/工具调用/首 token/吞吐/缓存/tokens）
-        val stats = root.optJSONObject("stats")
-        val result = HistoryResult(
-            messages = messages,
-            hasMore = root.optBoolean("hasMore", false),
-            nextBeforeSeq = if (root.has("nextBeforeSeq") && !root.isNull("nextBeforeSeq")) root.optLong("nextBeforeSeq") else null,
-            maxSeq = if (root.has("maxSeq") && !root.isNull("maxSeq")) root.optLong("maxSeq") else null,
-            stoppedReason = parseStoppedReason(root.optNullableString("stoppedReason")),
-            stats = parseMobileSessionStats(stats),
-        )
-        return result
+        return request("GET", path)
     }
 
     fun sendPrompt(sessionId: String, text: String, mode: String = "queue", images: List<Pair<String, String>> = emptyList()) {
@@ -1145,4 +1103,54 @@ internal fun MobileModelDraft.toJson(): JSONObject {
 internal fun parseMobileApiError(code: Int, text: String): String {
     val fromJson = runCatching { JSONObject(text).optStringOrEmpty("error") }.getOrNull()?.takeIf { it.isNotBlank() }
     return fromJson ?: text.ifBlank { "HTTP $code" }
+}
+
+/** history 响应 → [HistoryResult]；[beforeSeq] 仅用于给缺 id 的消息生成稳定兜底 id。 */
+internal fun parseHistoryResponse(root: JSONObject, beforeSeq: Long?): HistoryResult {
+    val rawList = root.optJSONArray("messages") ?: org.json.JSONArray()
+    val messages = (0 until rawList.length()).map { i ->
+        val obj = rawList.getJSONObject(i)
+        val todosArr = obj.optJSONArray("todos") ?: org.json.JSONArray()
+        MobileMessage(
+            id = obj.optStringOrEmpty("id").ifBlank { "msg-${beforeSeq ?: "tail"}-$i" },
+            role = obj.optStringOrEmpty("role", "assistant"),
+            text = obj.optStringOrEmpty("text", ""),
+            toolName = obj.optNullableString("name") ?: obj.optNullableString("toolName"),
+            toolArgs = obj.optNullableString("args"),
+            approvalId = obj.optNullableString("approvalId"),
+            callId = obj.optNullableString("callId"),
+            time = obj.optLong("time", 0L),
+            type = obj.optStringOrEmpty("type", "text"),
+            durationMs = if (obj.has("durationMs") && !obj.isNull("durationMs")) obj.optLong("durationMs") else null,
+            running = if (obj.has("running") && !obj.isNull("running")) obj.optBoolean("running") else null,
+            todos = (0 until todosArr.length()).map { j ->
+                val t = todosArr.getJSONObject(j)
+                MobileTodoItem(t.optStringOrEmpty("content", ""), t.optStringOrEmpty("status", "pending"))
+            },
+            seq = obj.optLong("seq", 0L),
+            questionRpcId = obj.optNullableString("questionRpcId"),
+            questionOptions = obj.optJSONArray("questionOptions")?.let { arr ->
+                (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
+            } ?: emptyList(),
+            questionHeader = obj.optNullableString("questionHeader"),
+            questionPayloadJson = obj.optNullableString("questionPayloadJson")
+                ?: obj.optJSONArray("questions")?.toString(),
+            requestStatus = obj.optNullableString("requestStatus"),
+            outcome = obj.optNullableString("outcome"),
+            files = parseHistoryFiles(obj),
+            turn = if (obj.has("turn") && !obj.isNull("turn")) obj.optInt("turn") else null,
+            changes = obj.optJSONObject("changes")?.let { parseWorkspaceChanges(it, obj.optLong("seq", 0L)) },
+        )
+    }
+    // stats（StatsLine：轮次/步骤/LLM 耗时/工具调用/首 token/吞吐/缓存/tokens）
+    val stats = root.optJSONObject("stats")
+    val result = HistoryResult(
+        messages = messages,
+        hasMore = root.optBoolean("hasMore", false),
+        nextBeforeSeq = if (root.has("nextBeforeSeq") && !root.isNull("nextBeforeSeq")) root.optLong("nextBeforeSeq") else null,
+        maxSeq = if (root.has("maxSeq") && !root.isNull("maxSeq")) root.optLong("maxSeq") else null,
+        stoppedReason = parseStoppedReason(root.optNullableString("stoppedReason")),
+        stats = parseMobileSessionStats(stats),
+    )
+    return result
 }

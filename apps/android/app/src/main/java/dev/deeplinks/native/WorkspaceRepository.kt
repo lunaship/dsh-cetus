@@ -3,6 +3,7 @@ package dev.deeplinks.native
 import android.content.Context
 import dev.deeplinks.core.AppSettingsStore
 import dev.deeplinks.core.Host
+import dev.deeplinks.core.LocalCacheCrypto
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.normalizeWorkspacePath
 import kotlinx.coroutines.CoroutineScope
@@ -41,11 +42,26 @@ internal class WorkspaceRepository(
 
     suspend fun workspaces(): MobileWorkspaceCatalog = io { api.getWorkspaces() }
 
+    /** 会话尾页的本地快照（按主机隔离、加密落盘）。 */
+    val historyCache = SessionHistoryCache(
+        SessionHistoryCache.rootDir(context.cacheDir),
+        host.slotKey,
+        LocalCacheCrypto,
+    )
+
+    /** 尾页（无分页参数）成功后顺手刷新本地快照。 */
     suspend fun history(
         sessionId: String,
         beforeSeq: Long? = null,
         maxMessages: Int? = null,
-    ): HistoryResult = io { api.getSessionHistory(sessionId, beforeSeq, maxMessages) }
+    ): HistoryResult = io {
+        val root = api.getSessionHistoryJson(sessionId, beforeSeq, maxMessages)
+        val result = parseHistoryResponse(root, beforeSeq)
+        if (beforeSeq == null && maxMessages == null) historyCache.write(sessionId, root.toString())
+        result
+    }
+
+    suspend fun cachedHistory(sessionId: String): HistoryResult? = io { historyCache.read(sessionId) }
 
     suspend fun sessionRequests(sessionId: String): SessionRequestSnapshot =
         io { api.getSessionRequests(sessionId) }

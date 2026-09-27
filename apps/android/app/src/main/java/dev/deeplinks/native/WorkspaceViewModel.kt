@@ -18,6 +18,7 @@ import dev.deeplinks.native.util.ComposerDraft
 import dev.deeplinks.native.util.parseStoppedReason
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -273,8 +274,12 @@ internal class WorkspaceViewModel(
     var historyGeneration = 0L
         private set
 
+    /** 列表里来自本地快照的消息 id（见 SessionHistoryCache）；网络 history 接管后清空。 */
+    private var cachedMessageIds: Set<String> = emptySet()
+
     fun bumpHistoryGeneration() {
         historyGeneration++
+        cachedMessageIds = emptySet()
         historyJob?.cancel()
         historyJob = null
         historyJobSessionId = null
@@ -306,24 +311,31 @@ internal class WorkspaceViewModel(
         }
         val generation = historyGeneration
         historyJobSessionId = sid
+        val showCache = messages.value.isEmpty() && olderMessages.value.isEmpty()
         if (messages.value.isEmpty()) {
             initialLoadInFlight.value = true
             historyLoadError.value = null
         }
         historyJob = viewModelScope.launch {
+            // 本地快照与网络并行：快照先到先显示，网络一到就取消快照（不让旧内容盖掉新内容）
+            val cacheJob = if (showCache) launch { applyCachedHistory(sid, generation) } else null
             try {
                 val result = repo.history(sid)
+                cacheJob?.cancelAndJoin()
                 val requests = runCatching { repo.sessionRequests(sid) }.getOrNull()
                 // 会话已切换：丢弃过期响应，避免旧会话内容覆盖新会话
                 if (currentSessionId.value != sid || generation != historyGeneration) return@launch
                 // 内容未变化时保持列表引用稳定（避免轮询在滚动中替换数据源导致
                 // LazyColumn 渲染冻结）；快路径用实例同一性 O(n) 指针比较，
                 // 有差异时才回退内容签名比较
-                val live = messages.value
+                val current = messages.value
+                // 快照只是占位：网络结果整体接管，只保留快照期间 SSE 追加的在途块
+                val live = liveAfterCache(current, cachedMessageIds)
+                cachedMessageIds = emptySet()
                 val merged = mergeHistoryWithLive(result.messages, live)
-                val sameContent = live === merged ||
-                    (live.size == merged.size && live.withIndex().all { (i, m) -> m === merged[i] }) ||
-                    live.contentSignature() == merged.contentSignature()
+                val sameContent = current === merged ||
+                    (current.size == merged.size && current.withIndex().all { (i, m) -> m === merged[i] }) ||
+                    current.contentSignature() == merged.contentSignature()
                 if (!sameContent) messages.value = merged
                 // 同步推导各会话的 goal 摘要（供侧栏 / 顶栏 / 粘性摘要卡消费）
                 recomputeGoalSummaries()
@@ -374,6 +386,27 @@ internal class WorkspaceViewModel(
                 }
             }
         }
+    }
+
+    /** 打开会话时先铺上次的本地快照；已有内容（含 SSE 已到）或会话已切换则放弃。 */
+    private suspend fun applyCachedHistory(sid: String, generation: Long) {
+        val cached = try {
+            repo.cachedHistory(sid)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        } ?: return
+        if (currentSessionId.value != sid || generation != historyGeneration) return
+        if (messages.value.isNotEmpty() || olderMessages.value.isNotEmpty() || cached.messages.isEmpty()) return
+        messages.value = cached.messages
+        cachedMessageIds = cached.messages.mapTo(HashSet()) { it.id }
+        sessionStats.value = cached.stats
+        hasMoreMessages.value = cached.hasMore
+        nextBeforeSeq.value = cached.nextBeforeSeq
+        recomputeGoalSummaries()
+        initialLoadInFlight.value = false
+        historyLoadError.value = null
     }
 
     // ===== 模型目录 / Agent 预设 / 设置 =====
