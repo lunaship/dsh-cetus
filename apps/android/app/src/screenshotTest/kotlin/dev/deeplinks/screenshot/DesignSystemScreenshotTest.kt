@@ -114,6 +114,12 @@ import dev.deeplinks.native.SettingsDest
 import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.ui.DshGroupedPage
 import dev.deeplinks.native.ui.DshLargeTitle
+import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.DshSection
+import dev.deeplinks.native.ui.DshSectionContainer
+import dev.deeplinks.native.ui.DshStatusBadge
+import dev.deeplinks.native.ui.DshStatusTone
+import dev.deeplinks.native.ui.DshSwitchRow
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
@@ -585,12 +591,68 @@ internal fun CommandPaletteFilteredDarkEn() {
     }
 }
 
-/** 分组页底（冷灰 + 白卡片）：设置 / 设备这类 lody 式分组列表页用它截图。 */
+/**
+ * 分组页底（迁移期兼容包装 → DshPageScaffold）：画布底 + 16dp 边距 + 720dp 居中，
+ * Section 默认扁平；设置 / 设备页用它截图。
+ */
 @Composable
 private fun GroupedWall(dark: Boolean, english: Boolean, content: @Composable ColumnScope.() -> Unit) {
     ShotFrame(dark = dark, english = english) {
         DshGroupedPage(content = content)
     }
+}
+
+/**
+ * Section 容器策略墙（docs/visual-rules.md 第二节）：
+ * Flat（默认，行落画布 + 发丝线分组）与 Tonal（bgSubtle 容器，独立数据块）。
+ */
+@Composable
+private fun SectionWall(dark: Boolean, english: Boolean) {
+    Wall(dark = dark, english = english) {
+        DshSection(header = "Flat · 默认") {
+            DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
+            DshListRow(title = "外观", icon = PaletteOutline16, value = "跟随系统", onClick = {})
+            DshSwitchRow(title = "系统字体", icon = FontOutline16, checked = true, onCheckedChange = {})
+        }
+        DshSection(header = "Tonal · 独立数据块", container = DshSectionContainer.Tonal) {
+            DshListRow(title = "MacBook Pro", subtitle = "在线 · 24ms · 局域网", icon = LaptopOutline16)
+            DshListRow(title = "思考令牌", subtitle = "上下文余量", icon = WalletOutline16, value = "18.7K")
+        }
+        DshSection(header = "状态语义") {
+            DshListRow(
+                title = "等待确认",
+                subtitle = "权限申请待处理",
+                leading = { DshStatusBadge("等待", tone = DshStatusTone.Waiting, dot = true) },
+            )
+            DshListRow(
+                title = "运行中",
+                subtitle = "正在执行工具调用",
+                leading = { DshStatusBadge("运行", tone = DshStatusTone.Running, dot = true) },
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "section flat tonal light zh", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun SectionFlatTonalLightZh() {
+    SectionWall(dark = false, english = false)
+}
+
+@PreviewTest
+@Preview(name = "section flat tonal dark en", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun SectionFlatTonalDarkEn() {
+    SectionWall(dark = true, english = true)
+}
+
+/** 1.3 字号：标题 / 副标题 / 尾部值不得重叠或截断。 */
+@PreviewTest
+@Preview(name = "section flat tonal large", showBackground = true, widthDp = 412, heightDp = 760, fontScale = 1.3f)
+@Composable
+internal fun SectionFlatTonalLarge() {
+    SectionWall(dark = false, english = false)
 }
 
 @PreviewTest

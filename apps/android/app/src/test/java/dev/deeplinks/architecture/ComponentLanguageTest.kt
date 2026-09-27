@@ -35,10 +35,12 @@ class ComponentLanguageTest {
             "dev/deeplinks/native/ComposerBar.kt",
         )
 
-        /** 页面文件直接使用 DshRadius.group 的存量（批次 5 清零）。 */
-        val GROUP_RADIUS_BUDGET = mapOf(
-            "dev/deeplinks/native/WorkspaceChrome.kt" to 1,
-        )
+        /**
+         * 页面文件直接使用 DshRadius.group 的存量。
+         * 2026-09-27 批次 1：group 页面级语义已删除，WorkspaceChrome 的统计卡
+         * 迁到 DshSection tonal（container）；预算归零，零容忍。
+         */
+        val GROUP_RADIUS_BUDGET: Map<String, Int> = emptyMap()
 
         /** DshLargeTitle 调用点存量（批次 3 清零）。 */
         val LARGE_TITLE_BUDGET = mapOf(
@@ -97,7 +99,10 @@ class ComponentLanguageTest {
     private fun countMatches(file: File, regex: Regex, skipImports: Boolean = false): Int {
         var count = 0
         file.forEachLine { line ->
-            if (skipImports && line.trimStart().startsWith("import ")) return@forEachLine
+            val trimmed = line.trimStart()
+            // import 与注释（KDoc 链接如 [DshGroupedPage]）不算调用
+            if (skipImports && trimmed.startsWith("import ")) return@forEachLine
+            if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return@forEachLine
             if (regex.containsMatchIn(line)) count++
         }
         return count

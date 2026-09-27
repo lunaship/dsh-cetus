@@ -43,6 +43,11 @@ data class DshColors(
     val bgSubtle: Color,
     val bgCode: Color,
     val bgCodeBanner: Color,
+    /**
+     * 选中容器（selection container）：与 [bgNavSelected] 合并为同一角色——
+     * 全 App 选中态统一 DSH Blue tonal，不用纯黑反色胶囊（docs/visual-rules.md 第二节）。
+     * 兼容别名，迁移完成后删除。
+     */
     val bgSelected: Color,
     val bgPressed: Color,
     // 原生抽屉（M3）：sheet 容器底 + 选中项胶囊底
@@ -53,9 +58,12 @@ data class DshColors(
     val bgOverlay: Color,
     /** 思考轨迹等「凹进」面板：比画布更深一档（DeepSeek 签名块）。 */
     val bgRecessed: Color = Color.Unspecified,
-    /** 分组列表页（设置 / 设备 / 面板）的底：比卡片暗一档，卡片才立得起来。 */
+    /**
+     * 分组列表页底（弃用别名）：收敛为画布 [bgBase]——普通页面默认扁平，
+     * 只有 tonal 容器（[bgSubtle]）表达分组（docs/visual-rules.md 第二节）。
+     */
     val bgGrouped: Color,
-    /** 分组列表里的卡片面。 */
+    /** 分组列表卡片面（弃用别名）：收敛为 tonal 容器 [bgSubtle]。 */
     val bgGroupedCard: Color,
     val labelPrimary: Color,
     val labelSecondary: Color,
@@ -106,7 +114,7 @@ val DarkDshColors = DshColors(
     bgSubtle = Color(0xFF2A2A2F),
     bgCode = Color(0xFF141416),
     bgCodeBanner = Color(0xFF222226),
-    bgSelected = Color(0xFF323238),
+    bgSelected = Color(0xFF1A2744),   // 选中容器：与 bgNavSelected 同值（DSH Blue tonal）
     bgPressed = Color(0xFF222226),
     bgDrawer = Color(0xFF141416),        // 抽屉容器底：与 bgSidePanel 同档
     bgNavSelected = Color(0xFF1A2744),   // 选中会话：DeepSeek Blue 弱底
@@ -160,7 +168,7 @@ val LightDshColors = DshColors(
     bgSubtle = Color(0xFFF1F3F5),
     bgCode = Color(0xFFF9FAFB),
     bgCodeBanner = Color(0xFFF9FAFB),
-    bgSelected = Color(0xFFEBEEF2),
+    bgSelected = Color(0xFFE5EDFF),   // 选中容器：与 bgNavSelected 同值（DSH Blue tonal）
     bgPressed = Color(0xFFF1F3F5),
     bgDrawer = Color(0xFFF9FAFB),
     bgNavSelected = Color(0xFFE5EDFF),   // 选中会话：DeepSeek Blue 弱底
@@ -235,13 +243,15 @@ val LocalDshColors = staticCompositionLocalOf { DarkDshColors }
 // Shared Material shape roles. Screens may still use DSH-specific shapes for
 // expressive details, but Material components now receive stable semantic
 // defaults instead of falling back to the library's unrelated defaults.
-// 全部由 DshRadius 推导（单一真源）：extraSmall←sm、small←md、medium←lg、large←xl、extraLarge←dialog。
+// 全部由 DshRadius 推导（单一真源，docs/visual-rules.md 第三节）：
+// extraSmall/small←control、medium/large←container、extraLarge←modal。
+// 由 DshShapeRoleTest 锁死：标准组件不得回落到另一套形状。
 private val DshMaterialShapes = Shapes(
-    extraSmall = RoundedCornerShape(DshRadius.sm),
-    small = RoundedCornerShape(DshRadius.md),
-    medium = RoundedCornerShape(DshRadius.lg),
-    large = RoundedCornerShape(DshRadius.xl),
-    extraLarge = RoundedCornerShape(DshRadius.dialog),
+    extraSmall = RoundedCornerShape(DshRadius.control),
+    small = RoundedCornerShape(DshRadius.control),
+    medium = RoundedCornerShape(DshRadius.container),
+    large = RoundedCornerShape(DshRadius.container),
+    extraLarge = RoundedCornerShape(DshRadius.modal),
 )
 
 /** 全局主题设置管理器 */

@@ -47,6 +47,17 @@ class DesignTokenUsageTest {
     private fun relative(root: File, file: File): String =
         file.relativeTo(root).path.replace(File.separatorChar, '/')
 
+    private fun countMatches(file: File, regex: Regex): Int {
+        var count = 0
+        file.forEachLine { line ->
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("import ")) return@forEachLine
+            if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return@forEachLine
+            if (regex.containsMatchIn(line)) count++
+        }
+        return count
+    }
+
     @Test
     fun noRawFontSizesOrColorsOutsideTokenLayer() {
         val root = mainSourceRoot()
@@ -76,6 +87,47 @@ class DesignTokenUsageTest {
                 "\n\n修复：改用 Dsh.* 颜色角色 / DshType.* 排版；" +
                 "若迁移减少了存量，请同步调小 app/src/test/resources/design-token-baseline.txt",
             violations.isEmpty()
+        )
+    }
+
+    /**
+     * 弃用形状角色只降不升（docs/visual-rules.md 第三节）。
+     *
+     * DshRadius 已收敛为 micro/control/container/composer/modal/full 六个用途角色；
+     * xs/sm/md/lg/xl/tail/sheet/dialog 只是映射到新角色的弃用别名。存量按角色登记
+     * 为上限，迁移使数量下降后应把预算调小；全部归零后改零容忍。
+     */
+    @Test
+    fun deprecatedRadiusRolesOnlyShrink() {
+        val root = mainSourceRoot()
+        val budgets = mapOf(
+            "xs" to 3,
+            "tail" to 1,
+            "sm" to 26,
+            "md" to 29,
+            "lg" to 23,
+            "xl" to 5,
+            "sheet" to 0,
+            "dialog" to 3,
+        )
+        val violations = mutableListOf<String>()
+        for ((role, budget) in budgets) {
+            var used = 0
+            for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+                val rel = relative(root, file)
+                // 定义文件（DshMotion.kt）里的别名声明不算调用
+                if (rel == "dev/deeplinks/native/DshMotion.kt") continue
+                used += countMatches(file, Regex("""DshRadius\.$role\b"""))
+            }
+            if (used > budget) {
+                violations += "DshRadius.$role: $used 处，超过预算 $budget——请改用六个用途角色" +
+                    "（micro/control/container/composer/modal/full）"
+            }
+        }
+        assertTrue(
+            "弃用形状角色回涨（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n") +
+                "\n\n修复：把调用点迁到新角色，并同步调小上面的预算；全部归零后改零容忍。",
+            violations.isEmpty(),
         )
     }
 

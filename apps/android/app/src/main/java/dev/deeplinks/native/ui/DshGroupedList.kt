@@ -63,13 +63,19 @@ import dev.deeplinks.native.ChevronRightOutline14
 import dev.deeplinks.native.DshRadius
 
 /**
- * 分组列表（对照 lody-ios 的 LodyGroupedList / FormGroup）。
+ * Section 与行骨架（docs/visual-rules.md 第五节：设置、设备、Sheet 复用同一行结构）。
  *
- * 一页 = [DshGroupedPage] 的画布底 + 若干 [DshListSection]；每个分组是一张浅灰 tonal 圆角卡片，
- * 卡片上方是小号分组标题，下方是说明性页脚。行只有一种骨架 [DshListRow]：
- * 图标 · 标题 / 副标题 · 取值 · 尾标，开关、下拉、按钮行都是它的变体。
- * 行首图标默认中性灰（与侧栏一致），品牌蓝只留给可执行的操作行和选中勾。
- * 行间发丝线由卡片自动画，起点跟随下一行的文字起点（有图标时让开图标）。
+ * 一页 = [DshPageScaffold] 的画布底 + 若干 [DshSection]。Section 默认 **Flat**：
+ * 行直接落在画布上，行间发丝线分组；只有总结、警告、独立账户或设备摘要才用
+ * **Tonal**（[Dsh.bgSubtle] 容器 + container 12dp 圆角）。
+ *
+ * 行只有一种骨架 [DshListRow]：图标 · 标题 / 副标题 · 取值 · 尾标，
+ * 开关、下拉、按钮行都是它的变体。行首图标默认中性灰（与侧栏一致），
+ * 品牌蓝只留给可执行的操作行和选中勾。行间发丝线由 Section 自动画，
+ * 起点跟随下一行的文字起点（有图标时让开图标）。
+ *
+ * [DshListSection] / [DshGroupedPage] / [DshLargeTitle] 是迁移期兼容包装，
+ * 调用点清零后删除。
  */
 
 private val RowPaddingH = 16.dp
@@ -91,22 +97,26 @@ private data class DividerInset(val start: Dp) : ParentDataModifier {
 private fun Modifier.dividerInset(hasIcon: Boolean): Modifier =
     then(DividerInset(if (hasIcon) TextInsetWithIcon else RowPaddingH))
 
-/** 分组页容器：画布底（与侧栏 / 聊天页同色）、独立滚动、手机 16dp 边距、大屏 720dp 居中。 */
+/**
+ * 分组页容器（迁移期兼容包装）：内部转发到 [DshPageScaffold]——画布底、独立滚动、
+ * 手机 16dp 边距、大屏 720dp 居中；不再强制 grouped card 视觉。
+ *
+ * 系统栏 inset 由调用方（设置 / 设备页）自行消费（[consumeSystemInsets] = false），
+ * 批次 2/3 把它们迁到 [DshPageScaffold] 后，本包装删除。
+ */
 @Composable
 fun DshGroupedPage(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Dsh.bgGrouped),
-        contentAlignment = Alignment.TopCenter,
+    DshPageScaffold(
+        title = "",
+        modifier = modifier,
+        consumeSystemInsets = false,
     ) {
         Column(
             modifier = Modifier
-                .widthIn(max = 720.dp)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .padding(top = 4.dp, bottom = 32.dp),
@@ -115,15 +125,25 @@ fun DshGroupedPage(
     }
 }
 
+/** Section 容器策略：默认扁平；tonal 必须有独立分组理由（总结 / 警告 / 独立数据块）。 */
+enum class DshSectionContainer {
+    /** 行直接落在画布上，行间发丝线分组。 */
+    Flat,
+
+    /** tonal 容器（bgSubtle + container 圆角）：总结、警告、独立账户或设备摘要。 */
+    Tonal,
+}
+
 /**
- * 一个分组：标题（可带右侧文字操作）+ 卡片 + 页脚。
- * [content] 里的每个直接子节点是一行；空分组不画卡片。
+ * 一个 Section：标题（可带右侧文字操作）+ 行容器 + 页脚。
+ * [content] 里的每个直接子节点是一行；空 Section 不画容器。
  */
 @Composable
-fun DshListSection(
+fun DshSection(
     modifier: Modifier = Modifier,
     header: String? = null,
     footer: String? = null,
+    container: DshSectionContainer = DshSectionContainer.Flat,
     headerAction: String? = null,
     headerActionDanger: Boolean = false,
     headerActionEnabled: Boolean = true,
@@ -132,7 +152,7 @@ fun DshListSection(
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(top = if (header != null) 16.dp else 12.dp)) {
         if (header != null) {
-            DshListHeader(
+            DshSectionHeader(
                 title = header,
                 actionLabel = headerAction,
                 actionDanger = headerActionDanger,
@@ -140,7 +160,7 @@ fun DshListSection(
                 onAction = onHeaderAction,
             )
         }
-        DshListCard(content)
+        DshSectionRows(tonal = container == DshSectionContainer.Tonal, content = content)
         if (footer != null) {
             Text(
                 footer,
@@ -152,9 +172,37 @@ fun DshListSection(
     }
 }
 
-/** 分组标题（小号灰字，与卡片内文字对齐）；卡片外的自定义内容（如指标网格）也用它起头。 */
+/**
+ * Section（迁移期兼容包装）：与 [DshSection] 同一件，[tonal] = true 时使用 tonal 容器。
+ */
 @Composable
-fun DshListHeader(
+fun DshListSection(
+    modifier: Modifier = Modifier,
+    header: String? = null,
+    footer: String? = null,
+    headerAction: String? = null,
+    headerActionDanger: Boolean = false,
+    headerActionEnabled: Boolean = true,
+    onHeaderAction: (() -> Unit)? = null,
+    tonal: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    DshSection(
+        modifier = modifier,
+        header = header,
+        footer = footer,
+        container = if (tonal) DshSectionContainer.Tonal else DshSectionContainer.Flat,
+        headerAction = headerAction,
+        headerActionDanger = headerActionDanger,
+        headerActionEnabled = headerActionEnabled,
+        onHeaderAction = onHeaderAction,
+        content = content,
+    )
+}
+
+/** Section 标题（小号灰字，与行内文字对齐）；Section 外的自定义内容也用它起头。 */
+@Composable
+fun DshSectionHeader(
     title: String,
     actionLabel: String? = null,
     actionDanger: Boolean = false,
@@ -185,7 +233,7 @@ fun DshListHeader(
             Box(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(enabled = actionEnabled, role = Role.Button, onClick = onAction)
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
@@ -196,17 +244,30 @@ fun DshListHeader(
     }
 }
 
-/** 卡片本体：自排版子节点，逐行画发丝分隔线（0 高度的节点——例如弹层锚点——不参与）。 */
+/**
+ * Section 行容器：自排版子节点，逐行画发丝分隔线（0 高度的节点——例如弹层锚点——不参与）。
+ * [tonal] 时加 bgSubtle 底 + container 圆角；Flat 时行直接落在画布上。
+ */
 @Composable
-private fun DshListCard(content: @Composable () -> Unit) {
+private fun DshSectionRows(
+    tonal: Boolean,
+    content: @Composable () -> Unit,
+) {
     val dividerColor = Dsh.borderSubtle
     val boundaries = remember { mutableListOf<Pair<Float, Float>>() }
     Layout(
         content = content,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.group))
-            .background(Dsh.bgGroupedCard)
+            .then(
+                if (tonal) {
+                    Modifier
+                        .clip(RoundedCornerShape(DshRadius.container))
+                        .background(Dsh.bgSubtle)
+                } else {
+                    Modifier
+                },
+            )
             .drawWithContent {
                 drawContent()
                 val stroke = 0.5.dp.toPx()
@@ -541,7 +602,7 @@ fun DshOptionsMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         containerColor = Dsh.bgCard,
-        shape = RoundedCornerShape(DshRadius.lg),
+        shape = RoundedCornerShape(DshRadius.container),
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
         offset = DpOffset(0.dp, 4.dp),
@@ -658,7 +719,11 @@ fun DshListRetry(message: String, onRetry: () -> Unit) {
     DshListActionRow(label = DshS.retry, onClick = onRetry)
 }
 
-/** 分组页顶部的大标题 + 说明（设备页这类独立页面用；设置二级页的标题在顶栏）。 */
+/**
+ * 页面大标题（迁移期兼容包装）：内部就是统一页面标题角色
+ * （[DshType.headlineMedium]，docs/visual-rules.md 第四节）。
+ * 调用点清零后删除——新页面一律用 [DshPageScaffold] 的标题。
+ */
 @Composable
 fun DshLargeTitle(
     title: String,
@@ -669,7 +734,7 @@ fun DshLargeTitle(
         Text(
             title,
             color = Dsh.labelPrimary,
-            style = DshType.display,
+            style = DshType.headlineMedium,
             modifier = Modifier.semantics { heading() },
         )
         if (subtitle != null) {

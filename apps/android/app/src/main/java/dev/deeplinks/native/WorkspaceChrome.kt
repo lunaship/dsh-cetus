@@ -1092,7 +1092,7 @@ private fun StatsDetailSections(s: MobileSessionStats) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.group))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgGroupedCard)
             .padding(vertical = 14.dp),
     ) {

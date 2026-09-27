@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -48,6 +50,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.dshRipple
@@ -587,5 +590,133 @@ fun DshHeaderAction(
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
+    }
+}
+
+// ============================================================
+// DshIconAction —— 页面/卡片内的图标按钮（统一 48dp 热区与按压态）
+// 语义角色：Button；顶栏、Section 头、列表行尾的图标动作共用这一件
+// ============================================================
+@Composable
+fun DshIconAction(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    iconSize: Dp = 20.dp,
+    active: Boolean = false,
+    tint: Color = Dsh.labelSecondary,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(
+                when {
+                    active -> Dsh.bgNavSelected
+                    pressed -> Dsh.bgPressed
+                    else -> Color.Transparent
+                },
+            )
+            .semantics {
+                role = Role.Button
+                if (contentDescription != null) this.contentDescription = contentDescription
+            }
+            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (active) Dsh.brand500 else tint,
+            modifier = Modifier.size(iconSize),
+        )
+    }
+}
+
+// ============================================================
+// DshPrimaryAction —— 实心主操作（每个表面最多一个）
+// 语义角色：Button；品牌蓝实心 + 全圆，禁用降透明
+// ============================================================
+@Composable
+fun DshPrimaryAction(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    danger: Boolean = false,
+) {
+    val container = if (danger) Dsh.error else Dsh.brand500
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(DshRadius.full))
+            .background(if (enabled) container else container.copy(alpha = 0.55f))
+            .clickable(
+                interactionSource = interaction,
+                indication = dshRipple(),
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(horizontal = 24.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = Dsh.onBrand, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(label, color = Dsh.onBrand, style = DshType.labelLarge, maxLines = 1)
+    }
+}
+
+// ============================================================
+// DshStatusBadge —— 状态 pill（等待 / 运行 / 成功 / 错误 / 中性）
+// 状态必须「颜色 + 文字」双通道，不得只靠色点；由 DshStatusBadge 统一语义
+// ============================================================
+enum class DshStatusTone { Neutral, Waiting, Running, Success, Error }
+
+@Composable
+fun DshStatusBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    tone: DshStatusTone = DshStatusTone.Neutral,
+    dot: Boolean = false,
+    contentDescription: String? = null,
+) {
+    val (bg, fg, accent) = when (tone) {
+        DshStatusTone.Neutral -> Triple(Dsh.bgSubtle, Dsh.labelSecondary, Dsh.labelTertiary)
+        // 与 DshBanner 同一套容器/内容配对，保证 AA 对比
+        DshStatusTone.Waiting -> Triple(Dsh.warn.copy(alpha = 0.12f), Dsh.warnLabel, Dsh.warn)
+        DshStatusTone.Running -> Triple(Dsh.brandTint, Dsh.brand400, Dsh.brand400)
+        DshStatusTone.Success -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.successContent, Dsh.success)
+        DshStatusTone.Error -> Triple(Dsh.errorBg, Dsh.error, Dsh.error)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(DshRadius.full))
+            .background(bg)
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+            .semantics {
+                if (contentDescription != null) this.contentDescription = contentDescription
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dot) {
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+            )
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(text, color = fg, style = DshType.captionRelaxed, maxLines = 1)
     }
 }
