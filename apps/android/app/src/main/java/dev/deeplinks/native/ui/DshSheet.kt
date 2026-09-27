@@ -41,8 +41,9 @@ import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSheetShape
 
 /**
- * 统一底部面板：分组底色 + 把手 + 标题 / 说明（+ 可选关闭钮）。
- * 面板里的选项列表用 [DshListSection] 放进卡片，和设置页同一套行（对照 lody 的系统 sheet + grouped list）。
+ * 统一底部面板（docs/visual-rules.md 第五节）：画布底 + 把手 + 标题 / 说明（+ 可选关闭钮）。
+ * 面板里的选项列表用 [DshListSection]，和设置页同一套行；形状统一走 [DshSheetShape]
+ * （modal 28dp），scrim 用 [Dsh.bgOverlay]。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +60,7 @@ fun DshSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = skipPartiallyExpanded),
-        containerColor = Dsh.bgGrouped,
+        containerColor = Dsh.bgBase,
         contentColor = Dsh.labelPrimary,
         shape = DshSheetShape,
         scrimColor = Dsh.bgOverlay,
@@ -132,7 +133,8 @@ fun DshSheetPrimaryButton(
         enabled = enabled,
         shape = RoundedCornerShape(DshRadius.full),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (danger) Dsh.error else Dsh.brand400,
+            // 实心主操作统一 brand500（brand400 底配白字在暗色下不达 AA）
+            containerColor = if (danger) Dsh.error else Dsh.brand500,
             contentColor = Dsh.onBrand,
             disabledContainerColor = Dsh.bgTrack,
             disabledContentColor = Dsh.labelTertiary,

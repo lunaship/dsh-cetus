@@ -135,7 +135,7 @@ internal fun rememberStreamCaretContent(): InlineTextContent {
                     .padding(start = 2.dp)
                     .width(2.dp)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(DshRadius.full))
+                    .clip(RoundedCornerShape(DshRadius.micro))
                     .background(ink),
             )
         }
@@ -177,7 +177,7 @@ internal fun StreamCaret(modifier: Modifier = Modifier) {
             .padding(start = 2.dp, top = 8.dp)
             .width(2.dp)
             .height(12.dp)
-            .clip(RoundedCornerShape(DshRadius.full))
+            .clip(RoundedCornerShape(DshRadius.micro))
             .background(ink),
     )
 }

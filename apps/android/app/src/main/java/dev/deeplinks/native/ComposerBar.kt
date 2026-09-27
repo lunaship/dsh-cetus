@@ -551,7 +551,8 @@ private fun ComposerModelSeat(
         Row(
             modifier = Modifier
                 .height(28.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
+                // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(composerSeatBackground(pressed))
                 .padding(start = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -629,7 +630,8 @@ private fun ComposerAccessSeat(
         Row(
             modifier = Modifier
                 .height(28.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
+                // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(composerSeatBackground(pressed))
                 .padding(start = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,

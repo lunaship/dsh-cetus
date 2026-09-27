@@ -64,15 +64,18 @@ class ComponentLanguageTest {
          */
         val PAGE_CHIP_BUDGET: Map<String, Map<String, Int>> = emptyMap()
 
-        /** 其余页面文件的 pill 形状存量（逐批收敛到共享组件）。 */
+        /**
+         * 其余页面文件的 pill 形状存量（逐批收敛到共享组件）。
+         * 批次 5：composer 座位、上下文计量触发器、流式光标、统计触发器均已迁走；
+         * 余下的是 M3 按钮惯例的实心/文字 CTA 与状态 pill（合同允许的场景）。
+         */
         val PILL_SHAPE_BUDGET = mapOf(
             "dev/deeplinks/native/WorkspaceSheets.kt" to 1,
             "dev/deeplinks/native/ApprovalCard.kt" to 1,
-            "dev/deeplinks/native/StreamingText.kt" to 2,
             "dev/deeplinks/native/WorkspaceChangesPanel.kt" to 1,
             "dev/deeplinks/native/ProducedFiles.kt" to 1,
-            "dev/deeplinks/native/WorkspaceChrome.kt" to 7,
-            "dev/deeplinks/native/HomeHub.kt" to 6,
+            "dev/deeplinks/native/WorkspaceChrome.kt" to 5,
+            "dev/deeplinks/native/HomeHub.kt" to 3,
         )
 
         /** Settings / Devices 的 CircleShape 图标底板存量（批次 3 清零）。 */

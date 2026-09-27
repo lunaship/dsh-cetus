@@ -124,9 +124,10 @@ internal fun AddWorkspaceSheet(
                 focusedTextColor = Dsh.labelPrimary,
                 unfocusedTextColor = Dsh.labelPrimary,
                 disabledTextColor = Dsh.labelTertiary,
-                focusedContainerColor = Dsh.bgGroupedCard,
-                unfocusedContainerColor = Dsh.bgGroupedCard,
-                disabledContainerColor = Dsh.bgGroupedCard.copy(alpha = 0.6f),
+                // 输入面统一 bgInput（docs/visual-rules.md 第二节 Input 角色）
+                focusedContainerColor = Dsh.bgInput,
+                unfocusedContainerColor = Dsh.bgInput,
+                disabledContainerColor = Dsh.bgInput.copy(alpha = 0.6f),
                 cursorColor = Dsh.brand400,
                 focusedBorderColor = Dsh.brand400,
                 unfocusedBorderColor = Dsh.borderSubtle,
@@ -142,7 +143,7 @@ internal fun AddWorkspaceSheet(
                 unfocusedSupportingTextColor = Dsh.labelTertiary,
                 errorSupportingTextColor = Dsh.error,
             ),
-            shape = RoundedCornerShape(DshRadius.lg),
+            shape = RoundedCornerShape(DshRadius.container),
             modifier = Modifier.fillMaxWidth(),
         )
         DshSheetPrimaryButton(
@@ -276,8 +277,8 @@ internal fun SheetSearchField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(DshRadius.lg))
-            .background(Dsh.bgGroupedCard)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgInput)
             .padding(start = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -367,7 +368,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 44.dp)
-                        .clip(RoundedCornerShape(DshRadius.md))
+                        .clip(RoundedCornerShape(DshRadius.control))
                         .background(Dsh.bgSubtle)
                         .padding(horizontal = 12.dp, vertical = 12.dp),
                     decorationBox = { inner ->

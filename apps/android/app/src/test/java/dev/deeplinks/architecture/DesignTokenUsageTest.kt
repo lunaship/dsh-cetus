@@ -103,12 +103,12 @@ class DesignTokenUsageTest {
         val budgets = mapOf(
             "xs" to 3,
             "tail" to 1,
-            "sm" to 26,
-            "md" to 26,
-            "lg" to 23,
-            "xl" to 5,
+            "sm" to 25,
+            "md" to 23,
+            "lg" to 14,
+            "xl" to 3,
             "sheet" to 0,
-            "dialog" to 3,
+            "dialog" to 0,
         )
         val violations = mutableListOf<String>()
         for ((role, budget) in budgets) {

@@ -54,7 +54,7 @@ internal fun DshMenu(
         onDismissRequest = onDismiss,
         offset = offset,
         containerColor = Dsh.bgCard,
-        shape = RoundedCornerShape(DshRadius.lg),
+        shape = RoundedCornerShape(DshRadius.container),
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
     ) {
@@ -70,7 +70,7 @@ internal fun DshMenu(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(DshRadius.md))
+                        .clip(RoundedCornerShape(DshRadius.control))
                         .background(if (pressed) Dsh.pressed else Color.Transparent)
                         .semantics {
                             role = Role.Button

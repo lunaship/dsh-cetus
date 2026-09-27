@@ -34,7 +34,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
@@ -96,14 +95,14 @@ internal fun QuestionCard(
         )
     }
 
+    // 默认 tonal 容器（bgSubtle + container 圆角）：问题卡是行内卡片，不浮起，去掉阴影
     Column(
         modifier = Modifier
             .widthIn(max = 340.dp)
             .fillMaxWidth()
             .heightIn(min = 120.dp)
-            .shadow(6.dp, RoundedCornerShape(DshRadius.lg), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-            .clip(RoundedCornerShape(DshRadius.lg))
-            .background(Dsh.bgSurface)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgSubtle)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Text(

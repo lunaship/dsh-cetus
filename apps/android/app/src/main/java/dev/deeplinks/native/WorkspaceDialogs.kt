@@ -87,8 +87,8 @@ internal fun DshDialogFrame(
                         scaleX = motion.scale.value
                         scaleY = motion.scale.value
                     }
-                    .shadow(16.dp, RoundedCornerShape(DshRadius.dialog), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-                    .clip(RoundedCornerShape(DshRadius.dialog))
+                    .shadow(16.dp, RoundedCornerShape(DshRadius.modal), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
+                    .clip(RoundedCornerShape(DshRadius.modal))
                     .background(Dsh.bgCard)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },

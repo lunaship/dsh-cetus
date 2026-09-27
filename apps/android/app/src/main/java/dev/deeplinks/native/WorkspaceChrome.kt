@@ -376,7 +376,7 @@ internal fun ContextMeterButton(
         Row(
             modifier = Modifier
                 .height(48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(if (pressed) Dsh.pressed else Color.Transparent)
                 .semantics {
                     role = Role.Button
@@ -428,7 +428,7 @@ internal fun ContextMeterButton(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             containerColor = Dsh.bgSubtle,
-            shape = RoundedCornerShape(DshRadius.lg)
+            shape = RoundedCornerShape(DshRadius.container)
         ) {
             Column(modifier = Modifier.width(240.dp).padding(12.dp)) {
                 // header：上下文已用 + 百分比 + 用量数字
@@ -568,8 +568,8 @@ internal fun CommandSuggestions(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 340.dp)
-                .shadow(12.dp, RoundedCornerShape(DshRadius.xl), clip = false)
-                .clip(RoundedCornerShape(DshRadius.xl))
+                .shadow(12.dp, RoundedCornerShape(DshRadius.container), clip = false)
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCard)
                 .verticalScroll(rememberScrollState())
                 .padding(6.dp),
@@ -601,8 +601,8 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(DshRadius.lg))
-            .background(if (highlighted) Dsh.bgGroupedCard else Color.Transparent)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(if (highlighted) Dsh.bgSubtle else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -610,8 +610,8 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
-                .background(if (highlighted) Dsh.brandTint else Dsh.bgGroupedCard),
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(if (highlighted) Dsh.brandTint else Dsh.bgSubtle),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -1034,7 +1034,7 @@ internal fun SessionStatsLine(stats: MobileSessionStats?) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.full))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(role = Role.Button, onClickLabel = strings.statsViewDetails, onClick = { detailOpen = true })
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         )
@@ -1059,12 +1059,14 @@ internal fun SessionStatsDetailDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // 与 DshDialogFrame 同一套弹层外壳：modal 28dp + bgCard + 阴影（真浮层）
         Column(
             modifier = Modifier
                 .widthIn(max = 380.dp)
                 .fillMaxWidth(0.9f)
-                .clip(RoundedCornerShape(DshRadius.dialog))
-                .background(Dsh.bgGrouped)
+                .shadow(16.dp, RoundedCornerShape(DshRadius.modal), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
+                .clip(RoundedCornerShape(DshRadius.modal))
+                .background(Dsh.bgCard)
                 .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 20.dp),
         ) {
             DshSheetHeader(
@@ -1093,7 +1095,7 @@ private fun StatsDetailSections(s: MobileSessionStats) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgGroupedCard)
+            .background(Dsh.bgSubtle)
             .padding(vertical = 14.dp),
     ) {
         StatsFigure(compactTokens(totalTokens), strings.statsTotalTokens, Modifier.weight(1f))

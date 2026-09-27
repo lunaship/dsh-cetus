@@ -22,32 +22,30 @@ class DshSurfaceRoleTest {
             "dev/deeplinks/core/DshTheme.kt",
         )
 
-        /** bgGrouped 调用存量（逐批收敛到 bgBase）。 */
-        val BG_GROUPED_BUDGET = mapOf(
-            "dev/deeplinks/native/ui/DshSheet.kt" to 1,
-            "dev/deeplinks/native/WorkspaceChrome.kt" to 1,
-        )
+        /**
+         * bgGrouped 调用存量（逐批收敛到 bgBase）。
+         * 批次 5：底部面板与统计弹窗都迁到 bgBase / bgCard，预算清零，零容忍。
+         */
+        val BG_GROUPED_BUDGET: Map<String, Int> = emptyMap()
 
         /**
-         * bgGroupedCard 调用存量（逐批收敛到 bgSubtle）。
-         * 批次 2/3/4：设置、设备、任务首页均已清零；余下的是聊天工作区与浮层（批次 5）。
+         * bgGroupedCard 调用存量（逐批收敛到 bgSubtle / bgInput）。
+         * 批次 2-5：设置、设备、首页、调色板、输入面全部清零，零容忍。
          */
-        val BG_GROUPED_CARD_BUDGET = mapOf(
-            "dev/deeplinks/native/WorkspaceSheets.kt" to 4,
-            "dev/deeplinks/native/WorkspaceChrome.kt" to 3,
-        )
+        val BG_GROUPED_CARD_BUDGET: Map<String, Int> = emptyMap()
 
         /** 真正的浮层：允许阴影。 */
         val OVERLAY_FILES = setOf(
             "dev/deeplinks/native/WorkspaceDialogs.kt",
         )
 
-        /** 其余文件的阴影存量（批次 5 清零 Approval/Question 卡阴影）。 */
+        /**
+         * 其余文件的阴影存量：只留真正悬浮的面——composer 输入卡、命令面板浮卡、
+         * 回到底部 FAB、统计弹窗。批次 5 已清零 Approval/Question 卡的行内阴影。
+         */
         val SHADOW_BUDGET = mapOf(
-            "dev/deeplinks/native/ApprovalCard.kt" to 1,
-            "dev/deeplinks/native/QuestionCard.kt" to 1,
             "dev/deeplinks/native/ComposerBar.kt" to 1,
-            "dev/deeplinks/native/WorkspaceChrome.kt" to 2,
+            "dev/deeplinks/native/WorkspaceChrome.kt" to 3,
         )
 
         val SHADOW = Regex("""\.shadow\(""")

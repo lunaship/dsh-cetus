@@ -32,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -144,12 +143,12 @@ internal fun ApprovalCard(
             .fillMaxWidth()
             .heightIn(min = 160.dp),
     ) {
+        // 默认 tonal 容器（bgSubtle + container 圆角）：审批卡是行内卡片，不浮起，去掉阴影
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(6.dp, RoundedCornerShape(DshRadius.lg), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-                .clip(RoundedCornerShape(DshRadius.lg))
-                .background(Dsh.bgSurface),
+                .clip(RoundedCornerShape(DshRadius.container))
+                .background(Dsh.bgSubtle),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Row(
