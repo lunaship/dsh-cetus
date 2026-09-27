@@ -104,7 +104,7 @@ internal fun AgentPresetPickerSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    selectedPreset?.name?.ifBlank { L.defaultHarnessPreset } ?: L.defaultHarnessPreset,
+                    selectedPreset?.let { presetDisplayName(it.id, it.name) } ?: L.defaultHarnessPreset,
                     color = Dsh.labelPrimary,
                     style = DshType.headline,
                     fontWeight = FontWeight(600),
@@ -175,8 +175,8 @@ internal fun AgentPresetPickerSheet(
                     }
                     items(presets, key = { it.id }) { preset ->
                         val selected = preset.id == currentId
-                        val title = preset.name.ifBlank { preset.id }
-                        val desc = preset.description.ifBlank { "" }
+                        val title = presetDisplayName(preset.id, preset.name)
+                        val desc = presetDisplayDescription(preset.id, preset.description)
 
                         Row(
                             modifier = Modifier
@@ -192,13 +192,31 @@ internal fun AgentPresetPickerSheet(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                Text(
-                                    title,
-                                    color = Dsh.labelPrimary,
-                                    style = DshType.t15x20M,
-                                    fontWeight = FontWeight(500),
-                                    lineHeight = 20.sp,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        title,
+                                        color = Dsh.labelPrimary,
+                                        style = DshType.t15x20M,
+                                        fontWeight = FontWeight(500),
+                                        lineHeight = 20.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                    )
+                                    if (title != preset.id) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            preset.id,
+                                            color = Dsh.labelTertiary,
+                                            style = DshType.microRelaxed,
+                                            maxLines = 1,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(DshRadius.sm))
+                                                .background(Dsh.bgSubtle)
+                                                .padding(horizontal = 5.dp, vertical = 1.dp),
+                                        )
+                                    }
+                                }
                                 if (desc.isNotBlank()) {
                                     Text(
                                         desc,

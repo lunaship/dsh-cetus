@@ -3,13 +3,14 @@ package dev.deeplinks.native
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Devices
 import dev.deeplinks.core.L
 
 /**
  * 顶栏「更多操作」菜单项（从 WorkspaceScreen 抽出，COM-001 拆解）。
  *
  * 纯列表构建：只接收状态与回调，不持有业务逻辑、不做 IO；
- * 具体动作（重命名/分叉/分享图/导出/归档/删除）由调用方以 lambda 注入。
+ * 具体动作（重命名/分叉/分享图/导出/归档/设备/删除）由调用方以 lambda 注入。
  */
 internal fun workspaceHeaderMenuItems(
     viewMode: String,
@@ -26,6 +27,7 @@ internal fun workspaceHeaderMenuItems(
     onArchive: () -> Unit,
     onShareImage: () -> Unit,
     onExport: () -> Unit,
+    onOpenDevice: () -> Unit,
     onDelete: () -> Unit,
 ): List<DshMenuItem> {
     val contextual = buildList {
@@ -52,6 +54,7 @@ internal fun workspaceHeaderMenuItems(
         DshMenuItem(ArchiveOutline20, L.archiveSession) { onCloseMenu(); onArchive() },
         DshMenuItem(Icons.Default.Image, L.shareConversationImage) { onCloseMenu(); onShareImage() },
         DshMenuItem(Icons.Default.Share, L.exportConversation) { onCloseMenu(); onExport() },
+        DshMenuItem(Icons.Outlined.Devices, L.deviceAndPairing) { onCloseMenu(); onOpenDevice() },
         DshMenuItem(TrashOutline16, L.deleteSession, danger = true) { onCloseMenu(); onDelete() },
     )
 }

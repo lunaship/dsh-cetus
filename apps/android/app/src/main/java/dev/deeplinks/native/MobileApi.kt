@@ -220,8 +220,37 @@ internal fun resolveHarnessLabel(
     fallback: String,
 ): String {
     val id = activeId.presentOrNull() ?: settingsId.presentOrNull() ?: return fallback
-    return presets.find { it.id == id }?.name?.presentOrNull() ?: id
+    return presetDisplayName(id, presets.find { it.id == id }?.name)
 }
+
+/**
+ * DSH 内置预设的本地化名称（对齐桌面版 ui-agent-preset 文案表）。
+ * 内置预设在服务端没有 name，列表里只剩 id；自定义预设用它自己的 name。
+ */
+internal fun builtinPresetName(id: String): String? = when (id) {
+    "standard" -> L.presetStandard
+    "ptc", "code" -> L.presetCode
+    "minimal" -> L.presetMinimal
+    "cordis", "creator" -> L.presetCreator
+    else -> null
+}
+
+internal fun builtinPresetDescription(id: String): String? = when (id) {
+    "standard" -> L.presetStandardDesc
+    "ptc", "code" -> L.presetCodeDesc
+    "minimal" -> L.presetMinimalDesc
+    "cordis", "creator" -> L.presetCreatorDesc
+    else -> null
+}
+
+internal fun presetDisplayName(id: String, serverName: String?): String {
+    val name = serverName.presentOrNull()
+    if (name != null && name != id) return name
+    return builtinPresetName(id) ?: name ?: id
+}
+
+internal fun presetDisplayDescription(id: String, serverDescription: String?): String =
+    builtinPresetDescription(id) ?: serverDescription.presentOrNull() ?: ""
 
 data class MobileSessionStats(
     val turns: Long = 0,
@@ -287,12 +316,53 @@ data class MobileAgentPreset(
     val isDefault: Boolean = false,
 )
 
-/** DeepSeek 余额视图（经插件代查，密钥不下发手机）。 */
+data class MobileWallet(val currency: String, val balance: String)
+
+/**
+ * DeepSeek 账户余额（插件代调 account/getBalance）。
+ * status：ready / signed-out / failed / unavailable（旧 DSH）。
+ */
 data class MobileBalance(
-    val balance: Double = 0.0,
-    val used: Double = 0.0,
-    val remainder: Double = 0.0,
-    val currency: String = "USD",
+    val status: String,
+    val wallets: List<MobileWallet> = emptyList(),
+    val bonusWallets: List<MobileWallet> = emptyList(),
+)
+
+data class MobileProviderCredential(
+    val configured: Boolean,
+    val writable: Boolean,
+    val source: String? = null,
+)
+
+/** 模型页供应商行；kind = "account"（DeepSeek 账户）或 "api"（API 密钥）。 */
+data class MobileProviderRow(
+    val provider: String,
+    val displayName: String,
+    val kind: String,
+    val active: Boolean,
+    val custom: Boolean,
+    val keyRef: String?,
+    val credential: MobileProviderCredential?,
+    val models: List<MobileModelOption>,
+    val modelsEditable: Boolean,
+    val canDiscover: Boolean,
+)
+
+data class MobileAddableProvider(val provider: String, val displayName: String)
+
+data class MobileProviderDirectory(
+    val writable: Boolean,
+    val providers: List<MobileProviderRow>,
+    val addable: List<MobileAddableProvider>,
+)
+
+/** 手机要追加到 profile.models 的条目；inputModalities 仅 text / image。 */
+data class MobileModelDraft(
+    val id: String,
+    val name: String? = null,
+    val contextWindow: Long? = null,
+    val maxTokens: Long? = null,
+    val inputModalities: List<String> = emptyList(),
 )
 
 /** 服务端为源的 AppSettings（WI-004）：默认 Agent 预设/权限/语言/主题/Enter 行为/默认模型。 */
@@ -380,28 +450,7 @@ class MobileApiClient(private val host: Host) {
     fun getModels(sessionId: String): MobileModelCatalog {
         val root = request("GET", "/dsh-link/mobile/models?sessionId=" + java.net.URLEncoder.encode(sessionId, "UTF-8"))
         val current = root.optJSONObject("current")
-        val groupsArr = root.optJSONArray("groups") ?: org.json.JSONArray()
-        val groups = (0 until groupsArr.length()).map { i ->
-            val g = groupsArr.getJSONObject(i)
-            val models = g.optJSONArray("models") ?: org.json.JSONArray()
-            MobileModelGroup(
-                provider = g.optString("provider", L.unknownProvider),
-                displayName = g.optString("providerName").ifBlank { g.optString("provider", L.unknownProvider) },
-                models = (0 until models.length()).map { j ->
-                    val m = models.getJSONObject(j)
-                    MobileModelOption(
-                        id = m.optString("id", ""),
-                        name = m.optString("name").takeIf { it.isNotBlank() },
-                        contextWindow = if (m.has("contextWindow") && !m.isNull("contextWindow")) m.optLong("contextWindow") else null,
-                        maxTokens = if (m.has("maxTokens") && !m.isNull("maxTokens")) m.optLong("maxTokens") else null,
-                        reasoningEfforts = (m.optJSONArray("reasoningEfforts") ?: org.json.JSONArray()).let { arr ->
-                            (0 until arr.length()).map { arr.getString(it) }
-                        },
-                        defaultEffort = m.optString("defaultEffort").takeIf { it.isNotBlank() },
-                    )
-                },
-            )
-        }
+        val groups = parseModelGroups(root.optJSONArray("groups"))
         return MobileModelCatalog(
             currentProvider = current?.optString("provider"),
             currentModel = current?.optString("model"),
@@ -794,36 +843,56 @@ class MobileApiClient(private val host: Host) {
         }
     }
 
-    fun getLlmModels(): List<MobileModelGroup> {
-        val root = request("GET", "/dsh-link/mobile/llm-models")
-        val arr = root.optJSONArray("groups") ?: org.json.JSONArray()
-        return (0 until arr.length()).map { i ->
-            val g = arr.getJSONObject(i)
-            val models = g.optJSONArray("models") ?: org.json.JSONArray()
-            MobileModelGroup(
-                provider = g.optString("provider", L.unknownProvider),
-                models = (0 until models.length()).map { j ->
-                    val m = models.getJSONObject(j)
-                    MobileModelOption(
-                        id = m.optString("id", ""),
-                        name = m.optString("name").takeIf { it.isNotBlank() },
-                        contextWindow = if (m.has("contextWindow") && !m.isNull("contextWindow")) m.optLong("contextWindow") else null,
-                        maxTokens = if (m.has("maxTokens") && !m.isNull("maxTokens")) m.optLong("maxTokens") else null,
-                    )
-                },
-            )
-        }
+    fun getLlmModels(): List<MobileModelGroup> =
+        parseModelGroups(request("GET", "/dsh-link/mobile/llm-models").optJSONArray("groups"))
+
+    fun getBalance(locale: String): MobileBalance =
+        parseBalance(request("GET", "/dsh-link/mobile/balance?locale=" + java.net.URLEncoder.encode(locale, "UTF-8")))
+
+    fun getProviders(): MobileProviderDirectory =
+        parseProviderDirectory(request("GET", "/dsh-link/mobile/providers"))
+
+    /** 追加 / 删除供应商 profile.models 条目（插件只写该数组，原条目字段保留）。 */
+    fun editProviderModels(
+        provider: String,
+        add: List<MobileModelDraft> = emptyList(),
+        remove: List<String> = emptyList(),
+    ): MobileProviderDirectory {
+        val body = JSONObject()
+            .put("provider", provider)
+            .put("add", org.json.JSONArray(add.map { it.toJson() }))
+            .put("remove", org.json.JSONArray(remove))
+        return parseProviderDirectory(request("POST", "/dsh-link/mobile/providers/models", body))
     }
 
-    /** DeepSeek 余额（经插件 /dsh-link/mobile/balance 代查，密钥不下发）。 */
-    fun getBalance(): MobileBalance {
-        val root = request("GET", "/dsh-link/mobile/balance")
-        return MobileBalance(
-            balance = root.optDouble("balance", 0.0),
-            used = root.optDouble("used", 0.0),
-            remainder = root.optDouble("remainder", 0.0),
-            currency = root.optString("currency", "USD"),
-        )
+    /** 单向写入 API 密钥；响应只带「已配置」状态，不回显密钥。 */
+    fun setProviderApiKey(provider: String, apiKey: String): MobileProviderDirectory {
+        val body = JSONObject().put("provider", provider).put("apiKey", apiKey)
+        return parseProviderDirectory(request("POST", "/dsh-link/mobile/providers/credential", body))
+    }
+
+    fun addCatalogProvider(provider: String, apiKey: String?): MobileProviderDirectory {
+        val body = JSONObject().put("provider", provider)
+        if (!apiKey.isNullOrBlank()) body.put("apiKey", apiKey)
+        return parseProviderDirectory(request("POST", "/dsh-link/mobile/providers/add", body))
+    }
+
+    /** 用电脑端已存的地址与密钥向供应商拉取可用模型（候选，需再勾选写入）。 */
+    fun discoverProviderModels(provider: String): List<MobileModelDraft> {
+        val root = request("POST", "/dsh-link/mobile/providers/discover", JSONObject().put("provider", provider))
+        val arr = root.optJSONArray("models") ?: org.json.JSONArray()
+        return (0 until arr.length()).mapNotNull { i ->
+            val m = arr.optJSONObject(i) ?: return@mapNotNull null
+            val id = m.optString("id").trim()
+            if (id.isEmpty()) return@mapNotNull null
+            MobileModelDraft(
+                id = id,
+                name = m.optNullableString("name"),
+                contextWindow = m.optPositiveLong("contextWindow"),
+                maxTokens = m.optPositiveLong("maxTokens"),
+                inputModalities = m.optStringList("inputModalities"),
+            )
+        }
     }
 
     /** 已配对到此电脑端的设备列表（对标 web /dsh-link/devices）。 */
@@ -972,6 +1041,98 @@ internal fun friendlyNetworkError(error: Throwable): String {
         msg.contains("truncated HTTP body") -> L.relayTruncatedBody
         else -> msg.ifBlank { error.javaClass.simpleName }
     }
+}
+
+private fun JSONObject.optPositiveLong(key: String): Long? =
+    if (has(key) && !isNull(key)) optLong(key).takeIf { it > 0 } else null
+
+private fun JSONObject.optStringList(key: String): List<String> {
+    val arr = optJSONArray(key) ?: return emptyList()
+    return (0 until arr.length()).mapNotNull { arr.optString(it).presentOrNull() }
+}
+
+internal fun parseModelOption(m: JSONObject): MobileModelOption = MobileModelOption(
+    id = m.optString("id", ""),
+    name = m.optString("name").takeIf { it.isNotBlank() },
+    contextWindow = m.optPositiveLong("contextWindow"),
+    maxTokens = m.optPositiveLong("maxTokens"),
+    reasoningEfforts = m.optStringList("reasoningEfforts"),
+    defaultEffort = m.optString("defaultEffort").takeIf { it.isNotBlank() },
+)
+
+internal fun parseModelGroups(arr: org.json.JSONArray?): List<MobileModelGroup> {
+    if (arr == null) return emptyList()
+    return (0 until arr.length()).mapNotNull { i ->
+        val g = arr.optJSONObject(i) ?: return@mapNotNull null
+        val models = g.optJSONArray("models") ?: org.json.JSONArray()
+        MobileModelGroup(
+            provider = g.optString("provider", L.unknownProvider),
+            displayName = g.optString("providerName").ifBlank { g.optString("provider", L.unknownProvider) },
+            models = (0 until models.length()).mapNotNull { j -> models.optJSONObject(j)?.let(::parseModelOption) },
+        )
+    }
+}
+
+private fun parseWallets(arr: org.json.JSONArray?): List<MobileWallet> {
+    if (arr == null) return emptyList()
+    return (0 until arr.length()).mapNotNull { i ->
+        val w = arr.optJSONObject(i) ?: return@mapNotNull null
+        val currency = w.optString("currency").presentOrNull() ?: return@mapNotNull null
+        MobileWallet(currency = currency, balance = w.optString("balance"))
+    }
+}
+
+internal fun parseBalance(root: JSONObject): MobileBalance = MobileBalance(
+    status = root.optString("status").presentOrNull() ?: "unavailable",
+    wallets = parseWallets(root.optJSONArray("wallets")),
+    bonusWallets = parseWallets(root.optJSONArray("bonusWallets")),
+)
+
+internal fun parseProviderDirectory(root: JSONObject): MobileProviderDirectory {
+    val rows = root.optJSONArray("providers") ?: org.json.JSONArray()
+    val addable = root.optJSONArray("addable") ?: org.json.JSONArray()
+    return MobileProviderDirectory(
+        writable = root.optBoolean("writable", false),
+        providers = (0 until rows.length()).mapNotNull { i ->
+            val p = rows.optJSONObject(i) ?: return@mapNotNull null
+            val provider = p.optString("provider").presentOrNull() ?: return@mapNotNull null
+            val cred = p.optJSONObject("credential")
+            val models = p.optJSONArray("models") ?: org.json.JSONArray()
+            MobileProviderRow(
+                provider = provider,
+                displayName = p.optString("displayName").presentOrNull() ?: provider,
+                kind = p.optString("kind").presentOrNull() ?: "api",
+                active = p.optBoolean("active", true),
+                custom = p.optBoolean("custom", false),
+                keyRef = p.optNullableString("keyRef"),
+                credential = cred?.let {
+                    MobileProviderCredential(
+                        configured = it.optBoolean("configured", false),
+                        writable = it.optBoolean("writable", false),
+                        source = it.optNullableString("source"),
+                    )
+                },
+                models = (0 until models.length()).mapNotNull { j -> models.optJSONObject(j)?.let(::parseModelOption) }
+                    .filter { it.id.isNotBlank() },
+                modelsEditable = p.optBoolean("modelsEditable", false),
+                canDiscover = p.optBoolean("canDiscover", false),
+            )
+        },
+        addable = (0 until addable.length()).mapNotNull { i ->
+            val a = addable.optJSONObject(i) ?: return@mapNotNull null
+            val provider = a.optString("provider").presentOrNull() ?: return@mapNotNull null
+            MobileAddableProvider(provider, a.optString("displayName").presentOrNull() ?: provider)
+        },
+    )
+}
+
+internal fun MobileModelDraft.toJson(): JSONObject {
+    val o = JSONObject().put("id", id)
+    name.presentOrNull()?.let { o.put("name", it) }
+    contextWindow?.takeIf { it > 0 }?.let { o.put("contextWindow", it) }
+    maxTokens?.takeIf { it > 0 }?.let { o.put("maxTokens", it) }
+    if (inputModalities.isNotEmpty()) o.put("inputModalities", org.json.JSONArray(inputModalities))
+    return o
 }
 
 internal fun parseMobileApiError(code: Int, text: String): String {

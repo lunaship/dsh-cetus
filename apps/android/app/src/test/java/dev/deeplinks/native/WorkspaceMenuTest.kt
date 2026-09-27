@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 顶栏「更多操作」菜单的纯逻辑测试。对话/轨迹切换已移到会话标题下，不属于溢出菜单。
+ * 顶栏「更多操作」菜单的纯逻辑测试。对话/轨迹切换在顶栏胶囊分段里，不属于溢出菜单。
  *
  * 这些规则原先埋在 WorkspaceScreen 的 composable 里，无法单测；
  * 抽成 workspaceHeaderMenuItems 后即可表驱动验证。
@@ -38,26 +38,27 @@ class WorkspaceMenuTest {
         onArchive = { ctx.log += "archive" },
         onShareImage = { ctx.log += "shareImage" },
         onExport = { ctx.log += "export" },
+        onOpenDevice = { ctx.log += "device" },
         onDelete = { ctx.log += "delete" },
     )
 
     @Test
-    fun baseMenuAlwaysHasSevenActions() {
-        assertEquals(7, menu(Ctx(), viewMode = "trace").size)
+    fun baseMenuAlwaysHasEightActions() {
+        assertEquals(8, menu(Ctx(), viewMode = "trace").size)
     }
 
     @Test
     fun contextualItemsAreGatedByState() {
-        assertEquals(8, menu(Ctx(), viewMode = "chat").size)  // 对话视图含工具查找
-        assertEquals(7, menu(Ctx(), viewMode = "trace").size)  // 轨迹视图无工具查找
+        assertEquals(9, menu(Ctx(), viewMode = "chat").size)  // 对话视图含工具查找
+        assertEquals(8, menu(Ctx(), viewMode = "trace").size)  // 轨迹视图无工具查找
     }
 
     @Test
     fun subagentsAndTurnJumpsAppearOnlyWhenRelevant() {
-        assertEquals(7, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
-        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 1).size)
-        assertEquals(8, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
-        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
+        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
+        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1).size)
+        assertEquals(9, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
+        assertEquals(10, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
     }
 
     @Test
@@ -68,6 +69,16 @@ class WorkspaceMenuTest {
         assertTrue(delete.danger)
         delete.onClick()
         assertEquals(listOf("close", "delete"), ctx.log)
+    }
+
+    @Test
+    fun deviceEntrySitsAboveDelete() {
+        val ctx = Ctx()
+        val items = menu(ctx)
+        val device = items[items.lastIndex - 1]
+        assertEquals(L.deviceAndPairing, device.label)
+        device.onClick()
+        assertEquals(listOf("close", "device"), ctx.log)
     }
 
     @Test

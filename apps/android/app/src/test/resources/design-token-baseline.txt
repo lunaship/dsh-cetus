@@ -3,7 +3,8 @@
 # 迁移减少存量后请把数字调小（只允许下调，禁止回涨）。
 # 本轮已把 12/18、13/20、11/16 三组密集字号收敛到 DshType.captionRelaxed / bodyDense / microRelaxed
 # （角色为精确匹配，validateDebugScreenshotTest 通过证明零视觉变化）。
-dev/deeplinks/devices/DevicesActivity.kt 14
+dev/deeplinks/devices/DeviceCard.kt 1
+dev/deeplinks/devices/DevicesActivity.kt 13
 dev/deeplinks/native/ApprovalCard.kt 2
 dev/deeplinks/native/ComposerBar.kt 4
 dev/deeplinks/native/ComposerEditField.kt 2
@@ -17,7 +18,7 @@ dev/deeplinks/native/ModelPicker.kt 6
 dev/deeplinks/native/PermissionSheets.kt 10
 dev/deeplinks/native/ProducedFiles.kt 2
 dev/deeplinks/native/QuestionCard.kt 2
-dev/deeplinks/native/SettingsActivity.kt 22
+dev/deeplinks/native/SettingsActivity.kt 13
 dev/deeplinks/native/ThinkingTrace.kt 1
 dev/deeplinks/native/TrajectoryView.kt 2
 dev/deeplinks/native/ui/DshComponents.kt 4

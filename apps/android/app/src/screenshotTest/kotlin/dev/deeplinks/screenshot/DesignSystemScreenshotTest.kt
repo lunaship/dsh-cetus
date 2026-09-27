@@ -54,7 +54,6 @@ import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
 import dev.deeplinks.native.SessionStatsDetailDialog
 import dev.deeplinks.native.SidebarFooter
-import dev.deeplinks.native.SidebarHostRow
 import dev.deeplinks.native.SidebarNewSessionRow
 import dev.deeplinks.native.SidebarSearchField
 import dev.deeplinks.native.SidebarSectionHeader
@@ -277,8 +276,6 @@ private fun TopBarWall() {
         onNavigate = {},
         viewMode = "chat",
         showViewModeTabs = true,
-        hostName = "MacBook Pro",
-        onOpenDevice = {},
         onSelectViewMode = {},
         menuExpanded = false,
         onMenuExpandedChange = {},
@@ -450,8 +447,6 @@ private fun SidebarWall() {
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        SectionTitle("Header")
-        SidebarHostRow(hostName = "MacBook Pro", onOpenDevice = {})
         SectionTitle("Primary action")
         SidebarNewSessionRow(onClick = {})
         SectionTitle("Section header")
@@ -513,7 +508,13 @@ private fun SidebarWall() {
             onDeleteWorkspace = {},
         )
         SectionTitle("Footer")
-        SidebarFooter(isDarkTheme = false, onOpenSettings = {}, onToggleTheme = {})
+        SidebarFooter(
+            isDarkTheme = false,
+            hostName = "MacBook Pro",
+            onOpenSettings = {},
+            onOpenDevice = {},
+            onToggleTheme = {},
+        )
     }
 }
 

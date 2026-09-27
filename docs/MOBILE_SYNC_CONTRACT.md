@@ -149,6 +149,17 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
   电脑在「手机连接」面板批准后才注册；拒绝、过期或该设备被吊销则丢弃。旧 App 看到没有 `workspace` 对象时按原错误提示，不会静默注册。
 - `POST /dsh-link/mobile/revoke` 只能吊销调用方自己的设备。`deviceId` 或 `name` 指向其他设备时返回 403 `只能吊销当前设备`。跨设备吊销与全部吊销仍只在回环面板。
 
+## 模型页：余额与供应商（DSH 0.1.7 起）
+
+- `GET /dsh-link/mobile/balance?locale=` 代调 `account/getBalance`，恒回 200：`{ status, wallets, bonusWallets }`。`status` 为 `ready`（钱包 `{currency, balance}`，`balance` 为平台原样十进制字符串）、`signed-out`（主机未登录 DeepSeek 账户）、`failed`（平台查询失败）、`unavailable`（旧 DSH 没有该方法）。
+- `GET /dsh-link/mobile/providers` 返回 `{ writable, providers, addable }`，行序与桌面一致（`deepseek-account`、`deepseek-official` 置顶）。每行 `{ provider, displayName, kind: "account"|"api", active, custom, keyRef, credential: {configured, writable, source}|null, models: [{id, name, contextWindow, maxTokens}], modelsEditable, canDiscover }`。不下发 `baseURL` / `api` 等路由字段，更不下发密钥值。`addable` 是目录里尚未配置的供应商 `{provider, displayName}`。
+- 写接口都返回刷新后的同一形状（外加 `ok: true`），经设备变更闸门执行，吊销即 401：
+  - `POST .../providers/models {provider, add?: [{id, name?, contextWindow?, maxTokens?, inputModalities?}], remove?: [id]}`：只写该供应商 profile 的 `models` 数组，原有条目字段原样保留。仅 `modelsEditable` 为 true（profile 显式带 `models`）时可用，否则 409 `models-inherited`，避免手机把适配器默认目录整体替换掉。不允许清空为 0 个。
+  - `POST .../providers/credential {provider, apiKey}`：密钥规则与桌面相同（可见 ASCII、非 `NAME=value`、非引号包裹）。写入 profile 的 `apiKeyEnv`，没有则写入派生名 `<PROVIDER>_API_KEY` 并补记到 profile；值单向进 `credentials/set`，响应与日志均不回显。来源只读（如环境变量）时 409 `credential-read-only`。
+  - `POST .../providers/add {provider, apiKey?}`：只接受 `addable` 里的目录供应商。自定义接口（协议 + baseURL）仍只在电脑端添加。
+  - `POST .../providers/discover {provider}`：用已存 profile 的 `baseURL` / `api` 与已存密钥调 `llm/discoverModels`，忽略手机传来的路由字段；返回候选 `models`，由用户勾选后再走 `providers/models` 写入。
+- 所有写入带读到的 `expectedRevision`；电脑端同时修改时返回 409 `conflict`，App 刷新后重试。
+
 ## 错误与重试
 
 - 校验失败（未知题目 ID、无效选项、缺必填、超长）返回 400，请求保持可处理。

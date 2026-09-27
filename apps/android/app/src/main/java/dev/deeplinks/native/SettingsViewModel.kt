@@ -23,6 +23,11 @@ internal class SettingsViewModel(
     val balance = mutableStateOf<MobileBalance?>(null)
     val balanceLoading = mutableStateOf(false)
     val balanceError = mutableStateOf<String?>(null)
+    val providers = mutableStateOf<MobileProviderDirectory?>(null)
+    val providersLoading = mutableStateOf(false)
+    val providersError = mutableStateOf<String?>(null)
+    /** 旧插件没有 /providers：回落只读目录。 */
+    val providersUnsupported = mutableStateOf(false)
 
     companion object {
         fun factory(host: Host?, initialSettings: AppSettings) = viewModelFactory {

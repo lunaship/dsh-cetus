@@ -80,6 +80,7 @@ import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.DshBannerTone
+import dev.deeplinks.native.ui.DshTopSegment
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material.icons.Icons
@@ -87,7 +88,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.draw.shadow
 
@@ -783,8 +783,8 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 会话顶栏：导航、会话名、对话/轨迹切换、设备入口和溢出菜单。
- * 菜单项由 [workspaceHeaderMenuItems] 构建后传入。
+ * 会话顶栏（单行）：导航、会话名、对话/轨迹胶囊分段和溢出菜单。
+ * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
  */
 @Composable
 internal fun WorkspaceTopBar(
@@ -794,8 +794,6 @@ internal fun WorkspaceTopBar(
     onNavigate: () -> Unit,
     viewMode: String,
     showViewModeTabs: Boolean,
-    hostName: String,
-    onOpenDevice: () -> Unit,
     onSelectViewMode: (String) -> Unit,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
@@ -856,22 +854,11 @@ internal fun WorkspaceTopBar(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "${L.deviceAndPairing} · $hostName"
-                    }
-                    .clickable(onClick = onOpenDevice),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.Devices,
-                    contentDescription = null,
-                    tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(18.dp),
+            if (showViewModeTabs) {
+                DshTopSegment(
+                    labels = listOf(L.tabChat, L.tabTrace),
+                    selectedIndex = if (viewMode == "trace") 1 else 0,
+                    onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
                 )
             }
 
@@ -900,69 +887,6 @@ internal fun WorkspaceTopBar(
                 )
             }
         }
-
-        if (showViewModeTabs) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 56.dp, end = 56.dp, bottom = 6.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(Dsh.bgSubtle)
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                WorkspaceViewModeTab(
-                    modifier = Modifier.weight(1f),
-                    label = L.tabChat,
-                    selected = viewMode == "chat",
-                    onClick = { onSelectViewMode("chat") },
-                )
-                WorkspaceViewModeTab(
-                    modifier = Modifier.weight(1f),
-                    label = L.tabTrace,
-                    selected = viewMode == "trace",
-                    onClick = { onSelectViewMode("trace") },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WorkspaceViewModeTab(
-    modifier: Modifier,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Box(
-        modifier = modifier
-            .heightIn(min = 40.dp)
-            .clip(RoundedCornerShape(DshRadius.full))
-            .background(
-                when {
-                    selected -> Dsh.bgCard
-                    pressed -> Dsh.pressed
-                    else -> Color.Transparent
-                }
-            )
-            .semantics {
-                role = Role.Tab
-                contentDescription = label
-                stateDescription = if (selected) L.currentLabel else ""
-            }
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
-            style = DshType.label,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-        )
     }
 }
 

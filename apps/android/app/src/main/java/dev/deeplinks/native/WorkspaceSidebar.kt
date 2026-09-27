@@ -100,12 +100,7 @@ internal fun WorkspaceSidebar(
             .fillMaxSize()
             .padding(top = 4.dp)
     ) {
-        // 头部：当前主机行（整行可点 → 切换设备）
-        SidebarHostRow(hostName = hostName, onOpenDevice = { actions.onOpenDevice() })
-
-        Spacer(Modifier.height(2.dp))
-
-        // 新会话（列表行，品牌 + 图标）
+        // 新会话（列表行，品牌 + 图标）；设备入口在底栏图标，不占头部
         SidebarNewSessionRow(onClick = { actions.onNewSession() })
 
         Spacer(Modifier.height(8.dp))
@@ -339,7 +334,9 @@ internal fun WorkspaceSidebar(
         val isDarkTheme = Dsh.isDark
         SidebarFooter(
             isDarkTheme = isDarkTheme,
+            hostName = hostName,
             onOpenSettings = { actions.onOpenSettings() },
+            onOpenDevice = { actions.onOpenDevice() },
             onToggleTheme = { dev.deeplinks.core.ThemeManager.toggleTheme(context, isDarkTheme) },
         )
     }

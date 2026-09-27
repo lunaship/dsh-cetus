@@ -14,7 +14,13 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
 test("白名单是预期闭集（增删方法需同步本测试）", () => {
   assert.deepEqual([...RPC_METHOD_ALLOWLIST], [
+    "account.getBalance",
     "agentPreset.list",
+    "credentials.describe",
+    "credentials.set",
+    "llm.discoverModels",
+    "llm.listConfigurableProviders",
+    "llm.listProviders",
     "llm.models",
     "messageFeedback.delete",
     "messageFeedback.list",
@@ -30,6 +36,7 @@ test("白名单是预期闭集（增删方法需同步本测试）", () => {
     "session.search",
     "session.selectModel",
     "settings.describe",
+    "settings.mutate",
     "settings.update",
     "workspace.archiveSession",
     "workspace.create",

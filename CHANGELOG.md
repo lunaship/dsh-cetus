@@ -2,6 +2,13 @@
 
 ## dsh-links 未发布
 
+手机「模型」页对齐桌面版：余额恢复显示，供应商可在手机上补模型、填 API 密钥。
+
+- 恢复 `GET /dsh-link/mobile/balance`，这次代调真实存在的 `account/getBalance`（DSH 0.1.7 起），按充值 / 赠金钱包返回；未登录、平台失败、旧 DSH 分别给 `signed-out` / `failed` / `unavailable`，不再 404。
+- 新增 `GET /dsh-link/mobile/providers` 与 `POST .../providers/{models,credential,add,discover}`：供应商目录、增删模型、单向写 API 密钥、添加目录供应商、从供应商拉取可用模型。写入只落在 profile 的 `models` / `apiKeyEnv`，由插件自拼 `settings/mutate` ops；`baseURL` / `api` 不开放，密钥不回显。字段见 `docs/MOBILE_SYNC_CONTRACT.md`。
+- `RPC_METHOD_ALLOWLIST` 新增 `account.getBalance`、`credentials.describe`、`credentials.set`、`llm.discoverModels`、`llm.listConfigurableProviders`、`llm.listProviders`、`settings.mutate`。
+- 证据：新增 `test/mobile-models.test.mjs` 13 条（密钥校验、目录排序、余额三态、继承目录拒写、只读凭据、并发冲突、discover 忽略手机传入的 baseURL、响应不含密钥）。
+
 去「Web 套壳」味：字阶向原生 M3 收敛，容器分层改 tonal 色阶。
 
 - 排版：淘汰 1:1 平移 DSH Web CSS 的像素微字号——13sp 正文族（`t13`/`bodyDense` 等 10 个角色、约 150 处调用）并入语义角色 `body`/`title`/`bodyStrong`（15sp 起）；「小字号 + 松行高」角色（`t11`/`t12` 11/22、12/22 等）并入 `micro*`/`caption`/`label`（行高比收敛到 M3 最松的 bodyLarge 16/26 之内）。`DshType` 从 40+ 像素角色收敛为 13 语义 + 18 密集档，新增 `DshTypeScaleTest` 锁死契约（字号在字阶表内、行高比 ≤ 1.65、白名单制），Web 形态回流会直接红灯。

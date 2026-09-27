@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto"
 import { homedir, hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
 import { mobileSessionSummary } from "./mobile-session-summary.js"
+import { handleMobileModelsApi } from "./mobile-models.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
 import { relayPairSnapshot } from "./relay/crypto.js"
@@ -777,6 +778,8 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         return json(res, 200, result ?? { ok: true })
       }
     }
+
+    if (await handleMobileModelsApi(req, res, targetPort, state, device, pathname, rt, deps)) return
 
     return json(res, 404, { error: "mobile endpoint not found" })
   } catch (error) {

@@ -153,7 +153,6 @@ private fun SettingsScreen(
     var llmLoading by settingsViewModel.llmLoading
     var llmError by settingsViewModel.llmError
     var llmReloadEpoch by remember { mutableStateOf(0) }
-    var expandedProviders by settingsViewModel.expandedProviders
     var showFullAccessConfirm by remember { mutableStateOf(false) }
     var legalDoc by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -162,43 +161,6 @@ private fun SettingsScreen(
     var namespaceRevisions by settingsViewModel.namespaceRevisions
     var savingNs by settingsViewModel.savingNamespace
     var saveErrors by settingsViewModel.saveErrors
-
-    // DeepSeek 余额（经插件代查，模型页展示）
-    var balance by settingsViewModel.balance
-    var balanceLoading by settingsViewModel.balanceLoading
-    var balanceError by settingsViewModel.balanceError
-    var balanceReloadEpoch by remember { mutableStateOf(0) }
-
-    LaunchedEffect(dest, host, balanceReloadEpoch) {
-        if (dest != SettingsDest.MODELS) return@LaunchedEffect
-        if (host == null) {
-            balanceLoading = false
-            if (balance == null) balanceError = s.notConnectedCannotSave
-            return@LaunchedEffect
-        }
-        balanceLoading = true
-        withContext(Dispatchers.IO) {
-            try {
-                val b = settingsClient?.getBalance()
-                withContext(Dispatchers.Main) {
-                    if (b != null) {
-                        balance = b
-                        balanceError = null
-                    } else if (balance == null) {
-                        balanceError = s.loadFailed
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    if (balance == null) {
-                        balanceError = e.message?.takeIf { it.isNotBlank() } ?: s.loadFailed
-                    }
-                }
-            } finally {
-                withContext(Dispatchers.Main) { balanceLoading = false }
-            }
-        }
-    }
 
     LaunchedEffect(host) {
         if (host == null) return@LaunchedEffect
@@ -370,155 +332,19 @@ private fun SettingsScreen(
 
             composable(SettingsDest.MODELS.name) {
                 SettingsPage {
-                        // 默认模型（桌面端「设置 → 模型」的默认项；新会话未手动选择时使用）
-                        val defaultModelValue = listOfNotNull(
-                            appSettings.defaultModelProvider,
-                            appSettings.defaultModel,
-                        ).joinToString(" / ").ifBlank { s.noneSelected }
-                        DshSettingsGroup {
-                            SettingsItem(
-                                title = s.defaultModelSetting,
-                                description = "$defaultModelValue · ${s.defaultModelSettingDesc}",
-                                onClick = null,
-                            )
-                        }
-                        // 余额是只读账户信息：刷新作为明确操作，不伪装成可编辑设置项。
-                        SettingsSection(
-                            s.sectionBalance,
-                            actionLabel = if (host == null) s.addDevice else s.refreshBalance,
-                            actionEnabled = host == null || !balanceLoading,
-                            onAction = {
-                                if (host == null) onOpenDevices() else balanceReloadEpoch += 1
-                            },
-                        )
-                        DshSettingsGroup {
-                            val b = balance
-                            val description = when {
-                                b != null -> s.balanceSummary.format(b.balance, b.currency, b.used, b.remainder) + " · " + s.balanceReadOnlyHint
-                                balanceLoading -> s.querying
-                                host == null -> s.balanceUnavailable
-                                else -> balanceError ?: s.loadFailed
-                            }
-                            SettingsItem(
-                                title = s.deepseekBalance,
-                                description = description,
-                                onClick = null,
-                            )
-                        }
-                        SettingsSection(s.modelListSetting)
-                        val modelKind = catalogKind(
-                            hasItems = llmGroups.isNotEmpty(),
-                            initialLoad = llmLoading,
-                            hasError = llmError != null,
-                        )
-                        when (modelKind) {
-                            SessionListKind.Loading -> Text(
-                                s.loadingModelList,
-                                color = Dsh.labelTertiary,
-                                style = DshType.body,
-                                modifier = Modifier.padding(vertical = 12.dp),
-                            )
-                            SessionListKind.Error -> SettingsLoadRetry(
-                                message = llmError ?: s.loadModelListFailed,
-                                onRetry = { llmReloadEpoch += 1 },
-                            )
-                            SessionListKind.Empty -> Text(
-                                s.noAvailableModels,
-                                color = Dsh.labelTertiary,
-                                style = DshType.body,
-                                modifier = Modifier.padding(vertical = 12.dp),
-                            )
-                            SessionListKind.Content -> Unit
-                        }
-                        if (modelKind == SessionListKind.Content) {
-                        // 供应商折叠卡
-                        llmGroups.forEach { group ->
-                            val expanded = expandedProviders.contains(group.provider)
-                            val interaction = remember { MutableInteractionSource() }
-                            val pressed by interaction.collectIsPressedAsState()
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(DshRadius.lg))
-                                    .background(Dsh.bgSubtle)
-                                    .clickable(interactionSource = interaction, indication = dshRipple()) {
-                                        expandedProviders = if (expanded) expandedProviders - group.provider else expandedProviders + group.provider
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        if (expanded) ChevronDownOutline14 else ChevronRightOutline14,
-                                        contentDescription = null,
-                                        tint = Dsh.labelTertiary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        group.provider,
-                                        color = Dsh.labelPrimary,
-                                        style = DshType.labelLarge,
-                                        fontWeight = FontWeight(500),
-                                        lineHeight = 20.sp,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        "${group.models.size}",
-                                        color = Dsh.labelTertiary,
-                                        style = DshType.caption,
-                                        lineHeight = 20.sp
-                                    )
-                                }
-                                if (expanded) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(1.dp)
-                                            .background(Dsh.borderSubtle)
-                                    )
-                                    group.models.forEach { model ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                model.name ?: model.id,
-                                                color = Dsh.labelSecondary,
-                                                style = DshType.body,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            model.contextWindow?.let {
-                                                Text(
-                                                    s.contextSize.format(compactTokens(it)),
-                                                    color = Dsh.labelTertiary,
-                                                    style = DshType.t11x18,
-                                                    lineHeight = 18.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-                        }
-                        // 添加模型：当前 Harness 协议无模型供应商写入接口（WI-004 禁止假保存），
-                        // 不做假按钮，只留一行说明指向电脑端
-                        Text(
-                            s.modelAddOnDesktopHint,
-                            color = Dsh.labelTertiary,
-                            style = DshType.caption,
-                            lineHeight = 17.sp,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                        )
-                        }
+                    ModelsSettingsPage(
+                        host = host,
+                        viewModel = settingsViewModel,
+                        appSettings = appSettings,
+                        llmGroups = llmGroups,
+                        llmLoading = llmLoading,
+                        llmError = llmError,
+                        onReloadCatalog = { llmReloadEpoch += 1 },
+                        savingNs = savingNs,
+                        saveErrors = saveErrors,
+                        onSave = { ns, patch, onSuccess -> saveNamespace(ns, patch, onSuccess) },
+                        onOpenDevices = onOpenDevices,
+                    )
                 }
             }
 
@@ -716,13 +542,7 @@ internal fun SettingsHome(
     onOpen: (SettingsDest) -> Unit,
 ) {
     val s = DshS
-    val agentPresetLabel = when (appSettings.agentPreset) {
-        "standard" -> s.presetStandard
-        "code" -> s.presetCode
-        "minimal" -> s.presetMinimal
-        "creator", "cordis" -> s.presetCreator
-        else -> appSettings.agentPreset
-    }
+    val agentPresetLabel = presetDisplayName(appSettings.agentPreset, null)
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
         "dark" -> s.themeDark
@@ -974,16 +794,10 @@ private fun ConversationSettings(
         SettingsSelectItem(
             title = s.agentPreset,
             description = s.agentPresetDesc,
-            value = when (appSettings.agentPreset) {
-                "standard" -> s.presetStandard
-                "code" -> s.presetCode
-                "minimal" -> s.presetMinimal
-                "creator", "cordis" -> s.presetCreator
-                else -> appSettings.agentPreset
-            },
+            value = presetDisplayName(appSettings.agentPreset, null),
             options = listOf(
                 s.presetStandard to "standard",
-                s.presetCode to "code",
+                s.presetCode to "ptc",
                 s.presetMinimal to "minimal",
                 s.presetCreator to "cordis",
             ),
@@ -1493,7 +1307,7 @@ private fun formatSessionTime(timestamp: Long): String {
 }
 
 @Composable
-private fun SettingsLoadRetry(
+internal fun SettingsLoadRetry(
     message: String,
     onRetry: () -> Unit,
 ) {
@@ -1528,7 +1342,7 @@ private fun SettingsLoadRetry(
 
 /** 设置分组：不再逐行套白卡，仅靠分组标题与间距建立层级（Material 3 结构）。 */
 @Composable
-private fun DshSettingsGroup(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+internal fun DshSettingsGroup(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1539,7 +1353,7 @@ private fun DshSettingsGroup(content: @Composable androidx.compose.foundation.la
 
 /** iOS 式组内分隔线：发丝级、左侧内缩（与行首文字对齐）。 */
 @Composable
-private fun DshSettingsDivider() {
+internal fun DshSettingsDivider() {
     HorizontalDivider(
         color = Dsh.borderSubtle,
         thickness = 0.5.dp,
@@ -1549,7 +1363,7 @@ private fun DshSettingsDivider() {
 
 /** iOS 式分区标题：小号灰字，与卡片左缘对齐。 */
 @Composable
-private fun SettingsSection(
+internal fun SettingsSection(
     title: String,
     actionLabel: String? = null,
     actionEnabled: Boolean = true,
@@ -1593,7 +1407,7 @@ private fun SettingsSection(
 }
 
 @Composable
-private fun SettingsItem(
+internal fun SettingsItem(
     title: String,
     description: String,
     onClick: (() -> Unit)?,
@@ -1640,7 +1454,7 @@ private fun SettingsItem(
 }
 
 @Composable
-private fun SettingsConfirmDialog(
+internal fun SettingsConfirmDialog(
     title: String,
     message: String,
     confirmLabel: String,

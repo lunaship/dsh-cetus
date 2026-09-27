@@ -2072,6 +2072,7 @@ fun WorkspaceScreen(
                                     }
                                 }
                             },
+                            onOpenDevice = { onOpenDevice(null) },
                             onDelete = { currentSession?.let { openDeleteSession(it) } },
             )
             WorkspaceTopBar(
@@ -2087,8 +2088,6 @@ fun WorkspaceScreen(
                 },
                 viewMode = viewMode,
                 showViewModeTabs = currentSessionId != null,
-                hostName = host.name,
-                onOpenDevice = { onOpenDevice(null) },
                 onSelectViewMode = ::selectViewMode,
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },

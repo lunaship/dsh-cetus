@@ -310,61 +310,6 @@ internal fun SessionRowItem(
     }
 }
 
-/**
- * 抽屉头部：本机配对的电脑。整行可点 → 设备与配对页（单设备，不在这里切换）。
- * 取代原来的「logo + 应用名」品牌 banner：原生抽屉头部表达的是「当前身份」。
- */
-@Composable
-internal fun SidebarHostRow(hostName: String, onOpenDevice: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DrawerEdgePadding)
-            .heightIn(min = DrawerItemHeight)
-            .clip(DrawerRowShape)
-            .background(if (pressed) Dsh.bgPressed else Color.Transparent)
-            .semantics {
-                role = Role.Button
-                contentDescription = "$hostName, ${L.deviceAndPairing}"
-            }
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onOpenDevice)
-            .padding(horizontal = DrawerInnerPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Outlined.Devices,
-            contentDescription = null,
-            tint = Dsh.labelSecondary,
-            modifier = Modifier.size(DrawerIconSize),
-        )
-        Spacer(Modifier.width(DrawerLeadingGap))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                hostName,
-                color = Dsh.labelPrimary,
-                style = DshType.body,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                L.deviceAndPairing,
-                color = Dsh.labelTertiary,
-                style = DshType.captionRelaxed,
-                maxLines = 1,
-            )
-        }
-        Icon(
-            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-            contentDescription = null,
-            tint = Dsh.labelTertiary,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
 /** 抽屉主操作「新会话」：与会话行同规格的列表行 + 品牌 + 图标 —— 侧栏保持一整列，不压浮动胶囊。 */
 @Composable
 internal fun SidebarNewSessionRow(onClick: () -> Unit) {
@@ -637,11 +582,13 @@ internal fun SidebarWorkspaceRow(
     }
 }
 
-/** 抽屉底部：发丝分隔线 + 设置条目（48dp）+ 主题图标按钮（48dp 热区）。 */
+/** 抽屉底部：发丝分隔线 + 设置条目（48dp）+ 设备 / 主题图标按钮（48dp 热区）。 */
 @Composable
 internal fun SidebarFooter(
     isDarkTheme: Boolean,
+    hostName: String,
     onOpenSettings: () -> Unit,
+    onOpenDevice: () -> Unit,
     onToggleTheme: () -> Unit,
 ) {
     val settingsInteraction = remember { MutableInteractionSource() }
@@ -693,6 +640,13 @@ internal fun SidebarFooter(
                     fontWeight = FontWeight.Medium,
                 )
             }
+            SidebarIconAction(
+                icon = Icons.Outlined.Devices,
+                contentDescription = "${L.deviceAndPairing} · $hostName",
+                onClick = onOpenDevice,
+                size = 48.dp,
+                iconSize = DrawerIconSize,
+            )
             SidebarIconAction(
                 icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                 contentDescription = if (isDarkTheme) L.switchToLight else L.switchToDark,
@@ -747,7 +701,7 @@ internal fun SidebarIconAction(
     }
 }
 
-/** 折叠态：56dp 图标条（新会话 / 搜索 / 设置 / 主题）。 */
+/** 折叠态：56dp 图标条（新会话 / 搜索 / 设置 / 设备 / 主题）。 */
 @Composable
 internal fun WorkspaceSidebarCollapsed(actions: WorkspaceSidebarActions) {
     val isDarkTheme = Dsh.isDark
@@ -773,6 +727,11 @@ internal fun WorkspaceSidebarCollapsed(actions: WorkspaceSidebarActions) {
             icon = Icons.Outlined.Settings,
             contentDescription = L.settingsTitle,
             onClick = { actions.onOpenSettings() },
+        )
+        SidebarIconAction(
+            icon = Icons.Outlined.Devices,
+            contentDescription = L.deviceAndPairing,
+            onClick = { actions.onOpenDevice() },
         )
         SidebarIconAction(
             icon = if (isDarkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,

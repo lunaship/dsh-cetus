@@ -116,9 +116,9 @@ class DevicesActivity : ComponentActivity() {
     }
 }
 
-private enum class DeviceState { CHECKING, ONLINE, OFFLINE, CONNECTING }
+internal enum class DeviceState { CHECKING, ONLINE, OFFLINE, CONNECTING }
 
-private data class DeviceUi(
+internal data class DeviceUi(
     val host: Host,
     val state: DeviceState = DeviceState.CHECKING,
     val latencyMs: Long? = null,
@@ -134,6 +134,9 @@ fun DevicesScreen(
     onHostNotice: (String?) -> Unit = {},
     /** 本机存储的设备变了（过期移除 / 解除配对 / 连接偏好），宿主据此刷新当前设备。 */
     onHostChanged: () -> Unit = {},
+    /** 在工作区内以底部面板呈现：当前电脑的状态与操作就地完成，不再跳页再点一次电脑。 */
+    sheet: Boolean = false,
+    onDismissSheet: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
@@ -223,120 +226,52 @@ fun DevicesScreen(
         }
     }
 
-    // ---------- 页面骨架 ----------
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Dsh.bgBase)
-    ) {
-        // 头部（固定，含安全区）
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Dsh.bgBase)
-                .statusBarsPadding()
-                .padding(top = 10.dp, start = 16.dp, end = 16.dp, bottom = 10.dp)
-        ) {
-            Text(
-                s.pairingManage,
-                color = Dsh.labelPrimary,
-                style = DshType.titleLarge,
-            )
-            Text(
-                s.manageYourLinks,
-                color = Dsh.labelSecondary,
-                style = DshType.captionRelaxed,
-            )
+    fun togglePreferRelay(host: Host) {
+        val updated = host.copy(preferRelay = !host.preferRelay)
+        if (HostStore.upsert(context, updated)) {
+            Toast.makeText(context, s.preferCloudHint, Toast.LENGTH_SHORT).show()
         }
+        reload()
+    }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp)
-        ) {
-            val current = device
-            if (current == null) {
-                Box(Modifier.weight(1f)) {
-                    EmptyDevicesState(onAdd = { showPairingPanel = true })
+    fun requestUnpair(current: DeviceUi) {
+        unpairTarget = current.host
+        unpairOffline = current.state != DeviceState.ONLINE
+        unpairError = null
+        unpairSaving = false
+    }
+
+    // ---------- 页面骨架（工作区内为底部面板，否则整页） ----------
+    if (sheet) {
+        DeviceSheet(
+            device = device,
+            notice = hostNotice ?: offlineError,
+            onDismiss = onDismissSheet,
+            onRecheck = { refreshHealth() },
+            onTogglePreferRelay = ::togglePreferRelay,
+            onRescan = onScanClick,
+            onReplace = { showPairingPanel = true },
+            onUnpair = ::requestUnpair,
+        )
+    } else {
+        DevicesPage(
+            device = device,
+            refreshing = refreshing,
+            notice = hostNotice ?: offlineError,
+            onRefresh = { refreshing = true; reload() },
+            onOpen = { current -> onOpenHost(current.host) { ok -> if (!ok) reload() } },
+            onTogglePreferRelay = ::togglePreferRelay,
+            onUnpair = ::requestUnpair,
+            onRecheck = { refreshHealth() },
+            onRescan = onScanClick,
+            onRescanLater = {
+                scope.launch(Dispatchers.IO) {
+                    HostStore.clearCloudRescan(context)
+                    withContext(Dispatchers.Main) { reload() }
                 }
-                (hostNotice ?: offlineError)?.let { msg -> DevicesNotice(msg) }
-            } else {
-                PullToRefreshBox(
-                    isRefreshing = refreshing,
-                    onRefresh = { refreshing = true; reload() },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        DeviceCard(
-                            device = current,
-                            onOpen = {
-                                onOpenHost(current.host) { ok ->
-                                    if (!ok) reload()
-                                }
-                            },
-                            onTogglePreferRelay = { host ->
-                                val updated = host.copy(preferRelay = !host.preferRelay)
-                                if (HostStore.upsert(context, updated)) {
-                                    Toast.makeText(context, s.preferCloudHint, Toast.LENGTH_SHORT).show()
-                                }
-                                reload()
-                            },
-                            onUnpair = {
-                                unpairTarget = current.host
-                                unpairOffline = current.state != DeviceState.ONLINE
-                                unpairError = null
-                                unpairSaving = false
-                            },
-                        )
-                        if (current.host.needsCloudRescan) {
-                            DevicesNotice(
-                                message = s.relayRouteExpired,
-                                actionLabel = s.restoreCloudScan,
-                                onAction = onScanClick,
-                                secondaryLabel = s.restoreCloudLater,
-                                onSecondary = {
-                                    scope.launch(Dispatchers.IO) {
-                                        HostStore.clearCloudRescan(context)
-                                        withContext(Dispatchers.Main) { reload() }
-                                    }
-                                },
-                            )
-                        }
-                        (hostNotice ?: offlineError)?.let { msg ->
-                            DevicesNotice(message = msg, actionLabel = s.resync, onAction = { refreshHealth() })
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        // 单设备：配对新电脑 = 替换当前这台（文字按钮，不与设备卡抢主操作）
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterHorizontally)
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(DshRadius.full))
-                                .clickable(indication = dshRipple(), interactionSource = remember { MutableInteractionSource() }) {
-                                    showPairingPanel = true
-                                }
-                                .semantics { role = Role.Button }
-                                .padding(horizontal = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                s.replaceDevice,
-                                color = Dsh.brand400,
-                                style = DshType.body,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+            },
+            onAddDevice = { showPairingPanel = true },
+        )
     }
 
     // ---------- 配对面板（底部滑出） ----------
@@ -346,6 +281,7 @@ fun DevicesScreen(
             onDismiss = { showPairingPanel = false },
             onScan = {
                 showPairingPanel = false
+                if (sheet) onDismissSheet()
                 onScanClick()
             },
             onManualPair = { name, url, code, fingerprint, onSuccess, onError ->
@@ -353,6 +289,7 @@ fun DevicesScreen(
                     // 新设备落库（替换旧设备）后立即刷新
                     reload()
                     onSuccess(host)
+                    if (sheet) onDismissSheet()
                 }, onError)
             },
         )
@@ -426,239 +363,116 @@ fun DevicesScreen(
     }
 }
 
-/** 设备卡下方的说明条：文案 + 至多两个文字操作（48dp 热区）。 */
+/** 整页形态：设备卡 + 说明条 + 「配对新电脑」；下拉刷新重读本机设备。 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DevicesNotice(
-    message: String,
-    actionLabel: String? = null,
-    onAction: () -> Unit = {},
-    secondaryLabel: String? = null,
-    onSecondary: () -> Unit = {},
+private fun DevicesPage(
+    device: DeviceUi?,
+    refreshing: Boolean,
+    notice: String?,
+    onRefresh: () -> Unit,
+    onOpen: (DeviceUi) -> Unit,
+    onTogglePreferRelay: (Host) -> Unit,
+    onUnpair: (DeviceUi) -> Unit,
+    onRecheck: () -> Unit,
+    onRescan: () -> Unit,
+    onRescanLater: () -> Unit,
+    onAddDevice: () -> Unit,
 ) {
-    Row(
+    val s = DshS
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(Dsh.bgSubtle)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .fillMaxSize()
+            .background(Dsh.bgBase)
     ) {
-        Text(
-            text = message,
-            color = Dsh.labelSecondary,
-            style = DshType.captionRelaxed,
+        // 头部（固定，含安全区）
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Dsh.bgBase)
+                .statusBarsPadding()
+                .padding(top = 10.dp, start = 16.dp, end = 16.dp, bottom = 10.dp)
+        ) {
+            Text(
+                s.pairingManage,
+                color = Dsh.labelPrimary,
+                style = DshType.titleLarge,
+            )
+            Text(
+                s.manageYourLinks,
+                color = Dsh.labelSecondary,
+                style = DshType.captionRelaxed,
+            )
+        }
+
+        Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 8.dp),
-        )
-        listOfNotNull(
-            actionLabel?.let { Triple(it, onAction, Dsh.labelPrimary) },
-            secondaryLabel?.let { Triple(it, onSecondary, Dsh.labelTertiary) },
-        ).forEach { (label, onClick, color) ->
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .widthIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
-                    .clickable(onClick = onClick)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = label
-                    }
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(label, color = color, fontWeight = FontWeight(600), style = DshType.caption)
-            }
-        }
-    }
-}
-
-// ---------- 设备卡片 ----------
-
-@Composable
-private fun statusLabel(state: DeviceState): String {
-    val s = DshS
-    return when (state) {
-        DeviceState.CHECKING -> s.statusChecking
-        DeviceState.ONLINE -> s.statusOnline
-        DeviceState.OFFLINE -> s.statusOffline
-        DeviceState.CONNECTING -> s.statusConnecting
-    }
-}
-
-/**
- * 已配对电脑卡片（96–112dp）：图标 + 名称 + 点状状态 + 次要信息，
- * 连接偏好 / 解除配对收进「更多」菜单，主操作是整行点按进入工作区。
- */
-@Composable
-private fun DeviceCard(
-    device: DeviceUi,
-    onOpen: () -> Unit,
-    onUnpair: () -> Unit,
-    onTogglePreferRelay: (Host) -> Unit = {},
-) {
-    val s = DshS
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    var menuOpen by remember { mutableStateOf(false) }
-    val state = device.state
-    val statusColor = when (state) {
-        DeviceState.ONLINE -> Dsh.successContent
-        DeviceState.CONNECTING -> Dsh.brand400
-        else -> Dsh.labelTertiary
-    }
-    val connection = when {
-        device.host.hasRelay && device.host.preferRelay -> s.preferCloud
-        device.host.hasRelay -> s.viaCloud
-        else -> s.viaLan
-    }
-    val stateLabel = statusLabel(state)
-    val subtitle = buildList {
-        add(hostDisplayName(device.host.baseUrl))
-        add(connection)
-        if (device.latencyMs != null && state == DeviceState.ONLINE) add("${device.latencyMs}ms")
-    }.joinToString(" · ")
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 84.dp)
-            .clip(RoundedCornerShape(DshRadius.lg))
-            .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onOpen)
-            .semantics {
-                role = Role.Button
-                contentDescription = "${device.host.name}, $stateLabel"
-            }
-            .padding(start = 12.dp, end = 4.dp, top = 9.dp, bottom = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MonitorGlyph()
-        Spacer(Modifier.width(12.dp))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center,
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    device.host.name,
-                    color = Dsh.labelPrimary,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Spacer(Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(statusColor)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    statusLabel(state),
-                    color = statusColor,
-                    style = DshType.microRelaxed,
-                    maxLines = 1,
-                )
-            }
-            Spacer(Modifier.height(3.dp))
-            Text(
-                subtitle,
-                color = Dsh.labelSecondary,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (device.host.needsCloudRescan) {
-                Spacer(Modifier.height(4.dp))
-                DeviceTag(s.restoreCloudTag, Dsh.error, Dsh.errorBg, monospace = false)
-            }
-        }
-        Spacer(Modifier.width(4.dp))
-        Box {
-            val menuInteraction = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .clickable(interactionSource = menuInteraction, indication = dshRipple()) {
-                        menuOpen = true
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = s.moreActions,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-                containerColor = Dsh.bgCard,
-                shape = RoundedCornerShape(DshRadius.lg),
-                tonalElevation = 0.dp,
-            ) {
-                if (device.host.hasRelay) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (device.host.preferRelay) s.viaLan else s.preferCloud,
-                                color = Dsh.labelPrimary,
-                                style = DshType.t14,
-                            )
-                        },
-                        onClick = {
-                            menuOpen = false
-                            onTogglePreferRelay(device.host)
-                        },
-                    )
+            val current = device
+            if (current == null) {
+                Box(Modifier.weight(1f)) {
+                    EmptyDevicesState(onAdd = onAddDevice)
                 }
-                DropdownMenuItem(
-                    text = { Text(s.deleteDevice, color = Dsh.error, style = DshType.t14) },
-                    onClick = {
-                        menuOpen = false
-                        onUnpair()
-                    },
-                )
+                notice?.let { msg -> DevicesNotice(msg) }
+            } else {
+                PullToRefreshBox(
+                    isRefreshing = refreshing,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        DeviceCard(
+                            device = current,
+                            onOpen = { onOpen(current) },
+                            onTogglePreferRelay = onTogglePreferRelay,
+                            onUnpair = { onUnpair(current) },
+                        )
+                        if (current.host.needsCloudRescan) {
+                            DevicesNotice(
+                                message = s.relayRouteExpired,
+                                actionLabel = s.restoreCloudScan,
+                                onAction = onRescan,
+                                secondaryLabel = s.restoreCloudLater,
+                                onSecondary = onRescanLater,
+                            )
+                        }
+                        notice?.let { msg ->
+                            DevicesNotice(message = msg, actionLabel = s.resync, onAction = onRecheck)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        // 单设备：配对新电脑 = 替换当前这台（文字按钮，不与设备卡抢主操作）
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .heightIn(min = 48.dp)
+                                .clip(RoundedCornerShape(DshRadius.full))
+                                .clickable(indication = dshRipple(), interactionSource = remember { MutableInteractionSource() }) {
+                                    onAddDevice()
+                                }
+                                .semantics { role = Role.Button }
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                s.replaceDevice,
+                                color = Dsh.brand400,
+                                style = DshType.body,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun MonitorGlyph() {
-    // 统一描边图标体系（ic_device_glyph vector），不再手绘像素风 Box 堆叠
-    Icon(
-        painter = painterResource(dev.deeplinks.R.drawable.ic_device_glyph),
-        contentDescription = null,
-        tint = Dsh.labelPrimary,
-        modifier = Modifier.size(26.dp),
-    )
-}
-
-@Composable
-private fun DeviceTag(text: String, color: Color, bg: Color, monospace: Boolean) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(bg)
-            .padding(horizontal = 6.dp, vertical = 3.dp)
-    ) {
-        Text(
-            text,
-            color = color,
-            fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-            fontWeight = FontWeight(600),
-            style = DshType.caption,
-            lineHeight = 16.sp
-        )
     }
 }
 
@@ -1299,7 +1113,7 @@ private fun ConfirmButton(
 }
 
 /** baseUrl → 展示名：去协议、去末尾斜杠。 */
-private fun hostDisplayName(baseUrl: String): String {
+internal fun hostDisplayName(baseUrl: String): String {
     return try {
         val uri = URI(baseUrl.trimEnd('/'))
         (uri.host ?: baseUrl) + (if (uri.port > 0) ":${uri.port}" else "")

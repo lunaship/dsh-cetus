@@ -116,8 +116,6 @@ private fun CardWall() {
             onNavigate = {},
             viewMode = "trace",
             showViewModeTabs = true,
-            hostName = "MacBook Pro",
-            onOpenDevice = {},
             onSelectViewMode = {},
             menuExpanded = false,
             onMenuExpandedChange = {},

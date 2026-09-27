@@ -124,6 +124,36 @@ internal fun AppNavHost(
     // 站内转场时长：在可组合作用域捕获（enter/pop 各 lambda 非 @Composable，不能现调 motionDuration）
     val navMotionMs = motionDuration(DshDuration.slow)
 
+    val manualPair: (String, String, String, String?, (Host) -> Unit, (String) -> Unit) -> Unit =
+        { name, url, code, fingerprint, onSuccess, onError ->
+            scope.launch {
+                try {
+                    val r = withContext(Dispatchers.IO) {
+                        PairClient.pair(url, code, DeviceName.of(context), fingerprint)
+                    }
+                    val newHost = Host(name.ifBlank { r.name }, r.baseUrl, r.token, r.deviceId, r.certFingerprint)
+                    if (!HostStore.upsert(context, newHost)) {
+                        if (HostStore.isLocked(context)) {
+                            HostStore.clearLockAndReplace(context, newHost)
+                            onHostNotice(L.credentialsResetToast)
+                        } else {
+                            onError(L.credentialsSaveFailedToast)
+                            return@launch
+                        }
+                    }
+                    onSuccess(newHost)
+                    if (r.pending) onHostNotice(L.pairPendingApprovalToast)
+                    // 配对成功（含替换旧设备）后直接进 Workspace。
+                    openWorkspace()
+                } catch (e: Exception) {
+                    onError(PinnedSsl.unwrap(e).message ?: L.pairFailedCheckAddress)
+                }
+            }
+        }
+
+    /** 工作区内的「设备与配对」面板；没有已配对电脑时工作区自己会退回设备页。 */
+    var deviceSheetOpen by remember { mutableStateOf(false) }
+
     NavHost(
         navController = navController,
         startDestination = startRoute,
@@ -169,31 +199,7 @@ internal fun AppNavHost(
                 },
                 onHostChanged = { reloadHost() },
                 onScanClick = onScan,
-                onManualPair = { name, url, code, fingerprint, onSuccess, onError ->
-                    scope.launch {
-                        try {
-                            val r = withContext(Dispatchers.IO) {
-                                PairClient.pair(url, code, DeviceName.of(context), fingerprint)
-                            }
-                            val newHost = Host(name.ifBlank { r.name }, r.baseUrl, r.token, r.deviceId, r.certFingerprint)
-                            if (!HostStore.upsert(context, newHost)) {
-                                if (HostStore.isLocked(context)) {
-                                    HostStore.clearLockAndReplace(context, newHost)
-                                    onHostNotice(L.credentialsResetToast)
-                                } else {
-                                    onError(L.credentialsSaveFailedToast)
-                                    return@launch
-                                }
-                            }
-                            onSuccess(newHost)
-                            if (r.pending) onHostNotice(L.pairPendingApprovalToast)
-                            // 配对成功（含替换旧设备）后直接进 Workspace。
-                            openWorkspace()
-                        } catch (e: Exception) {
-                            onError(PinnedSsl.unwrap(e).message ?: L.pairFailedCheckAddress)
-                        }
-                    }
-                },
+                onManualPair = manualPair,
             )
         }
 
@@ -227,15 +233,32 @@ internal fun AppNavHost(
                         initialShareSeq = liveIntent.getLongExtra(EXTRA_SHARE_SEQ, 0L),
                         initialShareNotice = liveIntent.getStringExtra(EXTRA_SHARE_NOTICE),
                         onOpenDevice = { notice ->
-                            if (!notice.isNullOrBlank()) onHostNotice(notice)
-                            navController.navigate(AppRoute.DEVICES) {
-                                launchSingleTop = true
-                                popUpTo(AppRoute.DEVICES) { inclusive = true }
+                            if (notice.isNullOrBlank()) {
+                                deviceSheetOpen = true
+                            } else {
+                                // 凭据失效：配对已不可用，整页设备页负责重新配对
+                                onHostNotice(notice)
+                                navController.navigate(AppRoute.DEVICES) {
+                                    launchSingleTop = true
+                                    popUpTo(AppRoute.DEVICES) { inclusive = true }
+                                }
                             }
                         },
                         onOpenSettings = { onOpenSettings(host) },
                         onStartVoiceInput = onStartVoiceInput,
                         onStopVoiceInput = onStopVoiceInput,
+                    )
+                }
+                if (deviceSheetOpen) {
+                    DevicesScreen(
+                        hostNotice = hostNotice,
+                        onHostNotice = onHostNotice,
+                        onOpenHost = { _, onDone -> onDone(true) },
+                        onHostChanged = { reloadHost() },
+                        onScanClick = onScan,
+                        onManualPair = manualPair,
+                        sheet = true,
+                        onDismissSheet = { deviceSheetOpen = false },
                     )
                 }
             }

@@ -11,7 +11,13 @@ import { randomBytes } from "node:crypto"
 
 /** 本插件允许代调的 DSH 方法闭集（插件面点号名）。新增方法：先加这里，再加调用点。 */
 export const RPC_METHOD_ALLOWLIST = Object.freeze([
+  "account.getBalance",
   "agentPreset.list",
+  "credentials.describe",
+  "credentials.set",
+  "llm.discoverModels",
+  "llm.listConfigurableProviders",
+  "llm.listProviders",
   "llm.models",
   "messageFeedback.delete",
   "messageFeedback.list",
@@ -27,6 +33,7 @@ export const RPC_METHOD_ALLOWLIST = Object.freeze([
   "session.search",
   "session.selectModel",
   "settings.describe",
+  "settings.mutate",
   "settings.update",
   "workspace.archiveSession",
   "workspace.create",
@@ -134,12 +141,40 @@ function settingsUpdateArgs(payload) {
   return args
 }
 
+function settingsMutateArgs(payload) {
+  const src = asObject(payload)
+  const args = {
+    ns: src.ns,
+    ops: Array.isArray(src.ops) ? src.ops : [],
+  }
+  if (Number.isInteger(src.expectedRevision)) args.expectedRevision = src.expectedRevision
+  return args
+}
+
 /**
  * 插件面方法 → Typert Remote。session.history / workspace.list 在 callLocalRpc 里另走适配。
  * @type {Record<string, { namespace: string, method: string, args: (payload: object) => object }>}
  */
 const WIRE = Object.freeze({
+  "account.getBalance": { namespace: "account", method: "getBalance", args: (p) => ({ client: asObject(p).client }) },
   "agentPreset.list": { namespace: "agentPresets", method: "list", args: () => ({}) },
+  "credentials.describe": {
+    namespace: "credentials",
+    method: "describe",
+    args: (p) => ({ refs: Array.isArray(asObject(p).refs) ? asObject(p).refs : [] }),
+  },
+  "credentials.set": {
+    namespace: "credentials",
+    method: "set",
+    args: (p) => ({ ref: asObject(p).ref, value: asObject(p).value }),
+  },
+  "llm.discoverModels": {
+    namespace: "llm",
+    method: "discoverModels",
+    args: (p) => ({ settingsNs: asObject(p).settingsNs, request: asObject(asObject(p).request) }),
+  },
+  "llm.listConfigurableProviders": { namespace: "llm", method: "listConfigurableProviders", args: () => ({}) },
+  "llm.listProviders": { namespace: "llm", method: "listProviders", args: () => ({}) },
   "llm.models": { namespace: "session", method: "modelCatalog", args: () => ({}) },
   "messageFeedback.list": { namespace: "messageFeedback", method: "list", args: requestArgs },
   "messageFeedback.put": { namespace: "messageFeedback", method: "put", args: requestArgs },
@@ -154,6 +189,7 @@ const WIRE = Object.freeze({
   "session.search": { namespace: "session", method: "search", args: requestArgs },
   "session.selectModel": { namespace: "session", method: "selectModel", args: requestArgs },
   "settings.describe": { namespace: "settings", method: "describe", args: () => ({}) },
+  "settings.mutate": { namespace: "settings", method: "mutate", args: settingsMutateArgs },
   "settings.update": { namespace: "settings", method: "update", args: settingsUpdateArgs },
   "workspace.archiveSession": { namespace: "workspace", method: "archiveSession", args: requestArgs },
   "workspace.create": { namespace: "workspace", method: "create", args: requestArgs },
