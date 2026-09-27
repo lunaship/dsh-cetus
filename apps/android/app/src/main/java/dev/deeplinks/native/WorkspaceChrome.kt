@@ -1,5 +1,8 @@
 package dev.deeplinks.native
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.ui.DshBrandMark
@@ -513,70 +516,131 @@ internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {
     }
 }
 
+/** 命令图标：按 trigger 映射到自有图标集（模型层保持纯数据，便于 JVM 单测）。 */
+private fun paletteIcon(command: PaletteCommand): ImageVector = when (command.trigger) {
+    "/plan" -> ListPenOutline16
+    "/goal" -> GoalOutline16
+    "/subagent" -> BranchOutline16
+    "/skills" -> SkillOutline16
+    "/pause" -> PauseOutline16
+    "/resume" -> PlayOutline16
+    "/clear" -> EraserOutline16
+    "/feedback" -> FeedbackOutline16
+    "/new-session" -> NewChatOutline16
+    "/search" -> SearchOutline16
+    "/model" -> SparkleOutline16
+    "/permission" -> ShieldOutline16
+    "/chat" -> MessageOutline16
+    "/trace" -> ChecklistOutline14
+    "/settings" -> SettingsOutline16
+    else -> CodeOutline16
+}
+
+/**
+ * 斜杠命令面板：从输入框上方浮起的卡片，最多约半屏，对话仍然看得见。
+ * 每行「图标块 · 中文名 + 灰色 trigger · 一句说明」；没输入时按分组展示，
+ * 输入后只留匹配项并高亮第一条（它就是点「发送」时最可能想要的那条）。
+ */
 @Composable
 internal fun CommandSuggestions(
     query: String,
     onPick: (PaletteCommand) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val grouped = remember(query) { filterPalette(DSH_PALETTE, query) }
-    // 兜底：query 与输入文本同步；只有至少一组有结果才显示 picker
+    val filtering = query.length > 1
+    // 过滤时不再分组：拍平后「trigger 以输入开头」的排前面（/c → 清除上下文、对话视图，再到 /feedback）
+    val grouped = remember(query) {
+        val raw = filterPalette(DSH_PALETTE, query)
+        if (!filtering) raw else {
+            val needle = query.removePrefix("/").lowercase()
+            val flat = raw.flatMap { it.second }.sortedByDescending { it.command.trigger.removePrefix("/").lowercase().startsWith(needle) }
+            if (flat.isEmpty()) emptyList() else listOf(flat.first().group to flat)
+        }
+    }
     if (grouped.isEmpty()) return
-    Column(
-        modifier = Modifier
+    val first = grouped.first().second.first().command
+    Box(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 6.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .heightIn(max = 340.dp)
+                .shadow(12.dp, RoundedCornerShape(DshRadius.xl), clip = false)
+                .clip(RoundedCornerShape(DshRadius.xl))
                 .background(Dsh.bgCard)
-                .padding(vertical = 6.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(6.dp),
         ) {
             grouped.forEach { (group, entries) ->
-                Text(
-                    group.displayName,
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
-                )
+                if (!filtering) {
+                    Text(
+                        group.displayName,
+                        color = Dsh.labelTertiary,
+                        style = DshType.microMedium,
+                        modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 4.dp),
+                    )
+                }
                 entries.forEach { entry ->
-                    val interaction = remember { MutableInteractionSource() }
-                    val pressed by interaction.collectIsPressedAsState()
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
-                            .background(if (pressed) Dsh.pressed else Color.Transparent)
-                            .clickable(interactionSource = interaction, indication = dshRipple()) { onPick(entry.command) }
-                            .padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            entry.command.trigger,
-                            color = Dsh.labelPrimary,
-                            style = DshType.body,
-                            fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            // 触发词与描述分列：固定 220dp 会把 412dp 上的描述压到两三个字
-                            modifier = Modifier
-                                .widthIn(max = 160.dp)
-                                .weight(0.45f, fill = false)
-                        )
-                        Text(
-                            entry.command.description,
-                            color = Dsh.labelTertiary,
-                            style = DshType.captionRelaxed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    PaletteRow(
+                        command = entry.command,
+                        highlighted = filtering && entry.command == first,
+                        onClick = { onPick(entry.command) },
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(RoundedCornerShape(DshRadius.lg))
+            .background(if (highlighted) Dsh.bgGroupedCard else Color.Transparent)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(DshRadius.md))
+                .background(if (highlighted) Dsh.brandTint else Dsh.bgGroupedCard),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                paletteIcon(command),
+                contentDescription = null,
+                tint = if (highlighted) Dsh.brand500 else Dsh.labelSecondary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(command.title, color = Dsh.labelPrimary, style = DshType.body, maxLines = 1)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    command.trigger,
+                    color = Dsh.labelTertiary,
+                    style = DshType.captionRelaxed,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                command.description,
+                color = Dsh.labelTertiary,
+                style = DshType.captionRelaxed,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

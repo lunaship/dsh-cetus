@@ -2322,6 +2322,8 @@ fun WorkspaceScreen(
             if (viewMode == "chat" && commandModeActive) {
                 CommandSuggestions(
                     query = inputText,
+                    // 只吃剩余空间（与消息区 2:1 分），键盘弹起时让位，不挤扁输入框
+                    modifier = Modifier.weight(2f, fill = false),
                     onPick = { picked ->
                         // 无论哪种类型，先关掉 picker：清空输入文本以触发外层 `inputText.startsWith("/") == false`
                         when (picked) {

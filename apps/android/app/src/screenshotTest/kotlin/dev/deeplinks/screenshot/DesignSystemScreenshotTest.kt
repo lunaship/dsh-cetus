@@ -111,6 +111,7 @@ import dev.deeplinks.native.ui.DshLargeTitle
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
+import dev.deeplinks.native.CommandSuggestions
 import dev.deeplinks.native.SessionStatsLine
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
@@ -562,6 +563,24 @@ internal fun IconsLight() {
 @Composable
 internal fun IconsDark() {
     Wall(dark = true, english = true) { IconWall() }
+}
+
+@PreviewTest
+@Preview(name = "command palette light zh", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun CommandPaletteLightZh() {
+    Wall(dark = false, english = false) {
+        CommandSuggestions(query = "/", onPick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "command palette filtered dark en", showBackground = true, widthDp = 412, heightDp = 300)
+@Composable
+internal fun CommandPaletteFilteredDarkEn() {
+    Wall(dark = true, english = true) {
+        CommandSuggestions(query = "/c", onPick = {})
+    }
 }
 
 /** 分组页底（冷灰 + 白卡片）：设置 / 设备这类 lody 式分组列表页用它截图。 */

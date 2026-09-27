@@ -114,6 +114,17 @@ val DevicesOutline16: ImageVector by lazy {
     )
 }
 
+val EraserOutline16: ImageVector by lazy {
+    glyph(
+        "EraserOutline16",
+        listOf(
+            "M9.5 1.7l4.8 4.8a1.4 1.4 0 0 1 0 2L8.6 14.2H4.9L1.7 11a1.4 1.4 0 0 1 0-2L7.5 1.7a1.4 1.4 0 0 1 2 0Z",
+            "M4.9 4.4l6.7 6.7",
+            "M8.6 14.3H15.3",
+        ),
+    )
+}
+
 val FeedbackOutline16: ImageVector by lazy {
     glyph(
         "FeedbackOutline16",
