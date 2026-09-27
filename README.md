@@ -22,18 +22,20 @@
 
 <table>
   <tr>
-    <td width="25%"><img src="docs/images/android-workspace-2026-09-26.png" alt="会话工作台" /></td>
-    <td width="25%"><img src="docs/images/android-navigation-2026-09-26-sanitized.png" alt="导航抽屉" /></td>
-    <td width="25%"><img src="docs/images/android-devices-2026-09-26-sanitized.png" alt="设备与配对" /></td>
-    <td width="25%"><img src="docs/images/android-settings-2026-09-26.png" alt="设置" /></td>
+    <td width="25%"><img src="docs/images/android-home-2026-09-27.png" alt="任务首页" /></td>
+    <td width="25%"><img src="docs/images/android-chat-2026-09-27.png" alt="会话工作台" /></td>
+    <td width="25%"><img src="docs/images/android-tree-2026-09-27.png" alt="浏览工作区文件" /></td>
+    <td width="25%"><img src="docs/images/android-settings-2026-09-27.png" alt="设置" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>会话工作台</sub></td>
-    <td align="center"><sub>工作区与会话导航</sub></td>
-    <td align="center"><sub>设备与配对</sub></td>
+    <td align="center"><sub>任务首页 · 按工作区筛选</sub></td>
+    <td align="center"><sub>会话工作台 · Markdown 与工具轨迹</sub></td>
+    <td align="center"><sub>浏览工作区文件</sub></td>
     <td align="center"><sub>设置</sub></td>
   </tr>
 </table>
+
+<p align="center"><sub>真机截图于 2026-09-27（HyperOS，<code>0.5.0-beta.20</code> 源码 debug 构建）。主机名与非本仓库的工作区名已替换为示例值。</sub></p>
 
 ---
 
@@ -169,6 +171,8 @@ dsh-links/
    ```
 
 2. **配对**：打开 DSH Web 设置 →「手机连接」，用 App 扫描二维码，或手动输入配对码。
+
+   <img src="docs/images/phone-connection-latest-sanitized.png" width="720" alt="电脑端「手机连接」面板" />
 
 3. **开始使用**：在 App 里选择已配对的电脑，进入会话工作台。
 
