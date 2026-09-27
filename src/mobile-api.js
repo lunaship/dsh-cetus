@@ -84,6 +84,56 @@ function uniqueRpcPayloads(payloads) {
   return out
 }
 
+/**
+ * 切换会话模型：先按会话模型目录把供应商 / 模型解析成 id（手机可能传展示名），
+ * 推理等级不在该模型允许列表里时回落到默认等级；再按候选载荷依次尝试 session.selectModel。
+ * （445a21f 拆分 mobile-api.js 时曾漏掉本函数，接口一直 ReferenceError，见 mobile-error-map 测试。）
+ */
+async function selectSessionModel(targetPort, sessionId, provider, model, reasoningEffort, stillAuthorized = () => true) {
+  let groups = []
+  try {
+    const catalog = await callLocalRpc(targetPort, "session.models", { sessionId })
+    if (!stillAuthorized()) throw new Error("设备已被吊销")
+    groups = catalog?.groups ?? []
+  } catch {
+    groups = []
+  }
+  const group =
+    groups.find((g) => g.id === provider) ||
+    groups.find((g) => g.name === provider) ||
+    groups.find((g) => (g.models ?? []).some((m) => m.id === model || m.name === model))
+  const resolvedProvider = group?.id || provider
+  const resolvedModel = (group?.models ?? []).find((m) => m.id === model || m.name === model)?.id || model
+  const modelMeta = (group?.models ?? []).find((m) => m.id === resolvedModel)
+  const allowed = (modelMeta?.reasoning?.efforts ?? [])
+    .map((e) => (typeof e === "string" ? e : e.id))
+    .filter(Boolean)
+  const defaultEffort = modelMeta?.reasoning?.defaultEffort
+  const requested = typeof reasoningEffort === "string" && reasoningEffort.trim() ? reasoningEffort.trim() : null
+  const effort = requested && (allowed.length === 0 || allowed.includes(requested))
+    ? requested
+    : defaultEffort && (allowed.length === 0 || allowed.includes(defaultEffort))
+      ? defaultEffort
+      : null
+  const base = { sessionId, provider: resolvedProvider, model: resolvedModel }
+  const attempts = uniqueRpcPayloads([
+    effort ? { ...base, reasoningEffort: effort } : base,
+    base,
+    group?.id ? { sessionId, provider: group.id, model: resolvedModel } : null,
+    group?.name ? { sessionId, provider: group.name, model: resolvedModel } : null,
+  ])
+  let lastErr
+  for (const payload of attempts) {
+    if (!stillAuthorized()) throw new Error("设备已被吊销")
+    try {
+      return await callLocalRpc(targetPort, "session.selectModel", payload)
+    } catch (err) {
+      lastErr = err
+    }
+  }
+  throw lastErr ?? new Error("切换模型失败")
+}
+
 async function readSessionLogText(path) {
   const raw = await readFileAsync(path)
   if (!path.endsWith(".zstd")) return raw.toString("utf8")

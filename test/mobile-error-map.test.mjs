@@ -120,6 +120,45 @@ test("其他移动 API 错误仍为 502", async () => {
   }
 })
 
+test("切换会话模型：走 session.selectModel，并按目录解析供应商与推理等级", async () => {
+  // 回归：445a21f 拆出 mobile-api.js 时丢了 selectSessionModel 的定义，接口一直 ReferenceError → 502
+  const calls = []
+  bindLocalRpcRuntime({
+    invoke: async ({ namespace, method, args }) => {
+      calls.push(`${namespace}.${method}`)
+      if (namespace === "session" && method === "modelCatalog") {
+        return {
+          current: { provider: "stepfun", model: "step-5" },
+          groups: [{
+            id: "stepfun",
+            name: "StepFun",
+            models: [{ id: "step-5", name: "Step 5", reasoning: { efforts: ["low", "high"], defaultEffort: "high" } }],
+          }],
+        }
+      }
+      if (namespace === "session" && method === "selectModel") {
+        return { selected: args.request }
+      }
+      throw new Error(`unexpected ${namespace}.${method}`)
+    },
+  })
+  try {
+    const r = await proxyFetch(`/dsh-link/mobile/sessions/sess-1/model`, {
+      method: "POST",
+      headers: { "x-dsh-link-token": token, "content-type": "application/json" },
+      // 按展示名选供应商、推理等级传了目录里没有的值：应解析成 id 并回落到默认等级
+      body: JSON.stringify({ provider: "StepFun", model: "step-5", reasoningEffort: "max" }),
+    })
+    assert.equal(r.status, 200)
+    const body = await r.json()
+    assert.equal(body.ok, true)
+    assert.deepEqual(body.selected, { sessionId: "sess-1", provider: "stepfun", model: "step-5", reasoningEffort: "high" })
+    assert.ok(calls.includes("session.selectModel"))
+  } finally {
+    unbindLocalRpcRuntime()
+  }
+})
+
 test.after(() => {
   for (const fn of effects) try { fn() } catch {}
   upstream.close()

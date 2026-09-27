@@ -2,6 +2,8 @@
 
 ## dsh-links 未发布
 
+修复手机切换会话模型必定失败：`445a21f` 拆分 `mobile-api.js` 时漏掉了 `selectSessionModel` 的定义，`POST /dsh-link/mobile/sessions/:id/model` 一直抛 `ReferenceError`，返回 502。已恢复原实现（按会话模型目录解析供应商 / 模型 id，推理等级不在允许列表时回落默认），`test/mobile-error-map.test.mjs` 新增回归用例。需要重启 host 才生效。
+
 手机设置、设备、模型和工作区面板改成分组列表。
 
 - 冷灰底上的白卡片，小标题和页脚放说明；一行里是着色图标、标题、当前值和箭头或勾选。
