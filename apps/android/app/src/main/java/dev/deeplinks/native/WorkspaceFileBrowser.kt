@@ -2,7 +2,7 @@ package dev.deeplinks.native
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -128,7 +128,8 @@ internal fun WorkspaceFileBrowserSheet(
         showClose = true,
         skipPartiallyExpanded = true,
     ) {
-        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
+        // 固定为屏高比例：切换目录时弹层不随条目数跳动，矮屏也放得下
+        LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f)) {
             if (dir.isNotEmpty()) {
                 item(key = "..") {
                     DshListRow(
