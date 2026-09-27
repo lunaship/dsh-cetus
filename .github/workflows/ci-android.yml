@@ -43,7 +43,7 @@ jobs:
           node-version: '22'
 
       - name: Verify DLR/1 vectors
-        run: node scripts/check-dlr1-vectors.mjs testdata/dlr1-vectors.json app/src/test/resources/dlr1-vectors.json
+        run: node ../../scripts/check-dlr1-vectors.mjs ../../testdata/dlr1-vectors.json app/src/test/resources/dlr1-vectors.json
 
       - name: Run JVM tests and lint
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug --stacktrace
