@@ -499,7 +499,9 @@ fun WorkspaceScreen(
     var showTurnJumpSheet by remember { mutableStateOf(false) }
     val changesPanel = remember { ChangesPanelState() }
     LaunchedEffect(currentSessionId) { changesPanel.reset() }
-    val changeSummaries = remember(olderMessages, messages) { sessionChangeSummaries(mergeHistoryPages(olderMessages, messages)) }
+    val historyForChanges = remember(olderMessages, messages) { mergeHistoryPages(olderMessages, messages) }
+    val changeSummaries = remember(historyForChanges) { sessionChangeSummaries(historyForChanges) }
+    val pinnedChanges = remember(historyForChanges) { pinnedTurnChanges(historyForChanges) }
     /** 停稳时是否贴在底部：web/SSE 新消息据此决定是否自动跟尾（比瞬时 isNearBottom 更稳）。 */
     var stickToBottom by remember { mutableStateOf(true) }
     // WI-004：服务端设置为配置源（默认 Agent 预设/权限等），启动与回前台时刷新
@@ -2057,6 +2059,10 @@ fun WorkspaceScreen(
             WorkspaceTopBar(
                 running = running,
                 title = currentSession?.title ?: L.newSession,
+                subtitle = listOfNotNull(
+                    currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+                    host.name.takeIf { it.isNotBlank() },
+                ).joinToString(" · "),
                 showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
@@ -2260,6 +2266,7 @@ fun WorkspaceScreen(
                         goalSummary = latestGoalSummary(messagesForSummary),
                         todoProgress = latestTodoProgress(messagesForSummary),
                         isRunning = running,
+                        pinnedChangesSeq = pinnedChanges?.seq,
                     )
                     // 对齐网页 TurnStatus（Deep diving...）：整轮生成期间都在流尾显示思考中扫光
                     if (running || isSending) {
@@ -2426,6 +2433,11 @@ fun WorkspaceScreen(
                 }
                 // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
+                pinnedChanges?.let { latest ->
+                    LatestChangesLine(latest) {
+                        scope.launch { changesPanel.open(latest.seq, null) }
+                    }
+                }
                 // 发送主体与高权限确认的共享状态：submitComposer 在 InputBar 之后赋值，
                 // onSend 与确认弹窗都通过同一个可变引用复用同一条发送路径。
                 var submitComposer: () -> Unit = {}

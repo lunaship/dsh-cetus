@@ -173,6 +173,16 @@ fun sessionChangeSummaries(messages: List<MobileMessage>): List<WorkspaceChanges
         .mapNotNull { if (it.role == ROLE_WORKSPACE_CHANGES) it.changes else null }
         .sortedByDescending { it.seq }
 
+/**
+ * 钉在输入框上方的本轮改动：最后一条用户消息之后的改动卡。
+ * 用户再发消息，这张卡就回到消息流原位；新一轮没改文件时不钉任何卡。
+ * [messages] 为旧→新顺序、已合并去重的历史（[mergeHistoryPages] 的输出）。
+ */
+fun pinnedTurnChanges(messages: List<MobileMessage>): WorkspaceChangesSummary? {
+    val lastUser = messages.indexOfLast { it.role == "user" }
+    return messages.drop(lastUser + 1).lastOrNull { it.role == ROLE_WORKSPACE_CHANGES }?.changes
+}
+
 /** 渲染行：hunk 头 / 上下文 / 新增 / 删除，带双列行号。 */
 data class DiffRow(val kind: Kind, val oldNo: Int?, val newNo: Int?, val text: String) {
     enum class Kind { HUNK, CONTEXT, ADD, DELETE }

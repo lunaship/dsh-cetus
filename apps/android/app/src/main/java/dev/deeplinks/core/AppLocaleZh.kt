@@ -421,8 +421,6 @@ val DshStringsZh = DshStrings(
         put("executionResultRole", "执行结果")
         put("chooseAgentPresetDesc", "选择新会话使用的智能体模式")
         put("loadingPresets", "加载预设中…")
-        put("heroSlogan", "探索未至之境")
-        put("heroHint", "输入消息，或点 + 添加图片开始")
         put("back", "返回")
         put("selectWorkspaceShort", "选择工作区")
         put("unknownProvider", "未知")

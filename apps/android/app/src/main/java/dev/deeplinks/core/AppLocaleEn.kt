@@ -422,8 +422,6 @@ val DshStringsEn = DshStrings(
         put("chooseAgentPresetDesc", "Choose the mode (Agent preset) for new sessions")
         put("loadingPresets", "Loading presets…")
         // 品牌 slogan：中英同文（对标 DeepSeek 空态 slogan，刻意不翻译）
-        put("heroSlogan", "探索未至之境")
-        put("heroHint", "Type a message, or tap + to add images")
         put("back", "Back")
         put("selectWorkspaceShort", "Choose workspace")
         put("unknownProvider", "Unknown")

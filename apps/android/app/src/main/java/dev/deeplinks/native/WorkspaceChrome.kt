@@ -5,8 +5,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import dev.deeplinks.native.ui.DshBrandMark
-import dev.deeplinks.native.ui.DshEmptyState
 import dev.deeplinks.native.ui.DshErrorState
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
@@ -44,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -80,8 +77,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.stateDescription
 import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshBanner
-import dev.deeplinks.native.ui.DshBannerTone
 import dev.deeplinks.native.ui.DshTopSegment
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
@@ -165,55 +160,40 @@ internal fun ToolSearchBar(
 }
 
 /**
- * 断线重连横幅（从 WorkspaceScreen 抽出，COM-001 拆解）。
- * SSE 断开时提示，客户端自动退避重连；复用 [DshBanner]。
+ * 断线重连：顶栏下面一行字。失败时字变红，「重试」是文字按钮。
  */
 @Composable
 internal fun StreamReconnectBanner(
     kind: StreamBannerKind,
     onRetry: () -> Unit,
 ) {
+    val text = when (kind) {
+        StreamBannerKind.Connecting -> L.connecting
+        StreamBannerKind.Failed -> L.connectionFailedReconnecting
+        else -> L.disconnectedReconnecting
+    }
+    val description = when (kind) {
+        StreamBannerKind.Connecting -> L.connecting
+        StreamBannerKind.Failed -> L.connectionFailedReconnecting
+        else -> L.disconnectedReconnectingContentDescription
+    }
     AnimatedVisibility(
         visible = kind != StreamBannerKind.Hidden,
         enter = expandVertically(animationSpec = tween(motionDuration(200))) + fadeIn(animationSpec = tween(motionDuration(200))),
         exit = shrinkVertically(animationSpec = tween(motionDuration(180))) + fadeOut(animationSpec = tween(motionDuration(180)))
     ) {
-        DshBanner(
-            text = when (kind) {
-                StreamBannerKind.Connecting -> L.connecting
-                StreamBannerKind.Failed -> L.connectionFailedReconnecting
-                else -> L.disconnectedReconnecting
-            },
-            tone = if (kind == StreamBannerKind.Failed)
-                DshBannerTone.Error else DshBannerTone.Info,
-            actionLabel = L.retry,
-            onAction = onRetry,
-            leading = {
-                val reconnRotation = rememberMotionSpin(900, label = "reconnRot")
-                Icon(
-                    RefreshOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier
-                        .size(12.dp)
-                        .rotate(reconnRotation ?: 0f)
-                )
-            },
-            contentDescription = when (kind) {
-                StreamBannerKind.Connecting -> L.connecting
-                StreamBannerKind.Failed -> L.connectionFailedReconnecting
-                else -> L.disconnectedReconnectingContentDescription
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+        QuietStatusLine(
+            text = text,
+            alert = kind == StreamBannerKind.Failed,
+            contentDescription = description,
+        ) {
+            QuietStatusAction(L.retry, onRetry)
+        }
     }
 }
 
 /**
- * 设备不可达横幅（方案 §4.6）：最近设备离线时不强制跳回设备页，
- * Workspace 仍然打开，内容区顶部给出「重试 / 设备与配对」两个明确下一步。
+ * 设备不可达：一行字加两个文字动作。离线时不强制跳回设备页。
  */
 @Composable
 internal fun DeviceUnreachableBanner(
@@ -222,6 +202,7 @@ internal fun DeviceUnreachableBanner(
     onRetry: () -> Unit,
     onOpenDevice: () -> Unit,
 ) {
+    val message = L.cannotConnectHost.format(hostName)
     AnimatedVisibility(
         visible = visible,
         enter = expandVertically(animationSpec = tween(motionDuration(200))) +
@@ -229,70 +210,59 @@ internal fun DeviceUnreachableBanner(
         exit = shrinkVertically(animationSpec = tween(motionDuration(180))) +
             fadeOut(animationSpec = tween(motionDuration(180))),
     ) {
-        val message = L.cannotConnectHost.format(hostName)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(DshRadius.container))
-                .background(Dsh.bgCard)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .semantics { contentDescription = message },
-        ) {
-            Text(
-                message,
-                color = Dsh.labelSecondary,
-                style = DshType.captionRelaxed,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BannerAction(label = L.deviceAndPairing, onClick = onOpenDevice)
-                Spacer(Modifier.width(4.dp))
-                BannerAction(label = L.retry, primary = true, onClick = onRetry)
-            }
+        QuietStatusLine(text = message, alert = false, contentDescription = message) {
+            QuietStatusAction(L.deviceAndPairing, onOpenDevice)
+            QuietStatusAction(L.retry, onRetry)
         }
     }
 }
 
 @Composable
-private fun BannerAction(label: String, primary: Boolean = false, onClick: () -> Unit) {
-    Box(
+private fun QuietStatusLine(
+    text: String,
+    alert: Boolean,
+    contentDescription: String,
+    actions: @Composable () -> Unit,
+) {
+    Row(
         modifier = Modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.full))
-            // 实心主按钮统一 brand500（brand400 底配白色小字在暗色下不足 AA）
-            .background(if (primary) Dsh.brand500 else Color.Transparent)
-            .clickable(onClick = onClick)
-            .semantics {
-                role = Role.Button
-                contentDescription = label
-            }
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = 2.dp)
+            .semantics { this.contentDescription = contentDescription },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            label,
-            color = if (primary) Dsh.onBrand else Dsh.labelPrimary,
-            style = DshType.microRelaxed,
-            fontWeight = FontWeight.Medium,
+            text,
+            color = if (alert) Dsh.error else Dsh.labelSecondary,
+            style = DshType.captionRelaxed,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
+        actions()
     }
 }
 
 @Composable
-internal fun HeroShell() {
-    // 日常空会话：克制的小尺寸品牌 mark + 降一级标题，引导交给 Composer placeholder
-    DshEmptyState(
-        title = DshS.heroSlogan,
-        message = DshS.heroHint,
-        graphic = { DshBrandMark(size = 44.dp) },
-    )
+private fun QuietStatusAction(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 8.dp)
+            .semantics {
+                role = Role.Button
+                this.contentDescription = label
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = Dsh.labelPrimary,
+            style = DshType.captionRelaxed,
+            fontWeight = FontWeight.Medium,
+        )
+    }
 }
 
 @Composable
@@ -317,37 +287,11 @@ internal fun ChatHistoryError(
     )
 }
 
+/** 工具搜索失败：一行字加文字重试，不另做色块按钮。 */
 @Composable
 internal fun SearchStatusBanner(message: String, onRetry: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgCard)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            message,
-            color = Dsh.labelSecondary,
-            style = DshType.captionRelaxed,
-            modifier = Modifier.weight(1f),
-        )
-        Box(
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(Dsh.brand400)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = L.retry
-                }
-                .clickable(onClick = onRetry)
-                .padding(horizontal = 12.dp)
-                .wrapContentHeight(Alignment.CenterVertically),
-        ) {
-            Text(L.retry, color = Dsh.onBrand, style = DshType.label, fontWeight = FontWeight(500))
-        }
+    QuietStatusLine(text = message, alert = false, contentDescription = message) {
+        QuietStatusAction(L.retry, onRetry)
     }
 }
 
@@ -784,13 +728,15 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 会话顶栏（单行）：导航、会话名、对话/轨迹胶囊分段和溢出菜单。
+ * 会话顶栏：导航、会话名（下挂「项目 · 电脑」一行）、对话/轨迹胶囊分段和溢出菜单。
+ * 标题被分段挤窄时，副标题仍交代这是哪个项目、哪台电脑。
  * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
  */
 @Composable
 internal fun WorkspaceTopBar(
     running: Boolean,
     title: String,
+    subtitle: String? = null,
     showBack: Boolean,
     onNavigate: () -> Unit,
     viewMode: String,
@@ -845,14 +791,24 @@ internal fun WorkspaceTopBar(
                     )
                     Spacer(Modifier.width(6.dp))
                 }
-                Text(
-                    title,
-                    color = Dsh.labelPrimary,
-                    style = DshType.titleLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        color = Dsh.labelPrimary,
+                        style = if (subtitle.isNullOrBlank()) DshType.titleLarge else DshType.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            subtitle,
+                            color = Dsh.labelTertiary,
+                            style = DshType.captionRelaxed,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
 
             if (showViewModeTabs) {
@@ -939,15 +895,9 @@ internal fun LazyListScope.chatEmptyCanvas(
                 )
             }
         }
+        // 空会话只留白：起点是输入框占位句，不放标语和品牌标志
         ChatCanvasKind.Empty, ChatCanvasKind.Content -> item(key = "empty-hero") {
-            Box(
-                modifier = Modifier
-                    .fillParentMaxSize()
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                HeroShell()
-            }
+            Box(Modifier.fillParentMaxSize())
         }
     }
 }
@@ -992,13 +942,13 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
                     .align(Alignment.TopEnd)
                     .defaultMinSize(minWidth = 18.dp)
                     .clip(CircleShape)
-                    .background(Dsh.brand500)
+                    .background(Dsh.labelPrimary)
                     .padding(horizontal = 5.dp, vertical = 2.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     if (unread > 99) "99+" else unread.toString(),
-                    color = Dsh.onBrand,
+                    color = Dsh.bgBase,
                     style = DshType.microRelaxed,
                     fontWeight = FontWeight.Medium,
                 )

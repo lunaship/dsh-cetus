@@ -48,6 +48,28 @@ fun groupMessages(messages: List<MobileMessage>): List<MessageGroup> {
     return out
 }
 
+/**
+ * 每轮最后一条助手回复的 id：复制 / 赞踩 / 时间这一行只挂在这里，
+ * 工具调用之间的过程说明不再各挂一行（长按菜单仍可复制）。
+ * 以用户消息切轮；最后一轮还在运行时不算结束，免得操作行跟着新回复跳来跳去。
+ */
+fun turnEndAssistantIds(groups: List<MessageGroup>, running: Boolean): Set<String> {
+    val out = mutableSetOf<String>()
+    var pending: String? = null
+    for (group in groups) {
+        val msg = (group as? MessageGroup.Single)?.msg ?: continue
+        when (msg.role) {
+            "user" -> {
+                pending?.let(out::add)
+                pending = null
+            }
+            "assistant" -> pending = msg.id
+        }
+    }
+    if (!running) pending?.let(out::add)
+    return out
+}
+
 /** 智能格式化工具调用聚合摘要（如 "Read (3)"，"Read, bash (4)"，或回退到工具调用计数）。 */
 fun formatToolGroupSummary(
     items: List<MobileMessage>,

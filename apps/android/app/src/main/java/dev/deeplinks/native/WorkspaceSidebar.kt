@@ -241,7 +241,7 @@ internal fun WorkspaceSidebar(
                 }
                 sections.forEach { (section, rows) ->
                     item(key = "home-section-${section.name}") {
-                        HomeSectionHeader(section = section, count = rows.size)
+                        HomeSectionHeader(section = section)
                     }
                     rows.forEach { s ->
                         item(key = "home-session-${s.sessionId}") {

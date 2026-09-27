@@ -81,7 +81,7 @@ internal fun WorkspaceChangesCard(
             if (hidden > 0) {
                 Text(
                     ChangesL.moreFiles.format(hidden),
-                    color = Dsh.brand400,
+                    color = Dsh.labelPrimary,
                     style = DshType.label,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -142,11 +142,47 @@ internal fun ChangedFileRow(
     }
 }
 
+/**
+ * 输入框上方的本轮改动：一行 `+n −n`，点开审查面。
+ * 只有二进制等没有行数的改动时写「已编辑 …」，不能让本轮改动没有入口。
+ */
+@Composable
+internal fun LatestChangesLine(
+    summary: WorkspaceChangesSummary,
+    onOpen: () -> Unit,
+) {
+    val title = ChangesL.cardTitle(summary)
+    Row(
+        modifier = Modifier
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
+            .heightIn(min = 36.dp)
+            .clickable(indication = dshRipple(), interactionSource = null, onClick = onOpen)
+            .semantics {
+                role = Role.Button
+                contentDescription = "${ChangesL.viewChanges}: $title"
+            }
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (summary.added > 0 || summary.deleted > 0) {
+            DiffStat(summary.added, summary.deleted)
+        } else {
+            Text(
+                title,
+                color = Dsh.labelSecondary,
+                style = DshType.label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 /** `+12 −3`：增绿删红，等宽数字；为 0 的一侧省略。 */
 @Composable
 internal fun DiffStat(added: Int, deleted: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (added > 0) Text("+$added", color = Dsh.success, style = DshType.label.tabularNums())
+        if (added > 0) Text("+$added", color = Dsh.successContent, style = DshType.label.tabularNums())
         if (added > 0 && deleted > 0) Spacer(Modifier.width(6.dp))
         if (deleted > 0) Text("−$deleted", color = Dsh.error, style = DshType.label.tabularNums())
     }

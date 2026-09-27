@@ -86,7 +86,8 @@ private val IconSlot = 22.dp
 /** 自有图标是满幅绘制（无内边距），18dp 与原先 22dp 的 Material 图标视觉等大。 */
 private val IconSize = 18.dp
 private val IconGap = 14.dp
-private val RowMinHeight = 52.dp
+/** 单行设置行：48dp 触控下限，不再额外加高。 */
+private val RowMinHeight = 48.dp
 /** 右侧取值的最大宽度：取值贴右、尾标成一条竖线；超长时截断取值而不是挤压标题。 */
 private val ValueMaxWidth = 168.dp
 private val TextInsetWithIcon = RowPaddingH + IconSlot + IconGap
@@ -176,9 +177,7 @@ fun DshListSection(
 
 /**
  * Section 标题（小号灰字，与行内文字对齐）；Section 外的自定义内容也用它起头。
- *
- * 状态变体（任务首页的分区头）：[leading] 放状态圆点 / 图标，[count] 是计数 pill——
- * 颜色只作辅助，语义由文字承担（docs/visual-rules.md 第五节）。
+ * [contentStart] 默认对齐分组行的文字；行距不同的列表（如任务首页）传 0 自己对齐。
  */
 @Composable
 fun DshSectionHeader(
@@ -188,20 +187,15 @@ fun DshSectionHeader(
     actionDanger: Boolean = false,
     actionEnabled: Boolean = true,
     onAction: (() -> Unit)? = null,
-    leading: (@Composable () -> Unit)? = null,
-    count: Int? = null,
+    contentStart: Dp = RowPaddingH,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 32.dp)
-            .padding(start = RowPaddingH),
+            .padding(start = contentStart),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (leading != null) {
-            leading()
-            Spacer(Modifier.width(8.dp))
-        }
         Text(
             title,
             color = Dsh.labelTertiary,
@@ -210,22 +204,11 @@ fun DshSectionHeader(
                 .weight(1f)
                 .semantics { heading() },
         )
-        if (count != null && count > 0) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(Dsh.bgSubtle)
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("$count", color = Dsh.labelTertiary, style = DshType.captionRelaxed.tabularNums())
-            }
-        }
         if (actionLabel != null && onAction != null) {
             val color = when {
                 !actionEnabled -> Dsh.labelDimmed
                 actionDanger -> Dsh.error
-                else -> Dsh.brand400
+                else -> Dsh.labelPrimary
             }
             Box(
                 modifier = Modifier
@@ -442,7 +425,7 @@ private fun DshListTrailingMark(trailing: DshListTrailing) {
     val (icon, tint, size) = when (trailing) {
         DshListTrailing.None -> return
         DshListTrailing.Chevron -> Triple(ChevronRightOutline14, Dsh.labelTertiary, 16.dp)
-        DshListTrailing.Check -> Triple(CheckOutline16, Dsh.brand400, 18.dp)
+        DshListTrailing.Check -> Triple(CheckOutline16, Dsh.labelPrimary, 18.dp)
         DshListTrailing.Select -> Triple(ChevronDownOutline14, Dsh.labelTertiary, 16.dp)
     }
     Spacer(Modifier.width(6.dp))
@@ -468,7 +451,7 @@ private fun DshListRowError(error: String, onRetry: (() -> Unit)?, modifier: Mod
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(s.retry, color = Dsh.brand400, style = DshType.titleSmall)
+                Text(s.retry, color = Dsh.labelPrimary, style = DshType.titleSmall)
             }
         }
     }
@@ -621,13 +604,13 @@ fun DshOptionsMenu(
                 ) {
                     Text(
                         label,
-                        color = if (selected) Dsh.brand400 else Dsh.labelPrimary,
+                        color = Dsh.labelPrimary,
                         style = DshType.bodyLarge,
                         fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                         modifier = Modifier.weight(1f),
                     )
                     if (selected) {
-                        Icon(CheckOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(18.dp))
+                        Icon(CheckOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -635,7 +618,7 @@ fun DshOptionsMenu(
     }
 }
 
-/** 按钮行：整行一个文字操作（品牌色 / 危险红），不带箭头。 */
+/** 按钮行：整行一个文字操作。普通操作跟正文同色，危险操作用红。 */
 @Composable
 fun DshListActionRow(
     label: String,
@@ -648,7 +631,7 @@ fun DshListActionRow(
     val color = when {
         !enabled -> Dsh.labelTertiary
         destructive -> Dsh.error
-        else -> Dsh.brand400
+        else -> Dsh.labelPrimary
     }
     Row(
         modifier = modifier

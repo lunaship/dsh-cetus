@@ -472,8 +472,6 @@ class DshStrings(private val values: Map<String, String>) {
     val executionResultRole: String get() = t("executionResultRole")
     val chooseAgentPresetDesc: String get() = t("chooseAgentPresetDesc")
     val loadingPresets: String get() = t("loadingPresets")
-    val heroSlogan: String get() = t("heroSlogan")
-    val heroHint: String get() = t("heroHint")
     val back: String get() = t("back")
     val selectWorkspaceShort: String get() = t("selectWorkspaceShort")
     val unknownProvider: String get() = t("unknownProvider")

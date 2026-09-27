@@ -54,8 +54,10 @@ DeepSeek Web / lody-iOS / Paseo / t3code 只能作为**问题样例**（说明�
 
 - `bgGrouped` 收敛为 `bgBase`；`bgGroupedCard` 收敛为 `bgSubtle`。
 - `bgCard` 只表示浮层或需要独立承载的卡片，不再是普通列表行背景。
-- `bgSelected` 与 `bgNavSelected` 合并为一个 selection container 角色；选中态用
-  DSH Blue tonal（浅色 `bgNavSelected + brand400`，暗色对应深蓝容器），不用纯黑反色胶囊。
+- `bgSelected` 与 `bgNavSelected` 合并为一个 selection container 角色，token 仍然成对。
+  筛选、会话行、分页下划线、菜单勾选和用户气泡都用中性灰：底是 `bgSubtle`，字和图标是 `labelPrimary`。
+  进行中写在灰字和图标上。实心 `brand500` 只留给发送、停止、确认、归档，以及列表里唯一的添加按钮。
+  思考轨迹左侧蓝轨保持不变。
 - 旧属性在迁移期保留为兼容别名，调用点清零后才删除；由 `DshSurfaceRoleTest` 保证只降不升。
 
 ## 三、形状合同（六个用途）
@@ -71,7 +73,7 @@ DeepSeek Web / lody-iOS / Paseo / t3code 只能作为**问题样例**（说明�
 
 - `group = 20dp` 的页面级语义已删除；页面文件不得直接使用。
 - `xs/sm/md/lg/xl` 为弃用别名，先映射到新角色，再逐文件替换（`DesignTokenUsageTest` 管只降不升）。
-- `DshTileShape` 只允许品牌 mark、头像和确实需要方形底板的设备图标。
+- `DshTileShape` 只允许头像和确实需要方形底板的设备图标。
 - 普通列表行禁止额外 clip；按压反馈由父级 Section 或 interaction indication 处理。
 - Material `Shapes` 必须映射到上述语义半径（`DshTheme.kt`），标准组件不得回落到另一套形状。
 
@@ -96,14 +98,19 @@ DeepSeek Web / lody-iOS / Paseo / t3code 只能作为**问题样例**（说明�
 | 类别 | 组件 | 规则 |
 |---|---|---|
 | 页面 | `DshPageScaffold` | 统一标题、inset、宽度和背景 |
-| Section | `DshSectionHeader`、`DshSection` | 默认扁平；`tonal = true` 必须有独立分组理由 |
+| Section | `DshSectionHeader`、`DshSection` | 默认扁平；设置页不用 `tonal`。分区标题只有灰字，不挂计数 |
 | 列表 | `DshListRow`、`DshSwitchRow`、`DshSelectRow` | 设置、设备、Sheet 复用同一行骨架 |
 | 筛选 | `DshFilterChip` | 工作区、模型、状态筛选统一使用 |
 | 状态 | `DshStatusBadge`、`DshBanner` | 等待、运行、成功、错误语义固定 |
 | 操作 | `DshPrimaryAction`、`DshIconAction` | 一个表面最多一个实心主操作 |
-| 空态 | `DshWelcomeState`、`DshEmptyState`、`DshErrorState` | 欢迎、空数据、失败不再混为一类 |
+| 空态 | `DshEmptyState`、`DshErrorState` | 未配对与空数据用 `DshEmptyState`（标题、说明、文字动作），不挂品牌标志；空会话只留白 |
 | 浮层 | `DshSheet`、`DshDialog`、`DshMenu` | 统一 modal 形状、scrim、阴影和关闭按钮 |
 | 输入 | `ComposerBar` | 保留专用能力，内部按钮和菜单使用共享原语 |
+
+**密度**：空白留在组与组之间，不在每个元素周围均匀撒。
+- 助手消息的复制 / 赞踩 / 时间行只挂在每轮最后一条回复；过程说明靠长按菜单复制。
+- 列表的分区标题与行标题对齐同一条左边线；会话行不加行尾 `›`。
+- 列表行最小高 48dp（触控下限），不再额外加高。
 
 页面文件不得再新增 `HomeChip`、`DeviceTag` 一类只服务单页、但语义可复用的组件；
 确有特殊业务语义时，组件名必须表达业务，而不是视觉形状。
@@ -111,7 +118,7 @@ DeepSeek Web / lody-iOS / Paseo / t3code 只能作为**问题样例**（说明�
 ## 六、十条（仍然有效）
 
 1. **色源唯一**：运行时颜色只走 Compose `DshTheme` / `DshColors`（及代理 `Dsh.*`）。XML `values/colors.xml` 与 `values-night/colors.xml` 必须与同一套 DSH 色对齐。**XML 运行时色名一律 `dsh_*`；禁止再引入 `ink_*` 作为第二套色系统。**
-2. **DeepSeek 色主轴**：深色画布近黑（`#0E0E10` 族）；唯一高饱和强调色钉死 DeepSeek Blue（`brand500` / `brand400`）。用户气泡、发送键、选中会话、链接、实心主按钮用这一族。Material You 动态取色只动表面 / 灰阶文字，**不得**用壁纸色替换品牌 token。
+2. **DeepSeek 色主轴**：深色画布近黑（`#0E0E10` 族）；唯一高饱和强调色钉死 DeepSeek Blue（`brand500` / `brand400`）。发送键、链接、实心主按钮用这一族。选中态、用户气泡和进行中状态用浅灰与正文色，不把品牌蓝铺进列表和消息流。Material You 动态取色只动表面 / 灰阶文字，**不得**用壁纸色替换品牌 token。
    **发送槽规格（Mic / Send / Stop 同一槽）**：空态语音 = `bgTrack` 圆钮；可发送 / 运行 / 录音 = `brand500` 实心；禁用 = `brand500` 55%；出错 = `error`。状态只换图标；**禁止**给这个槽上墨黑/反白实心。
 3. **禁墨色主轴**：禁止墨黑或反白近白当主按钮色。Splash / Devices / Settings / 聊天必须像同一产品。
 4. **文字灰阶**：高对比正文（`labelPrimary`）+ muted 次要（`labelSecondary` / `labelTertiary`）；层级靠灰阶与字重，不靠第二套高饱和色。

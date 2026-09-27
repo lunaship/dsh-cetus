@@ -2,7 +2,6 @@ package dev.deeplinks.devices
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import dev.deeplinks.native.ui.DshBrandMark
 import dev.deeplinks.native.ui.DshEmptyState
 import dev.deeplinks.native.KeyboardOutline16
 import dev.deeplinks.native.ScanOutline16
@@ -33,7 +32,6 @@ import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSheet
 import dev.deeplinks.native.ui.DshSheetPrimaryButton
-import dev.deeplinks.native.ui.DshWelcomeState
 import dev.deeplinks.native.ui.DshTextField
 
 import androidx.activity.ComponentActivity
@@ -412,8 +410,8 @@ private fun DevicesPage(
 private fun EmptyDevicesState(onAdd: () -> Unit) {
     val s = DshS
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        // 未配对 = 明确的首次使用场景：欢迎态允许品牌 mark（docs/visual-rules.md 第五节）
-        DshWelcomeState(
+        // 未配对和空会话同一套留白：标题、说明、文字动作，不挂品牌标志。
+        DshEmptyState(
             title = s.noDevicesYet,
             message = s.noDevicesHint,
             actionLabel = s.addDevice,

@@ -20,7 +20,7 @@ fun dynamicDshColors(context: Context, dark: Boolean): DshColors? {
     val scheme = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     val base = if (dark) DarkDshColors else LightDshColors
     // base.copy：未覆盖的字段（brand* / brandTint / toolsAccent / bgRecessed /
-    // traceReasoning / bubbleBg / bubbleHighlight 等）保持 DeepSeek 静态色。
+    // traceReasoning 等）保持 DeepSeek 静态色。
     return base.copy(
         bgBase = scheme.background,
         bgSidePanel = scheme.surfaceContainerLow,

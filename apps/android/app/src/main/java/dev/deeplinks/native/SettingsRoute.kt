@@ -387,8 +387,8 @@ internal fun SettingsHome(
         else -> s.themeSystem
     }
 
-    // 已配对电脑是独立数据块：tonal 容器（docs/visual-rules.md 第二节）
-    DshListSection(header = s.sectionPairedComputer, tonal = true) {
+    // 设置页只用一种容器：扁平行 + 发丝分隔，已配对电脑也不另铺灰卡
+    DshListSection(header = s.sectionPairedComputer) {
         if (host != null) {
             val address = hostDisplayName(host.baseUrl)
             DshListRow(
@@ -853,8 +853,8 @@ internal fun SessionsSettingsContent(
                 }
             }
             if (archivedRows.size + deletedRows.size > 0) {
-                // 危险操作单独成组：tonal 容器 + destructive 行，不再与普通设置行混排
-                DshListSection(footer = s.clearAllLocalRecordsDesc, tonal = true) {
+                // 危险操作单独成组（红字 destructive 行），不再与普通设置行混排
+                DshListSection(footer = s.clearAllLocalRecordsDesc) {
                     DshListActionRow(
                         label = s.clearAllLocalRecords,
                         icon = TrashOutline16,

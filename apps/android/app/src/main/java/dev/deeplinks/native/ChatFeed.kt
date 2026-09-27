@@ -32,6 +32,7 @@ import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.util.MessageGroup
+import dev.deeplinks.native.util.turnEndAssistantIds
 import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.goalRoundObjective
 
@@ -129,12 +130,12 @@ internal fun StickyTaskSummaryCard(
                     Icon(
                         GoalOutline16,
                         contentDescription = null,
-                        tint = Dsh.brand400,
+                        tint = Dsh.labelSecondary,
                         modifier = Modifier.size(14.dp),
                     )
                     Text(
                         text = L.goalRole,
-                        color = Dsh.brand400,
+                        color = Dsh.labelSecondary,
                         style = DshType.microMedium,
                     )
                     Text(
@@ -164,7 +165,7 @@ internal fun StickyTaskSummaryCard(
                         )
                         val segments = buildList {
                             repeat(todoProgress.done) { add(Dsh.success) }
-                            repeat(todoProgress.inProgress) { add(Dsh.brand500) }
+                            repeat(todoProgress.inProgress) { add(Dsh.labelSecondary) }
                             repeat(todoProgress.pending) { add(Dsh.labelTertiary) }
                         }
                         if (segments.isNotEmpty()) {
@@ -385,7 +386,18 @@ internal fun LazyListScope.chatMessageItems(
     goalSummary: String? = null,
     todoProgress: TodoProgress = TodoProgress(),
     isRunning: Boolean = false,
+    pinnedChangesSeq: Long? = null,
 ) {
+    val groups = if (pinnedChangesSeq == null) {
+        visibleGroups
+    } else {
+        visibleGroups.filterNot { group ->
+            group is MessageGroup.Single &&
+                group.msg.role == ROLE_WORKSPACE_CHANGES &&
+                group.msg.changes?.seq == pinnedChangesSeq
+        }
+    }
+    val turnEnds = turnEndAssistantIds(groups, isRunning)
     // 任务摘要卡片：运行中且有内容时作为列表首项显示
     if (isRunning && (!goalSummary.isNullOrBlank() || todoProgress.hasActive)) {
         item(key = "sticky-task-summary") {
@@ -398,7 +410,7 @@ internal fun LazyListScope.chatMessageItems(
         }
     }
     items(
-        items = visibleGroups,
+        items = groups,
         key = { it.groupKey },
         contentType = { group -> if (group is MessageGroup.ToolGroup) "toolgroup" else "single" },
     ) { group ->
@@ -427,6 +439,7 @@ internal fun LazyListScope.chatMessageItems(
                     onRetract = actions.onRetract(group.msg),
                     onFetchProducedFile = actions.onFetchProducedFile(group.msg),
                     onOpenChanges = actions.openChanges,
+                    showActions = group.msg.id in turnEnds,
                 )
                 is MessageGroup.ToolGroup -> ToolGroupHeader(
                     group = group,

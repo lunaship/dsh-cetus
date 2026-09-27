@@ -328,7 +328,7 @@ internal fun WorkspaceOptionRow(
         title = title,
         subtitle = abbreviateHomePath(path),
         icon = FolderOpenOutline16,
-        iconTint = if (selected) Dsh.brand400 else Dsh.labelSecondary,
+        iconTint = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
         onClick = onClick,
         trailing = if (selected) DshListTrailing.Check else DshListTrailing.None,
     )
@@ -433,7 +433,7 @@ internal fun SubagentBottomSheet(
                                 if (child.running) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(14.dp),
-                                        color = Dsh.brand400,
+                                        color = Dsh.labelSecondary,
                                         strokeWidth = 1.5.dp,
                                     )
                                 } else {

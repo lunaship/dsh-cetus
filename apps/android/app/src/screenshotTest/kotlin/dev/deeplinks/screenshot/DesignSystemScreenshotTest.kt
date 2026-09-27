@@ -250,7 +250,6 @@ private fun TokenWall() {
         "traceReasoning" to Dsh.traceReasoning,
         "traceApproval" to Dsh.traceApproval,
         "traceTodo" to Dsh.traceTodo,
-        "bubbleBg" to Dsh.bubbleBg,
         "borderStrong" to Dsh.borderStrong,
         "successContent" to Dsh.successContent,
         "successContainer" to Dsh.successContainer,
@@ -834,22 +833,22 @@ private fun SidebarWall() {
         HomeHeader(hostName = "MacBook Pro", searchActive = false, onOpenDevice = {}, onToggleSearch = {}, onOpenSettings = {})
         WorkspaceChips(
             workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
-            // 选中态入基线：DSH Blue tonal（bgNavSelected + brand400），不是纯黑反色
+            // 选中态入基线：浅灰底，不是品牌蓝胶囊
             selected = "/Users/me/dsh-links",
             onSelect = {},
             onAddWorkspace = {},
             onCreateSessionIn = {},
             onDeleteWorkspace = {},
         )
-        HomeSectionHeader(HomeSection.AWAITING, 2)
+        HomeSectionHeader(HomeSection.AWAITING)
         SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        HomeSectionHeader(HomeSection.RUNNING, 1)
+        HomeSectionHeader(HomeSection.RUNNING)
         SessionRowItem(session("s2", "完善审批状态同步", running = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        HomeSectionHeader(HomeSection.TODAY, 2)
+        HomeSectionHeader(HomeSection.TODAY)
         SessionRowItem(session("s3", "修复手机模型切换"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s4", "整理工作区导航"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        HomeSectionHeader(HomeSection.YESTERDAY, 1)
+        HomeSectionHeader(HomeSection.YESTERDAY)
         SessionRowItem(session("s6", "补齐移动端测试"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         Spacer(Modifier.height(24.dp))
         HomeNewTaskBar(workspaceName = "dsh-links", onClick = {})

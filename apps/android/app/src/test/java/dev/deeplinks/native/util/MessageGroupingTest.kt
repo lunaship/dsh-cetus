@@ -24,6 +24,25 @@ class MessageGroupingTest {
     }
 
     @Test
+    fun `操作行只挂在每轮最后一条助手回复`() {
+        val groups = groupMessages(
+            listOf(
+                msg("u-1", "user", 1),
+                msg("a-1", "assistant", 2),
+                msg("t-1", "tool_call", 3),
+                msg("t-2", "tool_result", 4),
+                msg("a-2", "assistant", 5),
+                msg("u-2", "user", 6),
+                msg("a-3", "assistant", 7),
+                msg("t-3", "tool_call", 8),
+            ),
+        )
+        assertEquals(setOf("a-2", "a-3"), turnEndAssistantIds(groups, running = false))
+        // 最后一轮还在跑：只有已结束的上一轮挂操作行
+        assertEquals(setOf("a-2"), turnEndAssistantIds(groups, running = true))
+    }
+
+    @Test
     fun `非工具消息保持 Single`() {
         val msgs = listOf(
             msg("u-1", "user", 1),

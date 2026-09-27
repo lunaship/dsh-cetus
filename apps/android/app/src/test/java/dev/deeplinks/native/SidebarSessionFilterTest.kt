@@ -93,5 +93,11 @@ class SidebarSessionFilterTest {
 
         val sessionNoCwd = session("2", cwd = null, updatedAt = now)
         assertEquals("10分钟前", formatSessionSubtitle(sessionNoCwd, relativeTimeFormatted = "10分钟前"))
+
+        val awaiting = normalSession.copy(awaitingInput = true, running = true)
+        assertEquals(
+            "my-project · 等待确认",
+            formatSessionSubtitle(awaiting, goalSummary = "不该盖住状态", awaitingLabel = "等待确认"),
+        )
     }
 }

@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SwipeToDismissBox
@@ -61,19 +60,17 @@ import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
 import dev.deeplinks.core.ThemeManager
 import dev.deeplinks.core.dshRipple
-import dev.deeplinks.native.ui.DshStatusBadge
-import dev.deeplinks.native.ui.DshStatusTone
 import dev.deeplinks.native.util.relativeTime
 
 /**
  * 抽屉（侧栏）原生行组件 —— 密度与颜色规格（2026-09-22 收紧版）：
  *
  * - item 高 48dp（Android 触控下限）、图标 18dp、行内水平 12dp、抽屉边距 6dp；
- *   会话选中态使用与 Web 一致的 10dp 弱蓝圆角矩形（brandTint），不随动态主题漂移。
+ *   会话选中态是中性浅灰（bgSubtle），品牌蓝不进列表。
  *   相比上一版 56/24/14/8 全面收紧，
  *   一屏多出约 3 行，头部主机行 64→48、搜索框 52→40。
  * - 容器底 [Dsh.bgDrawer] 与 bgSidePanel 同档（与内容只差一档）；行底必须不透明
- *   （选中弱蓝 [Dsh.brandTint] 也是垫在不透明行底上的叠层），右滑归档层才不会透出。
+ *   （选中 [Dsh.bgSubtle] 垫在不透明行底上），右滑归档层才不会透出。
  *
  * 只做「尺码 + 颜色」的原生化，交互一律保留：右滑归档、长按菜单、选中回弹、
  * 点击涟漪、搜索防抖、分组折叠。行为逻辑仍在 WorkspaceSidebar / WorkspaceActivity。
@@ -188,13 +185,12 @@ internal fun SessionRowItem(
                     .fillMaxWidth()
                     .heightIn(min = 56.dp)
                     .clip(rowShape)
-                    // 先铺不透明行底，再叠选中/按压色：弱蓝是半透明色，
+                    // 先铺不透明行底，再叠选中/按压色。选中是浅灰，
                     // 不垫底就会透出下层的滑动归档层。
                     .background(rowRestColor)
                     .background(
                         when {
-                            // 固定品牌弱蓝，避免 Android 动态色把会话选中态变成系统色。
-                            isSelected -> Dsh.brandTint
+                            isSelected -> Dsh.bgSubtle
                             itemPressed -> Dsh.bgPressed
                             else -> Color.Transparent
                         },
@@ -222,25 +218,22 @@ internal fun SessionRowItem(
                     .padding(horizontal = DrawerInnerPadding, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                HomeTaskLeadingStatus(session)
-                Spacer(Modifier.width(12.dp))
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    val relTime = if (!session.running && session.updatedAt > 0) relativeTime(session.updatedAt) else ""
-                    val awaiting = session.awaitingInput
-                    val project = session.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
-                    val meta = if (awaiting) {
-                        listOfNotNull(project, goalSummary?.takeIf { it.isNotBlank() }).joinToString(" · ")
+                    val relTime = if (!session.running && !session.awaitingInput && session.updatedAt > 0) {
+                        relativeTime(session.updatedAt)
                     } else {
-                        formatSessionSubtitle(
-                            session = session,
-                            goalSummary = goalSummary,
-                            runningLabel = s.runningStatus,
-                            relativeTimeFormatted = relTime,
-                        )
+                        ""
                     }
+                    val meta = formatSessionSubtitle(
+                        session = session,
+                        goalSummary = goalSummary,
+                        runningLabel = s.runningStatus,
+                        awaitingLabel = s.awaitingInputStatus,
+                        relativeTimeFormatted = relTime,
+                    )
                     Text(
                         session.title,
                         color = Dsh.labelPrimary,
@@ -249,22 +242,17 @@ internal fun SessionRowItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (session.running || awaiting || meta.isNotBlank()) {
+                    if (meta.isNotBlank()) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            meta.ifBlank { s.awaitingInputStatus },
-                            color = when {
-                                session.running && !awaiting -> Dsh.brand400
-                                else -> Dsh.labelTertiary
-                            },
+                            meta,
+                            color = Dsh.labelTertiary,
                             style = DshType.captionRelaxed,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-                Spacer(Modifier.width(12.dp))
-                HomeTaskTrailingStatus(session)
             }
             // 锚在行尾：菜单靠右弹出，避免贴侧栏左边
             Box(modifier = Modifier.align(Alignment.CenterEnd)) {
@@ -295,67 +283,6 @@ internal fun SessionRowItem(
         }
     }
 }
-
-/** 任务状态用「色 + 形」双重表达；所有颜色来自现有 DSH 语义 token。 */
-@Composable
-private fun HomeTaskLeadingStatus(session: MobileSession) {
-    val awaiting = session.awaitingInput
-    val waitingContent = if (Dsh.isDark) Dsh.warn else Dsh.warnLabel
-    val container = when {
-        awaiting -> Dsh.warn.copy(alpha = 0.12f)
-        session.running -> Dsh.brandTint
-        else -> Dsh.bgSubtle
-    }
-    val content = when {
-        awaiting -> waitingContent
-        session.running -> Dsh.brand400
-        else -> Dsh.labelSecondary
-    }
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        when {
-            awaiting -> Icon(ClockOutline16, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
-            session.running -> CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = content,
-                trackColor = Dsh.brand400.copy(alpha = 0.18f),
-                strokeWidth = 2.dp,
-            )
-            else -> Icon(CheckOutline16, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
-        }
-    }
-}
-
-@Composable
-private fun HomeTaskTrailingStatus(session: MobileSession) {
-    val s = DshS
-    when {
-        // 等待输入：共享状态 pill（颜色 + 文字双通道），与设置/设备同一语义
-        session.awaitingInput -> DshStatusBadge(
-            text = s.awaitingInputStatus,
-            tone = DshStatusTone.Waiting,
-            contentDescription = s.awaitingInputStatus,
-        )
-        session.running -> CircularProgressIndicator(
-            modifier = Modifier.size(22.dp),
-            color = Dsh.brand400,
-            trackColor = Dsh.brand400.copy(alpha = 0.18f),
-            strokeWidth = 2.dp,
-        )
-        else -> Icon(
-            ChevronRightOutline14,
-            contentDescription = null,
-            tint = Dsh.labelTertiary,
-            modifier = Modifier.size(16.dp),
-        )
-    }
-}
-
 
 /** 抽屉搜索：40dp 输入框（bgInput + 发丝描边，与工具调用查找条同语义）。 */
 @Composable

@@ -89,17 +89,16 @@ fun DshFilterChip(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    // 选中态 = DSH Blue tonal selection container（docs/visual-rules.md 第二节）：
-    // 不再用纯黑反色胶囊；文字取 brand400，保证弱蓝底上的 AA 对比。
+    // 选中是浅灰底上的深字。品牌蓝不进筛选。
     val bg = when {
         !enabled -> Color.Transparent
-        selected -> Dsh.bgNavSelected
+        selected -> Dsh.bgSubtle
         pressed -> Dsh.pressed
         else -> Color.Transparent
     }
     val textColor = when {
         !enabled -> Dsh.labelDimmed
-        selected -> Dsh.brand400
+        selected -> Dsh.labelPrimary
         else -> Dsh.labelSecondary
     }
     // 视觉 32dp 胶囊 / 外层 48dp 触摸热区：可点面积不缩，观感收紧
@@ -153,7 +152,7 @@ fun DshFilterChip(
                 Spacer(Modifier.width(4.dp))
                 Text(
                     count.toString(),
-                    color = if (selected) Dsh.brand400 else Dsh.labelTertiary,
+                    color = if (selected) Dsh.labelSecondary else Dsh.labelTertiary,
                     style = DshType.captionRelaxed.tabularNums(),
                 )
             }
@@ -340,7 +339,7 @@ fun DshTextTabs(
                             .fillMaxWidth()
                             .height(2.dp)
                             .clip(RoundedCornerShape(DshRadius.full))
-                            .background(if (selected) dev.deeplinks.core.Dsh.brand400 else Color.Transparent),
+                            .background(if (selected) dev.deeplinks.core.Dsh.labelPrimary else Color.Transparent),
                     )
                 }
             }

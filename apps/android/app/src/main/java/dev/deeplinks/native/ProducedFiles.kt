@@ -212,7 +212,7 @@ internal fun ProducedFilesRow(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
                                 strokeWidth = 1.5.dp,
-                                color = Dsh.brand400,
+                                color = Dsh.labelSecondary,
                             )
                             Spacer(Modifier.width(8.dp))
                         }

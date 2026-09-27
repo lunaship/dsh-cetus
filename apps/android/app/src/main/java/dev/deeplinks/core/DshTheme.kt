@@ -77,8 +77,6 @@ data class DshColors(
     val buttonFloating: Color,
     val bgSurface: Color = Color.Unspecified,
     val shadowCard: Color = Color.Unspecified,
-    val bubbleBg: Color = Color.Unspecified,
-    val bubbleHighlight: Color = Color.Unspecified,
     // 分段色：系统提示词 / 工具调用的语义色（跨主题稳定）
     val systemAccent: Color = Color.Unspecified,
     val toolsAccent: Color = Color.Unspecified,
@@ -134,8 +132,6 @@ val DarkDshColors = DshColors(
     buttonElevated = Color(0xFF2A2A2F),
     buttonFloating = Color(0xFF1A1A1E),
     shadowCard = Color(0x1F000000),
-    bubbleBg = Color(0xFF1A2340),       // 用户气泡：蓝系弱底，不用灰墨
-    bubbleHighlight = Color(0xFF2A3A66),
     systemAccent = Color(0xFF94A3B8),
     toolsAccent = Color(0xFF8BA3C7),    // 蓝灰弱强调，避免亮紫与品牌蓝抢层级
     traceReasoning = Color(0xFF7B93F8), // 推理：蓝系弱强调（非紫）
@@ -194,8 +190,6 @@ val LightDshColors = DshColors(
     buttonElevated = Color(0xFFD1D5DB),
     buttonFloating = Color(0xFFFFFFFF),
     shadowCard = Color(0x0D000000),
-    bubbleBg = Color(0xFFE9EDFF),
-    bubbleHighlight = Color(0xFFD3DCFF),
     systemAccent = Color(0xFF64748B),
     toolsAccent = Color(0xFF5B7A9D),    // 蓝灰，避免紫与品牌蓝抢层级
     // 蓝系弱强调：降饱和、不与 brand500 同色（visual-rules 第 6 条）；11sp 标签需 AA，≈4.8:1
@@ -719,15 +713,7 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.shadowCard
 
-    val bubbleBg: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.bubbleBg
 
-    val bubbleHighlight: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.bubbleHighlight
 
     val systemAccent: Color
         @Composable

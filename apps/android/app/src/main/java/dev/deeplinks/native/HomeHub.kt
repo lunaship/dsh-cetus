@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -42,9 +41,7 @@ import dev.deeplinks.native.util.HomeSection
  * 首页（抽屉 / 平板侧栏）的积木：顶栏、工作区筛选条、分区标题、底部「开始新任务」。
  * 布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
  *
- * 批次 4：视觉原语全部下沉到共享组件——图标动作用 DshIconAction，筛选胶囊用
- * DshFilterChip（选中态 = DSH Blue tonal），分区头用 DshSectionHeader 的状态变体，
- * 表面角色收敛到 bgBase / bgSubtle / bgNavSelected（docs/visual-rules.md）。
+ * 筛选选中和分区标题都是中性灰。实心品牌蓝只留在底部「开始新任务」的加号上。
  */
 
 /** 顶栏：左边是当前电脑（点开设备面板），右边搜索与设置。 */
@@ -119,8 +116,7 @@ internal fun HomeHeader(
  * 工作区筛选条：「全部」+ 每个工作区一个胶囊，横向滚动；末尾「+」添加工作区。
  * 长按工作区胶囊：在这里新建会话 / 移除工作区（原文件夹行的菜单）。
  *
- * 胶囊统一用共享 [DshFilterChip]（选中 = bgNavSelected + brand400 的 DSH Blue tonal），
- * 不再有页面私有的反色胶囊。
+ * 胶囊统一用共享 [DshFilterChip]。选中是浅灰底上的深字。
  */
 @Composable
 internal fun WorkspaceChips(
@@ -179,20 +175,16 @@ internal fun WorkspaceChips(
     }
 }
 
-/**
- * 分区标题：状态区用语义色圆点；历史区用时钟图标，和任务行的 leading 槽位对齐。
- * 视觉原语（圆点 / 计数 pill）来自共享 [DshSectionHeader] 的状态变体。
- */
+/** 分区标题：只有灰字，左边和会话标题对齐。状态写在会话副标题里。 */
 @Composable
-internal fun HomeSectionHeader(section: HomeSection, count: Int) {
+internal fun HomeSectionHeader(section: HomeSection) {
     val s = DshS
-    val waitingContent = if (Dsh.isDark) Dsh.warn else Dsh.warnLabel
-    val (title, accent) = when (section) {
-        HomeSection.AWAITING -> s.homeAwaiting to waitingContent
-        HomeSection.RUNNING -> s.homeRunning to Dsh.brand400
-        HomeSection.TODAY -> s.homeToday to null
-        HomeSection.YESTERDAY -> s.homeYesterday to null
-        HomeSection.EARLIER -> s.homeEarlier to null
+    val title = when (section) {
+        HomeSection.AWAITING -> s.homeAwaiting
+        HomeSection.RUNNING -> s.homeRunning
+        HomeSection.TODAY -> s.homeToday
+        HomeSection.YESTERDAY -> s.homeYesterday
+        HomeSection.EARLIER -> s.homeEarlier
     }
     DshSectionHeader(
         title = title,
@@ -202,24 +194,7 @@ internal fun HomeSectionHeader(section: HomeSection, count: Int) {
             top = 14.dp,
             bottom = 4.dp,
         ),
-        leading = {
-            if (accent != null) {
-                Box(
-                    Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(accent),
-                )
-            } else {
-                Icon(
-                    ClockOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        },
-        count = count,
+        contentStart = 0.dp,
     )
 }
 
@@ -238,13 +213,6 @@ internal fun HomeNewTaskBar(workspaceName: String?, onClick: () -> Unit) {
             .padding(start = 18.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            PlusOutline16,
-            contentDescription = null,
-            tint = Dsh.labelTertiary,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(12.dp))
         Text(
             s.homeNewTask,
             color = Dsh.labelTertiary,
@@ -253,25 +221,16 @@ internal fun HomeNewTaskBar(workspaceName: String?, onClick: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         if (workspaceName != null) {
-            Row(
+            Text(
+                workspaceName,
+                color = Dsh.labelSecondary,
+                style = DshType.captionRelaxed,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .padding(end = 8.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(Dsh.bgCard)
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(FolderOpenOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(5.dp))
-                Text(workspaceName, color = Dsh.labelSecondary, style = DshType.captionRelaxed, maxLines = 1)
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    ChevronDownOutline14,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(12.dp),
-                )
-            }
+                    .widthIn(max = 140.dp),
+            )
         }
         // 主动作槽：实心品牌圆钮（共享图标按钮的实心模式）
         DshIconAction(

@@ -105,6 +105,16 @@ class WorkspaceChangesTest {
     }
 
     @Test
+    fun `only the current turn's card is pinned above the composer`() {
+        val turn = listOf(text("u1", 1, "user"), card(5, turn = 1), text("m", 6))
+        assertEquals(5L, pinnedTurnChanges(turn)?.seq)
+        // 用户发了新消息、新一轮还没改文件：旧卡回到消息流，不再钉住
+        assertNull(pinnedTurnChanges(turn + text("u2", 7, "user") + text("m2", 8)))
+        assertEquals(9L, pinnedTurnChanges(turn + text("u2", 7, "user") + card(9, turn = 2))?.seq)
+        assertNull(pinnedTurnChanges(listOf(text("u", 1, "user"))))
+    }
+
+    @Test
     fun `history pages merge coalesces cards across the page boundary`() {
         val older = listOf(text("u1", 1, "user"), card(5, turn = 1))
         val tail = listOf(card(8, turn = 1), text("u2", 10, "user"))

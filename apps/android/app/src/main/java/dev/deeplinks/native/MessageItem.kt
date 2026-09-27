@@ -94,6 +94,8 @@ internal fun MessageItem(
     onRetract: (() -> Unit)? = null,
     onFetchProducedFile: ((String) -> Pair<String, ByteArray>)? = null,
     onOpenChanges: ((seq: Long, fileIndex: Int?) -> Unit)? = null,
+    /** 复制 / 赞踩 / 时间一行：只在一轮的最后一条回复上显示。 */
+    showActions: Boolean = true,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var selectOpen by remember { mutableStateOf(false) }
@@ -174,8 +176,8 @@ internal fun MessageItem(
                             streaming = msg.running == true,
                         )
                     }
-                    // 助手消息底部：复制 / 分叉 / 重新生成（流式结束后淡入，对齐 Web）
-                    if (msg.role == "assistant") {
+                    // 助手消息底部：复制 / 赞踩 / 时间（流式结束后淡入，只挂在轮末）
+                    if (msg.role == "assistant" && showActions) {
                         AnimatedVisibility(
                             visible = msg.running != true,
                             enter = fadeIn(animationSpec = tween(motionDuration(400))),
@@ -402,7 +404,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(Dsh.brand400)
+                        .background(Dsh.labelTertiary)
                 )
             } else {
                 Icon(
@@ -719,7 +721,7 @@ private fun TodoGlyph(status: String) {
                 Icon(
                     RefreshOutline16,
                     contentDescription = null,
-                    tint = Dsh.brand400,
+                    tint = Dsh.labelSecondary,
                     modifier = Modifier.size(14.dp).rotate(angle ?: 0f)
                 )
             }
@@ -748,7 +750,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.brandTint.copy(alpha = 0.08f))
+            .background(Dsh.bgSubtle)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -759,12 +761,12 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             Icon(
                 GoalOutline16,
                 contentDescription = null,
-                tint = Dsh.brand400,
+                tint = Dsh.labelSecondary,
                 modifier = Modifier.size(15.dp),
             )
             Text(
                 text = L.goalRole,
-                color = Dsh.brand400,
+                color = Dsh.labelSecondary,
                 style = DshType.microMedium,
             )
             Spacer(Modifier.width(4.dp))
@@ -780,7 +782,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             // 展开/折叠按钮
             Text(
                 text = if (expanded.value) "收起" else "展开",
-                color = Dsh.brand400,
+                color = Dsh.labelSecondary,
                 style = DshType.microMedium,
                 modifier = Modifier.clickable { expanded.value = !expanded.value },
             )
@@ -788,7 +790,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
     }
 }
 
-// 加载更早（DSH chat.loadOlder：居中圆角按钮）
+// 加载更早（DSH chat.loadOlder）：居中的一行灰字按钮，不另铺色块
 @Composable
 internal fun LoadOlderRow(
     loading: Boolean,
@@ -800,21 +802,25 @@ internal fun LoadOlderRow(
     val pressed by interaction.collectIsPressedAsState()
     val kind = loadOlderKind(loading, failed)
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Text(
-            text = when (kind) {
-                LoadOlderKind.Loading -> L.loadHistory
-                LoadOlderKind.Failed -> failedMessage?.takeIf { it.isNotBlank() } ?: L.loadOlderRetry
-                LoadOlderKind.Idle -> L.loadOlder
-            },
-            color = if (kind == LoadOlderKind.Failed) Dsh.error else Dsh.labelSecondary,
-            style = DshType.captionRelaxed,
+        Box(
             modifier = Modifier
                 .heightIn(min = 48.dp)
                 .clip(RoundedCornerShape(DshRadius.container))
-                .background(if (pressed) Dsh.pressed else Dsh.bgInput)
+                .background(if (pressed) Dsh.pressed else Color.Transparent)
                 .clickable(enabled = !loading, interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-        )
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = when (kind) {
+                    LoadOlderKind.Loading -> L.loadHistory
+                    LoadOlderKind.Failed -> failedMessage?.takeIf { it.isNotBlank() } ?: L.loadOlderRetry
+                    LoadOlderKind.Idle -> L.loadOlder
+                },
+                color = if (kind == LoadOlderKind.Failed) Dsh.error else Dsh.labelSecondary,
+                style = DshType.captionRelaxed,
+            )
+        }
     }
 }
 
@@ -896,7 +902,7 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
                     bottomStart = DshRadius.composer,
                     bottomEnd = DshRadius.control
                 ))
-                .background(Dsh.bubbleBg)
+                .background(Dsh.bgSubtle)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
             Text(

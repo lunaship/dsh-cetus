@@ -563,7 +563,7 @@ private fun ComposerModelSeat(
                 Icon(
                     Sparkle16,
                     contentDescription = null,
-                    tint = if (hasModel) Dsh.brand500 else Dsh.labelTertiary,
+                    tint = if (hasModel) Dsh.labelSecondary else Dsh.labelTertiary,
                     modifier = Modifier.size(14.dp),
                 )
             } else {
@@ -664,11 +664,7 @@ private fun ComposerAccessSeat(
  */
 @Composable
 private fun composerRoundButtonBg(pressed: Boolean): Color =
-    if (pressed) {
-        if (Dsh.isDark) Dsh.brand400.copy(alpha = 0.18f) else Dsh.brand500.copy(alpha = 0.12f)
-    } else {
-        Dsh.bgTrack
-    }
+    if (pressed) Dsh.pressed else Dsh.bgTrack
 
 @Composable
 internal fun RoundIconButton(

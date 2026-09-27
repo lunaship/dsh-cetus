@@ -48,16 +48,21 @@ internal fun resolveActiveSubagentCount(
 }
 
 /**
- * 格式化会话列表副标题（项目名 · 相对时间 / 正在运行目标）。
+ * 格式化会话列表副标题。状态只写在这一行灰字里：
+ * 等待确认优先于运行中；运行中有目标就写目标，否则写运行文案；其余是项目 · 时间。
  */
 internal fun formatSessionSubtitle(
     session: MobileSession,
     goalSummary: String? = null,
     runningLabel: String = "运行中",
+    awaitingLabel: String = "等待确认",
     relativeTimeFormatted: String = "",
 ): String {
     val project = session.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
     return when {
+        session.awaitingInput -> {
+            if (project != null) "$project · $awaitingLabel" else awaitingLabel
+        }
         session.running && !goalSummary.isNullOrBlank() -> {
             if (project != null) "$project · $goalSummary" else goalSummary
         }
