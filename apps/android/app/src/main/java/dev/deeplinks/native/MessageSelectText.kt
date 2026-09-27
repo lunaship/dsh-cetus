@@ -39,7 +39,7 @@ fun SelectTextDialog(text: String, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
                 .padding(12.dp),
         ) {

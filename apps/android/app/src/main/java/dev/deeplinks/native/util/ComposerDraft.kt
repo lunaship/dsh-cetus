@@ -59,7 +59,7 @@ fun putComposerDraftError(
 
 /**
  * 切会话时把当前输入槽错误停在来源会话，并取出目标会话停着的错误。
- * 对照 Grok：状态跟操作走，不 toast 到正在看的另一条会话。
+ * 状态跟操作走，不 toast 到正在看的另一条会话。
  */
 fun switchComposerErrors(
     errors: Map<String, String>,

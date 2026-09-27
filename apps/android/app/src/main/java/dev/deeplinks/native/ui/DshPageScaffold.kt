@@ -54,12 +54,6 @@ fun DshPageScaffold(
     onNavigateBack: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     maxContentWidth: Dp = 720.dp,
-    /**
-     * 是否由本骨架消费系统栏 inset。迁移期兼容包装（[DshGroupedPage]）传 false——
-     * 它的调用方（设置 / 设备页）自己已 padding 过一次；批次 2/3 直接采用本骨架后
-     * 一律使用默认值 true，此参数随之删除。
-     */
-    consumeSystemInsets: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
@@ -68,17 +62,13 @@ fun DshPageScaffold(
             .background(Dsh.bgBase),
         contentAlignment = Alignment.TopCenter,
     ) {
+        // 系统栏 inset 由本骨架统一消费（edge-to-edge + 透明系统栏）
         Column(
             modifier = Modifier
                 .widthIn(max = maxContentWidth)
                 .fillMaxWidth()
-                .then(
-                    if (consumeSystemInsets) {
-                        Modifier.statusBarsPadding().navigationBarsPadding()
-                    } else {
-                        Modifier
-                    },
-                ),
+                .statusBarsPadding()
+                .navigationBarsPadding(),
         ) {
             // 标题为空（迁移期兼容包装）时不画导航区，由调用方自己的顶栏负责
             if (title.isNotBlank()) {

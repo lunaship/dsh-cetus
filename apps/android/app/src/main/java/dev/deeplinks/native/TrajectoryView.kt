@@ -388,7 +388,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -460,7 +460,7 @@ private fun TraceTimeline(
                 modifier = Modifier
                     .weight(weight)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(DshRadius.xs))
+                    .clip(RoundedCornerShape(DshRadius.micro))
                     .background(visual.color.copy(alpha = alpha))
                     .clickable { onFocus(key) },
             )
@@ -628,7 +628,7 @@ private fun TraceCodeBlock(text: String, running: Boolean, expanded: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCode)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
@@ -663,7 +663,7 @@ private fun TraceExpandableText(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
                     .padding(top = 2.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .clickable { localExpanded = !localExpanded }
                     .padding(horizontal = 4.dp)
                     .wrapContentHeight(Alignment.CenterVertically)

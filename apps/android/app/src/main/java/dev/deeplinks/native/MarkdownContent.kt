@@ -147,7 +147,7 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.lg))
+                            .clip(RoundedCornerShape(DshRadius.container))
                             .background(Dsh.bgCard)
                             .clickable {
                                 val uri = android.net.Uri.parse(imageUrl)
@@ -208,7 +208,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard)
     ) {
         Row(
@@ -244,7 +244,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .clip(RoundedCornerShape(DshRadius.lg))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgBase)
                     .padding(12.dp),
             ) {
@@ -300,7 +300,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCode)
     ) {
         // 语言标签 + 复制（DSH code-block-banner）
@@ -323,7 +323,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             Row(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(if (copyPressed) Dsh.pressed else Color.Transparent)
                     .clickable(interactionSource = copyInteraction, indication = dshRipple()) {
                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager

@@ -113,7 +113,7 @@ internal fun ThinkingTrace(
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val rail = Dsh.brand500
-    val panelShape = RoundedCornerShape(DshRadius.md)
+    val panelShape = RoundedCornerShape(DshRadius.container)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -213,7 +213,7 @@ private fun ThinkingHeader(
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .clickable(
                 interactionSource = interaction,
                 indication = dshRipple(),

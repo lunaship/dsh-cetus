@@ -44,18 +44,16 @@ class ComponentLanguageTest {
 
         /**
          * DshLargeTitle 调用点存量。
-         * 2026-09-27 批次 3：设备页改用 DshPageScaffold 标准标题，预算归零，零容忍。
+         * 2026-09-27 批次 3/6：设备页改用 DshPageScaffold 标准标题，兼容包装已删除；
+         * 预算为零且组件不存在——任何出现（含定义）都失败。
          */
         val LARGE_TITLE_BUDGET: Map<String, Int> = emptyMap()
 
         /**
          * DshGroupedPage 兼容包装调用点存量（import 不计）。
-         * 批次 2/3：设置与设备页都迁到 DshPageScaffold，只剩设置内容的滚动包装；
-         * 批次 6 随兼容包装一起删除。
+         * 批次 6：设置内容改用 SettingsPageCanvas，兼容包装已删除，零容忍。
          */
-        val GROUPED_PAGE_BUDGET = mapOf(
-            "dev/deeplinks/native/SettingsRoute.kt" to 7,
-        )
+        val GROUPED_PAGE_BUDGET: Map<String, Int> = emptyMap()
 
         /**
          * HomeChip 等单页临时组件调用点存量（定义行不计）。

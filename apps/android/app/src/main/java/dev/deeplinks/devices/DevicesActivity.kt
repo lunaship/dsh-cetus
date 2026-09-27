@@ -33,6 +33,7 @@ import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSheet
 import dev.deeplinks.native.ui.DshSheetPrimaryButton
+import dev.deeplinks.native.ui.DshWelcomeState
 import dev.deeplinks.native.ui.DshTextField
 
 import androidx.activity.ComponentActivity
@@ -411,10 +412,10 @@ private fun DevicesPage(
 private fun EmptyDevicesState(onAdd: () -> Unit) {
     val s = DshS
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        DshEmptyState(
+        // 未配对 = 明确的首次使用场景：欢迎态允许品牌 mark（docs/visual-rules.md 第五节）
+        DshWelcomeState(
             title = s.noDevicesYet,
             message = s.noDevicesHint,
-            graphic = { DshBrandMark() },
             actionLabel = s.addDevice,
             onAction = onAdd,
             footnote = s.addDeviceScanOrCode,

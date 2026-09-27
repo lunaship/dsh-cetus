@@ -12,7 +12,6 @@ import dev.deeplinks.core.UiFontManager
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.AppSettings
 import dev.deeplinks.native.MobileApiClient
-import dev.deeplinks.native.ui.DshGroupedPage
 import dev.deeplinks.native.ui.DshListActionRow
 import dev.deeplinks.native.ui.DshListCaption
 import dev.deeplinks.native.ui.DshListNote
@@ -44,6 +43,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -75,6 +75,23 @@ internal enum class SettingsDest {
     MODELS,
     SESSIONS,
     ABOUT,
+}
+
+/**
+ * 设置二级页的画布：不透明画布底 + 独立滚动 + Compact 16dp 边距。
+ * 批次 6 起不再走 DshGroupedPage 兼容包装——页面壳层由外层 [DshPageScaffold] 负责。
+ */
+@Composable
+internal fun SettingsPageCanvas(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Dsh.bgBase)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp, bottom = 32.dp),
+        content = content,
+    )
 }
 
 @Composable
@@ -224,9 +241,9 @@ internal fun SettingsRoute(
             predictivePopEnterTransition = { EnterTransition.None },
             predictivePopExitTransition = { slideOutHorizontally(animationSpec = tween(navMotionMs, easing = DshEasing.out)) { it } },
         ) {
-            // 每页自带不透明画布（DshGroupedPage → DshPageScaffold）：pop 转场时下层页面的文字不会透上来
+            // 每页自带不透明画布（SettingsPageCanvas）：pop 转场时下层页面的文字不会透上来
             composable(SettingsDest.HOME.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     SettingsHome(
                         appSettings = appSettings,
                         onOpen = { navController.navigate(it.name) },
@@ -237,7 +254,7 @@ internal fun SettingsRoute(
             }
 
             composable(SettingsDest.GENERAL.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     LanguageSettings(
                         appSettings = appSettings,
                         savingNs = savingNs,
@@ -249,7 +266,7 @@ internal fun SettingsRoute(
             }
 
             composable(SettingsDest.APPEARANCE.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     AppearanceSettings(
                         savingNs = savingNs,
                         saveErrors = saveErrors,
@@ -259,7 +276,7 @@ internal fun SettingsRoute(
             }
 
             composable(SettingsDest.CONVERSATION.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     ConversationSettings(
                         appSettings = appSettings,
                         savingNs = savingNs,
@@ -271,7 +288,7 @@ internal fun SettingsRoute(
             }
 
             composable(SettingsDest.MODELS.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     ModelsSettingsPage(
                         host = host,
                         viewModel = settingsViewModel,
@@ -289,13 +306,13 @@ internal fun SettingsRoute(
             }
 
             composable(SettingsDest.SESSIONS.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     SessionsSettings(host = host)
                 }
             }
 
             composable(SettingsDest.ABOUT.name) {
-                DshGroupedPage {
+                SettingsPageCanvas {
                     AboutSettings(onOpenLegal = { file, title -> legalDoc = file to title })
                 }
             }

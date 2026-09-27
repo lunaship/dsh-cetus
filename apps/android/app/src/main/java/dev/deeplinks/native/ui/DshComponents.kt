@@ -310,7 +310,7 @@ fun DshTextTabs(
                 modifier = Modifier
                     // M3 触控目标 ≥48dp（原 44dp 不达标）
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(
                         interactionSource = interaction,
                         indication = dshRipple(),
@@ -376,7 +376,7 @@ fun DshTag(
     modifier: Modifier = Modifier,
     color: Color = Dsh.bgSubtle,
     contentColor: Color = Dsh.labelSecondary,
-    shape: Shape = RoundedCornerShape(DshRadius.sm),
+    shape: Shape = RoundedCornerShape(DshRadius.control),
     contentDescription: String? = null,
 ) {
     val mod = modifier
@@ -471,7 +471,7 @@ fun DshBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(bg)
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .semantics {
@@ -497,7 +497,7 @@ fun DshBanner(
             val pressed by interaction.collectIsPressedAsState()
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(if (pressed) Dsh.pressed else Color.Transparent)
                     .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onAction)
                     .heightIn(min = 48.dp)
@@ -552,7 +552,7 @@ fun ChatLoadingSkeleton(
                 modifier = Modifier
                     .fillMaxWidth(widthFrac)
                     .height(14.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(Dsh.bgSubtle)
             )
         }
@@ -565,7 +565,7 @@ fun ChatLoadingSkeleton(
                 modifier = Modifier
                     .width(120.dp)
                     .height(28.dp)
-                    .clip(RoundedCornerShape(DshRadius.lg))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle)
             )
         }
@@ -574,7 +574,7 @@ fun ChatLoadingSkeleton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCode)
         )
     }
@@ -597,7 +597,7 @@ fun DshHeaderAction(
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .background(if (pressed) Dsh.pressed else Color.Transparent)
             .semantics {
                 role = Role.Button

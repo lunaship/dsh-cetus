@@ -68,7 +68,7 @@ fun CameraCropSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(20.dp)
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
                 .padding(16.dp),
         ) {
@@ -76,9 +76,9 @@ fun CameraCropSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
-                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.md)),
+                    .border(1.dp, Dsh.borderSubtle, RoundedCornerShape(DshRadius.container)),
             ) {
                 viewW = constraints.maxWidth.toFloat().coerceAtLeast(1f)
                 viewH = constraints.maxHeight.toFloat().coerceAtLeast(1f)
@@ -127,7 +127,7 @@ private fun CropAction(
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
             .semantics {
                 role = Role.Button

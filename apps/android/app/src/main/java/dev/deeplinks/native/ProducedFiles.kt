@@ -151,7 +151,7 @@ internal fun ProducedFilesRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -251,7 +251,7 @@ internal fun ProducedFilesRow(
                     contentDescription = L.producedFiles,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(DshRadius.md)),
+                        .clip(RoundedCornerShape(DshRadius.container)),
                 )
             }
         }
@@ -260,7 +260,7 @@ internal fun ProducedFilesRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .clip(RoundedCornerShape(DshRadius.lg))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
                     .padding(16.dp),
             ) {
@@ -277,7 +277,7 @@ internal fun ProducedFilesRow(
                     Box(
                         modifier = Modifier
                             .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
+                            .clip(RoundedCornerShape(DshRadius.control))
                             .semantics {
                                 role = Role.Button
                                 contentDescription = L.close

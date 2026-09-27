@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.ui.DshBrandMark
 import dev.deeplinks.native.ui.DshEmptyState
+import dev.deeplinks.native.ui.DshErrorState
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.DshS
@@ -116,7 +117,7 @@ internal fun ToolSearchBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgInput)
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -233,7 +234,7 @@ internal fun DeviceUnreachableBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(DshRadius.md))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCard)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .semantics { contentDescription = message },
@@ -286,10 +287,11 @@ private fun BannerAction(label: String, primary: Boolean = false, onClick: () ->
 
 @Composable
 internal fun HeroShell() {
+    // 日常空会话：克制的小尺寸品牌 mark + 降一级标题，引导交给 Composer placeholder
     DshEmptyState(
         title = DshS.heroSlogan,
         message = DshS.heroHint,
-        graphic = { DshBrandMark() },
+        graphic = { DshBrandMark(size = 44.dp) },
     )
 }
 
@@ -303,7 +305,8 @@ internal fun ChatHistoryError(
 ) {
     // 兜底文案常与标题相同（「加载失败 / 加载失败」），这种不算细节
     val detail = message?.takeUnless { it.isBlank() || it == title }
-    DshEmptyState(
+    // 错误态：错误图标 + 简短错误 + 重试，不挂欢迎插画（docs/visual-rules.md 第五节）
+    DshErrorState(
         title = title,
         // 有提示语时它是主说明，原始错误（常是 timeout 这类技术文本）降为脚注
         message = hint ?: detail,
@@ -319,7 +322,7 @@ internal fun SearchStatusBanner(message: String, onRetry: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -507,7 +510,7 @@ internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .clip(RoundedCornerShape(DshRadius.xs))
+                .clip(RoundedCornerShape(DshRadius.micro))
                 .background(swatchColor)
         )
         Spacer(Modifier.width(6.dp))
@@ -694,7 +697,7 @@ internal fun ToolGroupHeader(
         Row(
             modifier = Modifier
                 .heightIn(min = 36.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .semantics {
                     role = Role.Button

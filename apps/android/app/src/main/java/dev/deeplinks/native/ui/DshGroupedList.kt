@@ -75,8 +75,9 @@ import dev.deeplinks.native.DshRadius
  * 品牌蓝只留给可执行的操作行和选中勾。行间发丝线由 Section 自动画，
  * 起点跟随下一行的文字起点（有图标时让开图标）。
  *
- * [DshListSection] / [DshGroupedPage] / [DshLargeTitle] 是迁移期兼容包装，
- * 调用点清零后删除。
+ * [DshListSection] 是 [DshSection] 的迁移期别名（tonal 参数直通）；
+ * 批次 6 起 DshGroupedPage / DshLargeTitle 兼容包装已删除——页面壳层一律用
+ * [DshPageScaffold]，Section 一律用 [DshSection]。
  */
 
 private val RowPaddingH = 16.dp
@@ -97,34 +98,6 @@ private data class DividerInset(val start: Dp) : ParentDataModifier {
 /** 行的根节点声明分隔线起点；卡片用它画「上一行与本行之间」的那根线。 */
 private fun Modifier.dividerInset(hasIcon: Boolean): Modifier =
     then(DividerInset(if (hasIcon) TextInsetWithIcon else RowPaddingH))
-
-/**
- * 分组页容器（迁移期兼容包装）：内部转发到 [DshPageScaffold]——画布底、独立滚动、
- * 手机 16dp 边距、大屏 720dp 居中；不再强制 grouped card 视觉。
- *
- * 系统栏 inset 由调用方（设置 / 设备页）自行消费（[consumeSystemInsets] = false），
- * 批次 2/3 把它们迁到 [DshPageScaffold] 后，本包装删除。
- */
-@Composable
-fun DshGroupedPage(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    DshPageScaffold(
-        title = "",
-        modifier = modifier,
-        consumeSystemInsets = false,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(top = 4.dp, bottom = 32.dp),
-            content = content,
-        )
-    }
-}
 
 /** Section 容器策略：默认扁平；tonal 必须有独立分组理由（总结 / 警告 / 独立数据块）。 */
 enum class DshSectionContainer {
@@ -490,7 +463,7 @@ private fun DshListRowError(error: String, onRetry: (() -> Unit)?, modifier: Mod
             Box(
                 modifier = Modifier
                     .heightIn(min = 32.dp)
-                    .clip(RoundedCornerShape(DshRadius.sm))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(role = Role.Button, onClick = onRetry)
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
@@ -662,7 +635,7 @@ fun DshOptionsMenu(
     }
 }
 
-/** 按钮行：整行一个文字操作（品牌色 / 危险红），不带箭头——对照 lody 的 plain Button。 */
+/** 按钮行：整行一个文字操作（品牌色 / 危险红），不带箭头。 */
 @Composable
 fun DshListActionRow(
     label: String,
@@ -741,29 +714,4 @@ fun DshListCaption(text: String, modifier: Modifier = Modifier) {
 fun DshListRetry(message: String, onRetry: () -> Unit) {
     DshListNote(message, error = true)
     DshListActionRow(label = DshS.retry, onClick = onRetry)
-}
-
-/**
- * 页面大标题（迁移期兼容包装）：内部就是统一页面标题角色
- * （[DshType.headlineMedium]，docs/visual-rules.md 第四节）。
- * 调用点清零后删除——新页面一律用 [DshPageScaffold] 的标题。
- */
-@Composable
-fun DshLargeTitle(
-    title: String,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-) {
-    Column(modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 4.dp)) {
-        Text(
-            title,
-            color = Dsh.labelPrimary,
-            style = DshType.headlineMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        if (subtitle != null) {
-            Spacer(Modifier.height(4.dp))
-            Text(subtitle, color = Dsh.labelTertiary, style = DshType.body)
-        }
-    }
 }

@@ -102,7 +102,7 @@ internal fun InputBar(
         // 输入卡主体：底部悬浮卡——6dp 阴影浮在消息流之上；
         // 浅色灰底 + 发丝描边，聚焦加深描边（不用蓝色 focus ring）。
         var composerFocused by remember { mutableStateOf(false) }
-        // 录音只在设备真的有语音识别服务时出现（Grok：不可用的能力不占位）
+        // 录音只在设备真的有语音识别服务时出现（不可用的能力不占位）
         val voiceContext = androidx.compose.ui.platform.LocalContext.current
         val voiceAvailable = remember(voiceContext) {
             runCatching { android.speech.SpeechRecognizer.isRecognitionAvailable(voiceContext) }
@@ -148,7 +148,7 @@ internal fun InputBar(
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                 modifier = Modifier
                                     .size(56.dp)
-                                    .clip(RoundedCornerShape(DshRadius.md))
+                                    .clip(RoundedCornerShape(DshRadius.container))
                             )
                             Box(
                                 modifier = Modifier
@@ -259,7 +259,7 @@ internal fun InputBar(
                         Row(
                             modifier = Modifier
                                 .heightIn(min = 32.dp)
-                                .clip(RoundedCornerShape(DshRadius.sm))
+                                .clip(RoundedCornerShape(DshRadius.control))
                                 .background(if (modelPillPressed) Dsh.pressed else Color.Transparent)
                                 .clickable(
                                     interactionSource = modelPillInteraction,
@@ -416,7 +416,7 @@ internal fun InputBar(
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
-                                        .clip(RoundedCornerShape(DshRadius.xs))
+                                        .clip(RoundedCornerShape(DshRadius.micro))
                                         .background(Color.White)
                                 )
                             }
@@ -757,7 +757,7 @@ internal fun ComposerTopRow(
             Row(
                 modifier = Modifier
                     .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .heightIn(min = 48.dp)
                     .semantics {
                         role = Role.Button
@@ -806,7 +806,7 @@ internal fun ComposerTopRow(
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(DshRadius.md))
+                        .clip(RoundedCornerShape(DshRadius.container))
                         .background(harnessBg)
                         .then(
                             if (harnessEditable && onOpenHarnessPicker != null) {

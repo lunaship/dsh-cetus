@@ -104,7 +104,7 @@ internal fun ApprovalCard(
             style = DshType.title,
             fontWeight = FontWeight(500),
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
                 .clickable(interactionSource = interaction, indication = dshRipple()) { open = true }
                 .semantics {
@@ -130,7 +130,7 @@ internal fun ApprovalCard(
             color = Dsh.labelSecondary,
             style = DshType.body,
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(Dsh.bgSubtle)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
@@ -197,7 +197,7 @@ internal fun ApprovalCard(
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
-                                .clip(RoundedCornerShape(DshRadius.sm)),
+                                .clip(RoundedCornerShape(DshRadius.control)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -311,7 +311,7 @@ private fun ApprovalOptionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .background(if (pressed) Dsh.pressed else Color.Transparent)
             .selectable(
                 selected = selected,
@@ -330,10 +330,10 @@ private fun ApprovalOptionRow(
         Box(
             modifier = Modifier
                 .size(16.dp)
-                .clip(if (radio) CircleShape else RoundedCornerShape(DshRadius.sm))
+                .clip(if (radio) CircleShape else RoundedCornerShape(DshRadius.control))
                 .then(
                     if (selected) Modifier.background(Dsh.labelPrimary)
-                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(DshRadius.sm)),
+                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(DshRadius.control)),
                 ),
             contentAlignment = Alignment.Center,
         ) {

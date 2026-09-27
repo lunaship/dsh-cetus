@@ -39,7 +39,7 @@ internal fun WorkspaceChangesCard(
     summary: WorkspaceChangesSummary,
     onOpen: (fileIndex: Int?) -> Unit,
 ) {
-    val shape = RoundedCornerShape(DshRadius.lg)
+    val shape = RoundedCornerShape(DshRadius.container)
     Column(
         modifier = Modifier
             .fillMaxWidth()

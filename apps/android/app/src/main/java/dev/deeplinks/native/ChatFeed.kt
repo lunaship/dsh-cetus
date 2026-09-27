@@ -114,7 +114,7 @@ internal fun StickyTaskSummaryCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput.copy(alpha = 0.92f))
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {

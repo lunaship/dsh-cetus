@@ -73,7 +73,7 @@ internal fun QuestionCard(
             color = Dsh.labelSecondary,
             style = DshType.body,
             modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(Dsh.bgSubtle)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
@@ -148,7 +148,7 @@ internal fun QuestionCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.sm))
+                            .clip(RoundedCornerShape(DshRadius.control))
                             .selectable(
                                 selected = isSelected,
                                 onClick = {
@@ -196,7 +196,7 @@ internal fun QuestionCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 48.dp, max = 140.dp)
-                            .clip(RoundedCornerShape(DshRadius.sm))
+                            .clip(RoundedCornerShape(DshRadius.control))
                             .background(Dsh.bgSubtle)
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                     ) {

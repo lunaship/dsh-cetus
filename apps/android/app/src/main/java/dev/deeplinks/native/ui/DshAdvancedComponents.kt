@@ -51,7 +51,7 @@ fun DshTextField(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(DshRadius.lg)
+    val shape = RoundedCornerShape(DshRadius.container)
 
     val borderColor = when {
         !enabled -> Dsh.borderSubtle

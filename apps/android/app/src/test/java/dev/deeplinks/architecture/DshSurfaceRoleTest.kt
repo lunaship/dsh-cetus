@@ -7,12 +7,12 @@ import java.io.File
 /**
  * 表面角色门禁（docs/visual-rules.md 第二节）。
  *
- * 1. 旧 grouped 别名（bgGrouped / bgGroupedCard）的调用数量只降不升——
- *    它们收敛为 bgBase / bgSubtle，预算归零后零容忍；
+ * 1. 旧 grouped 别名（bgGrouped / bgGroupedCard）在 2026-09-27 批次 6 已删除，
+ *    本测试零容忍其回潮（含 DshColors 字段与 Dsh.* 代理）；
  * 2. bgSelected 与 bgNavSelected 必须是同一个 selection container 值
  *    （选中态统一 DSH Blue tonal，不用纯黑反色）；
- * 3. 浮层阴影只允许真正的浮层（Dialog / Sheet / Menu）；普通列表与行内卡片
- *    不得用阴影假装层级，存量按预算逐批清零。
+ * 3. 浮层阴影只允许真正的浮层（Dialog / Sheet / Menu / 命令面板 / FAB）；
+ *    普通列表与行内卡片不得用阴影假装层级，存量按预算收敛。
  */
 class DshSurfaceRoleTest {
 

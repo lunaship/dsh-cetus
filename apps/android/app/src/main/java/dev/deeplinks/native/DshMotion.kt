@@ -53,39 +53,12 @@ object DshRadius {
 
     /** 全圆（999dp）：Filter chip、状态 pill、圆形按钮、进度轨道。 */
     val full = 999.dp
-
-    // ---- 弃用别名：先映射到新角色，再逐文件替换；调用点清零后删除。 ----
-    // 预算由 ComponentLanguageTest / DesignTokenUsageTest 守护（只降不升）。
-
-    @Deprecated("色块/细条改用 micro", ReplaceWith("DshRadius.micro"))
-    val xs = micro
-
-    @Deprecated("小按钮/菜单行改用 control", ReplaceWith("DshRadius.control"))
-    val sm = control
-
-    @Deprecated("普通卡片改用 container", ReplaceWith("DshRadius.container"))
-    val md = container
-
-    @Deprecated("普通卡片改用 container", ReplaceWith("DshRadius.container"))
-    val lg = container
-
-    @Deprecated("软圆角（气泡/浮卡）改用 composer", ReplaceWith("DshRadius.composer"))
-    val xl = composer
-
-    @Deprecated("气泡尾角改用 control", ReplaceWith("DshRadius.control"))
-    val tail = control
-
-    @Deprecated("弹层形状统一为 modal", ReplaceWith("DshRadius.modal"))
-    val sheet = modal
-
-    @Deprecated("弹层形状统一为 modal", ReplaceWith("DshRadius.modal"))
-    val dialog = modal
 }
 
 /**
- * 图标底板（品牌 mark、设备图标块）：按边长 28% 取圆角，52dp / 72dp 两种尺寸比例一致，
- * 不再各自写 16dp、20dp、22dp。只允许品牌 mark、头像和方形底板的设备图标使用
- * （docs/visual-rules.md 第三节）。
+ * 图标底板：按边长 28% 取圆角，不同尺寸比例一致，不再各自写 16dp、20dp、22dp。
+ * 只允许品牌 mark、头像和确实需要方形底板的设备图标使用（docs/visual-rules.md 第三节）；
+ * 普通列表行用 24dp 线性图标，不走底板。
  */
 val DshTileShape = RoundedCornerShape(percent = 28)
 

@@ -112,8 +112,7 @@ import dev.deeplinks.native.ConversationSettings
 import dev.deeplinks.native.SessionsSettingsContent
 import dev.deeplinks.native.SettingsDest
 import dev.deeplinks.native.SettingsHome
-import dev.deeplinks.native.ui.DshGroupedPage
-import dev.deeplinks.native.ui.DshLargeTitle
+import dev.deeplinks.native.SettingsPageCanvas
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
@@ -594,13 +593,13 @@ internal fun CommandPaletteFilteredDarkEn() {
 }
 
 /**
- * 分组页底（迁移期兼容包装 → DshPageScaffold）：画布底 + 16dp 边距 + 720dp 居中，
- * Section 默认扁平；设置 / 设备页用它截图。
+ * 设置内容画布（与 SettingsRoute 同一件）：画布底 + 16dp 边距 + 独立滚动，
+ * Section 默认扁平；设置页用它截图。
  */
 @Composable
 private fun GroupedWall(dark: Boolean, english: Boolean, content: @Composable ColumnScope.() -> Unit) {
     ShotFrame(dark = dark, english = english) {
-        DshGroupedPage(content = content)
+        SettingsPageCanvas(content = content)
     }
 }
 
@@ -682,7 +681,7 @@ internal fun SettingsHomePairedLightZh() {
 
 /**
  * 设置页整壳（批次 2）：DshPageScaffold 标题 + 返回热区 + 页面内容，
- * 与任务首页 / 设备页同一骨架；内容仍走 DshGroupedPage 兼容包装。
+ * 与任务首页 / 设备页同一骨架；内容走 SettingsPageCanvas。
  */
 @PreviewTest
 @Preview(name = "settings page shell light zh", showBackground = true, widthDp = 412, heightDp = 900)
@@ -694,7 +693,7 @@ internal fun SettingsPageShellLightZh() {
             navigation = DshPageNavigation.Back,
             onNavigateBack = {},
         ) {
-            DshGroupedPage {
+            SettingsPageCanvas {
                 SettingsHome(appSettings = AppSettings(), onOpen = { _: SettingsDest -> }, host = PreviewHost)
             }
         }

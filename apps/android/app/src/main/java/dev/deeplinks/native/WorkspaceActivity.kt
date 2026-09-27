@@ -2424,7 +2424,7 @@ fun WorkspaceScreen(
                         trailingContent = {},
                     )
                 }
-                // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（Grok：状态写进动作）
+                // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
                 // 发送主体与高权限确认的共享状态：submitComposer 在 InputBar 之后赋值，
                 // onSend 与确认弹窗都通过同一个可变引用复用同一条发送路径。

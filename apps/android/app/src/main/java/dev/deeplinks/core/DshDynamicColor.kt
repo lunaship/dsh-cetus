@@ -33,9 +33,6 @@ fun dynamicDshColors(context: Context, dark: Boolean): DshColors? {
         bgPressed = scheme.surfaceContainerHigh,
         bgDrawer = scheme.surfaceContainerLow,
         bgNavSelected = scheme.secondaryContainer,
-        // 分组列表与主界面同一层次：画布底 + 高一档 tonal 卡片（深浅色一致）
-        bgGrouped = scheme.background,
-        bgGroupedCard = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainer,
         labelPrimary = scheme.onSurface,
         // secondary 取 onSurface 与 onSurfaceVariant 的中点：两者都用 onSurfaceVariant 时
         // 灰阶塌成一级；tertiary 保持 onSurfaceVariant（M3 保证其对表面达 AA）。

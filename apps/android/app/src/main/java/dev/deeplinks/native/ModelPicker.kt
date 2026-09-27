@@ -46,7 +46,7 @@ private enum class ModelPickerPage { MENU, MODELS, EFFORT }
 
 /**
  * 模型与推理强度：首页两行（模型 / 推理强度）→ 二级列表。
- * 模型按供应商分组成卡片，选中项打勾（对照 lody 的 grouped sheet）。
+ * 模型按供应商分组，选中项打勾。
  */
 @Composable
 internal fun ModelPickerSheet(

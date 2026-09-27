@@ -91,42 +91,29 @@ class DesignTokenUsageTest {
     }
 
     /**
-     * 弃用形状角色只降不升（docs/visual-rules.md 第三节）。
+     * 弃用形状角色零容忍（docs/visual-rules.md 第三节）。
      *
-     * DshRadius 已收敛为 micro/control/container/composer/modal/full 六个用途角色；
-     * xs/sm/md/lg/xl/tail/sheet/dialog 只是映射到新角色的弃用别名。存量按角色登记
-     * 为上限，迁移使数量下降后应把预算调小；全部归零后改零容忍。
+     * 2026-09-27 批次 6：xs/sm/md/lg/xl/tail/sheet/dialog/group 已全部删除，
+     * DshRadius 只剩 micro/control/container/composer/modal/full 六个用途角色。
+     * 旧名（含定义处的别名）在任何源文件里出现都失败。
      */
     @Test
-    fun deprecatedRadiusRolesOnlyShrink() {
+    fun retiredRadiusRolesStayDeleted() {
         val root = mainSourceRoot()
-        val budgets = mapOf(
-            "xs" to 3,
-            "tail" to 1,
-            "sm" to 25,
-            "md" to 23,
-            "lg" to 14,
-            "xl" to 3,
-            "sheet" to 0,
-            "dialog" to 0,
-        )
+        val retired = setOf("xs", "sm", "md", "lg", "xl", "tail", "sheet", "dialog", "group")
         val violations = mutableListOf<String>()
-        for ((role, budget) in budgets) {
-            var used = 0
-            for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
-                val rel = relative(root, file)
-                // 定义文件（DshMotion.kt）里的别名声明不算调用
-                if (rel == "dev/deeplinks/native/DshMotion.kt") continue
-                used += countMatches(file, Regex("""DshRadius\.$role\b"""))
-            }
-            if (used > budget) {
-                violations += "DshRadius.$role: $used 处，超过预算 $budget——请改用六个用途角色" +
-                    "（micro/control/container/composer/modal/full）"
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val rel = relative(root, file)
+            for (role in retired) {
+                val used = countMatches(file, Regex("""DshRadius\.$role\b"""))
+                if (used > 0) {
+                    violations += "$rel: DshRadius.$role $used 处——旧档位已删除，" +
+                        "请改用六个用途角色（micro/control/container/composer/modal/full）"
+                }
             }
         }
         assertTrue(
-            "弃用形状角色回涨（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n") +
-                "\n\n修复：把调用点迁到新角色，并同步调小上面的预算；全部归零后改零容忍。",
+            "废弃形状名回潮（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n"),
             violations.isEmpty(),
         )
     }

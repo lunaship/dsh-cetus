@@ -298,7 +298,7 @@ private fun MessageActionIcon(
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(if (pressed) Dsh.pressed else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
@@ -332,7 +332,7 @@ private fun RawMessageCard(msg: MobileMessage) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard)
             .padding(12.dp)
     ) {
@@ -382,7 +382,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.sm))
+            .clip(RoundedCornerShape(DshRadius.control))
             .semantics {
                 role = Role.Button
                 stateDescription = if (expanded) L.collapse else L.expand
@@ -473,7 +473,7 @@ private fun GoalRoundRow(text: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .semantics {
                 role = Role.Button
                 stateDescription = if (expanded) L.collapse else L.expand
@@ -529,7 +529,7 @@ private fun GoalRoundRow(text: String) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .padding(top = 6.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle.copy(alpha = 0.6f))
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             )
@@ -546,7 +546,7 @@ private fun ContextInjectionRow(text: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .semantics {
                 role = Role.Button
                 stateDescription = if (expanded) L.collapse else L.expand
@@ -611,7 +611,7 @@ private fun ContextInjectionRow(text: String) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .padding(top = 6.dp)
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgSubtle.copy(alpha = 0.6f))
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             )
@@ -629,7 +629,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.lg))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
     ) {
         Row(
@@ -747,7 +747,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.md))
+            .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.brandTint.copy(alpha = 0.08f))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -810,7 +810,7 @@ internal fun LoadOlderRow(
             style = DshType.captionRelaxed,
             modifier = Modifier
                 .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(if (pressed) Dsh.pressed else Dsh.bgInput)
                 .clickable(enabled = !loading, interactionSource = interaction, indication = dshRipple(), onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 4.dp)
@@ -891,10 +891,10 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
                 .align(Alignment.CenterEnd)
                 .widthIn(max = maxBubble)
                 .clip(RoundedCornerShape(
-                    topStart = DshRadius.xl,
-                    topEnd = DshRadius.xl,
-                    bottomStart = DshRadius.xl,
-                    bottomEnd = DshRadius.tail
+                    topStart = DshRadius.composer,
+                    topEnd = DshRadius.composer,
+                    bottomStart = DshRadius.composer,
+                    bottomEnd = DshRadius.control
                 ))
                 .background(Dsh.bubbleBg)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -932,7 +932,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
         Row(
             modifier = Modifier
                 .heightIn(min = 36.dp)
-                .clip(RoundedCornerShape(DshRadius.sm))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
                 .padding(horizontal = 6.dp, vertical = 4.dp),
@@ -1000,7 +1000,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(DshRadius.sm))
+                        .clip(RoundedCornerShape(DshRadius.control))
                         .background(Dsh.bgCode)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 )

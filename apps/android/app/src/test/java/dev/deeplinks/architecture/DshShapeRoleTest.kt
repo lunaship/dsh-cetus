@@ -24,17 +24,11 @@ class DshShapeRoleTest {
             "full" to 999,
         )
 
-        /** 弃用别名 -> 新角色。 */
-        val DEPRECATED_ALIASES = mapOf(
-            "xs" to "micro",
-            "sm" to "control",
-            "md" to "container",
-            "lg" to "container",
-            "xl" to "composer",
-            "tail" to "control",
-            "sheet" to "modal",
-            "dialog" to "modal",
-        )
+        /**
+         * 已删除的旧档位名（2026-09-27 批次 6 起零容忍）：
+         * 迁移完成后 DshRadius 只允许六个用途角色，旧名不得回潮。
+         */
+        val RETIRED_NAMES = setOf("xs", "sm", "md", "lg", "xl", "tail", "sheet", "dialog", "group")
 
         /** Material Shapes 角色 -> DSH 语义半径。 */
         val MATERIAL_SHAPES = mapOf(
@@ -81,30 +75,17 @@ class DshShapeRoleTest {
     }
 
     @Test
-    fun deprecatedAliasesMapToNewRoles() {
+    fun retiredRadiusNamesStayDeleted() {
         val motion = File(mainSourceRoot(), "dev/deeplinks/native/DshMotion.kt").readText()
         val block = radiusBlock(motion)
         val violations = mutableListOf<String>()
-        for ((alias, role) in DEPRECATED_ALIASES) {
-            val match = Regex("""val $alias = (\w+)""").find(block)
-            if (match == null) {
-                violations += "$alias: 弃用别名缺失（迁移期调用点还需要它编译）"
-                continue
+        for (name in RETIRED_NAMES) {
+            if (Regex("""val $name\s*=""").containsMatchIn(block)) {
+                violations += "$name: 旧档位/页面级形状名已删除，不得回潮（只用六个用途角色）"
             }
-            if (match.groupValues[1] != role) {
-                violations += "$alias: 映射到 ${match.groupValues[1]}，应映射到 $role"
-            }
-            val at = block.indexOf("val $alias =")
-            val before = block.substring(0, at).trimEnd()
-            if (!before.endsWith(")")) {
-                violations += "$alias: 弃用别名必须标注 @Deprecated(..., ReplaceWith(...))"
-            }
-        }
-        if (Regex("""val group\s*=""").containsMatchIn(block)) {
-            violations += "group: 20dp 页面级语义已删除，不得回潮"
         }
         assertTrue(
-            "弃用别名映射（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n"),
+            "废弃形状名回潮（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n"),
             violations.isEmpty(),
         )
     }

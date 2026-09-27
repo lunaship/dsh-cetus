@@ -421,7 +421,7 @@ private fun MermaidZoomDialog(
                 .fillMaxHeight(0.92f)
                 .navigationBarsPadding()
                 .padding(12.dp)
-                .clip(RoundedCornerShape(DshRadius.lg))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgBase)
                 .padding(12.dp),
         ) {
@@ -451,7 +451,7 @@ private fun MermaidZoomDialog(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(DshRadius.md))
+                    .clip(RoundedCornerShape(DshRadius.container))
                     .background(Dsh.bgCard)
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, zoom, _ ->

@@ -149,7 +149,7 @@ fun DshSheetPrimaryButton(
     }
 }
 
-/** 圆形关闭钮：30dp 视觉 / 48dp 热区（对照 lody 的 LodyCloseButton）。 */
+/** 圆形关闭钮：30dp 视觉 / 48dp 热区（统一浮层关闭按钮规格）。 */
 @Composable
 fun DshCloseButton(onClick: () -> Unit) {
     val s = DshS

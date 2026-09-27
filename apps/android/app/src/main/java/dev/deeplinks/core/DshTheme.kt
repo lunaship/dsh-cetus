@@ -58,13 +58,6 @@ data class DshColors(
     val bgOverlay: Color,
     /** 思考轨迹等「凹进」面板：比画布更深一档（DeepSeek 签名块）。 */
     val bgRecessed: Color = Color.Unspecified,
-    /**
-     * 分组列表页底（弃用别名）：收敛为画布 [bgBase]——普通页面默认扁平，
-     * 只有 tonal 容器（[bgSubtle]）表达分组（docs/visual-rules.md 第二节）。
-     */
-    val bgGrouped: Color,
-    /** 分组列表卡片面（弃用别名）：收敛为 tonal 容器 [bgSubtle]。 */
-    val bgGroupedCard: Color,
     val labelPrimary: Color,
     val labelSecondary: Color,
     val labelTertiary: Color,
@@ -121,8 +114,6 @@ val DarkDshColors = DshColors(
     bgTrack = Color(0xFF2A2A2F),
     bgOverlay = Color(0x80000000),
     bgRecessed = Color(0xFF08080A),      // ThinkingTrace：比画布更深一档
-    bgGrouped = Color(0xFF0E0E10),
-    bgGroupedCard = Color(0xFF1C1C1F),
     bgSurface = Color(0xFF161618),
     labelPrimary = Color(0xFFF9FAFB),
     labelSecondary = Color(0xFFCFD3D6),
@@ -176,11 +167,6 @@ val LightDshColors = DshColors(
     bgTrack = Color(0xFFF1F3F5),
     bgOverlay = Color(0x52000000),
     bgRecessed = Color(0xFFF3F4F6),      // ThinkingTrace：比白画布略凹
-    // 白卡压白底会整块隐形：分组页底取冷灰一档（对照 iOS systemGroupedBackground）
-    // 与侧栏 / 聊天页同一套层次：白画布 + 浅灰容器（侧栏行 F9FAFB、输入框 F1F3F5 之间），
-    // 不再用「灰底白卡」的 iOS 分组观感，否则设置与主界面像两套设计。
-    bgGrouped = Color(0xFFFFFFFF),
-    bgGroupedCard = Color(0xFFF4F5F7),
     bgSurface = Color(0xFFFFFFFF),
     // 文字
     labelPrimary = Color(0xFF0F1115),
@@ -230,7 +216,6 @@ val LightDshColors = DshColors(
  */
 fun DshColors.pureBlack(): DshColors = copy(
     bgBase = Color.Black,
-    bgGrouped = Color.Black,
     bgSidePanel = Color(0xFF0A0A0B),
     bgDrawer = Color(0xFF0A0A0B),
     bgCode = Color(0xFF0A0A0B),
@@ -631,16 +616,6 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.bgRecessed
-
-    val bgGrouped: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.bgGrouped
-
-    val bgGroupedCard: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.bgGroupedCard
 
     val labelPrimary: Color
         @Composable
