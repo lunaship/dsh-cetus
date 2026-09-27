@@ -28,10 +28,9 @@ import dev.deeplinks.native.DshDialogButtons
 import dev.deeplinks.native.DshDialogFrame
 import dev.deeplinks.native.DshDialogMessage
 import dev.deeplinks.native.DshDialogTitle
-import dev.deeplinks.native.ui.DshGroupedPage
-import dev.deeplinks.native.ui.DshLargeTitle
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
+import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSheet
 import dev.deeplinks.native.ui.DshSheetPrimaryButton
 import dev.deeplinks.native.ui.DshTextField
@@ -340,7 +339,10 @@ fun DevicesScreen(
     }
 }
 
-/** 整页形态：大标题 + 电脑分组；下拉刷新重读本机设备。 */
+/**
+ * 整页形态（批次 3）：统一页面骨架（DshPageScaffold 标题 + 画布）+ 电脑分组；
+ * 下拉刷新重读本机设备。不再用 display 大标题与 20dp 分组卡。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DevicesPage(
@@ -357,20 +359,9 @@ private fun DevicesPage(
     onAddDevice: () -> Unit,
 ) {
     val s = DshS
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Dsh.bgGrouped)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-    ) {
+    DshPageScaffold(title = s.pairingManage) {
         val current = device
         if (current == null) {
-            DshLargeTitle(
-                title = s.pairingManage,
-                subtitle = s.manageYourLinks,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
             Box(Modifier.weight(1f)) {
                 EmptyDevicesState(onAdd = onAddDevice)
             }
@@ -383,8 +374,20 @@ private fun DevicesPage(
                 onRefresh = onRefresh,
                 modifier = Modifier.weight(1f),
             ) {
-                DshGroupedPage {
-                    DshLargeTitle(title = s.pairingManage, subtitle = s.manageYourLinks)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 4.dp, bottom = 32.dp),
+                ) {
+                    // 页首导语：副标题降为正文说明，与设置页同一字阶
+                    Text(
+                        s.manageYourLinks,
+                        color = Dsh.labelTertiary,
+                        style = DshType.body,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+                    )
                     DeviceDetailSections(
                         device = current,
                         notice = notice,
@@ -618,7 +621,7 @@ private fun CertificateCheckDialog(
             modifier = Modifier
                 .padding(top = 12.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(DshRadius.md))
+                .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgSubtle)
                 .padding(12.dp),
         )

@@ -104,7 +104,7 @@ class DesignTokenUsageTest {
             "xs" to 3,
             "tail" to 1,
             "sm" to 26,
-            "md" to 29,
+            "md" to 28,
             "lg" to 23,
             "xl" to 5,
             "sheet" to 0,

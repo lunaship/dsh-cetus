@@ -42,25 +42,27 @@ class ComponentLanguageTest {
          */
         val GROUP_RADIUS_BUDGET: Map<String, Int> = emptyMap()
 
-        /** DshLargeTitle 调用点存量（批次 3 清零）。 */
-        val LARGE_TITLE_BUDGET = mapOf(
-            "dev/deeplinks/devices/DevicesActivity.kt" to 2,
-        )
+        /**
+         * DshLargeTitle 调用点存量。
+         * 2026-09-27 批次 3：设备页改用 DshPageScaffold 标准标题，预算归零，零容忍。
+         */
+        val LARGE_TITLE_BUDGET: Map<String, Int> = emptyMap()
 
         /**
          * DshGroupedPage 兼容包装调用点存量（import 不计）。
-         * 批次 2：设置 UI 搬到 SettingsRoute.kt，包装调用随迁；设备页（批次 3）清零后
-         * 本包装删除。
+         * 批次 2/3：设置与设备页都迁到 DshPageScaffold，只剩设置内容的滚动包装；
+         * 批次 6 随兼容包装一起删除。
          */
         val GROUPED_PAGE_BUDGET = mapOf(
             "dev/deeplinks/native/SettingsRoute.kt" to 7,
-            "dev/deeplinks/devices/DevicesActivity.kt" to 1,
         )
 
-        /** HomeChip / DeviceTag 等单页临时组件调用点存量（定义行不计）。 */
+        /**
+         * HomeChip 等单页临时组件调用点存量（定义行不计）。
+         * 批次 3：DeviceCard 的私有 DeviceTag 已换成共享 DshStatusBadge，预算清零。
+         */
         val PAGE_CHIP_BUDGET = mapOf(
             "dev/deeplinks/native/HomeHub.kt" to mapOf("HomeChip" to 2),
-            "dev/deeplinks/devices/DeviceCard.kt" to mapOf("DeviceTag" to 1),
         )
 
         /** 其余页面文件的 pill 形状存量（逐批收敛到共享组件）。 */
@@ -196,13 +198,19 @@ class ComponentLanguageTest {
                 }
             }
         }
-        // 未登记文件出现这些名字 = 新增单页视觉形状组件，直接失败
+        // 未登记文件出现这些名字 = 新增单页视觉形状组件，直接失败（注释里的迁移说明不算）
         val banned = setOf("DeviceTag", "HomeChip")
         for (file in ktFiles(root)) {
             val rel = relative(root, file)
             if (rel in DEFINITION_FILES || rel in PAGE_CHIP_BUDGET) continue
             for (name in banned) {
-                if (Regex("""\b$name\b""").containsMatchIn(file.readText())) {
+                val code = file.readLines()
+                    .filterNot { line ->
+                        val t = line.trimStart()
+                        t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
+                    }
+                    .joinToString("\n")
+                if (Regex("""\b$name\b""").containsMatchIn(code)) {
                     violations += "$rel: 出现 $name——单页视觉形状命名组件，必须改用共享组件（DshStatusBadge / DshFilterChip）"
                 }
             }

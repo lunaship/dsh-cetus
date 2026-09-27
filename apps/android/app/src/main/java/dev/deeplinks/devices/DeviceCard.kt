@@ -1,8 +1,6 @@
 package dev.deeplinks.devices
 
 import androidx.compose.runtime.getValue
-import dev.deeplinks.native.DshTileShape
-import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.RefreshOutline16
 import dev.deeplinks.native.ScanOutline16
 import dev.deeplinks.native.SwapOutline16
@@ -18,13 +16,14 @@ import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshSelectRow
 import dev.deeplinks.native.ui.DshSheet
+import dev.deeplinks.native.ui.DshStatusBadge
+import dev.deeplinks.native.ui.DshStatusTone
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,8 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -161,8 +160,9 @@ internal fun statusLabel(state: DeviceState): String {
 }
 
 /**
- * 电脑卡（放在分组卡片里）：品牌色图标块 + 名称 + 状态点 · 地址 · 线路 · 延迟；
- * [onOpen] 非空时整卡点按进入工作区。
+ * 电脑行（标准列表行骨架，docs/visual-rules.md 第五节）：
+ * 24dp 设备图标 + 名称（bodyLarge）+ 状态点 · 延迟 · 线路（supporting）+ 地址；
+ * [onOpen] 非空时整行点按进入工作区。品牌色 52dp 图标块只留给未配对空态。
  */
 @Composable
 internal fun DeviceCard(
@@ -204,24 +204,16 @@ internal fun DeviceCard(
                 },
             )
             .semantics { contentDescription = "${device.host.name}, $stateLabel" }
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(DshTileShape)
-                .background(Dsh.brand400.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            MonitorGlyph(tint = Dsh.brand400)
-        }
+        MonitorGlyph(tint = Dsh.labelSecondary, size = 24.dp)
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 device.host.name,
                 color = Dsh.labelPrimary,
-                style = DshType.headline,
+                style = DshType.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -251,7 +243,8 @@ internal fun DeviceCard(
             )
             if (device.host.needsCloudRescan) {
                 Spacer(Modifier.height(6.dp))
-                DeviceTag(s.restoreCloudTag, Dsh.error, Dsh.errorBg)
+                // 线路过期提示：共享状态 pill（颜色 + 文字双通道），不再用页面私有 DeviceTag
+                DshStatusBadge(text = s.restoreCloudTag, tone = DshStatusTone.Error)
             }
         }
         if (onOpen != null) {
@@ -262,24 +255,12 @@ internal fun DeviceCard(
 }
 
 @Composable
-internal fun MonitorGlyph(tint: Color = Dsh.labelPrimary) {
+internal fun MonitorGlyph(tint: Color = Dsh.labelPrimary, size: Dp = 28.dp) {
     // 统一描边图标体系（ic_device_glyph vector），不再手绘像素风 Box 堆叠
     Icon(
         painter = painterResource(dev.deeplinks.R.drawable.ic_device_glyph),
         contentDescription = null,
         tint = tint,
-        modifier = Modifier.size(28.dp),
+        modifier = Modifier.size(size),
     )
-}
-
-@Composable
-internal fun DeviceTag(text: String, color: Color, bg: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(DshRadius.sm))
-            .background(bg)
-            .padding(horizontal = 6.dp, vertical = 3.dp)
-    ) {
-        Text(text, color = color, fontWeight = FontWeight(600), style = DshType.caption)
-    }
 }

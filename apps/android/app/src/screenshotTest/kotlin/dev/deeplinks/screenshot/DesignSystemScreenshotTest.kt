@@ -773,18 +773,26 @@ private val PreviewHost = Host(
 
 @Composable
 private fun DevicesWall() {
-    DshLargeTitle(title = DshS.pairingManage, subtitle = DshS.manageYourLinks)
-    DeviceDetailSections(
-        device = DeviceUi(PreviewHost, DeviceState.ONLINE, latencyMs = 24),
-        notice = null,
-        onOpen = {},
-        onRecheck = {},
-        onTogglePreferRelay = {},
-        onRescan = {},
-        onRescanLater = {},
-        onReplace = {},
-        onUnpair = {},
-    )
+    // 批次 3：设备页与设置同一骨架（DshPageScaffold），副标题降为页首导语
+    DshPageScaffold(title = DshS.pairingManage) {
+        Text(
+            DshS.manageYourLinks,
+            color = Dsh.labelTertiary,
+            style = DshType.body,
+            modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+        )
+        DeviceDetailSections(
+            device = DeviceUi(PreviewHost, DeviceState.ONLINE, latencyMs = 24),
+            notice = null,
+            onOpen = {},
+            onRecheck = {},
+            onTogglePreferRelay = {},
+            onRescan = {},
+            onRescanLater = {},
+            onReplace = {},
+            onUnpair = {},
+        )
+    }
 }
 
 @PreviewTest
