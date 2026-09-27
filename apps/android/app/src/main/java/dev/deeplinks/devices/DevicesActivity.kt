@@ -235,12 +235,12 @@ fun DevicesScreen(
                 .fillMaxWidth()
                 .background(Dsh.bgBase)
                 .statusBarsPadding()
-                .padding(top = 18.dp, start = 18.dp, end = 18.dp, bottom = 18.dp)
+                .padding(top = 10.dp, start = 16.dp, end = 16.dp, bottom = 10.dp)
         ) {
             Text(
-                s.myDevices,
+                s.pairingManage,
                 color = Dsh.labelPrimary,
-                style = MaterialTheme.typography.headlineSmall,
+                style = DshType.titleLarge,
             )
             Text(
                 s.manageYourLinks,
@@ -254,8 +254,8 @@ fun DevicesScreen(
                 .weight(1f)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 28.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp)
         ) {
             val current = device
             if (current == null) {
@@ -312,7 +312,7 @@ fun DevicesScreen(
                         (hostNotice ?: offlineError)?.let { msg ->
                             DevicesNotice(message = msg, actionLabel = s.resync, onAction = { refreshHealth() })
                         }
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(12.dp))
                         // 单设备：配对新电脑 = 替换当前这台（文字按钮，不与设备卡抢主操作）
                         Box(
                             modifier = Modifier
@@ -525,7 +525,7 @@ private fun DeviceCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 96.dp)
+            .heightIn(min = 84.dp)
             .clip(RoundedCornerShape(DshRadius.lg))
             .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onOpen)
@@ -533,7 +533,7 @@ private fun DeviceCard(
                 role = Role.Button
                 contentDescription = "${device.host.name}, $stateLabel"
             }
-            .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 9.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MonitorGlyph()
@@ -676,7 +676,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(88.dp)
+                .size(64.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(Dsh.brand400.copy(alpha = 0.12f))
                 .border(1.dp, Dsh.brand400.copy(alpha = 0.28f), RoundedCornerShape(24.dp)),
@@ -689,7 +689,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(18.dp))
         Text(
             s.noDevicesYet,
             color = Dsh.labelPrimary,
@@ -706,7 +706,7 @@ private fun EmptyDevicesState(onAdd: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 280.dp),
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()

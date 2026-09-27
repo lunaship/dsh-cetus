@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 顶栏「更多操作」菜单的纯逻辑测试。
+ * 顶栏「更多操作」菜单的纯逻辑测试。对话/轨迹切换已移到会话标题下，不属于溢出菜单。
  *
  * 这些规则原先埋在 WorkspaceScreen 的 composable 里，无法单测；
  * 抽成 workspaceHeaderMenuItems 后即可表驱动验证。
@@ -39,26 +39,25 @@ class WorkspaceMenuTest {
         onShareImage = { ctx.log += "shareImage" },
         onExport = { ctx.log += "export" },
         onDelete = { ctx.log += "delete" },
-        onToggleViewMode = { ctx.log += "viewMode" },
     )
 
     @Test
-    fun baseMenuAlwaysHasTheViewTogglePlusSevenActions() {
-        assertEquals(8, menu(Ctx(), viewMode = "trace").size)
+    fun baseMenuAlwaysHasSevenActions() {
+        assertEquals(7, menu(Ctx(), viewMode = "trace").size)
     }
 
     @Test
     fun contextualItemsAreGatedByState() {
-        assertEquals(9, menu(Ctx(), viewMode = "chat").size)   // 视图切换 + 工具查找
-        assertEquals(8, menu(Ctx(), viewMode = "trace").size)  // trace 无工具查找
+        assertEquals(8, menu(Ctx(), viewMode = "chat").size)  // 对话视图含工具查找
+        assertEquals(7, menu(Ctx(), viewMode = "trace").size)  // 轨迹视图无工具查找
     }
 
     @Test
     fun subagentsAndTurnJumpsAppearOnlyWhenRelevant() {
-        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
-        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1).size)
-        assertEquals(9, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
-        assertEquals(10, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
+        assertEquals(7, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
+        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 1).size)
+        assertEquals(8, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
+        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
     }
 
     @Test

@@ -50,7 +50,9 @@ import dev.deeplinks.native.ContextMeterRow
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
+import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
+import dev.deeplinks.native.SessionStatsDetailDialog
 import dev.deeplinks.native.SidebarFooter
 import dev.deeplinks.native.SidebarHostRow
 import dev.deeplinks.native.SidebarNewSessionRow
@@ -273,6 +275,11 @@ private fun TopBarWall() {
         title = "调研 t3code 移动端设计并对比项目",
         showBack = true,
         onNavigate = {},
+        viewMode = "chat",
+        showViewModeTabs = true,
+        hostName = "MacBook Pro",
+        onOpenDevice = {},
+        onSelectViewMode = {},
         menuExpanded = false,
         onMenuExpandedChange = {},
         menuItems = listOf(
@@ -283,10 +290,49 @@ private fun TopBarWall() {
 }
 
 @PreviewTest
-@Preview(name = "workspace top bar light", showBackground = true, widthDp = 412, heightDp = 80)
+@Preview(name = "workspace top bar light", showBackground = true, widthDp = 412, heightDp = 140)
 @Composable
 internal fun WorkspaceTopBarLight() {
     Wall(dark = false, english = false) { TopBarWall() }
+}
+
+@PreviewTest
+@Preview(name = "session usage light zh", showBackground = true, widthDp = 412, heightDp = 680)
+@Composable
+internal fun SessionUsageLightZh() {
+    SessionUsageWall(dark = false, english = false)
+}
+
+@PreviewTest
+@Preview(name = "session usage dark en", showBackground = true, widthDp = 412, heightDp = 680)
+@Composable
+internal fun SessionUsageDarkEn() {
+    SessionUsageWall(dark = true, english = true)
+}
+
+@Composable
+private fun SessionUsageWall(dark: Boolean, english: Boolean) {
+    Wall(dark = dark, english = english) {
+        SessionStatsDetailDialog(
+            stats = MobileSessionStats(
+                turns = 12,
+                steps = 31,
+                llmMs = 82_000,
+                toolMs = 43_000,
+                decodeMs = 19_000,
+                decodeTokens = 1_900,
+                uncachedInputTokens = 18_400,
+                cacheReadTokens = 2_600,
+                outputTokens = 8_800,
+                contextPressureTokens = 24_500,
+                contextWindow = 128_000,
+                systemTokens = 2_800,
+                toolsTokens = 6_400,
+                messageTokens = 15_300,
+            ),
+            onDismiss = {},
+        )
+    }
 }
 
 @Composable

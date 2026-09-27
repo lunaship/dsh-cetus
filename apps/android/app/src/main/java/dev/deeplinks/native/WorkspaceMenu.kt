@@ -3,7 +3,6 @@ package dev.deeplinks.native
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import dev.deeplinks.core.L
 
 /**
@@ -28,13 +27,8 @@ internal fun workspaceHeaderMenuItems(
     onShareImage: () -> Unit,
     onExport: () -> Unit,
     onDelete: () -> Unit,
-    onToggleViewMode: () -> Unit,
 ): List<DshMenuItem> {
     val contextual = buildList {
-        add(DshMenuItem(
-            if (viewMode == "trace") Icons.Outlined.ChatBubbleOutline else CodeOutline16,
-            if (viewMode == "trace") L.tabChat else L.tabTrace,
-        ) { onCloseMenu(); onToggleViewMode() })
         if (viewMode == "chat") {
             add(DshMenuItem(SearchOutline16, if (toolSearchOpen) L.closeToolSearch else L.searchToolCalls) {
                 onCloseMenu(); onOpenToolSearch()

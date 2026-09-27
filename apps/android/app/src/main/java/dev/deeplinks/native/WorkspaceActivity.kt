@@ -2073,9 +2073,6 @@ fun WorkspaceScreen(
                                 }
                             },
                             onDelete = { currentSession?.let { openDeleteSession(it) } },
-                            onToggleViewMode = {
-                                selectViewMode(if (viewMode == "trace") "chat" else "trace")
-                            },
             )
             WorkspaceTopBar(
                 running = running,
@@ -2088,6 +2085,11 @@ fun WorkspaceScreen(
                         showPhoneSessions()
                     }
                 },
+                viewMode = viewMode,
+                showViewModeTabs = currentSessionId != null,
+                hostName = host.name,
+                onOpenDevice = { onOpenDevice(null) },
+                onSelectViewMode = ::selectViewMode,
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
                 menuItems = topBarMenuItems,
@@ -2138,8 +2140,7 @@ fun WorkspaceScreen(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
-            // 对话与轨迹的内容直接切换；视觉反馈只留在顶栏短下划线，
-            // 避免两张完整长列表在一次点按中同时测量、绘制和滑动。
+            // 对话与轨迹共用消息数据，只替换当前视图，避免同时测量和绘制两张长列表。
             ChangesSwipeArea(
                 state = changesPanel,
                 enabled = changeSummaries.isNotEmpty() && dshLayout.persistentSidebar,

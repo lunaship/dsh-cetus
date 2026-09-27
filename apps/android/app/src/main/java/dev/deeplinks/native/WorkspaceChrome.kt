@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.core.DshType
+import dev.deeplinks.core.DshS
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -68,6 +69,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import dev.deeplinks.core.dshRipple
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.draw.drawBehind
@@ -83,11 +86,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.foundation.layout.navigationBarsPadding
-import dev.deeplinks.native.ui.DshSheetGrabber
 import androidx.compose.ui.draw.shadow
 
 /**
@@ -504,7 +505,7 @@ internal fun ContextMeterButton(
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "~${compactTokens(used)} / ${compactTokens(window)}",
+                        "~${compactTokens(used)} / ${compactTokens(window)} ${L.tokenUnitShort}",
                         color = Dsh.labelPrimary,
                         style = DshType.label,
                         lineHeight = 20.sp,
@@ -782,8 +783,8 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 聊天顶栏：返回或收起侧栏、会话名、溢出菜单。
- * 轨迹、改动计数、目标不放在这里。菜单项由 [workspaceHeaderMenuItems] 构建后传入。
+ * 会话顶栏：导航、会话名、对话/轨迹切换、设备入口和溢出菜单。
+ * 菜单项由 [workspaceHeaderMenuItems] 构建后传入。
  */
 @Composable
 internal fun WorkspaceTopBar(
@@ -791,88 +792,177 @@ internal fun WorkspaceTopBar(
     title: String,
     showBack: Boolean,
     onNavigate: () -> Unit,
+    viewMode: String,
+    showViewModeTabs: Boolean,
+    hostName: String,
+    onOpenDevice: () -> Unit,
+    onSelectViewMode: (String) -> Unit,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     menuItems: List<DshMenuItem>,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val navInteraction = remember { MutableInteractionSource() }
-        val navPressed by navInteraction.collectIsPressedAsState()
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (navPressed) Dsh.pressed else Color.Transparent)
-                .clickable(interactionSource = navInteraction, indication = dshRipple()) { onNavigate() }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = if (showBack) L.back else L.sessionList
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (showBack) Icons.AutoMirrored.Filled.ArrowBack else PanelLeftOutline16,
-                contentDescription = null,
-                tint = Dsh.labelSecondary,
-                modifier = Modifier.size(if (showBack) 22.dp else 18.dp),
-            )
-        }
-
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (running) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(Dsh.brand400),
-                )
-                Spacer(Modifier.width(6.dp))
-            }
-            Text(
-                title,
-                color = Dsh.labelPrimary,
-                style = DshType.titleLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Box {
-            val moreInteraction = remember { MutableInteractionSource() }
-            val morePressed by moreInteraction.collectIsPressedAsState()
+            val navInteraction = remember { MutableInteractionSource() }
+            val navPressed by navInteraction.collectIsPressedAsState()
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (morePressed) Dsh.pressed else Color.Transparent)
-                    .clickable(interactionSource = moreInteraction, indication = dshRipple()) { onMenuExpandedChange(true) },
+                    .background(if (navPressed) Dsh.pressed else Color.Transparent)
+                    .clickable(interactionSource = navInteraction, indication = dshRipple()) { onNavigate() }
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = if (showBack) L.back else L.sessionList
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    EllipsisOutline16,
-                    contentDescription = L.moreActions,
+                    if (showBack) Icons.AutoMirrored.Filled.ArrowBack else PanelLeftOutline16,
+                    contentDescription = null,
+                    tint = Dsh.labelSecondary,
+                    modifier = Modifier.size(if (showBack) 22.dp else 18.dp),
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (running) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Dsh.brand400),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(
+                    title,
+                    color = Dsh.labelPrimary,
+                    style = DshType.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "${L.deviceAndPairing} · $hostName"
+                    }
+                    .clickable(onClick = onOpenDevice),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Devices,
+                    contentDescription = null,
                     tint = Dsh.labelSecondary,
                     modifier = Modifier.size(18.dp),
                 )
             }
-            DshMenu(
-                expanded = menuExpanded,
-                onDismiss = { onMenuExpandedChange(false) },
-                items = menuItems,
-            )
+
+            Box {
+                val moreInteraction = remember { MutableInteractionSource() }
+                val morePressed by moreInteraction.collectIsPressedAsState()
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(if (morePressed) Dsh.pressed else Color.Transparent)
+                        .clickable(interactionSource = moreInteraction, indication = dshRipple()) { onMenuExpandedChange(true) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        EllipsisOutline16,
+                        contentDescription = L.moreActions,
+                        tint = Dsh.labelSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                DshMenu(
+                    expanded = menuExpanded,
+                    onDismiss = { onMenuExpandedChange(false) },
+                    items = menuItems,
+                )
+            }
         }
+
+        if (showViewModeTabs) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 56.dp, end = 56.dp, bottom = 6.dp)
+                    .clip(RoundedCornerShape(DshRadius.full))
+                    .background(Dsh.bgSubtle)
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                WorkspaceViewModeTab(
+                    modifier = Modifier.weight(1f),
+                    label = L.tabChat,
+                    selected = viewMode == "chat",
+                    onClick = { onSelectViewMode("chat") },
+                )
+                WorkspaceViewModeTab(
+                    modifier = Modifier.weight(1f),
+                    label = L.tabTrace,
+                    selected = viewMode == "trace",
+                    onClick = { onSelectViewMode("trace") },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceViewModeTab(
+    modifier: Modifier,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        modifier = modifier
+            .heightIn(min = 40.dp)
+            .clip(RoundedCornerShape(DshRadius.full))
+            .background(
+                when {
+                    selected -> Dsh.bgCard
+                    pressed -> Dsh.pressed
+                    else -> Color.Transparent
+                }
+            )
+            .semantics {
+                role = Role.Tab
+                contentDescription = label
+                stateDescription = if (selected) L.currentLabel else ""
+            }
+            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
+            style = DshType.label,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
     }
 }
 
@@ -996,12 +1086,12 @@ internal fun SessionStatsLine(stats: MobileSessionStats?) {
     val parts = buildList {
         if (s.turns > 0 || s.steps > 0) add(L.statsTurnsSteps.format(s.turns, s.steps))
         if (totalTokens > 0) {
-            add("${compactTokens(totalTokens)} tok")
+            add("${compactTokens(totalTokens)} ${L.tokenUnitShort}")
         } else if (inputTokens > 0 || s.outputTokens > 0) {
             add(L.inputOutputTokens.format(compactTokens(inputTokens), compactTokens(s.outputTokens)))
         }
         if (s.decodeMs > 0 && s.decodeTokens > 0) {
-            add(String.format(java.util.Locale.US, "%.0f tok/s", s.decodeTokens * 1000.0 / s.decodeMs))
+            add(String.format(java.util.Locale.US, "%.0f %s", s.decodeTokens * 1000.0 / s.decodeMs, L.tokenRateUnit))
         }
     }
     if (parts.isEmpty()) return
@@ -1061,7 +1151,7 @@ internal fun SessionStatsLine(stats: MobileSessionStats?) {
     }
 
     if (detailOpen) {
-        SessionStatsDetailSheet(
+        SessionStatsDetailDialog(
             stats = s,
             onDismiss = { detailOpen = false },
         )
@@ -1069,15 +1159,14 @@ internal fun SessionStatsLine(stats: MobileSessionStats?) {
 }
 
 /**
- * 会话用量与执行性能看板（Paseo 式 HUD BottomSheet）：
- * 完整结构化展示交互轮次、耗时、缓存命中、解码吞吐速率与 Token 明细，彻底解决单行挤占与截断问题。
+ * 会话用量与执行性能看板：点按后用单屏对话框展示完整数据，避免用户在底部面板中上下翻找。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SessionStatsDetailSheet(
+internal fun SessionStatsDetailDialog(
     stats: MobileSessionStats,
     onDismiss: () -> Unit,
 ) {
+    val strings = DshS
     val s = stats
     val inputTokens = s.uncachedInputTokens + s.cacheReadTokens
     val totalTokens = inputTokens + s.outputTokens
@@ -1086,42 +1175,58 @@ internal fun SessionStatsDetailSheet(
         s.decodeTokens * 1000.0 / s.decodeMs
     } else 0.0
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = Dsh.bgCard,
-        contentColor = Dsh.labelPrimary,
-        shape = DshSheetShape,
-        dragHandle = null,
-        modifier = Modifier.fillMaxWidth(),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
+                .widthIn(max = 560.dp)
+                .fillMaxWidth(0.94f)
+                .clip(RoundedCornerShape(DshRadius.dialog))
+                .background(Dsh.bgCard)
+                .padding(16.dp),
         ) {
-            DshSheetGrabber()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = strings.sessionStatsSheetTitle,
+                        style = DshType.titleLarge,
+                        color = Dsh.labelPrimary,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = strings.statsTurnsCount.format(s.turns) + " · " + strings.statsStepsCount.format(s.steps),
+                        style = DshType.captionRelaxed,
+                        color = Dsh.labelSecondary,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onDismiss)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = strings.close
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null, tint = Dsh.labelSecondary)
+                }
+            }
 
-            Text(
-                text = L.sessionStatsSheetTitle,
-                style = DshType.titleLarge,
-                color = Dsh.labelPrimary,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-            )
-            Text(
-                text = L.statsTurnsCount.format(s.turns) + " · " + L.statsStepsCount.format(s.steps),
-                style = DshType.captionRelaxed,
-                color = Dsh.labelSecondary,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
+            Spacer(Modifier.height(12.dp))
 
             // ===== 核心概览卡片 (2x2 Grid) =====
             Text(
-                text = L.statsOverview,
+                text = strings.statsOverview,
                 style = DshType.t14SB,
                 color = Dsh.labelPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                modifier = Modifier.padding(bottom = 6.dp),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1129,22 +1234,22 @@ internal fun SessionStatsDetailSheet(
             ) {
                 StatsMetricCard(
                     title = "${s.turns} / ${s.steps}",
-                    label = L.statsTurnsStepsLabel,
+                    label = strings.statsTurnsStepsLabel,
                     sub = if (s.llmMs > 0 || s.toolMs > 0) {
-                        L.statsTotalTimeSeconds.format((s.llmMs + s.toolMs) / 1000.0)
-                    } else L.statsInteractionTotal,
+                        strings.statsTotalTimeSeconds.format((s.llmMs + s.toolMs) / 1000.0)
+                    } else strings.statsInteractionTotal,
                     modifier = Modifier.weight(1f),
                 )
                 StatsMetricCard(
                     title = if (cacheHitPercent > 0) "$cacheHitPercent%" else "--",
-                    label = L.statsCacheHitLabel,
-                    sub = if (s.cacheReadTokens > 0) L.statsCacheHitSub.format(compactTokens(s.cacheReadTokens)) else L.statsCacheMiss,
+                    label = strings.statsCacheHitLabel,
+                    sub = if (s.cacheReadTokens > 0) strings.statsCacheHitSub.format(compactTokens(s.cacheReadTokens)) else strings.statsCacheMiss,
                     accent = cacheHitPercent > 0,
                     modifier = Modifier.weight(1f),
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1152,26 +1257,26 @@ internal fun SessionStatsDetailSheet(
             ) {
                 StatsMetricCard(
                     title = if (speedToks > 0) String.format(java.util.Locale.US, "%.1f", speedToks) else "--",
-                    label = L.statsDecodeSpeedLabel,
-                    sub = if (s.outputTokens > 0) L.statsOutputSub.format(compactTokens(s.outputTokens)) else L.statsDecodeSpeedHint,
+                    label = strings.statsDecodeSpeedLabel,
+                    sub = if (s.outputTokens > 0) strings.statsOutputSub.format(compactTokens(s.outputTokens)) else strings.statsDecodeSpeedHint,
                     modifier = Modifier.weight(1f),
                 )
                 StatsMetricCard(
                     title = compactTokens(totalTokens),
-                    label = L.statsTotalTokensLabel,
-                    sub = L.statsInputPlusOutput,
+                    label = strings.statsTotalTokensLabel,
+                    sub = strings.statsInputPlusOutput,
                     modifier = Modifier.weight(1f),
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             // ===== Token 消耗明细 =====
             Text(
-                text = L.statsTokensBreakdown,
+                text = strings.statsTokensBreakdown,
                 style = DshType.t14SB,
                 color = Dsh.labelPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                modifier = Modifier.padding(bottom = 6.dp),
             )
 
             Column(
@@ -1179,34 +1284,34 @@ internal fun SessionStatsDetailSheet(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(DshRadius.md))
                     .background(Dsh.bgInput)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
                 StatsDetailRow(
-                    label = L.statsUncachedInput,
-                    value = "${s.uncachedInputTokens} tok",
+                    label = strings.statsUncachedInput,
+                    value = "${s.uncachedInputTokens} ${strings.tokenUnit}",
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
                 StatsDetailRow(
-                    label = L.statsCachedInput,
-                    value = "${s.cacheReadTokens} tok",
+                    label = strings.statsCachedInput,
+                    value = "${s.cacheReadTokens} ${strings.tokenUnit}",
                     tag = if (cacheHitPercent > 0) "$cacheHitPercent%" else null,
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
                 StatsDetailRow(
-                    label = L.statsOutputTokens,
-                    value = "${s.outputTokens} tok",
+                    label = strings.statsOutputTokens,
+                    value = "${s.outputTokens} ${strings.tokenUnit}",
                 )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Dsh.borderSubtle, thickness = 0.5.dp)
                 StatsDetailRow(
-                    label = L.statsTotalTokens,
-                    value = "$totalTokens tok",
+                    label = strings.statsTotalTokens,
+                    value = "$totalTokens ${strings.tokenUnit}",
                     highlight = true,
                 )
             }
 
-            // ===== 上下文窗口气压 =====
+            // ===== 上下文窗口 =====
             if (s.contextWindow > 0) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 val used = s.contextPressureTokens
                 val window = s.contextWindow
                 val windowPercent = ((used * 100) / window).toInt().coerceIn(0, 100)
@@ -1217,18 +1322,20 @@ internal fun SessionStatsDetailSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = L.statsContextWindow,
+                        text = strings.statsContextWindow,
                         style = DshType.t14SB,
                         color = Dsh.labelPrimary,
                     )
                     Text(
-                        text = "${compactTokens(used)} / ${compactTokens(window)} ($windowPercent%)",
+                        text = "${compactTokens(used)} / ${compactTokens(window)} ${strings.tokenUnit} · $windowPercent%",
                         style = DshType.captionRelaxed,
                         color = if (windowPercent > 80) Dsh.warn else Dsh.labelSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
 
                 // 进度条
                 Box(
@@ -1249,21 +1356,24 @@ internal fun SessionStatsDetailSheet(
 
                 val breakdownTotal = s.systemTokens + s.toolsTokens + s.messageTokens
                 if (breakdownTotal > 0) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(5.dp))
                     Text(
-                        text = L.statsContextBreakdownLine.format(
+                        text = strings.statsContextBreakdownLine.format(
                             compactTokens(s.systemTokens),
                             compactTokens(s.toolsTokens),
                             compactTokens(s.messageTokens),
                         ),
                         style = DshType.microRelaxed,
                         color = Dsh.labelTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun StatsMetricCard(

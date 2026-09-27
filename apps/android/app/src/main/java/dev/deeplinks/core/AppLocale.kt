@@ -345,6 +345,9 @@ class DshStrings(private val values: Map<String, String>) {
     /** DSH `permission.access.mode`：访问模式座可读描述。 */
     val accessModeAria: String get() = t("accessModeAria")
     val sessionStatsSheetTitle: String get() = t("sessionStatsSheetTitle")
+    val tokenUnit: String get() = t("tokenUnit")
+    val tokenUnitShort: String get() = t("tokenUnitShort")
+    val tokenRateUnit: String get() = t("tokenRateUnit")
     val statsTurnsCount: String get() = t("statsTurnsCount")
     val statsStepsCount: String get() = t("statsStepsCount")
     val statsExecutionTime: String get() = t("statsExecutionTime")
@@ -598,6 +601,8 @@ class DshStrings(private val values: Map<String, String>) {
     val addModelUnsupported: String get() = t("addModelUnsupported")
     val defaultModelSetting: String get() = t("defaultModelSetting")
     val defaultModelSettingDesc: String get() = t("defaultModelSettingDesc")
+    val refreshBalance: String get() = t("refreshBalance")
+    val balanceReadOnlyHint: String get() = t("balanceReadOnlyHint")
     val modelListSetting: String get() = t("modelListSetting")
     val modelAddOnDesktopHint: String get() = t("modelAddOnDesktopHint")
     val balanceUnavailable: String get() = t("balanceUnavailable")

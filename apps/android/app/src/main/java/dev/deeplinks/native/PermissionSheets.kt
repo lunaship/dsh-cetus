@@ -496,9 +496,9 @@ internal fun PermissionModeOption(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     title,
-                    color = Dsh.labelPrimary,
+                    color = if (selected) accent else Dsh.labelPrimary,
                     style = DshType.t15x20M,
-                    fontWeight = FontWeight(500),
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight(500),
                     lineHeight = 20.sp
                 )
                 if (selected) {

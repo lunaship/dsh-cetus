@@ -379,35 +379,31 @@ private fun SettingsScreen(
                             SettingsItem(
                                 title = s.defaultModelSetting,
                                 description = "$defaultModelValue · ${s.defaultModelSettingDesc}",
-                                onClick = {},
+                                onClick = null,
                             )
                         }
-                        // 账户余额（经插件代查；桌面端在模型页展示）
-                        SettingsSection(s.sectionBalance)
+                        // 余额是只读账户信息：刷新作为明确操作，不伪装成可编辑设置项。
+                        SettingsSection(
+                            s.sectionBalance,
+                            actionLabel = if (host == null) s.addDevice else s.refreshBalance,
+                            actionEnabled = host == null || !balanceLoading,
+                            onAction = {
+                                if (host == null) onOpenDevices() else balanceReloadEpoch += 1
+                            },
+                        )
                         DshSettingsGroup {
                             val b = balance
-                            when {
-                                b != null -> SettingsItem(
-                                    title = s.deepseekBalance,
-                                    description = s.balanceSummary.format(b.balance, b.currency, b.used, b.remainder),
-                                    onClick = { balanceReloadEpoch += 1 },
-                                )
-                                balanceLoading -> SettingsItem(
-                                    title = s.deepseekBalance,
-                                    description = s.querying,
-                                    onClick = {},
-                                )
-                                host == null -> SettingsItem(
-                                    title = s.deepseekBalance,
-                                    description = s.notConnectedCannotSave,
-                                    onClick = onOpenDevices,
-                                )
-                                else -> SettingsItem(
-                                    title = s.deepseekBalance,
-                                    description = (balanceError ?: s.loadFailed) + " · " + s.retry,
-                                    onClick = { balanceReloadEpoch += 1 },
-                                )
+                            val description = when {
+                                b != null -> s.balanceSummary.format(b.balance, b.currency, b.used, b.remainder) + " · " + s.balanceReadOnlyHint
+                                balanceLoading -> s.querying
+                                host == null -> s.balanceUnavailable
+                                else -> balanceError ?: s.loadFailed
                             }
+                            SettingsItem(
+                                title = s.deepseekBalance,
+                                description = description,
+                                onClick = null,
+                            )
                         }
                         SettingsSection(s.modelListSetting)
                         val modelKind = catalogKind(
@@ -1331,6 +1327,7 @@ private fun SessionsSettings(host: Host?) {
     SettingsSection(
         title = s.sectionArchivedSessions,
         actionLabel = if (archivedRows.isNotEmpty()) s.clearSectionRecords else null,
+        dangerAction = true,
         onAction = { pendingClear = ClearSessionsScope.ARCHIVED },
     )
     if (archivedRows.isEmpty()) {
@@ -1354,6 +1351,7 @@ private fun SessionsSettings(host: Host?) {
     SettingsSection(
         title = s.sectionDeletedSessions,
         actionLabel = if (deletedRows.isNotEmpty()) s.clearSectionRecords else null,
+        dangerAction = true,
         onAction = { pendingClear = ClearSessionsScope.DELETED },
     )
     if (deletedRows.isEmpty()) {
@@ -1554,6 +1552,8 @@ private fun DshSettingsDivider() {
 private fun SettingsSection(
     title: String,
     actionLabel: String? = null,
+    actionEnabled: Boolean = true,
+    dangerAction: Boolean = false,
     onAction: (() -> Unit)? = null,
 ) {
     Row(
@@ -1575,14 +1575,14 @@ private fun SettingsSection(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(DshRadius.sm))
-                    .background(if (pressed) Dsh.pressed else Color.Transparent)
-                    .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onAction)
+                    .background(if (pressed && actionEnabled) Dsh.pressed else Color.Transparent)
+                    .clickable(interactionSource = interaction, indication = dshRipple(), enabled = actionEnabled, onClick = onAction)
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     actionLabel,
-                    color = Dsh.error,
+                    color = if (!actionEnabled) Dsh.labelTertiary else if (dangerAction) Dsh.error else Dsh.brand400,
                     style = DshType.t12x18M,
                     fontWeight = FontWeight(500),
                     lineHeight = 18.sp,
@@ -1596,19 +1596,23 @@ private fun SettingsSection(
 private fun SettingsItem(
     title: String,
     description: String,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     danger: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .heightIn(min = 52.dp)
+        .clip(RoundedCornerShape(DshRadius.md))
+        .background(if (onClick != null && pressed) Dsh.pressed else Color.Transparent)
+    val interactiveModifier = if (onClick != null) {
+        rowModifier.clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
+    } else {
+        rowModifier
+    }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(DshRadius.md))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = interactiveModifier.padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -1624,12 +1628,14 @@ private fun SettingsItem(
                 Text(description, color = Dsh.labelTertiary, style = DshType.caption, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        Icon(
-            ChevronRightOutline14,
-            contentDescription = null,
-            tint = if (danger) Dsh.error else Dsh.labelTertiary,
-            modifier = Modifier.size(16.dp)
-        )
+        if (onClick != null) {
+            Icon(
+                ChevronRightOutline14,
+                contentDescription = null,
+                tint = if (danger) Dsh.error else Dsh.labelTertiary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 
