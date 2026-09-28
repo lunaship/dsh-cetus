@@ -544,6 +544,7 @@ val DshStringsEn = DshStrings(
         put("notifyOnDone", "Alert me when a task finishes")
         put("notifyExplain", "Approvals can be handled right on the lock screen.")
         put("renameComputerDesc", "Give this computer a name you will recognise. It only applies on this phone.")
+        put("viaCloudShort", "Cloud")
         put("connectionMethod", "Connection")
         put("changeComputer", "Change computer")
         put("agentPermission", "Agent permissions")

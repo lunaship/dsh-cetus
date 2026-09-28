@@ -911,7 +911,15 @@ internal fun SettingsDarkEnLarge() {
 @Composable
 internal fun SettingsHomePairedLightZh() {
     GroupedWall(dark = false, english = false) {
-        SettingsHome(appSettings = AppSettings(), onOpen = {}, host = PreviewHost)
+        // 带上连通性样例值：电脑卡右侧的「● 在线 · 云端 · 31ms」要有截图证据
+        SettingsHome(
+            appSettings = AppSettings(),
+            onOpen = {},
+            host = PreviewHost,
+            online = true,
+            viaCloud = true,
+            latencyMs = 31,
+        )
     }
 }
 

@@ -382,6 +382,10 @@ internal fun SettingsHome(
     onOpen: (SettingsDest) -> Unit,
     host: Host? = null,
     onOpenDevices: () -> Unit = {},
+    /** 连通性（与首页同一个探针，由上层注入）；null = 还没探过，不写状态。 */
+    online: Boolean? = null,
+    viaCloud: Boolean = false,
+    latencyMs: Long? = null,
     /** 「执行中发消息」写回服务端设置用的通路（与二级页同一套 savingNs/saveErrors 表现）。 */
     savingNs: String? = null,
     saveErrors: Map<String, String> = emptyMap(),
@@ -409,6 +413,14 @@ internal fun SettingsHome(
                 title = host.name.ifBlank { address },
                 subtitle = address,
                 subtitleMono = true,
+                value = dev.deeplinks.native.util.hostStatusText(
+                    online = online,
+                    viaCloud = viaCloud,
+                    latencyMs = latencyMs,
+                    onlineText = s.statusOnline,
+                    offlineText = s.statusOffline,
+                    viaCloudText = s.viaCloudShort,
+                ),
                 icon = LaptopOutline16,
                 onClick = onOpenDevices,
             )

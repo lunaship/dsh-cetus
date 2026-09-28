@@ -543,6 +543,7 @@ val DshStringsZh = DshStrings(
         put("notifyOnDone", "任务完成时提醒")
         put("notifyExplain", "审批可以在锁屏上直接处理。")
         put("renameComputerDesc", "给这台电脑起一个方便识别的名字，只在这台手机上生效。")
+        put("viaCloudShort", "云端")
         put("connectionMethod", "连接方式")
         put("changeComputer", "更换电脑")
         put("agentPermission", "智能体权限")
