@@ -25,7 +25,7 @@ const val DSH_MEDIUM_MIN_WIDTH_DP = 600
 const val DSH_EXPANDED_MIN_WIDTH_DP = 840
 const val DSH_EXPANDED_MIN_HEIGHT_DP = 600
 const val DSH_LIST_PANE_MIN_DP = 240
-const val DSH_LIST_PANE_MAX_DP = 380
+const val DSH_LIST_PANE_MAX_DP = 390 // 方案 9：宽屏左侧常驻收件箱宽 390（原 380）
 const val DSH_CONTENT_MAX_DP = 760
 
 /**
