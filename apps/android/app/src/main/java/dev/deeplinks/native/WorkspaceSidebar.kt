@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -82,8 +83,14 @@ internal fun WorkspaceSidebar(
     sessionsInitialLoad: Boolean,
     sessionsLoadError: String?,
     hostName: String,
+    online: Boolean,
+    viaCloud: Boolean,
+    latencyMs: Long?,
+    offlineSinceLabel: String?,
     selectedWorkspace: String?,
     onSelectWorkspace: (String?) -> Unit,
+    onOpenArchived: () -> Unit,
+    onPickStarter: (String) -> Unit,
     containerColor: Color,
     collapsed: Boolean = false,
     goalSummaries: Map<String, String> = emptyMap(),
@@ -103,6 +110,10 @@ internal fun WorkspaceSidebar(
     ) {
         HomeHeader(
             hostName = hostName,
+            online = online,
+            viaCloud = viaCloud,
+            latencyMs = latencyMs,
+            offlineSinceLabel = offlineSinceLabel,
             searchActive = sidebarSearchOpen || searchQuery.isNotBlank(),
             onOpenDevice = { actions.onOpenDevice() },
             onToggleSearch = { actions.onToggleSearch() },
@@ -145,24 +156,35 @@ internal fun WorkspaceSidebar(
             )
         }
         val activeWorkspace = selectedWorkspace?.takeIf { it in knownWorkspaces }
-        if (knownWorkspaces.isNotEmpty()) {
-            WorkspaceChips(
+        val scoped = remember(visibleCandidates, activeWorkspace, workspaceAccounts, deletedWorkspaces) {
+            if (activeWorkspace == null) {
+                visibleCandidates
+            } else {
+                visibleCandidates.filter { workspaceGroupKey(it.sessionId, workspaceAccounts, deletedWorkspaces) == activeWorkspace }
+            }
+        }
+        // 概况行：等你处理 / 在跑 的条数（筛选后）；离线时整行换成重连卡
+        if (online) {
+            HomeSummaryRow(
+                awaitingCount = scoped.count { it.awaitingInput },
+                runningCount = scoped.count { it.running && !it.awaitingInput },
                 workspaces = knownWorkspaces,
                 selected = activeWorkspace,
                 onSelect = onSelectWorkspace,
                 onAddWorkspace = { actions.onAddWorkspace() },
                 onCreateSessionIn = { actions.onCreateSessionIn(it) },
                 onDeleteWorkspace = { actions.onDeleteWorkspace(it) },
+                onOpenArchived = onOpenArchived,
+            )
+        } else {
+            HomeOfflineCard(
+                hostName = hostName,
+                sinceLabel = offlineSinceLabel,
+                onRetry = { actions.onRetrySessions() },
+                onOpenConnectionMode = { actions.onOpenDevice() },
             )
         }
-        val sections = remember(visibleCandidates, activeWorkspace, workspaceAccounts, deletedWorkspaces) {
-            val scoped = if (activeWorkspace == null) {
-                visibleCandidates
-            } else {
-                visibleCandidates.filter { workspaceGroupKey(it.sessionId, workspaceAccounts, deletedWorkspaces) == activeWorkspace }
-            }
-            homeSections(scoped)
-        }
+        val sections = remember(scoped) { homeSections(scoped) }
 
         val sessionKind = sessionListKind(
             hasSessions = sessions.isNotEmpty(),
@@ -170,7 +192,10 @@ internal fun WorkspaceSidebar(
             hasError = sessionsLoadError != null,
         )
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                // 离线时列表整体压到 72%：看得见但明确是缓存状态（稿 08）
+                .alpha(if (online) 1f else 0.72f),
             verticalArrangement = Arrangement.spacedBy(DshSpace.s2)
         ) {
             if (searchNeedle.isNotEmpty() && searchShowsDegradedHint(searchState)) {
@@ -231,12 +256,7 @@ internal fun WorkspaceSidebar(
                 }
                 if (sections.isEmpty()) {
                     item(key = "home-empty") {
-                        DshEmptyState(
-                            title = DshS.homeEmptyTitle,
-                            message = DshS.homeEmptyHint,
-                            compact = true,
-                            modifier = Modifier.padding(top = DshSpace.s32),
-                        )
+                        HomeEmptyStarters(onPick = onPickStarter)
                     }
                 }
                 sections.forEach { (section, rows) ->
@@ -265,8 +285,8 @@ internal fun WorkspaceSidebar(
             }
         }
 
-        HomeNewTaskBar(
-            workspaceName = activeWorkspace?.substringAfterLast('/'),
+        HomeNewTaskFab(
+            enabled = online,
             onClick = {
                 val ws = activeWorkspace
                 if (ws != null) actions.onCreateSessionIn(ws) else actions.onNewSession()

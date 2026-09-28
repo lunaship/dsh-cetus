@@ -3,9 +3,9 @@ package dev.deeplinks.screenshot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import dev.deeplinks.native.util.HomeSection
-import dev.deeplinks.native.HomeNewTaskBar
+import dev.deeplinks.native.HomeNewTaskFab
+import dev.deeplinks.native.HomeSummaryRow
 import dev.deeplinks.native.HomeSectionHeader
-import dev.deeplinks.native.WorkspaceChips
 import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.SparkleOutline16
 import dev.deeplinks.native.ArchiveBoxOutline16
@@ -1060,15 +1060,27 @@ private fun SidebarWall() {
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        HomeHeader(hostName = "MacBook Pro", searchActive = false, onOpenDevice = {}, onToggleSearch = {}, onOpenSettings = {})
-        WorkspaceChips(
+        HomeHeader(
+            hostName = "MacBook Pro",
+            online = true,
+            viaCloud = true,
+            latencyMs = 31L,
+            offlineSinceLabel = null,
+            searchActive = false,
+            onOpenDevice = {},
+            onToggleSearch = {},
+            onOpenSettings = {},
+        )
+        HomeSummaryRow(
+            awaitingCount = 2,
+            runningCount = 1,
             workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
-            // 选中态入基线：浅灰底，不是品牌蓝胶囊
-            selected = "/Users/me/dsh-links",
+            selected = null,
             onSelect = {},
             onAddWorkspace = {},
             onCreateSessionIn = {},
             onDeleteWorkspace = {},
+            onOpenArchived = {},
         )
         HomeSectionHeader(HomeSection.AWAITING)
         SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
@@ -1080,7 +1092,7 @@ private fun SidebarWall() {
         SessionRowItem(session("s4", "整理工作区导航"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s6", "补齐移动端测试"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         Spacer(Modifier.height(24.dp))
-        HomeNewTaskBar(workspaceName = "dsh-links", onClick = {})
+        HomeNewTaskFab(onClick = {})
     }
 }
 

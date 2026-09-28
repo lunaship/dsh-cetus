@@ -531,6 +531,13 @@ class DshStrings(private val values: Map<String, String>) {
     /** 「改了 %d 个文件」；`%d` 是文件数。 */
     val homeFilesChanged: String get() = t("homeFilesChanged")
 
+    /** 「正在运行 %s」；`%s` 是命令或参数摘要。 */
+    val homeRunningInline: String get() = t("homeRunningInline")
+    /** 「第 %d 步」；`%d` 是步号。 */
+    val homeStepLabel: String get() = t("homeStepLabel")
+    val homeThinking: String get() = t("homeThinking")
+    val homeWriting: String get() = t("homeWriting")
+
     // 离线态（稿 08）
     /** 「连不上 %s」；`%s` 是电脑名。 */
     val homeOfflineUnreachable: String get() = t("homeOfflineUnreachable")

@@ -2,19 +2,18 @@ package dev.deeplinks.native
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -29,33 +28,66 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
-import dev.deeplinks.native.ui.DshFilterChip
+import dev.deeplinks.native.ui.DshFloatingPill
 import dev.deeplinks.native.ui.DshIconAction
+import dev.deeplinks.native.ui.DshPillButton
+import dev.deeplinks.native.ui.DshPillTone
 import dev.deeplinks.native.ui.DshSectionLabel
 import dev.deeplinks.native.util.HomeSection
 
 /*
- * 首页（抽屉 / 平板侧栏）的积木：顶栏、工作区筛选条、分区标题、底部「开始新任务」。
- * 布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
+ * 首页（抽屉 / 平板侧栏）的积木（2026-09-28 重设计）：顶栏、概况行+工作区筛选、
+ * 分区标题、离线卡、空态起手式。布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
  *
- * 筛选选中和分区标题都是中性灰。实心品牌蓝只留在底部「开始新任务」的加号上。
+ * 强调色只给需要你动手的动作；开关、选中态、分区标题都是中性灰。
+ * 悬浮「新任务」是全 App 唯一带阴影的普通按钮（DshFloatingPill）。
  */
 
+/** 首页顶栏里那枚 40dp 的电脑图标块（白底、圆角 container，不加描边）。 */
+@Composable
+private fun HostBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgCard),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+    }
+}
+
+/** 在线点：在线实心 success；离线空心灰（稿 08 的「空心灰点」）。 */
+@Composable
+private fun StatusDot(online: Boolean) {
+    Box(
+        modifier = Modifier
+            .size(7.dp)
+            .clip(CircleShape)
+            .background(if (online) Dsh.success else Dsh.labelDimmed),
+    )
+}
+
 /**
- * 顶栏：一行（借 Lody 的首页顶栏）——左边是当前电脑「💻 名字 ⌄」（点按打开设备面板），
- * 右边搜索与设置。不再放「任务」大标题：列表本身就是任务，标题只占高度。
- * 电脑名、筛选文字、分区标题、会话标题都落在同一条左边线（[DrawerTextStart]）上，
- * 按压底色向外多伸出 [DrawerInnerPadding]，与会话行同一个做法。
+ * 顶栏：电脑图标块 + 电脑名（粗）⌄，下一行状态（在线 · 云端 · 31ms / 离线 · 10 分钟前在线）；
+ * 右侧搜索与设置两个 44dp 圆钮。
+ *
+ * 离线时不给延迟数字（拿不到），改写成「离线 · N 分钟前在线」。
  */
 @Composable
 internal fun HomeHeader(
     hostName: String,
+    online: Boolean,
+    viaCloud: Boolean,
+    latencyMs: Long?,
+    offlineSinceLabel: String?,
     searchActive: Boolean,
     onOpenDevice: () -> Unit,
     onToggleSearch: () -> Unit,
@@ -63,6 +95,12 @@ internal fun HomeHeader(
 ) {
     val s = DshS
     val deviceLabel = hostName.ifBlank { s.deviceAndPairing }
+    val status = if (online) {
+        listOfNotNull(s.statusOnline, if (viaCloud) s.viaCloud else s.viaLan, latencyMs?.let { "${it}ms" })
+            .joinToString(" · ")
+    } else {
+        offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -79,107 +117,218 @@ internal fun HomeHeader(
                     .padding(horizontal = DrawerInnerPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(DshSpace.s8))
-                Text(
-                    deviceLabel,
-                    color = Dsh.labelPrimary,
-                    style = DshType.titleLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Spacer(Modifier.width(DshSpace.s4))
-                Icon(
-                    ChevronDownOutline14,
-                    contentDescription = null,
-                    tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(14.dp),
-                )
+                HostBadge()
+                Spacer(Modifier.width(DshSpace.s12))
+                Column(Modifier.weight(1f, fill = false)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            deviceLabel,
+                            color = Dsh.labelPrimary,
+                            style = DshType.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Spacer(Modifier.width(DshSpace.s4))
+                        Icon(
+                            ChevronDownOutline14,
+                            contentDescription = null,
+                            tint = Dsh.labelTertiary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusDot(online)
+                        Spacer(Modifier.width(DshSpace.s6))
+                        Text(
+                            status,
+                            color = Dsh.labelSecondary,
+                            style = DshType.captionRelaxed,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
-        // 与设置页同一件图标按钮（48dp 热区 / 同一按压态）
         DshIconAction(
             icon = SearchOutline16,
             contentDescription = s.searchSessions,
             onClick = onToggleSearch,
             active = searchActive,
-            iconSize = 16.dp,
+            size = 44.dp,
+            iconSize = 18.dp,
         )
         DshIconAction(
             icon = SettingsOutline16,
             contentDescription = s.settingsTitle,
             onClick = onOpenSettings,
-            iconSize = 16.dp,
+            size = 44.dp,
+            iconSize = 18.dp,
         )
     }
 }
 
 /**
- * 工作区筛选条：「全部」+ 每个工作区一个胶囊，横向滚动；末尾「+」添加工作区。
- * 长按工作区胶囊：在这里新建会话 / 移除工作区（原文件夹行的菜单）。
+ * 概况行：「N 件等你处理 · M 个在跑」+ 右侧工作区筛选。
  *
- * 胶囊统一用共享 [DshFilterChip]。选中是浅灰底上的深字。
+ * 筛选作用于整页，所以挂在概况行而不是某个分组上；菜单列出全部工作区，
+ * 每项尾部的「更多」保留原来长按胶囊的「在这里新建」「移除工作区」，最后一项进归档列表。
  */
 @Composable
-internal fun WorkspaceChips(
+internal fun HomeSummaryRow(
+    awaitingCount: Int,
+    runningCount: Int,
     workspaces: List<String>,
     selected: String?,
     onSelect: (String?) -> Unit,
     onAddWorkspace: () -> Unit,
     onCreateSessionIn: (String) -> Unit,
     onDeleteWorkspace: (String) -> Unit,
+    onOpenArchived: () -> Unit,
 ) {
+    val s = DshS
+    var menuOpen by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            // 胶囊内边距 12dp：文字落在 DrawerTextStart，选中底色向外伸出，与会话行一致
-            .padding(horizontal = DrawerEdgePadding),
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+            .padding(start = DrawerTextStart, end = DrawerEdgePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DshFilterChip(
-            label = DshS.homeAllWorkspaces,
-            selected = selected == null,
-            onClick = { onSelect(null) },
-        )
-        workspaces.forEach { cwd ->
-            var menuOpen by remember(cwd) { mutableStateOf(false) }
-            Box {
-                DshFilterChip(
-                    label = cwd.substringAfterLast('/'),
-                    selected = selected == cwd,
-                    onClick = { onSelect(if (selected == cwd) null else cwd) },
-                    onLongClick = { menuOpen = true },
-                )
-                DshMenu(
-                    expanded = menuOpen,
-                    onDismiss = { menuOpen = false },
-                    offset = DpOffset(0.dp, 4.dp),
-                    items = listOf(
-                        DshMenuItem(PlusOutline16, DshS.createSession) {
-                            menuOpen = false
-                            onCreateSessionIn(cwd)
-                        },
-                        DshMenuItem(TrashOutline16, DshS.deleteWorkspace, danger = true) {
-                            menuOpen = false
-                            onDeleteWorkspace(cwd)
-                        },
-                    ),
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                s.homeSummaryAwaiting.format(awaitingCount),
+                color = Dsh.labelPrimary,
+                style = DshType.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            if (runningCount > 0) {
+                Text(
+                    " ${s.homeSummaryRunning.format(runningCount)}",
+                    color = Dsh.labelSecondary,
+                    style = DshType.headlineMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
                 )
             }
         }
+        Box {
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button, onClick = { menuOpen = true })
+                    .padding(horizontal = DshSpace.s4),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(DshRadius.full))
+                        .background(Dsh.bgCard)
+                        .padding(start = DshSpace.s12, end = DshSpace.s8),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        s.homeAllWorkspaces,
+                        color = Dsh.labelPrimary,
+                        style = DshType.titleSmall,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.width(DshSpace.s4))
+                    Icon(
+                        ChevronDownOutline14,
+                        contentDescription = null,
+                        tint = Dsh.labelTertiary,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
+            }
+            DshMenu(
+                expanded = menuOpen,
+                onDismiss = { menuOpen = false },
+                offset = DpOffset(0.dp, 4.dp),
+                items = buildList {
+                    add(
+                        DshMenuItem(
+                            icon = ChecklistOutline14,
+                            label = s.homeAllWorkspaces,
+                            onClick = {
+                                menuOpen = false
+                                onSelect(null)
+                            },
+                        ),
+                    )
+                    workspaces.forEach { cwd ->
+                        val name = cwd.substringAfterLast('/')
+                        add(
+                            DshMenuItem(
+                                icon = FolderOpenOutline16,
+                                label = if (selected == cwd) "$name ✓" else name,
+                                onClick = {
+                                    menuOpen = false
+                                    onSelect(if (selected == cwd) null else cwd)
+                                },
+                                trailingContent = {
+                                    WorkspaceMoreAction(
+                                        onAddWorkspace = { menuOpen = false; onAddWorkspace() },
+                                        onCreateSessionIn = { menuOpen = false; onCreateSessionIn(cwd) },
+                                        onDeleteWorkspace = { menuOpen = false; onDeleteWorkspace(cwd) },
+                                    )
+                                },
+                            ),
+                        )
+                    }
+                    add(
+                        DshMenuItem(
+                            icon = ArchiveBoxOutline16,
+                            label = s.homeArchivedSessions,
+                            onClick = {
+                                menuOpen = false
+                                onOpenArchived()
+                            },
+                        ),
+                    )
+                },
+            )
+        }
+    }
+}
+
+/** 筛选菜单每项的「更多」：原来长按工作区胶囊的两个动作 + 添加工作区。 */
+@Composable
+private fun WorkspaceMoreAction(
+    onAddWorkspace: () -> Unit,
+    onCreateSessionIn: () -> Unit,
+    onDeleteWorkspace: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
         DshIconAction(
-            icon = PlusOutline16,
-            contentDescription = DshS.addWorkspace,
-            onClick = onAddWorkspace,
-            iconSize = 14.dp,
+            icon = EllipsisOutline16,
+            contentDescription = DshS.moreActions,
+            onClick = { open = true },
+            size = 32.dp,
+            iconSize = 16.dp,
+        )
+        DshMenu(
+            expanded = open,
+            onDismiss = { open = false },
+            offset = DpOffset(0.dp, 4.dp),
+            items = listOf(
+                DshMenuItem(PlusOutline16, DshS.createSession) { open = false; onCreateSessionIn() },
+                DshMenuItem(FolderOpenOutline16, DshS.addWorkspace) { open = false; onAddWorkspace() },
+                DshMenuItem(TrashOutline16, DshS.deleteWorkspace, danger = true) { open = false; onDeleteWorkspace() },
+            ),
         )
     }
 }
 
-/** 分区标题：只有灰字，左边和会话标题对齐。状态写在会话副标题里。 */
+/** 分区标题（等你处理 / 进行中 / 最近）：只有灰字，左边和会话标题对齐。 */
 @Composable
 internal fun HomeSectionHeader(section: HomeSection) {
     val s = DshS
@@ -199,48 +348,130 @@ internal fun HomeSectionHeader(section: HomeSection) {
     )
 }
 
-/** 底部「开始新任务」：与聊天页输入框同一形状（composer 22dp 品牌签名形状）；点按进入新会话。 */
+/**
+ * 离线卡（稿 08）：连不上电脑时顶掉概况行，说明下面看到的是缓存状态。
+ * 「重试」重连，「连接方式」进设备页。
+ */
 @Composable
-internal fun HomeNewTaskBar(workspaceName: String?, onClick: () -> Unit) {
+internal fun HomeOfflineCard(
+    hostName: String,
+    sinceLabel: String?,
+    onRetry: () -> Unit,
+    onOpenConnectionMode: () -> Unit,
+) {
     val s = DshS
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = DrawerEdgePadding + DshSpace.s6, vertical = DshSpace.s8)
-            .heightIn(min = 56.dp)
+            .padding(horizontal = DrawerEdgePadding + DshSpace.s6)
             .clip(RoundedCornerShape(DshRadius.composer))
-            .background(Dsh.bgSubtle)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(start = 18.dp, end = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(Dsh.bgCard)
+            .padding(DshSpace.s16),
     ) {
         Text(
-            s.homeNewTask,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
+            s.homeOfflineUnreachable.format(hostName.ifBlank { s.deviceAndPairing }),
+            color = Dsh.labelPrimary,
+            style = DshType.title,
+            fontWeight = FontWeight.SemiBold,
         )
-        if (workspaceName != null) {
+        if (sinceLabel != null) {
+            Spacer(Modifier.size(DshSpace.s4))
             Text(
-                workspaceName,
+                s.homeOfflineHint.format(sinceLabel),
                 color = Dsh.labelSecondary,
-                style = DshType.captionRelaxed,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .padding(end = DshSpace.s8)
-                    .widthIn(max = 140.dp),
+                style = DshType.supporting,
             )
         }
-        // 主动作槽：实心品牌圆钮（共享图标按钮的实心模式）
-        DshIconAction(
-            icon = PlusOutline16,
-            contentDescription = s.newSession,
+        Spacer(Modifier.size(DshSpace.s12))
+        Row {
+            DshPillButton(
+                label = s.retry,
+                onClick = onRetry,
+                tone = DshPillTone.Accent,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(DshSpace.s8))
+            DshPillButton(
+                label = s.connectionMode,
+                onClick = onOpenConnectionMode,
+                tone = DshPillTone.Tonal,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/** 空态起手式：三行，点一下带着这句话去开新任务（稿 09）。 */
+@Composable
+internal fun HomeEmptyStarters(onPick: (String) -> Unit) {
+    val s = DshS
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DrawerEdgePadding + DshSpace.s6),
+    ) {
+        Text(
+            s.homeEmptyTitle,
+            color = Dsh.labelPrimary,
+            style = DshType.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = DrawerInnerPadding),
+        )
+        Spacer(Modifier.size(DshSpace.s4))
+        Text(
+            s.homeEmptyHint,
+            color = Dsh.labelSecondary,
+            style = DshType.supporting,
+            modifier = Modifier.padding(horizontal = DrawerInnerPadding),
+        )
+        Spacer(Modifier.size(DshSpace.s16))
+        DshSectionLabel(s.homeStartFrom)
+        Spacer(Modifier.size(DshSpace.s8))
+        listOf(
+            s.homeStarterOrganize,
+            s.homeStarterTest,
+            s.homeStarterDiff,
+        ).forEach { starter ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .clip(RoundedCornerShape(DshRadius.container))
+                    .clickable(role = Role.Button) { onPick(starter) }
+                    .padding(horizontal = DrawerInnerPadding),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
+            ) {
+                Icon(SparkleOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
+                Text(
+                    starter,
+                    color = Dsh.labelPrimary,
+                    style = DshType.body,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** 底部悬浮主按钮：居中「+ 新任务」（离线时置灰不可点）。 */
+@Composable
+internal fun HomeNewTaskFab(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = DshSpace.s12),
+        contentAlignment = Alignment.Center,
+    ) {
+        DshFloatingPill(
+            label = DshS.homeNewTask,
             onClick = onClick,
-            size = 36.dp,
-            iconSize = 16.dp,
-            containerColor = Dsh.brand400,
+            enabled = enabled,
+            icon = PlusOutline16,
         )
     }
 }

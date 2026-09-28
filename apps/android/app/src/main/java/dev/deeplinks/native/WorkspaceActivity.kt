@@ -10,6 +10,8 @@ import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
+import dev.deeplinks.core.LastOnlineStore
+import dev.deeplinks.core.PairClient
 import dev.deeplinks.core.stableIdentity
 import androidx.activity.ComponentActivity
 import android.Manifest
@@ -63,6 +65,7 @@ import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.selectShareTurns
 import dev.deeplinks.native.util.WorkspaceAccount
+import dev.deeplinks.native.util.relativeTime
 import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
@@ -1863,6 +1866,28 @@ fun WorkspaceScreen(
         onOpenSettings = onOpenSettings,
     )
 
+    // 首页顶栏连接状态（2026-09-28 重设计 · 稿 01/08）：
+    // 首页没有会话 SSE（streamClient 只在打开会话时存在），所以在线与延迟都来自一次健康探测，
+    // 30s 节流；探测不到就按离线显示，并用 LastOnlineStore 里的时间戳写「离线 · N 分钟前在线」。
+    var hostReachable by remember(host) { mutableStateOf(true) }
+    var hostLatencyMs by remember(host) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(host) {
+        while (true) {
+            val ms = withContext(Dispatchers.IO) {
+                runCatching { PairClient.health(host) }.getOrNull()
+            }
+            hostLatencyMs = ms
+            hostReachable = ms != null
+            if (ms != null) LastOnlineStore.record(context)
+            delay(30_000)
+        }
+    }
+    val offlineSinceLabel = if (hostReachable) {
+        null
+    } else {
+        LastOnlineStore.read(context).takeIf { it > 0 }?.let { relativeTime(it) }
+    }
+
     // 根容器：承载抽屉框架与置顶 Snackbar
     Box(
         modifier = Modifier
@@ -1889,8 +1914,14 @@ fun WorkspaceScreen(
                 sessionsInitialLoad = sessionsInitialLoad,
                 sessionsLoadError = sessionsLoadError,
                 hostName = host.name,
+                online = hostReachable,
+                viaCloud = host.hasRelay,
+                latencyMs = hostLatencyMs,
+                offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
                 onSelectWorkspace = { selectedHomeWorkspace = it },
+                onOpenArchived = onOpenSettings,
+                onPickStarter = { sidebarActions.onNewSession() },
                 containerColor = Dsh.bgDrawer,
                 collapsed = sidebarCollapsed,
                 goalSummaries = workspaceViewModel.goalSummaries.value,
@@ -1939,8 +1970,14 @@ fun WorkspaceScreen(
                     sessionsInitialLoad = sessionsInitialLoad,
                     sessionsLoadError = sessionsLoadError,
                     hostName = host.name,
+                    online = hostReachable,
+                    viaCloud = host.hasRelay,
+                    latencyMs = hostLatencyMs,
+                    offlineSinceLabel = offlineSinceLabel,
                     selectedWorkspace = selectedHomeWorkspace,
                     onSelectWorkspace = { selectedHomeWorkspace = it },
+                    onOpenArchived = onOpenSettings,
+                    onPickStarter = { sidebarActions.onNewSession() },
                     containerColor = Dsh.bgBase,
                     collapsed = false,
                     goalSummaries = workspaceViewModel.goalSummaries.value,
