@@ -196,6 +196,7 @@ dependencies {
     screenshotTestImplementation(libs.androidx.compose.ui.tooling.preview)
     screenshotTestImplementation(libs.screenshot.validation.api)
     testImplementation(libs.junit)
+    testImplementation(libs.mockwebserver3)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext.junit)
