@@ -217,6 +217,32 @@ const val CONTEXT_FOLD_KEEP = 3
 const val HANGING_INDENT_CHARS = 2
 
 /**
+ * 悬挂缩进的分行区间：返回 [(start, end), …]，首段用满整宽，后续每段先放缩进。
+ *
+ * 单独给出区间而不是字符串，是为了让 UI 能在 `AnnotatedString` 上按区间切片——
+ * 行内改动的加深底色（[DiffRow.emphasis]）只有这样才不会被切丢。
+ */
+fun hangingIndentRanges(
+    length: Int,
+    maxChars: Int,
+    indentChars: Int = HANGING_INDENT_CHARS,
+): List<Pair<Int, Int>> {
+    if (length <= 0) return emptyList()
+    if (maxChars <= 0 || length <= maxChars) return listOf(0 to length)
+    val indent = if (maxChars > indentChars) indentChars else 0
+    val out = mutableListOf<Pair<Int, Int>>()
+    var start = 0
+    while (start < length) {
+        // 首行用满整宽；续行要先放缩进，所以可写宽度少 [indent] 个字符
+        val take = if (out.isEmpty()) maxChars else (maxChars - indent).coerceAtLeast(1)
+        val end = (start + take).coerceAtMost(length)
+        out += start to end
+        start = end
+    }
+    return out
+}
+
+/**
  * 把一行差异文本按可用宽度切成「首行 + 续行」，续行前面补 [indentChars] 个空格（方案 6.3）。
  *
  * 为什么要在数据层切、而不是靠 Text 自动折行：Compose 的 `Text` 没有 `text-indent`，
@@ -230,20 +256,12 @@ fun splitHangingIndent(
     maxChars: Int,
     indentChars: Int = HANGING_INDENT_CHARS,
 ): List<String> {
-    if (maxChars <= 0) return listOf(text)
-    if (text.length <= maxChars) return listOf(text)
+    val ranges = hangingIndentRanges(text.length, maxChars, indentChars)
     val indent = if (maxChars > indentChars) indentChars else 0
     val pad = " ".repeat(indent)
-    val out = mutableListOf<String>()
-    var start = 0
-    while (start < text.length) {
-        // 首行用满整宽；续行要先放缩进，所以可写宽度少 [indent] 个字符
-        val take = if (out.isEmpty()) maxChars else (maxChars - indent).coerceAtLeast(1)
-        val end = (start + take).coerceAtMost(text.length)
-        out += (if (out.isEmpty()) "" else pad) + text.substring(start, end)
-        start = end
+    return ranges.mapIndexed { index, (from, to) ->
+        (if (index == 0) "" else pad) + text.substring(from, to)
     }
-    return out
 }
 
 fun foldContextRows(rows: List<DiffRow>, expandedFolds: Set<Int> = emptySet()): List<DiffRow> {
