@@ -125,7 +125,9 @@ import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
 import dev.deeplinks.native.CommandSuggestions
-import dev.deeplinks.native.SessionStatsLine
+import dev.deeplinks.native.ComposerContextStrip
+import dev.deeplinks.native.InputBar
+import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
@@ -306,8 +308,25 @@ private fun ChromeWall() {
     ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
     ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)
     ContextMeterRow(label = "Messages", value = "18.7K", swatchColor = Dsh.brand400)
-    SectionTitle("Session stats line")
-    SessionStatsLine(MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167))
+    SectionTitle("Composer context strip")
+    ComposerContextStrip(
+        hostName = "dev-macbook",
+        online = true,
+        workspaceName = "dsh-links",
+        changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
+        stats = MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167),
+        onBrowseFiles = {},
+        onOpenChanges = {},
+    )
+    ComposerContextStrip(
+        hostName = "dev-macbook",
+        online = false,
+        workspaceName = "a-very-long-workspace-name-for-truncation",
+        changes = null,
+        stats = MobileSessionStats(turns = 1, steps = 4, outputTokens = 812),
+        onBrowseFiles = {},
+        onOpenChanges = {},
+    )
     SectionTitle("Composer seats")
     ComposerSeatsRow(
         modelName = "DeepSeek V4 Flash",
@@ -341,6 +360,58 @@ private fun ChromeWall() {
 @Composable
 internal fun WorkspaceChromeLight() {
     Wall(dark = false, english = false) { ChromeWall() }
+}
+
+/** 对话页底部整体：上下文条 + 输入卡（两层输入区）。 */
+@Composable
+private fun ChatBottomWall() {
+    val stats = MobileSessionStats(
+        turns = 3, steps = 421, uncachedInputTokens = 2_100_000, cacheReadTokens = 126_000_000, outputTokens = 1_000_000,
+        contextPressureTokens = 60_000, contextWindow = 128_000,
+    )
+    Column(Modifier.fillMaxWidth()) {
+        ComposerContextStrip(
+            hostName = "dev-macbook",
+            online = true,
+            workspaceName = "dsh-links",
+            changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
+            stats = stats,
+            onBrowseFiles = {},
+            onOpenChanges = {},
+        )
+        InputBar(
+            inputText = "",
+            onInputChange = {},
+            isListening = false,
+            isSending = false,
+            canSend = false,
+            running = false,
+            modelName = "step-5-preview",
+            modelEffort = "high",
+            sessionStats = stats,
+            permissionPreset = "workspace-write",
+            permissionLabel = DshS.permWorkspaceWrite,
+            onOpenModelPicker = {},
+            onOpenPermissionPicker = {},
+            onToggleVoice = {},
+            onStop = {},
+            onSend = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "chat bottom light zh", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun ChatBottomLightZh() {
+    Wall(dark = false, english = false) { ChatBottomWall() }
+}
+
+@PreviewTest
+@Preview(name = "chat bottom dark en", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun ChatBottomDarkEn() {
+    Wall(dark = true, english = true) { ChatBottomWall() }
 }
 
 @Composable

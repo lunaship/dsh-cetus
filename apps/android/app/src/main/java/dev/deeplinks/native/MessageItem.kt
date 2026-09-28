@@ -212,7 +212,7 @@ internal fun MessageItem(
                                         )
                                     }
                                     // 行尾轻量 meta：钟点时间 + 这条回复自己的耗时（对齐 Web 助手行末尾）；
-                                    // 会话累计用量只在输入框下方，不在每条回复里重复。
+                                    // 会话累计用量只在输入卡上方的上下文条，不在每条回复里重复。
                                     val clock = formatClockTime(msg.time)
                                     val tail = listOfNotNull(
                                         clock.takeIf { it.isNotBlank() },

@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -728,15 +729,14 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 会话顶栏：导航、会话名（下挂「项目 · 电脑」一行）、对话/轨迹胶囊分段和溢出菜单。
- * 标题被分段挤窄时，副标题仍交代这是哪个项目、哪台电脑。
+ * 会话顶栏：导航、会话名、对话/轨迹胶囊分段和溢出菜单。
+ * 项目与连接状态在输入卡上方的上下文条（[ComposerContextStrip]），顶栏只放标题。
  * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
  */
 @Composable
 internal fun WorkspaceTopBar(
     running: Boolean,
     title: String,
-    subtitle: String? = null,
     showBack: Boolean,
     onNavigate: () -> Unit,
     viewMode: String,
@@ -791,24 +791,15 @@ internal fun WorkspaceTopBar(
                     )
                     Spacer(Modifier.width(DshSpace.s6))
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        color = Dsh.labelPrimary,
-                        style = if (subtitle.isNullOrBlank()) DshType.titleLarge else DshType.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (!subtitle.isNullOrBlank()) {
-                        Text(
-                            subtitle,
-                            color = Dsh.labelTertiary,
-                            style = DshType.captionRelaxed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
+                // 与分段同排时字号用 title：titleLarge 在手机宽度下会把会话名截断
+                Text(
+                    title,
+                    color = Dsh.labelPrimary,
+                    style = DshType.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
             }
 
             if (showViewModeTabs) {
@@ -957,44 +948,125 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
     }
 }
 
-/**
- * 会话级统计（输入框下方）：一行浅色文字「7 轮 · 223 步 · 23.5M 令牌」，不加底色和图标，
- * 点按打开用量看板。速率、缓存等细项只在看板里出现，这里不抢输入框的视线。
- */
+/** 会话累计用量的一行摘要「7 轮 · 223 步 · 23.5M 令牌」；没有可显示的数时返回 null。 */
 @Composable
-internal fun SessionStatsLine(stats: MobileSessionStats?) {
-    val s = stats ?: return
+internal fun sessionStatsSummary(stats: MobileSessionStats?): String? {
+    val s = stats ?: return null
     val strings = DshS
-    var detailOpen by remember { mutableStateOf(false) }
-
     val totalTokens = s.uncachedInputTokens + s.cacheReadTokens + s.outputTokens
-    val text = buildList {
+    return buildList {
         if (s.turns > 0 || s.steps > 0) add(strings.statsTurnsSteps.format(s.turns, s.steps))
         if (totalTokens > 0) add("${compactTokens(totalTokens)} ${strings.tokenUnitShort}")
-    }.joinToString(" · ")
-    if (text.isEmpty()) return
+    }.joinToString(" · ").ifEmpty { null }
+}
 
-    Box(
+/**
+ * 输入卡上方的上下文条（借 Lody 的两层输入区）：左边「● 工作区」+ 最近改动，
+ * 右边会话累计用量。整条不加底色和描边——它是输入卡的页眉，不是第二张卡。
+ *
+ * - 圆点表示这台电脑的实时连接（在线实心绿、否则空心灰），名字写进无障碍描述；
+ * - 工作区点按浏览文件，改动点按打开改动面板，用量点按打开用量看板；
+ * - 原先挂在输入卡下方的统计行收进这里，输入卡成为屏幕最底的元素。
+ */
+@Composable
+internal fun ComposerContextStrip(
+    hostName: String,
+    online: Boolean,
+    workspaceName: String?,
+    changes: WorkspaceChangesSummary?,
+    stats: MobileSessionStats?,
+    onBrowseFiles: () -> Unit,
+    onOpenChanges: () -> Unit,
+) {
+    val strings = DshS
+    val summary = sessionStatsSummary(stats)
+    var detailOpen by remember { mutableStateOf(false) }
+    if (workspaceName == null && changes == null && summary == null) return
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = COMPOSER_SIDE_CLEARANCE),
-        contentAlignment = Alignment.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = text,
-            color = Dsh.labelTertiary,
-            style = DshType.microRelaxed.tabularNums(),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.control))
-                .clickable(role = Role.Button, onClickLabel = strings.statsViewDetails, onClick = { detailOpen = true })
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
-        )
+        // 左组吃掉剩余宽度（工作区名优先截断）；右侧用量不加 weight，先按自身宽度量
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            if (workspaceName != null) {
+                val status = "$hostName ${if (online) strings.statusOnline else strings.statusOffline}".trim()
+                ContextStripSegment(
+                    onClick = onBrowseFiles,
+                    description = "${strings.browseFiles}: $workspaceName, $status",
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(DshSpace.s6)
+                            .clip(CircleShape)
+                            .then(
+                                if (online) Modifier.background(Dsh.success)
+                                else Modifier.border(1.dp, Dsh.labelTertiary, CircleShape)
+                            ),
+                    )
+                    Spacer(Modifier.width(DshSpace.s8))
+                    Icon(FolderOpenOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(DshSpace.s6))
+                    Text(
+                        workspaceName,
+                        color = Dsh.labelSecondary,
+                        style = DshType.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (changes != null) {
+                ContextStripSegment(
+                    onClick = onOpenChanges,
+                    description = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(changes)}",
+                ) {
+                    if (changes.added > 0 || changes.deleted > 0) {
+                        DiffStat(changes.added, changes.deleted)
+                    } else {
+                        Text(ChangesL.cardTitle(changes), color = Dsh.labelSecondary, style = DshType.label, maxLines = 1)
+                    }
+                }
+            }
+        }
+        if (summary != null && stats != null) {
+            ContextStripSegment(onClick = { detailOpen = true }, description = "${strings.statsViewDetails}: $summary") {
+                Text(
+                    summary,
+                    color = Dsh.labelTertiary,
+                    style = DshType.microRelaxed.tabularNums(),
+                    maxLines = 1,
+                )
+            }
+        }
     }
 
-    if (detailOpen) {
-        SessionStatsDetailDialog(stats = s, onDismiss = { detailOpen = false })
+    if (detailOpen && stats != null) {
+        SessionStatsDetailDialog(stats = stats, onDismiss = { detailOpen = false })
+    }
+}
+
+/** 上下文条里的一段：安静文字，按压才出底色；36dp 高，与上方「最近改动」行同一规格。 */
+@Composable
+private fun ContextStripSegment(
+    onClick: () -> Unit,
+    description: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 36.dp)
+            .clip(RoundedCornerShape(DshRadius.control))
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(horizontal = DshSpace.s6),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        content()
     }
 }
 

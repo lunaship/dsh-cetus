@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -46,9 +48,10 @@ import dev.deeplinks.native.util.HomeSection
  */
 
 /**
- * 顶栏：「任务」大标题，下面一行小字是当前电脑（点标题块打开设备面板）；右边搜索与设置。
- * 标题、筛选文字、分区标题、会话标题都落在同一条左边线（[DrawerTextStart]）上，
- * 选中底色向外多伸出 [DrawerInnerPadding]，与会话行同一个做法。
+ * 顶栏：一行（借 Lody 的首页顶栏）——左边是当前电脑「💻 名字 ⌄」（点按打开设备面板），
+ * 右边搜索与设置。不再放「任务」大标题：列表本身就是任务，标题只占高度。
+ * 电脑名、筛选文字、分区标题、会话标题都落在同一条左边线（[DrawerTextStart]）上，
+ * 按压底色向外多伸出 [DrawerInnerPadding]，与会话行同一个做法。
  */
 @Composable
 internal fun HomeHeader(
@@ -59,32 +62,29 @@ internal fun HomeHeader(
     onOpenSettings: () -> Unit,
 ) {
     val s = DshS
+    val deviceLabel = hostName.ifBlank { s.deviceAndPairing }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = DrawerEdgePadding, end = DrawerEdgePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(DshRadius.container))
-                .clickable(role = Role.Button, onClickLabel = s.deviceAndPairing, onClick = onOpenDevice)
-                .padding(horizontal = DrawerInnerPadding, vertical = DshSpace.s4),
-        ) {
-            Text(
-                s.tasks,
-                color = Dsh.labelPrimary,
-                style = DshType.headlineMedium,
-                maxLines = 1,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(DshSpace.s6))
+        Box(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(DshRadius.container))
+                    .clickable(role = Role.Button, onClickLabel = s.deviceAndPairing, onClick = onOpenDevice)
+                    .semantics { heading() }
+                    .padding(horizontal = DrawerInnerPadding),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(DshSpace.s8))
                 Text(
-                    hostName.ifBlank { s.deviceAndPairing },
-                    color = Dsh.labelSecondary,
-                    style = DshType.captionRelaxed,
+                    deviceLabel,
+                    color = Dsh.labelPrimary,
+                    style = DshType.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
@@ -94,7 +94,7 @@ internal fun HomeHeader(
                     ChevronDownOutline14,
                     contentDescription = null,
                     tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(12.dp),
+                    modifier = Modifier.size(14.dp),
                 )
             }
         }

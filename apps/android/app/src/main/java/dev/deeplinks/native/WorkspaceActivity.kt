@@ -2055,10 +2055,7 @@ fun WorkspaceScreen(
                 running = running,
                 // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
                 title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
-                subtitle = if (currentSessionId == null) null else listOfNotNull(
-                    currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
-                    host.name.takeIf { it.isNotBlank() },
-                ).joinToString(" · "),
+                // 项目与连接状态写在输入卡上方的上下文条里，顶栏只留标题
                 showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
@@ -2438,10 +2435,19 @@ fun WorkspaceScreen(
                 }
                 // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
-                pinnedChanges?.let { latest ->
-                    LatestChangesLine(latest) {
-                        scope.launch { changesPanel.open(latest.seq, null) }
-                    }
+                // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
+                if (currentSessionId != null) {
+                    ComposerContextStrip(
+                        hostName = host.name,
+                        online = streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED,
+                        workspaceName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+                        changes = pinnedChanges,
+                        stats = sessionStats,
+                        onBrowseFiles = { showFileBrowser = true },
+                        onOpenChanges = {
+                            pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } }
+                        },
+                    )
                 }
                 // 发送主体与高权限确认的共享状态：submitComposer 在 InputBar 之后赋值，
                 // onSend 与确认弹窗都通过同一个可变引用复用同一条发送路径。
@@ -2699,11 +2705,6 @@ fun WorkspaceScreen(
                 )
             }
 
-            // 会话级统计：写在输入卡下方（会话下方）的单行 12sp 居中文本。
-            // 无论浏览对话还是轨迹，累计用量都只在这一处出现；单条回答只保留自身耗时。
-            if (currentSessionId != null) {
-                SessionStatsLine(stats = sessionStats)
-            }
                 }
 
             } // bottom chrome 容器结束
