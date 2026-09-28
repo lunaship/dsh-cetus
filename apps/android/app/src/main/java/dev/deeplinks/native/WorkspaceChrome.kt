@@ -654,7 +654,7 @@ internal fun ToolGroupHeader(
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .semantics {
                     role = Role.Button
-                    contentDescription = summaryTitle
+                    contentDescription = summaryTitle.ifBlank { L.executing }
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
@@ -664,7 +664,8 @@ internal fun ToolGroupHeader(
             if (groupRunning) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(13.dp),
-                    color = Dsh.brand500,
+                    // 进行中转圈用墨色（2026-09-28 重设计：品牌蓝只给需要你动手的动作）
+                    color = Dsh.labelPrimary,
                     strokeWidth = 1.5.dp,
                 )
                 Spacer(Modifier.width(10.dp))

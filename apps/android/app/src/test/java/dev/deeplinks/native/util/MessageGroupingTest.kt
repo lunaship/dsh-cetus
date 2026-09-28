@@ -168,8 +168,8 @@ class MessageGroupingTest {
             MobileMessage(id = "2", role = "tool_call", text = "", toolName = "Read"),
         )
         assertEquals("已完成工作 · Read (2)", toolGroupRowLabel(msgs, running = false))
-        assertEquals("◌ 正在运行 go test ./...", toolGroupRowLabel(msgs, running = true, runningCommand = "go test ./..."))
-        // 拿不到命令（旧插件）时只写「正在运行」，不编一个命令出来
-        assertEquals("◌ 正在运行", toolGroupRowLabel(msgs, running = true, runningCommand = "  "))
+        assertEquals("◌ go test ./...", toolGroupRowLabel(msgs, running = true, runningCommand = "go test ./..."))
+        // 拿不到命令（旧插件）时留空，由组头右侧的「执行中」标签说明，不编一个命令出来
+        assertEquals("", toolGroupRowLabel(msgs, running = true, runningCommand = "  "))
     }
 }

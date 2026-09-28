@@ -25,6 +25,8 @@ import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.dshTypography
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.MessageItem
+import dev.deeplinks.native.util.MessageGroup
+import dev.deeplinks.native.ToolGroupHeader
 import dev.deeplinks.native.MobileMessage
 
 /**
@@ -214,4 +216,52 @@ internal fun ChatQuestionLightEn() {
 @Composable
 internal fun ChatQuestionDarkZh() {
     ChatFrame(dark = true) { Messages(listOf(question)) }
+}
+
+/**
+ * 过程折叠行（方案 5.2）：一轮里的工具调用收成一行，已结束写「已完成工作 · 摘要」，
+ * 执行中写「◌ 正在运行 …」。这一行此前不在任何截图墙里，所以它的改动没法目检——
+ * 这两张墙就是为了把它纳入基线。
+ */
+@Composable
+private fun ProcessRows(dark: Boolean, english: Boolean) {
+    ChatFrame(dark = dark, english = english) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Dsh.bgBase)
+                .padding(DshSpace.s16),
+            verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
+        ) {
+            ToolGroupHeader(
+                group = MessageGroup.ToolGroup(
+                    listOf(
+                        MobileMessage(id = "p1", role = "tool_call", text = "", toolName = "Read"),
+                        MobileMessage(id = "p2", role = "tool_call", text = "", toolName = "Read"),
+                    ),
+                ),
+                sweepingId = null,
+            )
+            ToolGroupHeader(
+                group = MessageGroup.ToolGroup(
+                    listOf(MobileMessage(id = "p3", role = "tool_call", text = "", toolName = "bash")),
+                ),
+                sweepingId = "p3",
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "process row light zh", showBackground = true, widthDp = 412, heightDp = 220)
+@Composable
+internal fun ProcessRowLightZh() {
+    ProcessRows(dark = false, english = false)
+}
+
+@PreviewTest
+@Preview(name = "process row dark en", showBackground = true, widthDp = 412, heightDp = 220)
+@Composable
+internal fun ProcessRowDarkEn() {
+    ProcessRows(dark = true, english = true)
 }

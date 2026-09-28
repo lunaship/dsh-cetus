@@ -94,7 +94,8 @@ fun formatToolGroupSummary(
  *
  * 一轮里的工具调用不再逐条铺开，收成一行：
  * - 已结束：「已完成工作 · Read (2)」；
- * - 执行中：「◌ 正在运行 go test ./...」——命令来自插件下发的 activity，拿不到就退回摘要。
+ * - 执行中：「◌ go test ./...」——命令来自插件下发的 activity；拿不到就留空，由组头右侧的
+ *   「执行中」动效标签承担说明。
  *
  * 摘要本身仍由 [formatToolGroupSummary] 生成，这里只负责「这一行以什么口吻开头」。
  */
@@ -106,8 +107,10 @@ fun toolGroupRowLabel(
     runningPrefix: String = "正在运行",
 ): String {
     if (running) {
+        // 只给命令本身：组头右侧本来就有「执行中」的动效标签，再写一遍「正在运行」会重复。
+        // 拿不到命令（旧插件）时返回空串，那一行只显示「执行中」。
         val command = runningCommand?.trim()?.takeIf { it.isNotEmpty() }
-        return if (command != null) "◌ $runningPrefix $command" else "◌ $runningPrefix"
+        return command?.let { "◌ $it" } ?: ""
     }
     return "$donePrefix · ${formatToolGroupSummary(items)}"
 }
