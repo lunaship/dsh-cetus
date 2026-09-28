@@ -754,6 +754,8 @@ function createRuntime(config) {
     pendingApprovals: requests.pendingApprovals,
     pendingQuestions: requests.pendingQuestions,
     reasoningCache: new Map(),
+    // sessionId+updatedAt → { activity } / { lastResult }：首页「当前步骤」「结果一句话」的推导缓存
+    sessionActivityCache: new Map(),
     deviceRequests: new Map(),
     pairingRequests: new Map(),
     deviceMutations: new DeviceMutationGate(),
@@ -2062,6 +2064,7 @@ export function apply(ctx, config) {
       }
       rt.gapPolls.clear()
       rt.reasoningCache.clear()
+      rt.sessionActivityCache.clear()
       rt.requests.disposeAll("cancelled")
       unbindLocalRpcRuntime()
       try { proxy?.closeAllConnections?.() } catch {}

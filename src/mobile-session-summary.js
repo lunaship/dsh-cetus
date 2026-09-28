@@ -3,6 +3,11 @@ import { omitNullFields, optionalString } from "./optional-string.js"
 /**
  * [extra.awaitingInput]：插件自记的「有未结束的审批 / 澄清问题」（DSH 列表不带），
  * 只在为真时下发，旧 App 忽略该键。
+ *
+ * [extra.activity] / [extra.lastResult]：2026-09-28 重设计新增，由
+ * `mobile-session-activity.js` 从 session.history 推导（方案阶段 2）。
+ * running 会话带 activity，已结束会话带 lastResult；推导不出时不下发这两个键，
+ * 旧 App 与旧 Host（没有这两个字段）走同一套回退。
  */
 export function mobileSessionSummary(item, extra = {}) {
   const projections = item?.projections?.values ?? {}
@@ -28,5 +33,7 @@ export function mobileSessionSummary(item, extra = {}) {
     parentSessionId: optionalString(parentSessionId),
     subagentCount: Number.isFinite(subagentCountRaw) ? subagentCountRaw : null,
     awaitingInput: extra.awaitingInput ? true : null,
+    activity: extra.activity ?? null,
+    lastResult: extra.lastResult ?? null,
   })
 }

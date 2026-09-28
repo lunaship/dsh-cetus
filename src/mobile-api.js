@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto"
 import { homedir, hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
 import { mobileSessionSummary } from "./mobile-session-summary.js"
+import { deriveActivity, deriveLastResult } from "./mobile-session-activity.js"
 import { handleMobileModelsApi } from "./mobile-models.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
@@ -74,6 +75,89 @@ function mapModelGroups(groups) {
 /** 会话摘要 + 插件侧运行时状态（等待确认）。 */
 function summarizeSession(rt, item) {
   return mobileSessionSummary(item, { awaitingInput: rt?.awaiting?.has(item?.sessionId) })
+}
+
+// ---------- 会话「当前步骤」/「结果一句话」（重设计 2026-09-28 · 方案阶段 2） ----------
+// 首页每行要写「正在运行 go test ./... · 第 12 步」和「完成 · 改了 79 个文件」，
+// DSH 列表不带这些，只能从 session.history 推导。三条护栏：
+// 只算最近 20 个会话、按 sessionId+updatedAt 缓存、并发 4 且单个失败只丢该字段。
+const ACTIVITY_SESSION_LIMIT = 20
+const ACTIVITY_HISTORY_MAX_MESSAGES = 8
+const ACTIVITY_CONCURRENCY = 4
+
+/** 取一个会话的事件流；失败返回 null（调用方跳过该字段，不影响列表）。 */
+async function readSessionEvents(targetPort, sessionId) {
+  try {
+    const history = await callLocalRpc(targetPort, "session.history", {
+      sessionId,
+      maxMessages: ACTIVITY_HISTORY_MAX_MESSAGES,
+    })
+    return Array.isArray(history?.events) ? history.events : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 给会话行补 activity / lastResult（就地改传入的摘要对象）。
+ *
+ * running 只算 activity，非 running 只算 lastResult——两者不会同时出现，
+ * 与 App 端「进行中看在做哪一步、最近看结果是什么」的分区一一对应。
+ * 缓存键含 updatedAt：同一会话没有新事件就不重复拉历史。
+ *
+ * [deps] 只为单测注入（`readEvents` / `changesService`）；生产路径用默认实现。
+ */
+export async function attachSessionActivity(rt, targetPort, sessions, deps = {}) {
+  const readEvents = deps.readEvents ?? ((sessionId) => readSessionEvents(targetPort, sessionId))
+  const changesService = deps.changesService !== undefined
+    ? deps.changesService
+    : workspaceChangesService(rt?.workspaceChanges)
+  const targets = sessions
+    .filter((s) => s && typeof s.sessionId === "string" && s.sessionId)
+    .slice(0, ACTIVITY_SESSION_LIMIT)
+  if (targets.length === 0) return
+  const cache = rt?.sessionActivityCache
+  let cursor = 0
+  const worker = async () => {
+    while (cursor < targets.length) {
+      const row = targets[cursor++]
+      const key = `${row.sessionId}:${row.updatedAt ?? ""}:${row.running ? "r" : "d"}`
+      const hit = cache?.get(key)
+      if (hit) {
+        if (hit.activity) row.activity = hit.activity
+        if (hit.lastResult) row.lastResult = hit.lastResult
+        continue
+      }
+      const events = await readEvents(row.sessionId)
+      if (!events) continue
+      if (row.running) {
+        const activity = deriveActivity(events)
+        if (activity) {
+          row.activity = activity
+          cache?.set(key, { activity })
+        }
+      } else {
+        const lastResult = deriveLastResult(
+          events,
+          changesService ? (seq) => changesService.summary(row.sessionId, seq) : null,
+        )
+        if (lastResult) {
+          row.lastResult = lastResult
+          cache?.set(key, { lastResult })
+        }
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(ACTIVITY_CONCURRENCY, targets.length) }, () => worker()),
+  )
+}
+
+/** 列表接口的统一装配：摘要 → 补活动字段。 */
+async function summarizeSessionList(rt, targetPort, items) {
+  const sessions = items.map((item) => summarizeSession(rt, item))
+  await attachSessionActivity(rt, targetPort, sessions)
+  return sessions
 }
 
 function uniqueRpcPayloads(payloads) {
@@ -192,7 +276,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     }
     if (req.method === "GET" && pathname === "/dsh-link/mobile/bootstrap") {
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
-      const sessions = items.map((item) => summarizeSession(rt, item))
+      const sessions = await summarizeSessionList(rt, targetPort, items)
       return json(res, 200, {
         version: 1,
         protocol: PLUGIN_PROTOCOL,
@@ -210,7 +294,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
       return json(res, 200, {
         version: 1,
-        sessions: items.map((item) => summarizeSession(rt, item)),
+        sessions: await summarizeSessionList(rt, targetPort, items),
         archivedSessionIds,
       })
     }
