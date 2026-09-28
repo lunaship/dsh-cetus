@@ -614,7 +614,10 @@ private fun DiffNoteRow(text: String) {
 
 @Composable
 private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
-    val rows = remember(diff) { diffRows(diff.hunks) }
+    val allRows = remember(diff) { diffRows(diff.hunks) }
+    // 已展开的折叠段（存「被折叠片段在 allRows 里的起始下标」）；切换文件时随 diff 重置
+    var expandedFolds by remember(diff) { mutableStateOf(emptySet<Int>()) }
+    val rows = remember(allRows, expandedFolds) { foldContextRows(allRows, expandedFolds) }
     val notes = remember(diff) { diffNotes(diff) }
     val digits = remember(rows) {
         rows.maxOfOrNull { maxOf(it.oldNo ?: 0, it.newNo ?: 0) }?.toString()?.length?.coerceAtLeast(2) ?: 2
@@ -640,8 +643,17 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
                 itemsIndexed(notes, key = { i, _ -> "note-$i" }) { _, note ->
                     DiffNoteRow(ChangesL.note(note, diff))
                 }
-                itemsIndexed(rows, key = { i, _ -> i }, contentType = { _, row -> row.kind }) { _, row ->
-                    DiffLineRow(row, digits, wrap, codeStyle)
+                itemsIndexed(rows, key = { i, _ -> i }, contentType = { _, row -> row.kind }) { index, row ->
+                    DiffLineRow(
+                        row = row,
+                        digits = digits,
+                        wrap = wrap,
+                        style = codeStyle,
+                        // 折叠行自带被折叠片段的起始下标（数据层给的），UI 不用反推
+                        onExpandFold = { c ->
+                            if (c >= 0) expandedFolds = expandedFolds + c
+                        },
+                    )
                 }
             }
         }
@@ -649,7 +661,13 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
 }
 
 @Composable
-private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: androidx.compose.ui.text.TextStyle) {
+private fun DiffLineRow(
+    row: DiffRow,
+    digits: Int,
+    wrap: Boolean,
+    style: androidx.compose.ui.text.TextStyle,
+    onExpandFold: (Int) -> Unit = {},
+) {
     val (bg, signColor, sign) = when (row.kind) {
         DiffRow.Kind.ADD -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.success, "+")
         DiffRow.Kind.DELETE -> Triple(Dsh.error.copy(alpha = 0.12f), Dsh.error, "−")
@@ -666,6 +684,20 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
     ) {
         if (row.kind == DiffRow.Kind.HUNK) {
             Text(row.text, color = Dsh.labelTertiary, style = style, maxLines = 1, softWrap = false)
+            return@Row
+        }
+        if (row.kind == DiffRow.Kind.FOLD) {
+            // 稿 04：「展开中间 N 行」——点一下把这段未改动的上下文放出来
+            Text(
+                ChangesL.expandHiddenRows.format(row.hiddenCount),
+                color = Dsh.labelSecondary,
+                style = style,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(interactionSource = null, indication = dshRipple()) { onExpandFold(row.foldStart) },
+            )
             return@Row
         }
         // 稿 04：行号列只显示**新文件**的行号；删除行没有新行号，就留空（不是显示旧行号）

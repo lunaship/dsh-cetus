@@ -192,6 +192,8 @@ data class DiffRow(
     val emphasis: List<IntRange> = emptyList(),
     /** 折叠行专用：被折起来的上下文行数（0 = 普通行）。 */
     val hiddenCount: Int = 0,
+    /** 折叠行专用：被折叠片段在输入 rows 里的起始下标（-1 = 普通行），供 UI 展开时回填。 */
+    val foldStart: Int = -1,
 ) {
     enum class Kind { HUNK, CONTEXT, ADD, DELETE, FOLD }
 }
@@ -232,6 +234,7 @@ fun foldContextRows(rows: List<DiffRow>, expandedFolds: Set<Int> = emptySet()): 
                 newNo = null,
                 text = "",
                 hiddenCount = length - CONTEXT_FOLD_KEEP * 2,
+                foldStart = i,
             )
             out += rows.subList(j - CONTEXT_FOLD_KEEP, j)
         }
