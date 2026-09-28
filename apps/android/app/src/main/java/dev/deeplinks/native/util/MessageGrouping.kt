@@ -89,6 +89,29 @@ fun formatToolGroupSummary(
     }
 }
 
+/**
+ * 过程折叠行的标题（2026-09-28 重设计 · 方案 5.2）。
+ *
+ * 一轮里的工具调用不再逐条铺开，收成一行：
+ * - 已结束：「已完成工作 · Read (2)」；
+ * - 执行中：「◌ 正在运行 go test ./...」——命令来自插件下发的 activity，拿不到就退回摘要。
+ *
+ * 摘要本身仍由 [formatToolGroupSummary] 生成，这里只负责「这一行以什么口吻开头」。
+ */
+fun toolGroupRowLabel(
+    items: List<MobileMessage>,
+    running: Boolean,
+    runningCommand: String? = null,
+    donePrefix: String = "已完成工作",
+    runningPrefix: String = "正在运行",
+): String {
+    if (running) {
+        val command = runningCommand?.trim()?.takeIf { it.isNotEmpty() }
+        return if (command != null) "◌ $runningPrefix $command" else "◌ $runningPrefix"
+    }
+    return "$donePrefix · ${formatToolGroupSummary(items)}"
+}
+
 data class UserTurnJump(
     val messageId: String,
     val preview: String,

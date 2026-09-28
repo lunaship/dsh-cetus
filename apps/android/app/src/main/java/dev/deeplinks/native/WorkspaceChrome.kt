@@ -638,7 +638,12 @@ internal fun ToolGroupHeader(
     val groupRunning = sweepingId != null && group.items.any { it.id == sweepingId }
     val pressTint = Dsh.pressed
     val rail = Dsh.borderStrong
-    val summaryTitle = dev.deeplinks.native.util.formatToolGroupSummary(group.items) { L.toolCallCount.format(it) }
+    val summaryTitle = dev.deeplinks.native.util.toolGroupRowLabel(
+        items = group.items,
+        running = groupRunning,
+        donePrefix = L.toolGroupDone,
+        runningPrefix = L.toolGroupRunning,
+    )
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier

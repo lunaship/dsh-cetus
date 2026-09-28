@@ -159,4 +159,17 @@ class MessageGroupingTest {
         )
         assertEquals("1 tool calls", formatToolGroupSummary(msgsEmpty))
     }
+
+    /** 过程折叠行（方案 5.2）：已结束写「已完成工作 · 摘要」，执行中写「◌ 正在运行 命令」。 */
+    @Test
+    fun `toolGroupRowLabel 已结束与执行中两种口吻`() {
+        val msgs = listOf(
+            MobileMessage(id = "1", role = "tool_call", text = "", toolName = "Read"),
+            MobileMessage(id = "2", role = "tool_call", text = "", toolName = "Read"),
+        )
+        assertEquals("已完成工作 · Read (2)", toolGroupRowLabel(msgs, running = false))
+        assertEquals("◌ 正在运行 go test ./...", toolGroupRowLabel(msgs, running = true, runningCommand = "go test ./..."))
+        // 拿不到命令（旧插件）时只写「正在运行」，不编一个命令出来
+        assertEquals("◌ 正在运行", toolGroupRowLabel(msgs, running = true, runningCommand = "  "))
+    }
 }
