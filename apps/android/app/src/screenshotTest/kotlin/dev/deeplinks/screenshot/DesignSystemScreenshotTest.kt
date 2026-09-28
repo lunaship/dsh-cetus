@@ -114,6 +114,21 @@ import dev.deeplinks.native.SettingsDest
 import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.SettingsPageCanvas
 import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.BranchOutline16
+import dev.deeplinks.native.CloudOffOutline16
+import dev.deeplinks.native.DocumentCheckOutline16
+import dev.deeplinks.native.ListOutline16
+import dev.deeplinks.native.LockOutline16
+import dev.deeplinks.native.UploadOutline16
+import dev.deeplinks.native.ui.DshCardDivider
+import dev.deeplinks.native.ui.DshChipTone
+import dev.deeplinks.native.ui.DshFloatingPill
+import dev.deeplinks.native.ui.DshGroupCard
+import dev.deeplinks.native.ui.DshPillButton
+import dev.deeplinks.native.ui.DshPillTone
+import dev.deeplinks.native.ui.DshSectionLabel
+import dev.deeplinks.native.ui.DshStatusChip
+import dev.deeplinks.native.ui.DshStatusIcon
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSection
@@ -199,6 +214,80 @@ private fun SectionTitle(text: String) {
     Text(text, color = Dsh.labelTertiary, style = DshType.label)
 }
 
+/**
+ * 收件箱组件墙（2026-09-28 重设计 · 阶段 1）：
+ * 胶囊按钮三种语义、四种状态胶囊、32dp 状态图标圈、白色分组卡与分隔线、
+ * 分组标签、底部悬浮主按钮。浅色 / 深色各出一张，改色板或改形状时看这两张。
+ */
+@Composable
+private fun InboxWall() {
+    SectionTitle("Pill buttons — Accent / Ink / Tonal")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        DshPillButton(label = "批准", onClick = {}, tone = DshPillTone.Accent)
+        DshPillButton(label = "拒绝", onClick = {}, tone = DshPillTone.Tonal)
+        DshPillButton(label = "停止", onClick = {}, tone = DshPillTone.Ink)
+        DshPillButton(label = "发送", onClick = {}, tone = DshPillTone.Accent, icon = SendOutline16)
+        DshPillButton(label = "置灰", onClick = {}, tone = DshPillTone.Ink, enabled = false)
+    }
+    SectionTitle("Status chips — 等你批准 / 等你回答 / 在电脑上处理 / 完成")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        DshStatusChip("等你批准", DshChipTone.Approval)
+        DshStatusChip("等你回答", DshChipTone.Answer)
+        DshStatusChip("在电脑上处理", DshChipTone.Remote)
+        DshStatusChip("完成", DshChipTone.Done)
+        DshStatusChip("已停止", DshChipTone.Remote)
+    }
+    SectionTitle("Status icons — 完成 / 进行中 / 离线 / 需解锁")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        DshStatusIcon(DocumentCheckOutline16)
+        DshStatusIcon(ClockOutline16, container = Dsh.bgSubtle, content = Dsh.labelSecondary)
+        DshStatusIcon(CloudOffOutline16, container = Dsh.bgSubtle, content = Dsh.labelTertiary)
+        DshStatusIcon(LockOutline16, container = Dsh.warnContainer, content = Dsh.warnLabel)
+        DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
+    }
+    SectionTitle("Group card — 白色分组卡 + 分隔线")
+    DshGroupCard {
+        DshListRow(title = "完善审批状态同步", subtitle = "正在运行 go test ./... · 第 12 步", value = "3 分钟")
+        DshCardDivider()
+        DshListRow(title = "2026-09-27_DSH-L", subtitle = "完成 · 改了 79 个文件，门禁全绿", value = "昨天")
+        DshCardDivider()
+        DshListRow(title = "修复手机模型切换", subtitle = "已停止 · 你中断了这一轮", value = "周四")
+    }
+    SectionTitle("Section label + floating pill")
+    DshSectionLabel("等你处理")
+    DshFloatingPill(label = "新任务", onClick = {}, icon = PlusOutline16)
+    DshFloatingPill(label = "新任务（离线置灰）", onClick = {}, icon = PlusOutline16, enabled = false)
+    SectionTitle("Icons — 本次新增（文档/云/列表/锁/上传/分支）")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf(
+            DocumentCheckOutline16,
+            CloudOffOutline16,
+            ListOutline16,
+            LockOutline16,
+            UploadOutline16,
+            BranchOutline16,
+        ).forEach { icon ->
+            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "inbox components light zh", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun InboxComponentsLightZh() {
+    Wall(dark = false, english = false) { InboxWall() }
+}
+
+@PreviewTest
+@Preview(name = "inbox components dark en", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun InboxComponentsDarkEn() {
+    Wall(dark = true, english = true) { InboxWall() }
+}
+
 @Composable
 private fun TypeScale() {
     SectionTitle("Type scale")
@@ -248,6 +337,7 @@ private fun TokenWall() {
         "brand400" to Dsh.brand400,
         "success" to Dsh.success,
         "warn" to Dsh.warn,
+        "warnContainer" to Dsh.warnContainer,
         "error" to Dsh.error,
         "traceReasoning" to Dsh.traceReasoning,
         "traceApproval" to Dsh.traceApproval,
@@ -613,6 +703,13 @@ private val IconWallGlyphs: List<ImageVector> = listOf(
     UnlinkOutline16,
     WalletOutline16,
     WrapOutline16,
+    // 2026-09-28 重设计新增
+    DocumentCheckOutline16,
+    CloudOffOutline16,
+    ListOutline16,
+    LockOutline16,
+    UploadOutline16,
+    BranchOutline16,
 )
 
 @Composable
