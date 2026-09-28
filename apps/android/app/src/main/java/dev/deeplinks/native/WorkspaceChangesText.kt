@@ -16,6 +16,7 @@ internal object ChangesL {
         "editedFile" to "已编辑 %s",
         "editedFiles" to "已编辑 %d 个文件",
         "moreFiles" to "还有 %d 个文件",
+        "viewAllFiles" to "查看全部 %d 个",
         "binary" to "二进制文件，无法显示改动",
         "oversized" to "文件过大，无法显示改动",
         "created" to "本轮新建的文件",
@@ -41,6 +42,7 @@ internal object ChangesL {
         "editedFile" to "Edited %s",
         "editedFiles" to "Edited %d files",
         "moreFiles" to "%d more files",
+        "viewAllFiles" to "View all %d",
         "binary" to "Binary file; changes can't be shown",
         "oversized" to "File too large to show changes",
         "created" to "Created in this turn",
@@ -67,6 +69,7 @@ internal object ChangesL {
     val editedFile get() = t("editedFile")
     val editedFiles get() = t("editedFiles")
     val moreFiles get() = t("moreFiles")
+    val viewAllFiles get() = t("viewAllFiles")
     val binary get() = t("binary")
     val oversized get() = t("oversized")
     val created get() = t("created")
