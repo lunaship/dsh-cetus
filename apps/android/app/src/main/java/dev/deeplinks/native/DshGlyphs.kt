@@ -78,6 +78,21 @@ val ClockOutline16: ImageVector by lazy {
     )
 }
 
+/**
+ * 断开的云（离线）：重设计稿首页离线态与设置页连接态使用。
+ * 云体用一条开放弧（底部不闭合）+ 一条斜杠，和 UnlinkOutline16 的断开语义同族。
+ */
+val CloudOffOutline16: ImageVector by lazy {
+    glyph(
+        "CloudOffOutline16",
+        listOf(
+            "M6.4 12.4H4.6a3.05 3.05 0 0 1 -.5-6.06 4.5 4.5 0 0 1 7.1-1.9",
+            "M8.9 5.6a4.5 4.5 0 0 1 3.3 1.28 3.05 3.05 0 0 1 .6 5.52",
+            "M2.8 2.8 13.2 13.2",
+        ),
+    )
+}
+
 val CompressOutline16: ImageVector by lazy {
     glyph(
         "CompressOutline16",
@@ -110,6 +125,21 @@ val DevicesOutline16: ImageVector by lazy {
             "M5.5 10.6V14",
             "M3.2 14H7.8",
             "M12.9 5.2H14.22a1.1 1.1 0 0 1 1.1 1.1V13.1a1.1 1.1 0 0 1 -1.1 1.1H12.9a1.1 1.1 0 0 1 -1.1 -1.1V6.3a1.1 1.1 0 0 1 1.1 -1.1Z",
+        ),
+    )
+}
+
+/**
+ * 带勾文档（已完成）：重设计稿首页「最近」分组的完成态图标圈。
+ * 路径直接取自设计源文件（`设计稿/源文件/Main.dc.html`）的折角文档 + 勾。
+ */
+val DocumentCheckOutline16: ImageVector by lazy {
+    glyph(
+        "DocumentCheckOutline16",
+        listOf(
+            "M3 2.5h7l3 3v8H3z",
+            "M10 2.5v3h3",
+            "M5.5 9.5l1.8 1.8 3.2-3.6",
         ),
     )
 }
@@ -235,6 +265,34 @@ val LaptopOutline16: ImageVector by lazy {
         listOf(
             "M3.6 2.3H12.4a1.4 1.4 0 0 1 1.4 1.4V9.5a1.4 1.4 0 0 1 -1.4 1.4H3.6a1.4 1.4 0 0 1 -1.4 -1.4V3.7a1.4 1.4 0 0 1 1.4 -1.4Z",
             "M0.7 13.9H15.3",
+        ),
+    )
+}
+
+/** 列表（全部文件）：重设计稿看改动页右上「全部文件」按钮；圆点用实心补，保持满幅对齐。 */
+val ListOutline16: ImageVector by lazy {
+    glyph(
+        "ListOutline16",
+        listOf(
+            "M5.6 4.2h8.9",
+            "M5.6 8h8.9",
+            "M5.6 11.8h8.9",
+        ),
+        fills = listOf(
+            "M2.55 3.5a0.7 0.7 0 1 0 0 1.4a0.7 0.7 0 1 0 0-1.4Z",
+            "M2.55 7.3a0.7 0.7 0 1 0 0 1.4a0.7 0.7 0 1 0 0-1.4Z",
+            "M2.55 11.1a0.7 0.7 0 1 0 0 1.4a0.7 0.7 0 1 0 0-1.4Z",
+        ),
+    )
+}
+
+/** 锁（批准需解锁）：通知动作与审批卡的「需解锁」提示。 */
+val LockOutline16: ImageVector by lazy {
+    glyph(
+        "LockOutline16",
+        listOf(
+            "M3.4 7.1h9.2a1 1 0 0 1 1 1v5.4a1 1 0 0 1 -1 1H3.4a1 1 0 0 1 -1 -1V8.1a1 1 0 0 1 1 -1Z",
+            "M5.3 7.1V5a2.7 2.7 0 0 1 5.4 0v2.1",
         ),
     )
 }
@@ -379,6 +437,17 @@ val UnlinkOutline16: ImageVector by lazy {
             "M6 11.6H4.3a3.6 3.6 0 0 1 0-7.2H6",
             "M8 1V3",
             "M8 13v2",
+        ),
+    )
+}
+
+/** 上传箭头（推送到远端）：重设计稿「下一步建议」留的插槽用，暂在图标墙登记。 */
+val UploadOutline16: ImageVector by lazy {
+    glyph(
+        "UploadOutline16",
+        listOf(
+            "M8 14.2V2.2",
+            "M2.9 7.3 8 2.2l5.1 5.1",
         ),
     )
 }
