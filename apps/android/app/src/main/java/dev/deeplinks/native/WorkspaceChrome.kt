@@ -997,7 +997,6 @@ internal fun ComposerContextStrip(
     val strings = DshS
     val summary = sessionStatsSummary(stats)
     var detailOpen by remember { mutableStateOf(false) }
-    if (workspaceName == null && changes == null && summary == null) return
 
     Row(
         modifier = Modifier
@@ -1007,34 +1006,26 @@ internal fun ComposerContextStrip(
     ) {
         // 左组吃掉剩余宽度（工作区名优先截断）；右侧用量不加 weight，先按自身宽度量
         Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            if (workspaceName != null) {
-                val status = "$hostName ${if (online) strings.statusOnline else strings.statusOffline}".trim()
-                ContextStripSegment(
-                    onClick = onBrowseFiles,
-                    description = "${strings.browseFiles}: $workspaceName, $status",
-                    modifier = Modifier.weight(1f, fill = false),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(DshSpace.s6)
-                            .clip(CircleShape)
-                            .then(
-                                if (online) Modifier.background(Dsh.success)
-                                else Modifier.border(1.dp, Dsh.labelTertiary, CircleShape)
-                            ),
-                    )
-                    Spacer(Modifier.width(DshSpace.s8))
-                    Icon(FolderOpenOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(DshSpace.s6))
-                    Text(
-                        workspaceName,
-                        color = Dsh.labelSecondary,
-                        style = DshType.label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+            // 一行小字：● 电脑名 在线（工作区名已挪到顶栏副标题，稿 03/10）。
+            // 文件入口不在这里——顶栏「更多」菜单里已有「浏览文件」。
+            val status = "$hostName ${if (online) strings.statusOnline else strings.statusOffline}".trim()
+            Box(
+                modifier = Modifier
+                    .size(DshSpace.s6)
+                    .clip(CircleShape)
+                    .then(
+                        if (online) Modifier.background(Dsh.success)
+                        else Modifier.border(1.dp, Dsh.labelTertiary, CircleShape)
+                    ),
+            )
+            Spacer(Modifier.width(DshSpace.s8))
+            Text(
+                status,
+                color = Dsh.labelSecondary,
+                style = DshType.label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (changes != null) {
                 ContextStripSegment(
                     onClick = onOpenChanges,
