@@ -318,11 +318,12 @@ internal fun InputBar(
                 val showMic = composerIdle && !running && !isSending && !isListening && voiceAvailable
                 val sendBg by animateColorAsState(
                     targetValue = when {
-                        // 空态语音：与左侧 + / 同一规格的 bgTrack 圆钮（灰阶安静、不占实心 CTA）；
-                        // 实心蓝只留给可执行的主动作，不给这个槽上墨黑/反白实心
+                        // 空态语音：与左侧 + / 同一规格的 bgTrack 圆钮；实心蓝只给「需要你动手」的
+                        // 批准与发送，停止（打断过程）按 2026-09-28 重设计改用墨色实心
                         showMic -> composerRoundButtonBg(sendPressed)
                         actionError != null && (showStopAtSend || canSend) -> Dsh.error
-                        showStopAtSend || isListening -> Dsh.brand500
+                        showStopAtSend -> Dsh.labelPrimary
+                        isListening -> Dsh.brand500
                         !canSend && !isSending -> Dsh.brand500.copy(alpha = 0.55f)
                         sendPressed -> Dsh.brand400
                         else -> Dsh.brand500
@@ -419,7 +420,7 @@ internal fun InputBar(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .clip(RoundedCornerShape(DshRadius.micro))
-                                        .background(Color.White)
+                                        .background(Dsh.bgCard)
                                 )
                             }
                             isListening || isSending -> {
