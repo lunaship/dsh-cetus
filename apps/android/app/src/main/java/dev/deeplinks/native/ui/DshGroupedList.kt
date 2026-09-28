@@ -45,6 +45,7 @@ import androidx.compose.ui.layout.ParentDataModifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -303,6 +304,8 @@ fun DshListRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    /** 副标题用等宽字体（方案 7：电脑卡的地址要等宽，让 IP 与端口对齐好读）。 */
+    subtitleMono: Boolean = false,
     icon: ImageVector? = null,
     iconTint: Color = Dsh.labelSecondary,
     value: String? = null,
@@ -337,6 +340,7 @@ fun DshListRow(
         modifier = modifier.dividerInset(icon != null || leading != null, iconSlot).then(clickable),
         title = title,
         subtitle = subtitle,
+        subtitleMono = subtitleMono,
         icon = icon,
         iconTint = iconTint,
         value = value,
@@ -356,6 +360,7 @@ private fun DshListRowLayout(
     modifier: Modifier,
     title: String,
     subtitle: String?,
+    subtitleMono: Boolean = false,
     icon: ImageVector?,
     iconTint: Color,
     value: String?,
@@ -402,7 +407,13 @@ private fun DshListRowLayout(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(title, color = titleColor, style = DshType.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, color = Dsh.labelTertiary, style = DshType.supporting, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(
+                    subtitle,
+                    color = Dsh.labelTertiary,
+                    style = if (subtitleMono) DshType.supporting.copy(fontFamily = FontFamily.Monospace) else DshType.supporting,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         if (!value.isNullOrBlank()) {

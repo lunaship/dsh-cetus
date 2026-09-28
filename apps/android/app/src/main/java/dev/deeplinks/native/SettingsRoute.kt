@@ -408,6 +408,7 @@ internal fun SettingsHome(
             DshListRow(
                 title = host.name.ifBlank { address },
                 subtitle = address,
+                subtitleMono = true,
                 icon = LaptopOutline16,
                 onClick = onOpenDevices,
             )
