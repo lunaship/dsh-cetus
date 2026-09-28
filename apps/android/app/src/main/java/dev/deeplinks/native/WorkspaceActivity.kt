@@ -340,6 +340,7 @@ fun WorkspaceScreen(
     // 不再走对话页的草稿态（ComposerTopRow 起始块已删）。
     var showNewTaskSheet by remember { mutableStateOf(false) }
     var showNewTaskWorkspacePicker by remember { mutableStateOf(false) }
+    var showArchivedSheet by remember { mutableStateOf(false) }
     // 建会话成功后收起面板；失败时 currentSessionId 仍为空 → 面板保持打开并显示错误（方案 4.5）
     LaunchedEffect(currentSessionId) {
         if (currentSessionId != null) showNewTaskSheet = false
@@ -2079,7 +2080,7 @@ fun WorkspaceScreen(
                 offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
                 onSelectWorkspace = { selectedHomeWorkspace = it },
-                onOpenArchived = onOpenSettings,
+                onOpenArchived = { showArchivedSheet = true },
                 onPickStarter = { sidebarActions.onNewSession() },
                 activeApproval = homePendingApproval,
                 onAnswerApproval = { approvalId, outcome, onDone ->
@@ -2775,14 +2776,11 @@ fun WorkspaceScreen(
     if (showNewTaskSheet) {
         NewTaskSheetHost(
             state = NewTaskSheetState(
-                workspaces = workspaceCatalogItems.map { it.path },
-                selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
+                workspaces = workspaceCatalogItems.map { it.path }, selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
                 lastSession = sessions.maxByOrNull { sessionMillis(it.updatedAt) },
                 input = inputText,
-                modelName = pendingModel?.second ?: appSettings.defaultModel,
-                modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
-                permissionPreset = canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset)),
-                permissionLabel = composerPermissionLabel(canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset))),
+                modelName = pendingModel?.second ?: appSettings.defaultModel, modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
+                permissionPreset = canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset)), permissionLabel = composerPermissionLabel(canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset))),
                 sending = isSending,
                 error = composerActionError,
             ),
@@ -2791,14 +2789,18 @@ fun WorkspaceScreen(
                 onOpenWorkspacePicker = { showNewTaskWorkspacePicker = true },
                 onOpenLastTask = { selectSession(it); showPhoneChat() },
                 onInputChange = { inputText = it },
-                onOpenModelPicker = { showModelPicker = true },
-                onOpenModePicker = { showAgentPresetPicker = true },
+                onOpenModelPicker = { showModelPicker = true }, onOpenModePicker = { showAgentPresetPicker = true },
                 onAttach = { imagePickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onSend = { submitComposer() },
                 onDismiss = { showNewTaskSheet = false },
             ),
         )
     }
+
+    ArchivedSessionsHost(
+        open = showArchivedSheet, prefs = workspacePrefs, sessions = sessions,
+        loading = sessionsInitialLoad, onDismiss = { showArchivedSheet = false },
+    )
 
     if (showNewTaskWorkspacePicker) {
         WorkspacePickerSheet(

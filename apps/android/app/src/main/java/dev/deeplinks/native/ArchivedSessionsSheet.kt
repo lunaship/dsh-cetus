@@ -104,3 +104,37 @@ internal fun archivedSheetLoading(sessionsInitialLoad: Boolean, hasSessions: Boo
     sessionsInitialLoad && !hasSessions
 
 internal val SESSION_LIST_KIND_CONTENT: SessionListKind = SessionListKind.Content
+
+/**
+ * 首页用的宿主：数据源与「恢复 / 清除」的落盘都收在这里，调用点只传 prefs 与开关。
+ *
+ * 为什么这样切：WorkspaceActivity 有 CodeHygieneTest 的行数预算（只降不升），
+ * 把四个回调铺在调用点会顶破预算；而这些变更是「归档列表」这件事自己的语义
+ * （取消归档 + 记进 restoredSessionIds、把本机记录从设置里隐藏），放在这里也内聚。
+ */
+@Composable
+internal fun ArchivedSessionsHost(
+    open: Boolean,
+    prefs: dev.deeplinks.native.util.WorkspacePrefs,
+    sessions: List<MobileSession>,
+    loading: Boolean,
+    onDismiss: () -> Unit,
+) {
+    ArchivedSessionsSheet(
+        open = open,
+        archivedIds = prefs.archivedSessionIds,
+        deletedIds = prefs.deletedSessionIds,
+        hiddenIds = prefs.settingsHiddenSessionIds,
+        sessions = sessions,
+        loading = loading,
+        onRestore = { id ->
+            prefs.archivedSessionIds = prefs.archivedSessionIds - id
+            prefs.deletedSessionIds = prefs.deletedSessionIds - id
+            prefs.settingsHiddenSessionIds = prefs.settingsHiddenSessionIds - id
+            prefs.restoredSessionIds = prefs.restoredSessionIds + id
+        },
+        onClear = { id -> prefs.hideFromSettings(listOf(id)) },
+        onClearAll = { ids -> prefs.hideFromSettings(ids) },
+        onDismiss = onDismiss,
+    )
+}
