@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dev.deeplinks.R
+import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.WorkspaceActivity
 
 /**
@@ -40,6 +41,9 @@ object DshNotifier {
 
     /** 审批请求：需要审批「工具名」。 */
     fun notifyApproval(context: Context, host: Host, sessionId: String, toolName: String) {
+        // 阶段 8 第 3 条：设置页的两个开关（存本机）决定发不发。关卡放在这里而不是调用点，
+        // 是为了「一个地方管住所有通知」——调用点分散在 WorkspaceActivity 多处，漏一处就是 bug。
+        if (!WorkspacePrefs(context).notifyOnApproval) return
         val notification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
             .setContentTitle(L.notifNeedApproval)
             .setContentText(L.notifNeedApprovalBody.format(toolName))
@@ -50,12 +54,16 @@ object DshNotifier {
     }
 
     /** 任务完成。 */
-    fun notifyTaskDone(context: Context, host: Host, sessionId: String, title: String) =
+    fun notifyTaskDone(context: Context, host: Host, sessionId: String, title: String) {
+        if (!WorkspacePrefs(context).notifyOnDone) return
         post(context, host, sessionId, 2, L.notifTaskDone, L.notifTaskDoneBody.format(title))
+    }
 
     /** 会话停止（非正常结束，如 interrupted/error/maxTokens）。 */
-    fun notifyTaskFailed(context: Context, host: Host, sessionId: String, title: String, reason: String) =
+    fun notifyTaskFailed(context: Context, host: Host, sessionId: String, title: String, reason: String) {
+        if (!WorkspacePrefs(context).notifyOnDone) return
         post(context, host, sessionId, 3, L.notifTaskStopped, L.notifTaskStoppedBody.format(title, reason))
+    }
 
     /** 任务类通知的公共走法：默认频道 + 自动取消（审批那条自己带动作与频道）。 */
     private fun post(context: Context, host: Host, sessionId: String, kind: Int, title: String, text: String) {
