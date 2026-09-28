@@ -347,7 +347,6 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
         }
         val dark = Dsh.isDark
         val highlighted = remember(content, lang, dark) { highlightCode(content.trimEnd(), lang, dark) }
-        val codeScroll = rememberScrollState()
         // 代码面几何统一走 DshCodeSurface，避免各处 code 字号/行高漂移
         val codeMetrics = remember { dev.deeplinks.core.DshCodeSurface.default }
         Text(
@@ -358,7 +357,8 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             lineHeight = codeMetrics.lineHeight,
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(codeScroll)
+                // 稿 03 的代码块是**自动换行**的（原先横向滚动：静态截图里看不出区别，但真机上
+                // 长行要靠手指拖才能看全）。看改动页的差异区另有悬挂缩进实现，与此互不影响。
                 .padding(horizontal = DshSpace.s16, vertical = 10.dp)
         )
     }
