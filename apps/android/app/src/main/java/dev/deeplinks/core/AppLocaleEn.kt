@@ -543,6 +543,8 @@ val DshStringsEn = DshStrings(
         put("notifyOnApproval", "Alert me for approvals")
         put("notifyOnDone", "Alert me when a task finishes")
         put("notifyExplain", "Approvals can be handled right on the lock screen.")
+        put("connectionMethod", "Connection")
+        put("changeComputer", "Change computer")
         put("agentPermission", "Agent permissions")
         put("modelsAndBalance", "Models & balance")
         put("sectionBalance", "Account balance")

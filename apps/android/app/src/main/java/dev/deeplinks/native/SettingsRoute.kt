@@ -417,6 +417,13 @@ internal fun SettingsHome(
                 onClick = onOpenDevices,
             )
         }
+        // 方案 7 电脑卡三行：连接方式 / 智能体权限 / 更换电脑。前两者与「更换电脑」都进
+        // 既有设备页（那里本来就有换机与连线方式），这里只补入口，不新写流程
+        DshListRow(
+            title = s.connectionMethod,
+            icon = LinkOutline16,
+            onClick = onOpenDevices,
+        )
         // 方案 7：电脑卡里放「智能体权限」——原「通用设置」里的「对话」行撤销后，
         // 这一行就是 settingsConversation 二级页（权限预设 + 执行中发消息）的唯一入口
         DshListRow(
@@ -424,6 +431,11 @@ internal fun SettingsHome(
             icon = ShieldOutline16,
             value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
             onClick = { onOpen(SettingsDest.CONVERSATION) },
+        )
+        DshListRow(
+            title = s.changeComputer,
+            icon = ScanOutline16,
+            onClick = onOpenDevices,
         )
         // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
         DshListRow(
