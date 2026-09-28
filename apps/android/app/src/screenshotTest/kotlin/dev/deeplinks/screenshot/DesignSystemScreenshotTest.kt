@@ -67,6 +67,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -522,13 +524,14 @@ internal fun WorkspaceChromeLight() {
 
 /** 对话页底部整体：上下文条 + 输入卡（两层输入区）。 */
 @Composable
-private fun ChatBottomWall() {
+private fun ChatBottomWall(capWidth: Boolean = false) {
     val stats = MobileSessionStats(
         turns = 3, steps = 421, uncachedInputTokens = 2_100_000, cacheReadTokens = 126_000_000, outputTokens = 1_000_000,
         contextPressureTokens = 60_000, contextWindow = 128_000,
     )
     Column(Modifier.fillMaxWidth()) {
         ComposerContextStrip(
+            modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
             hostName = "dev-macbook",
             online = true,
             workspaceName = "dsh-links",
@@ -538,6 +541,7 @@ private fun ChatBottomWall() {
             onOpenChanges = {},
         )
         InputBar(
+            modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
             inputText = "",
             onInputChange = {},
             isListening = false,
@@ -563,6 +567,15 @@ private fun ChatBottomWall() {
 @Composable
 internal fun ChatBottomLightZh() {
     Wall(dark = false, english = false) { ChatBottomWall() }
+}
+
+@PreviewTest
+@Preview(name = "chat bottom wide", showBackground = true, widthDp = 1024, heightDp = 200)
+@Composable
+internal fun ChatBottomWide() {
+    // 方案 9：宽屏下输入区要封顶 760 居中。手机宽度的两张墙看不出这件事，
+    // 所以单独加一张 1024 宽的（上一轮补过程行墙时，正是新墙立刻抓出两个真问题）。
+    Wall(dark = false, english = false) { ChatBottomWall(capWidth = true) }
 }
 
 @PreviewTest

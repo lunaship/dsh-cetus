@@ -996,6 +996,7 @@ internal fun sessionStatsSummary(stats: MobileSessionStats?): String? {
  */
 @Composable
 internal fun ComposerContextStrip(
+    modifier: Modifier = Modifier,
     hostName: String,
     online: Boolean,
     workspaceName: String?,
@@ -1009,7 +1010,7 @@ internal fun ComposerContextStrip(
     var detailOpen by remember { mutableStateOf(false) }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = COMPOSER_SIDE_CLEARANCE),
         verticalAlignment = Alignment.CenterVertically,

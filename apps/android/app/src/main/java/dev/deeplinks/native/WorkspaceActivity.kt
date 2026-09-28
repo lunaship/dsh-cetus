@@ -2601,6 +2601,7 @@ fun WorkspaceScreen(
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
                     ComposerContextStrip(
+                        modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                         hostName = hostLabel,
                         online = streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED,
                         workspaceName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
@@ -2616,12 +2617,9 @@ fun WorkspaceScreen(
                 var showFullAccessSendConfirm by remember { mutableStateOf(false) }
                 // 访问模式座（DSH conversation.input.permission）：本会话改过的预设优先，否则用全局默认。
                 val inputPermissionPreset = composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset).let(::canonicalComposerPermission)
-                val inputPermissionLabel = when (inputPermissionPreset) {
-                    "read-only" -> L.permReadOnly
-                    "danger-full-access" -> L.permFullAccess
-                    else -> L.permWorkspaceWrite
-                }
+                val inputPermissionLabel = composerPermissionLabel(inputPermissionPreset)
                 InputBar(
+                modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                 inputText = inputText,
                 onInputChange = {
                     inputText = it

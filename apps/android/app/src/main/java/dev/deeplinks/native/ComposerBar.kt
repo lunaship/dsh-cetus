@@ -71,6 +71,7 @@ import dev.deeplinks.native.util.visibleUserWorkspaces
 
 @Composable
 internal fun InputBar(
+    modifier: Modifier = Modifier,
     inputText: String,
     onInputChange: (String) -> Unit,
     pendingImages: List<Pair<String, String>> = emptyList(),
@@ -96,7 +97,7 @@ internal fun InputBar(
     composerFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(start = COMPOSER_SIDE_CLEARANCE, end = COMPOSER_SIDE_CLEARANCE),
         horizontalAlignment = Alignment.CenterHorizontally
