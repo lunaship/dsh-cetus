@@ -269,6 +269,8 @@ internal fun WorkspaceChangesPanel(
     summaries: List<WorkspaceChangesSummary>,
     loadSummary: suspend (Long) -> WorkspaceChangesSummary?,
     loadDiff: suspend (Long, Int) -> WorkspaceFileDiff,
+    /** 稿 04 的底部提问条：带这个文件的上下文回到对话页输入框（null 时不画那一条）。 */
+    onAskAboutFile: ((ChangedFile) -> Unit)? = null,
 ) {
     state.animationMs = motionDuration(DshDuration.slow)
     val scope = rememberCoroutineScope()
@@ -348,7 +350,12 @@ internal fun WorkspaceChangesPanel(
                     onSelectFile = { state.fileIndex = it },
                     onBack = { state.fileIndex = null },
                 )
-                FileDiffBody(state, current.seq, index, file, loadDiff)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) { FileDiffBody(state, current.seq, index, file, loadDiff) }
+                    if (onAskAboutFile != null) {
+                        AskAboutFileBar(file = file, onClick = { onAskAboutFile(file) })
+                    }
+                }
             }
         }
     }
@@ -733,4 +740,41 @@ private fun diffLineText(row: DiffRow, emphasis: Color): AnnotatedString = build
         cursor = end
     }
     put(cursor, row.text.length)
+}
+
+/**
+ * 稿 04 的底部提问条：贴着差异区底部的输入形状按钮。
+ * 只负责「看起来像输入框、点一下带着这个文件的上下文回对话页」，真正的输入在对话页完成
+ * ——那里已经有草稿、附件、模型与发送链路，重做一套不划算。
+ */
+@Composable
+private fun AskAboutFileBar(file: ChangedFile, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp)
+                .clip(RoundedCornerShape(DshRadius.composer))
+                .background(Dsh.bgInput)
+                .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
+                .semantics { role = Role.Button; contentDescription = ChangesL.askAboutFile }
+                .padding(horizontal = DshSpace.s16),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(MessageOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(DshSpace.s8))
+            Text(
+                ChangesL.askAboutFile,
+                color = Dsh.labelTertiary,
+                style = DshType.body,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }

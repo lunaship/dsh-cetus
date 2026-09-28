@@ -2735,6 +2735,10 @@ fun WorkspaceScreen(
         summaries = changeSummaries,
         loadSummary = { seq -> currentSessionId?.let { sid -> withContext(Dispatchers.IO) { client.getWorkspaceChanges(sid, seq) } } },
         loadDiff = { seq, index -> client.getWorkspaceChangeDiff(currentSessionId ?: error(L.unknownError), seq, index) },
+        // 稿 04 底部提问条：预填「关于 <文件> 的改动：」，收起面板回聊天
+        onAskAboutFile = { file ->
+            inputText = ChangesL.askAboutFilePrefill.format(file.display) + inputText; scope.launch { changesPanel.settle(false) }; showPhoneChat()
+        },
     )
 
     // Snackbar 叠在抽屉/遮罩之上（抽屉打开时仍可见可点）；底部让开输入区：
@@ -2781,15 +2785,12 @@ fun WorkspaceScreen(
                 input = inputText,
                 modelName = pendingModel?.second ?: appSettings.defaultModel, modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
                 permissionPreset = canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset)), permissionLabel = composerPermissionLabel(canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset))),
-                sending = isSending,
-                error = composerActionError,
+                sending = isSending, error = composerActionError,
             ),
             actions = NewTaskSheetActions(
-                onSelectWorkspace = { pendingSessionCwd = it; workspacePrefs.lastSelectedWorkspace = it },
-                onOpenWorkspacePicker = { showNewTaskWorkspacePicker = true },
+                onSelectWorkspace = { pendingSessionCwd = it; workspacePrefs.lastSelectedWorkspace = it }, onOpenWorkspacePicker = { showNewTaskWorkspacePicker = true },
                 onOpenLastTask = { selectSession(it); showPhoneChat() },
-                onInputChange = { inputText = it },
-                onOpenModelPicker = { showModelPicker = true }, onOpenModePicker = { showAgentPresetPicker = true },
+                onInputChange = { inputText = it }, onOpenModelPicker = { showModelPicker = true }, onOpenModePicker = { showAgentPresetPicker = true },
                 onAttach = { imagePickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onSend = { submitComposer() },
                 onDismiss = { showNewTaskSheet = false },

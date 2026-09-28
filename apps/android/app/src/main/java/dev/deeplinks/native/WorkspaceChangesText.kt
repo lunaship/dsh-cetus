@@ -18,6 +18,8 @@ internal object ChangesL {
         "moreFiles" to "还有 %d 个文件",
         "viewAllFiles" to "查看全部 %d 个",
         "expandHiddenRows" to "展开中间 %d 行",
+        "askAboutFile" to "就这个文件的改动问智能体…",
+        "askAboutFilePrefill" to "关于 %s 的改动：",
         "binary" to "二进制文件，无法显示改动",
         "oversized" to "文件过大，无法显示改动",
         "created" to "本轮新建的文件",
@@ -45,6 +47,8 @@ internal object ChangesL {
         "moreFiles" to "%d more files",
         "viewAllFiles" to "View all %d",
         "expandHiddenRows" to "Show %d hidden lines",
+        "askAboutFile" to "Ask the agent about this file…",
+        "askAboutFilePrefill" to "About the changes in %s: ",
         "binary" to "Binary file; changes can't be shown",
         "oversized" to "File too large to show changes",
         "created" to "Created in this turn",
@@ -73,6 +77,8 @@ internal object ChangesL {
     val moreFiles get() = t("moreFiles")
     val viewAllFiles get() = t("viewAllFiles")
     val expandHiddenRows get() = t("expandHiddenRows")
+    val askAboutFile get() = t("askAboutFile")
+    val askAboutFilePrefill get() = t("askAboutFilePrefill")
     val binary get() = t("binary")
     val oversized get() = t("oversized")
     val created get() = t("created")
