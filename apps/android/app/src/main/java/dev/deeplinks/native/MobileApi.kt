@@ -79,6 +79,34 @@ data class MobileSession(
     val subagentCount: Int? = null,
     /** 有未结束的审批 / 澄清问题（插件自记，见 MOBILE_SYNC_CONTRACT）；首页「等待确认」分区。 */
     val awaitingInput: Boolean = false,
+    /**
+     * 当前步骤（只在 running 时有）：插件从 session.history 推导，字段级约定见 MOBILE_SYNC_CONTRACT。
+     * 旧插件不下发，为 null 时首页写「运行中」。
+     */
+    val activity: MobileSessionActivity? = null,
+    /**
+     * 结果一句话（只在非 running 时有）：最后一条回复摘要 + 本轮改动统计。
+     * 旧插件不下发，为 null 时首页写「已完成」。
+     */
+    val lastResult: MobileSessionResult? = null,
+)
+
+/** 会话当前步骤：`kind` 决定文案，`tool` 时 [label] 是命令或参数摘要。 */
+data class MobileSessionActivity(
+    val kind: String,
+    val label: String? = null,
+    val step: Long? = null,
+    val startedAt: Long? = null,
+) {
+    val isTool: Boolean get() = kind == "tool"
+}
+
+/** 会话结果一句话：文本与改动统计都可缺。 */
+data class MobileSessionResult(
+    val text: String? = null,
+    val files: Long? = null,
+    val added: Long? = null,
+    val deleted: Long? = null,
 )
 
 data class MobilePairedDevice(
@@ -206,6 +234,33 @@ internal fun parseHistoryFiles(json: JSONObject): List<String> {
     }
 }
 
+/**
+ * 会话「当前步骤」：字段缺失或 `kind` 为空视为没有（旧插件回退）。
+ * `label` / `step` / `startedAt` 都是可缺的，缺了就不给值，让 UI 走通用文案。
+ */
+internal fun parseMobileSessionActivity(json: JSONObject?): MobileSessionActivity? {
+    val kind = json?.optNullableString("kind") ?: return null
+    return MobileSessionActivity(
+        kind = kind,
+        label = json.optNullableString("label"),
+        step = json.optLong("step", -1L).takeIf { it >= 0 },
+        startedAt = json.optLong("startedAt", -1L).takeIf { it >= 0 },
+    )
+}
+
+/** 会话「结果一句话」：文本与三个统计都可缺；全缺时不下发该字段。 */
+internal fun parseMobileSessionResult(json: JSONObject?): MobileSessionResult? {
+    if (json == null) return null
+    val result = MobileSessionResult(
+        text = json.optNullableString("text"),
+        files = json.optLong("files", -1L).takeIf { it >= 0 },
+        added = json.optLong("added", -1L).takeIf { it >= 0 },
+        deleted = json.optLong("deleted", -1L).takeIf { it >= 0 },
+    )
+    val empty = result.text == null && result.files == null && result.added == null && result.deleted == null
+    return result.takeUnless { empty }
+}
+
 internal fun parseMobileSession(json: JSONObject): MobileSession = MobileSession(
     sessionId = json.getString("sessionId"),
     title = json.optNullableString("title") ?: L.untitledSession,
@@ -218,6 +273,8 @@ internal fun parseMobileSession(json: JSONObject): MobileSession = MobileSession
     parentSessionId = json.optNullableString("parentSessionId"),
     subagentCount = json.optInt("subagentCount", -1).takeIf { it >= 0 },
     awaitingInput = json.optBoolean("awaitingInput"),
+    activity = parseMobileSessionActivity(json.optJSONObject("activity")),
+    lastResult = parseMobileSessionResult(json.optJSONObject("lastResult")),
 )
 
 internal fun resolveHarnessLabel(
