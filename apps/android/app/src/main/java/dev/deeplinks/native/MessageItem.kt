@@ -196,21 +196,12 @@ internal fun MessageItem(
                                         contentDescription = L.copy,
                                         onClick = onCopy,
                                     )
-                                    // 赞 / 踩（对齐 Web：复制与分叉之间；已标记显示实心，点按取消）
-                                    if (onRate != null) {
-                                        val positive = feedbackRating == "positive"
-                                        MessageActionIcon(
-                                            icon = if (positive) LikeFill16 else LikeOutline16,
-                                            contentDescription = if (positive) L.feedbackRetract else L.feedbackLike,
-                                            onClick = { if (positive) onRetract?.invoke() else onRate("positive") },
-                                        )
-                                        val negative = feedbackRating == "negative"
-                                        MessageActionIcon(
-                                            icon = if (negative) DislikeFill16 else DislikeOutline16,
-                                            contentDescription = if (negative) L.feedbackRetract else L.feedbackDislike,
-                                            onClick = { if (negative) onRetract?.invoke() else onRate("negative") },
-                                        )
-                                    }
+                                    // 方案 5.2：轮末行只留复制与分叉；赞踩移入长按菜单
+                                    MessageActionIcon(
+                                        icon = BranchOutline16,
+                                        contentDescription = L.forkSession,
+                                        onClick = onFork,
+                                    )
                                     // 行尾轻量 meta：钟点时间 + 这条回复自己的耗时（对齐 Web 助手行末尾）；
                                     // 会话累计用量只在输入卡上方的上下文条，不在每条回复里重复。
                                     val clock = formatClockTime(msg.time)
@@ -263,6 +254,24 @@ internal fun MessageItem(
                     add(DshMenuItem(RefreshOutline16, L.regenerate) {
                         menuOpen = false
                         onRegenerate()
+                    })
+                }
+                if (onRate != null) {
+                    val positive = feedbackRating == "positive"
+                    add(DshMenuItem(
+                        if (positive) LikeFill16 else LikeOutline16,
+                        if (positive) L.feedbackRetract else L.feedbackLike,
+                    ) {
+                        menuOpen = false
+                        if (positive) onRetract?.invoke() else onRate("positive")
+                    })
+                    val negative = feedbackRating == "negative"
+                    add(DshMenuItem(
+                        if (negative) DislikeFill16 else DislikeOutline16,
+                        if (negative) L.feedbackRetract else L.feedbackDislike,
+                    ) {
+                        menuOpen = false
+                        if (negative) onRetract?.invoke() else onRate("negative")
                     })
                 }
                 if (onFeedback != null) {
