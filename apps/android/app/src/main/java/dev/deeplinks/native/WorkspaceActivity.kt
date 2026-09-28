@@ -341,6 +341,7 @@ fun WorkspaceScreen(
     var showNewTaskSheet by remember { mutableStateOf(false) }
     var showNewTaskWorkspacePicker by remember { mutableStateOf(false) }
     var showArchivedSheet by remember { mutableStateOf(false) }
+    val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
     // 建会话成功后收起面板；失败时 currentSessionId 仍为空 → 面板保持打开并显示错误（方案 4.5）
     LaunchedEffect(currentSessionId) {
         if (currentSessionId != null) showNewTaskSheet = false
@@ -2073,7 +2074,7 @@ fun WorkspaceScreen(
                 workspaceRegistryReady = workspaceRegistryReady,
                 sessionsInitialLoad = sessionsInitialLoad,
                 sessionsLoadError = sessionsLoadError,
-                hostName = host.name,
+                hostName = hostLabel,
                 online = hostReachable,
                 viaCloud = host.hasRelay,
                 latencyMs = hostLatencyMs,
@@ -2135,7 +2136,7 @@ fun WorkspaceScreen(
                     workspaceRegistryReady = workspaceRegistryReady,
                     sessionsInitialLoad = sessionsInitialLoad,
                     sessionsLoadError = sessionsLoadError,
-                    hostName = host.name,
+                    hostName = hostLabel,
                     online = hostReachable,
                     viaCloud = host.hasRelay,
                     latencyMs = hostLatencyMs,
@@ -2265,7 +2266,7 @@ fun WorkspaceScreen(
                 // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
                 title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
                 // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」
-                subtitle = chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), host.name, currentSession?.activity, elapsedSec),
+                subtitle = chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec),
                 showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
@@ -2284,7 +2285,7 @@ fun WorkspaceScreen(
 
             // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
             DeviceUnreachableBanner(
-                hostName = host.name,
+                hostName = hostLabel,
                 visible = !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty(),
                 onRetry = { refreshSessions(reportFailure = true) },
                 onOpenDevice = { onOpenDevice(null) },
@@ -2599,7 +2600,7 @@ fun WorkspaceScreen(
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
                     ComposerContextStrip(
-                        hostName = host.name,
+                        hostName = hostLabel,
                         online = streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED,
                         workspaceName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
                         changes = pinnedChanges,

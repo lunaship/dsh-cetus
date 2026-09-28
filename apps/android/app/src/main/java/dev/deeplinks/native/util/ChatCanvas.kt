@@ -68,3 +68,15 @@ fun permissionPresetLabel(preset: String, strings: dev.deeplinks.core.DshStrings
     "danger-full-access" -> strings.permFullAccess
     else -> strings.permWorkspaceWrite
 }
+
+/**
+ * 电脑显示名：本机别名 > host.name > 地址（2026-09-28 重设计 · 方案 3/7）。
+ *
+ * 「电脑名用用户起的名字」——没起过名才退回配对时的名字，连名字都没有就写地址，
+ * 不留空字符串（顶栏空白比写地址更难懂）。
+ */
+fun hostDisplayLabel(alias: String?, hostName: String?, address: String?): String =
+    listOfNotNull(alias, hostName, address)
+        .map { it.trim() }
+        .firstOrNull { it.isNotEmpty() }
+        .orEmpty()
