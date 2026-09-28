@@ -538,6 +538,7 @@ val DshStringsZh = DshStrings(
         put("defaultModelSetting", "默认模型")
         put("defaultModelSettingDesc", "新会话未手动选择时使用的模型。")
         put("addModel", "添加模型")
+        put("modelsAndBalance", "模型与余额")
         put("sectionBalance", "账户余额")
         put("balanceUnavailable", "未连接电脑，无法读取余额")
         put("refreshBalance", "刷新")

@@ -539,6 +539,7 @@ val DshStringsEn = DshStrings(
         put("defaultModelSetting", "Default model")
         put("defaultModelSettingDesc", "Used by new sessions when no model is picked.")
         put("addModel", "Add model")
+        put("modelsAndBalance", "Models & balance")
         put("sectionBalance", "Account balance")
         put("balanceUnavailable", "Connect to a computer to view the balance")
         put("refreshBalance", "Refresh")

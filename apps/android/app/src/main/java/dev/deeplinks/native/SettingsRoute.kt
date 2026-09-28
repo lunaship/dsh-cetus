@@ -405,6 +405,12 @@ internal fun SettingsHome(
                 onClick = onOpenDevices,
             )
         }
+        // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
+        DshListRow(
+            title = s.modelsAndBalance,
+            icon = SparkleOutline16,
+            onClick = { onOpen(SettingsDest.MODELS) },
+        )
     }
     DshListSection(header = s.sectionGeneral) {
         DshListRow(
@@ -424,19 +430,6 @@ internal fun SettingsHome(
             icon = MessageOutline16,
             value = presetDisplayName(appSettings.agentPreset, null, s),
             onClick = { onOpen(SettingsDest.CONVERSATION) },
-        )
-    }
-    DshListSection(header = s.sectionWorkspace) {
-        DshListRow(
-            title = s.tabModels,
-            icon = SparkleOutline16,
-            value = appSettings.defaultModel ?: s.noneSelected,
-            onClick = { onOpen(SettingsDest.MODELS) },
-        )
-        DshListRow(
-            title = s.tabSessions,
-            icon = ArchiveBoxOutline16,
-            onClick = { onOpen(SettingsDest.SESSIONS) },
         )
     }
     DshListSection(header = s.sectionMore) {

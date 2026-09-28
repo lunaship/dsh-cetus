@@ -608,6 +608,7 @@ class DshStrings(private val values: Map<String, String>) {
     val defaultModelSettingDesc: String get() = t("defaultModelSettingDesc")
     val refreshBalance: String get() = t("refreshBalance")
     val balanceUnavailable: String get() = t("balanceUnavailable")
+    val modelsAndBalance: String get() = t("modelsAndBalance")
     val sectionBalance: String get() = t("sectionBalance")
     val querying: String get() = t("querying")
     val statusDot: String get() = t("statusDot")
