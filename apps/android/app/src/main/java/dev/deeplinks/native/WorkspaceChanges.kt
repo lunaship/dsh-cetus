@@ -212,6 +212,39 @@ const val CONTEXT_FOLD_KEEP = 3
  *
  * hunk 头是天然的分隔符：不在 hunk 之间跨行合并，否则会把两段互不相邻的改动连起来。
  */
+/** 折行时续行的缩进宽度（字符）：稿 04 要求 2ch 悬挂缩进。 */
+const val HANGING_INDENT_CHARS = 2
+
+/**
+ * 把一行差异文本按可用宽度切成「首行 + 续行」，续行前面补 [indentChars] 个空格（方案 6.3）。
+ *
+ * 为什么要在数据层切、而不是靠 Text 自动折行：Compose 的 `Text` 没有 `text-indent`，
+ * 自动折行的续行会顶到最左边，与 hunk 的层级混在一起。切好之后再逐行渲染就能做出悬挂缩进。
+ *
+ * 等宽字体下按字符数切是精确的（差异区固定等宽）；制表符已在上游展开成 4 空格。
+ * [maxChars] <= [indentChars] 时不做缩进（避免无限收缩），直接按 [maxChars] 硬切。
+ */
+fun splitHangingIndent(
+    text: String,
+    maxChars: Int,
+    indentChars: Int = HANGING_INDENT_CHARS,
+): List<String> {
+    if (maxChars <= 0) return listOf(text)
+    if (text.length <= maxChars) return listOf(text)
+    val indent = if (maxChars > indentChars) indentChars else 0
+    val pad = " ".repeat(indent)
+    val out = mutableListOf<String>()
+    var start = 0
+    while (start < text.length) {
+        // 首行用满整宽；续行要先放缩进，所以可写宽度少 [indent] 个字符
+        val take = if (out.isEmpty()) maxChars else (maxChars - indent).coerceAtLeast(1)
+        val end = (start + take).coerceAtMost(text.length)
+        out += (if (out.isEmpty()) "" else pad) + text.substring(start, end)
+        start = end
+    }
+    return out
+}
+
 fun foldContextRows(rows: List<DiffRow>, expandedFolds: Set<Int> = emptySet()): List<DiffRow> {
     val out = mutableListOf<DiffRow>()
     var i = 0

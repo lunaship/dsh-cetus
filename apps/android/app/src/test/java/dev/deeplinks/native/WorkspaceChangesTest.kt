@@ -214,4 +214,34 @@ class WorkspaceChangesTest {
         val out = foldContextRows(rows)
         assertEquals(0, out.count { it.kind == DiffRow.Kind.FOLD })
     }
+
+    /** 悬挂缩进（方案 6.3）：放得下就一行，放不下才切，续行带 2 字符缩进。 */
+    @Test
+    fun `splitHangingIndent 放得下不切`() {
+        assertEquals(listOf("abc"), splitHangingIndent("abc", maxChars = 10))
+    }
+
+    @Test
+    fun `splitHangingIndent 续行带两字符缩进`() {
+        val out = splitHangingIndent("0123456789", maxChars = 6, indentChars = 2)
+        assertEquals(listOf("012345", "  6789"), out)
+        // 续行都以缩进开头，首行不带
+        assertTrue(out.first().startsWith("0"))
+        assertTrue(out.drop(1).all { it.startsWith("  ") })
+    }
+
+    /** 每个显示行的宽度都不超过 maxChars——超了就会又被 Text 折一次，悬挂缩进就白做了。 */
+    @Test
+    fun `splitHangingIndent 每行都不超宽`() {
+        val out = splitHangingIndent("x".repeat(50), maxChars = 8, indentChars = 2)
+        assertTrue(out.all { it.length <= 8 })
+        assertEquals(50, out.sumOf { it.trimStart().length })
+    }
+
+    /** maxChars 小到放不下缩进时退化为硬切，不产生空行也不死循环。 */
+    @Test
+    fun `splitHangingIndent 极窄宽度不退化`() {
+        assertEquals(listOf("ab"), splitHangingIndent("ab", maxChars = 2, indentChars = 2))
+        assertEquals(listOf("abcd"), splitHangingIndent("abcd", maxChars = 0))
+    }
 }
