@@ -1885,7 +1885,8 @@ fun WorkspaceScreen(
                 runCatching { PairClient.health(host) }.getOrNull()
             }
             hostLatencyMs = ms
-            hostReachable = ms != null
+            hostReachable = ms != null // 同时写进单一来源：设置页读同一份，不为它另起探针
+            dev.deeplinks.native.util.HostConnectivity.update(ms != null, host.hasRelay, ms)
             if (ms != null) LastOnlineStore.record(context)
             delay(30_000)
         }

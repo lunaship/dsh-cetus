@@ -113,6 +113,8 @@ internal fun SettingsRoute(
     host: Host?,
     onBack: () -> Unit,
     onOpenDevices: () -> Unit,
+    /** 连通性快照（与首页同一个探针的单一来源，见 util.HostConnectivity）。 */
+    connectivity: dev.deeplinks.native.util.HostConnectivitySnapshot? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
@@ -249,6 +251,7 @@ internal fun SettingsRoute(
                         onOpen = { navController.navigate(it.name) },
                         host = host,
                         onOpenDevices = onOpenDevices,
+                        connectivity = connectivity,
                         savingNs = savingNs,
                         saveErrors = saveErrors,
                         onSave = { ns, patch, onSuccess -> saveNamespace(ns, patch, onSuccess) },
@@ -382,10 +385,8 @@ internal fun SettingsHome(
     onOpen: (SettingsDest) -> Unit,
     host: Host? = null,
     onOpenDevices: () -> Unit = {},
-    /** 连通性（与首页同一个探针，由上层注入）；null = 还没探过，不写状态。 */
-    online: Boolean? = null,
-    viaCloud: Boolean = false,
-    latencyMs: Long? = null,
+    /** 连通性快照（由上层注入）；null = 还没探过，不写状态。 */
+    connectivity: dev.deeplinks.native.util.HostConnectivitySnapshot? = null,
     /** 「执行中发消息」写回服务端设置用的通路（与二级页同一套 savingNs/saveErrors 表现）。 */
     savingNs: String? = null,
     saveErrors: Map<String, String> = emptyMap(),
@@ -414,9 +415,9 @@ internal fun SettingsHome(
                 subtitle = address,
                 subtitleMono = true,
                 value = dev.deeplinks.native.util.hostStatusText(
-                    online = online,
-                    viaCloud = viaCloud,
-                    latencyMs = latencyMs,
+                    online = connectivity?.online,
+                    viaCloud = connectivity?.viaCloud == true,
+                    latencyMs = connectivity?.latencyMs,
                     onlineText = s.statusOnline,
                     offlineText = s.statusOffline,
                     viaCloudText = s.viaCloudShort,

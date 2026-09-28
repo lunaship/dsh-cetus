@@ -916,9 +916,7 @@ internal fun SettingsHomePairedLightZh() {
             appSettings = AppSettings(),
             onOpen = {},
             host = PreviewHost,
-            online = true,
-            viaCloud = true,
-            latencyMs = 31,
+            connectivity = dev.deeplinks.native.util.HostConnectivitySnapshot(online = true, viaCloud = true, latencyMs = 31),
         )
     }
 }
