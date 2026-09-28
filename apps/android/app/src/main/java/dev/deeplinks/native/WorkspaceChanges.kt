@@ -213,6 +213,7 @@ const val CONTEXT_FOLD_KEEP = 3
  * hunk 头是天然的分隔符：不在 hunk 之间跨行合并，否则会把两段互不相邻的改动连起来。
  */
 /** 折行时续行的缩进宽度（字符）：稿 04 要求 2ch 悬挂缩进。 */
+
 const val HANGING_INDENT_CHARS = 2
 
 /**
