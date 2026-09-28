@@ -256,6 +256,23 @@ private fun ProcessRows(dark: Boolean, english: Boolean) {
                 ),
                 sweepingId = "p3",
             )
+            // 有改动的组：折叠行写「已完成工作 · 已编辑 N 个文件」（稿 03 的口吻），
+            // 而不是工具名与次数——两行并排才看得出这条分支真的生效了
+            ToolGroupHeader(
+                group = MessageGroup.ToolGroup(
+                    listOf(
+                        MobileMessage(
+                            id = "p4", role = "tool_call", text = "", toolName = "edit",
+                            toolArgs = """{"file_path":"/a/HomeHub.kt","old_str":"x","new_str":"y"}""",
+                        ),
+                        MobileMessage(
+                            id = "p5", role = "tool_call", text = "", toolName = "write",
+                            toolArgs = """{"file_path":"/a/DshTheme.kt","content":"...","file_path2":""}""",
+                        ),
+                    ),
+                ),
+                sweepingId = null,
+            )
         }
     }
 }

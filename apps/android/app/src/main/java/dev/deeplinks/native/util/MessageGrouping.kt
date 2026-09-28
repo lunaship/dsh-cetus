@@ -106,6 +106,11 @@ fun toolGroupRowLabel(
     donePrefix: String = "已完成工作",
     runningPrefix: String = "正在运行",
 ): String {
+    // 稿 03 的过程折叠行写的是「完成了什么」而不是「调了几次工具」：能数出改动文件就写文件数。
+    if (!running) {
+        val edited = editedFileCount(items)
+        if (edited != null) return "$donePrefix · ${dev.deeplinks.native.ChangesL.editedFiles.format(edited)}"
+    }
     if (running) {
         // 只给命令本身：组头右侧本来就有「执行中」的动效标签，再写一遍「正在运行」会重复。
         // 拿不到命令（旧插件）时返回空串，那一行只显示「执行中」。
@@ -133,3 +138,34 @@ fun userTurnJumps(messages: List<MobileMessage>, maxPreviewChars: Int = 72): Lis
         )
     }
 }
+
+/**
+ * 会改文件的工具名与它们的路径参数——与插件 `src/produced-files.js` 的 `mutationPath` 对齐。
+ * 只在「确实是写操作」时返回路径：`edit` 要求带了 old_str，避免把空参数当成改动。
+ */
+fun mutationPath(toolName: String?, toolArgs: String?): String? {
+    if (toolName == null || toolArgs.isNullOrBlank()) return null
+    val args = runCatching { org.json.JSONObject(toolArgs) }.getOrNull() ?: return null
+    val path = listOf("file_path", "path", "notebook_path")
+        .firstNotNullOfOrNull { key -> args.optString(key).takeIf { it.isNotBlank() } }
+        ?: return null
+    return when (toolName) {
+        "write" -> path.takeIf { args.has("content") }
+        "edit" -> path.takeIf { args.optString("old_str").isNotEmpty() }
+        "str_replace_editor" -> path.takeIf {
+            args.optString("command") in listOf("create", "str_replace", "insert") ||
+                args.has("file_text") || args.has("old_str") || args.has("insert_line")
+        }
+        else -> null
+    }
+}
+
+/**
+ * 一组工具调用里被**改动**的文件数（去重）；一个都没有时返回 null，
+ * 让 [toolGroupRowLabel] 退回到「工具名 + 次数」——不为了让文案好看而编一个 0。
+ */
+fun editedFileCount(items: List<MobileMessage>): Int? = items
+    .mapNotNull { mutationPath(it.toolName, it.toolArgs) }
+    .distinct()
+    .takeIf { it.isNotEmpty() }
+    ?.size

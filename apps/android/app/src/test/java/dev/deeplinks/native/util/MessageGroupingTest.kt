@@ -172,4 +172,23 @@ class MessageGroupingTest {
         // 拿不到命令（旧插件）时留空，由组头右侧的「执行中」标签说明，不编一个命令出来
         assertEquals("", toolGroupRowLabel(msgs, running = true, runningCommand = "  "))
     }
+
+    /** 过程折叠行：能数出改动文件时写「编辑了 N 个文件」（稿 03），数不出才退回工具名。 */
+    @Test
+    fun `toolGroupRowLabel 优先写改动文件数`() {
+        val edits = listOf(
+            MobileMessage(id = "1", role = "tool_call", text = "", toolName = "edit",
+                toolArgs = """{"file_path":"/a/HomeHub.kt","old_str":"x","new_str":"y"}"""),
+            MobileMessage(id = "2", role = "tool_call", text = "", toolName = "edit",
+                toolArgs = """{"file_path":"/a/HomeHub.kt","old_str":"x","new_str":"y"}"""),
+            MobileMessage(id = "3", role = "tool_call", text = "", toolName = "write",
+                toolArgs = """{"file_path":"/a/Theme.kt","content":"..."}"""),
+            // 只读的工具不算改动
+            MobileMessage(id = "4", role = "tool_call", text = "", toolName = "Read"),
+        )
+        assertEquals("已完成工作 · 已编辑 2 个文件", toolGroupRowLabel(edits, running = false))
+        // 参数不全（缺 old_str）不算改动，退回工具名摘要
+        val halfArgs = listOf(MobileMessage(id = "5", role = "tool_call", text = "", toolName = "edit", toolArgs = """{"file_path":"/a/x.kt"}"""))
+        assertEquals("已完成工作 · edit", toolGroupRowLabel(halfArgs, running = false))
+    }
 }
