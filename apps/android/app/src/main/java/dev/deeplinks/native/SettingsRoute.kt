@@ -249,6 +249,9 @@ internal fun SettingsRoute(
                         onOpen = { navController.navigate(it.name) },
                         host = host,
                         onOpenDevices = onOpenDevices,
+                        savingNs = savingNs,
+                        saveErrors = saveErrors,
+                        onSave = { ns, patch, onSuccess -> saveNamespace(ns, patch, onSuccess) },
                     )
                 }
             }
@@ -379,6 +382,10 @@ internal fun SettingsHome(
     onOpen: (SettingsDest) -> Unit,
     host: Host? = null,
     onOpenDevices: () -> Unit = {},
+    /** 「执行中发消息」写回服务端设置用的通路（与二级页同一套 savingNs/saveErrors 表现）。 */
+    savingNs: String? = null,
+    saveErrors: Map<String, String> = emptyMap(),
+    onSave: (String, org.json.JSONObject, () -> Unit) -> Unit = { _, _, _ -> },
 ) {
     val s = DshS
     // 通知开关存本机（方案 7.3）：与 LastOnlineStore 同一层，阶段 8 的 DshNotifier 从这里读
@@ -437,6 +444,25 @@ internal fun SettingsHome(
             icon = PaletteOutline16,
             value = themeLabel,
             onClick = { onOpen(SettingsDest.APPEARANCE) },
+        )
+    }
+    // 方案 7：执行中发送行为（原「对话」页）挪到「通用设置」，取值仍写 ui-conversation 命名空间
+    val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
+    DshListSection(footer = s.busyEnterDesc) {
+        DshSelectRow(
+            title = s.busyEnter,
+            icon = SendOutline16,
+            value = when (busyEnterId) {
+                "send" -> s.busySend
+                "steer" -> s.busySteer
+                else -> s.busyQueue
+            },
+            options = listOf(s.busySend to "send", s.busySteer to "steer", s.busyQueue to "queue"),
+            selectedId = busyEnterId,
+            saving = savingNs == "ui-conversation",
+            error = saveErrors["ui-conversation"],
+            onRetry = { onSave("ui-conversation", org.json.JSONObject().put("busyEnter", busyEnterId), {}) },
+            onSelect = { _, id -> onSave("ui-conversation", org.json.JSONObject().put("busyEnter", id), {}) },
         )
     }
     DshListSection(header = s.sectionNotifications, footer = s.notifyExplain) {
@@ -630,30 +656,6 @@ internal fun ConversationSettings(
                 } else {
                     onSave("permission", org.json.JSONObject().put("defaultPreset", id), {})
                 }
-            },
-        )
-    }
-    val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
-    DshListSection(footer = s.busyEnterDesc) {
-        DshSelectRow(
-            title = s.busyEnter,
-            icon = SendOutline16,
-            value = when (busyEnterId) {
-                "send" -> s.busySend
-                "steer" -> s.busySteer
-                else -> s.busyQueue
-            },
-            options = listOf(
-                s.busySend to "send",
-                s.busySteer to "steer",
-                s.busyQueue to "queue",
-            ),
-            selectedId = busyEnterId,
-            saving = savingNs == "ui-conversation",
-            error = saveErrors["ui-conversation"],
-            onRetry = { onSave("ui-conversation", org.json.JSONObject().put("busyEnter", busyEnterId), {}) },
-            onSelect = { _, id ->
-                onSave("ui-conversation", org.json.JSONObject().put("busyEnter", id), {})
             },
         )
     }
