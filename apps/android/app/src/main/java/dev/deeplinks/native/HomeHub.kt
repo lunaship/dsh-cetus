@@ -37,7 +37,7 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshFilterChip
 import dev.deeplinks.native.ui.DshIconAction
-import dev.deeplinks.native.ui.DshSectionHeader
+import dev.deeplinks.native.ui.DshSectionLabel
 import dev.deeplinks.native.util.HomeSection
 
 /*
@@ -186,19 +186,16 @@ internal fun HomeSectionHeader(section: HomeSection) {
     val title = when (section) {
         HomeSection.AWAITING -> s.homeAwaiting
         HomeSection.RUNNING -> s.homeRunning
-        HomeSection.TODAY -> s.homeToday
-        HomeSection.YESTERDAY -> s.homeYesterday
-        HomeSection.EARLIER -> s.homeEarlier
+        HomeSection.RECENT -> s.homeRecent
     }
-    DshSectionHeader(
-        title = title,
+    DshSectionLabel(
+        text = title,
         modifier = Modifier.padding(
             start = DrawerTextStart,
             end = DrawerTextStart,
-            top = 14.dp,
+            top = DshSpace.s16,
             bottom = DshSpace.s4,
         ),
-        contentStart = 0.dp,
     )
 }
 

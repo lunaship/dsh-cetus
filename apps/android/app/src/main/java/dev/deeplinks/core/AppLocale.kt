@@ -505,13 +505,46 @@ class DshStrings(private val values: Map<String, String>) {
     val palettePermission: String get() = t("palettePermission")
     val homeAwaiting: String get() = t("homeAwaiting")
     val homeRunning: String get() = t("homeRunning")
-    val homeToday: String get() = t("homeToday")
-    val homeYesterday: String get() = t("homeYesterday")
-    val homeEarlier: String get() = t("homeEarlier")
+    val homeRecent: String get() = t("homeRecent")
+    val timeYesterday: String get() = t("timeYesterday")
     val homeAllWorkspaces: String get() = t("homeAllWorkspaces")
     val homeNewTask: String get() = t("homeNewTask")
     val homeEmptyTitle: String get() = t("homeEmptyTitle")
     val homeEmptyHint: String get() = t("homeEmptyHint")
+    /** 「N 件等你处理」；`%d` 是等待条数。 */
+    val homeSummaryAwaiting: String get() = t("homeSummaryAwaiting")
+    /** 「· M 个在跑」；`%d` 是运行中条数。 */
+    val homeSummaryRunning: String get() = t("homeSummaryRunning")
+    val homeArchivedSessions: String get() = t("homeArchivedSessions")
+
+    // 首页状态胶囊（2026-09-28 重设计「等你处理」分组）
+    val homeChipWaitingApproval: String get() = t("homeChipWaitingApproval")
+    val homeChipWaitingAnswer: String get() = t("homeChipWaitingAnswer")
+    val homeChipOnDesktop: String get() = t("homeChipOnDesktop")
+    val homeChipDone: String get() = t("homeChipDone")
+
+    /** 「问：%s」；`%s` 是问题正文。 */
+    val homeAskedPrefix: String get() = t("homeAskedPrefix")
+    val homeApprovalOnDesktop: String get() = t("homeApprovalOnDesktop")
+    val homeLastSeenPrefix: String get() = t("homeLastSeenPrefix")
+    val homeDoneFallback: String get() = t("homeDoneFallback")
+    /** 「改了 %d 个文件」；`%d` 是文件数。 */
+    val homeFilesChanged: String get() = t("homeFilesChanged")
+
+    // 离线态（稿 08）
+    /** 「连不上 %s」；`%s` 是电脑名。 */
+    val homeOfflineUnreachable: String get() = t("homeOfflineUnreachable")
+    /** 「下面是 %s前的状态…」；`%s` 是「10 分钟」这类相对时间。 */
+    val homeOfflineHint: String get() = t("homeOfflineHint")
+    val homeOfflineApproveBlocked: String get() = t("homeOfflineApproveBlocked")
+    /** 「离线 · %s前在线」；`%s` 是相对时间。 */
+    val homeOfflineHeader: String get() = t("homeOfflineHeader")
+
+    // 空态（稿 09）
+    val homeStartFrom: String get() = t("homeStartFrom")
+    val homeStarterOrganize: String get() = t("homeStarterOrganize")
+    val homeStarterTest: String get() = t("homeStarterTest")
+    val homeStarterDiff: String get() = t("homeStarterDiff")
     val awaitingInputStatus: String get() = t("awaitingInputStatus")
     val palettePlan: String get() = t("palettePlan")
     val paletteGoal: String get() = t("paletteGoal")

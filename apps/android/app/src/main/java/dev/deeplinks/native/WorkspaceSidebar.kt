@@ -161,7 +161,7 @@ internal fun WorkspaceSidebar(
             } else {
                 visibleCandidates.filter { workspaceGroupKey(it.sessionId, workspaceAccounts, deletedWorkspaces) == activeWorkspace }
             }
-            homeSections(scoped, System.currentTimeMillis())
+            homeSections(scoped)
         }
 
         val sessionKind = sessionListKind(
