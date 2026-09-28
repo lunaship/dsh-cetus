@@ -184,6 +184,14 @@ internal fun ChatTurnLightLarge() {
 }
 
 @PreviewTest
+@Preview(name = "chat streaming light zh", showBackground = true, widthDp = 412, heightDp = 520)
+@Composable
+internal fun ChatStreamingLightZh() {
+    // 方案阶段 10：执行中也要有浅色一张——原先只有深色，"执行中"这一态的浅色配色没有基线。
+    ChatFrame(dark = false) { Messages(streamingTurn, running = true) }
+}
+
+@PreviewTest
 @Preview(name = "chat streaming dark", showBackground = true, widthDp = 412, heightDp = 520)
 @Composable
 internal fun ChatStreamingDark() {
