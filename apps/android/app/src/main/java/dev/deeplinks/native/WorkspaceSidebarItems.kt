@@ -113,6 +113,8 @@ internal fun SessionRowItem(
     indent: Dp = 0.dp,
     goalSummary: String? = null,
     containerColor: Color = Color.Unspecified,
+    /** 电脑离线：进行中行改成「静止时钟 + 最后看到：…」（稿 08），不再假装还在实时跑。 */
+    offline: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val itemInteraction = remember { MutableInteractionSource() }
@@ -229,7 +231,7 @@ internal fun SessionRowItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // 行首 32dp 状态圈（稿 01/07）：最近 = 绿底带勾文档 / 灰底方块，进行中 = 墨色转圈
-                SessionLeadingIcon(session = session)
+                SessionLeadingIcon(session = session, offline = offline)
                 Spacer(Modifier.width(DshSpace.s12))
                 Column(
                     modifier = Modifier.weight(1f),
@@ -264,7 +266,7 @@ internal fun SessionRowItem(
                             )
                         }
                     }
-                    val meta = homeRowSubtitle(session = session, goalSummary = goalSummary)
+                    val meta = homeRowSubtitle(session = session, goalSummary = goalSummary, offline = offline)
                     if (meta.isNotBlank()) {
                         Spacer(Modifier.height(DshSpace.s2))
                         Text(
@@ -314,8 +316,14 @@ internal fun SessionRowItem(
  * - 已结束：有 lastResult = 完成（绿底带勾文档），否则按「已停止」（灰底方块）。
  */
 @Composable
-private fun SessionLeadingIcon(session: MobileSession) {
+private fun SessionLeadingIcon(session: MobileSession, offline: Boolean) {
     when {
+        // 离线时进行中行不再转圈：换成静止时钟（稿 08 明确「行首换成静止时钟」）
+        offline && session.running -> DshStatusIcon(
+            icon = ClockOutline16,
+            container = Dsh.bgSubtle,
+            content = Dsh.labelSecondary,
+        )
         session.awaitingInput -> DshStatusIcon(
             icon = LaptopOutline16,
             container = Dsh.bgSubtle,
@@ -367,13 +375,13 @@ private fun HomeRunningSpinner() {
  * - 等你处理：说明这条审批在电脑端网页上处理；
  * - 最近：lastResult 的一句话，没有就写「已完成」。
  */
-private fun homeRowSubtitle(session: MobileSession, goalSummary: String?): String {
+private fun homeRowSubtitle(session: MobileSession, goalSummary: String?, offline: Boolean = false): String {
     val s = L
     return when {
         session.awaitingInput -> s.homeApprovalOnDesktop
         session.running -> {
             val activity = session.activity
-            when {
+            val body = when {
                 activity?.isTool == true && !activity.label.isNullOrBlank() -> {
                     val step = activity.step?.let { " · ${L.homeStepLabel.format(it)}" } ?: ""
                     "${s.homeRunningInline.format(activity.label)}$step"
@@ -383,6 +391,8 @@ private fun homeRowSubtitle(session: MobileSession, goalSummary: String?): Strin
                 !goalSummary.isNullOrBlank() -> goalSummary
                 else -> s.runningStatus
             }
+            // 离线时这一行是缓存下来的最后状态，加前缀说清楚（稿 08）
+            if (offline) "${s.homeLastSeenPrefix}$body" else body
         }
         else -> {
             val result = session.lastResult

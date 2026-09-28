@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import dev.deeplinks.native.util.HomeSection
 import dev.deeplinks.native.HomeNewTaskFab
+import androidx.compose.ui.draw.alpha
+import dev.deeplinks.native.HomeEmptyStarters
+import dev.deeplinks.native.HomeOfflineCard
 import dev.deeplinks.native.HomeSummaryRow
 import dev.deeplinks.native.HomeSectionHeader
 import dev.deeplinks.native.HomeHeader
@@ -148,6 +151,8 @@ import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
+import dev.deeplinks.native.MobileSessionActivity
+import dev.deeplinks.native.MobileSessionResult
 import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
 import dev.deeplinks.native.SessionStatsDetailDialog
@@ -1043,7 +1048,14 @@ internal fun DevicesDarkEn() {
  */
 @Composable
 private fun SidebarWall() {
-    fun session(id: String, title: String, running: Boolean = false, awaiting: Boolean = false) = MobileSession(
+    fun session(
+        id: String,
+        title: String,
+        running: Boolean = false,
+        awaiting: Boolean = false,
+        activity: MobileSessionActivity? = null,
+        lastResult: MobileSessionResult? = null,
+    ) = MobileSession(
         sessionId = id,
         title = title,
         updatedAt = 0L,
@@ -1052,6 +1064,8 @@ private fun SidebarWall() {
         cwd = "/Users/me/dsh-links",
         agentPreset = null,
         awaitingInput = awaiting,
+        activity = activity,
+        lastResult = lastResult,
     )
     Column(
         modifier = Modifier
@@ -1086,14 +1100,123 @@ private fun SidebarWall() {
         SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RUNNING)
-        SessionRowItem(session("s2", "完善审批状态同步", running = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s2", "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RECENT)
-        SessionRowItem(session("s3", "修复手机模型切换"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s4", "整理工作区导航"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s6", "补齐移动端测试"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s3", "修复手机模型切换", lastResult = MobileSessionResult(text = "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s4", "整理工作区导航", lastResult = MobileSessionResult(text = "改了 6 个文件，门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s6", "补齐移动端测试", lastResult = MobileSessionResult(text = "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         Spacer(Modifier.height(24.dp))
         HomeNewTaskFab(onClick = {})
     }
+}
+
+/**
+ * 离线墙（稿 08）：顶栏空心灰点 + 「离线 · N 分钟前在线」、重连卡顶掉概况行、
+ * 列表 72% 不透明、进行中行换成静止时钟 + 「最后看到：」、新任务置灰。
+ */
+@Composable
+private fun HomeOfflineWall() {
+    val session = MobileSession(
+        sessionId = "s2",
+        title = "完善审批状态同步",
+        updatedAt = 0L,
+        running = true,
+        blank = false,
+        cwd = "/Users/me/dsh-links",
+        agentPreset = null,
+        activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        HomeHeader(
+            hostName = "Mac mini",
+            online = false,
+            viaCloud = true,
+            latencyMs = null,
+            offlineSinceLabel = "10 分钟前",
+            searchActive = false,
+            onOpenDevice = {},
+            onToggleSearch = {},
+            onOpenSettings = {},
+        )
+        HomeOfflineCard(hostName = "Mac mini", sinceLabel = "10 分钟前", onRetry = {}, onOpenConnectionMode = {})
+        HomeSectionHeader(HomeSection.RUNNING)
+        Box(Modifier.alpha(0.72f)) {
+            SessionRowItem(
+                session = session,
+                isSelected = false,
+                onClick = {},
+                onRename = {},
+                onFork = {},
+                containerColor = Dsh.bgBase,
+                offline = true,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(Modifier.alpha(0.72f)) { HomeNewTaskFab(onClick = {}, enabled = false) }
+    }
+}
+
+/** 空态墙（稿 09）：没有要你处理的事 + 三行起手式 + 悬浮新任务。 */
+@Composable
+private fun HomeEmptyWall() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        HomeHeader(
+            hostName = "Mac mini",
+            online = true,
+            viaCloud = true,
+            latencyMs = 31L,
+            offlineSinceLabel = null,
+            searchActive = false,
+            onOpenDevice = {},
+            onToggleSearch = {},
+            onOpenSettings = {},
+        )
+        // 空态不画概况行（稿 09 没有「0 件等你处理」）
+        Spacer(Modifier.height(12.dp))
+        HomeEmptyStarters(onPick = {})
+        Spacer(Modifier.height(12.dp))
+        HomeNewTaskFab(onClick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "home offline light zh", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeOfflineLightZh() {
+    Wall(dark = false, english = false) { HomeOfflineWall() }
+}
+
+@PreviewTest
+@Preview(name = "home offline dark en", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeOfflineDarkEn() {
+    Wall(dark = true, english = true) { HomeOfflineWall() }
+}
+
+@PreviewTest
+@Preview(name = "home empty light zh", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeEmptyLightZh() {
+    Wall(dark = false, english = false) { HomeEmptyWall() }
+}
+
+@PreviewTest
+@Preview(name = "home empty dark en", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeEmptyDarkEn() {
+    Wall(dark = true, english = true) { HomeEmptyWall() }
 }
 
 @PreviewTest

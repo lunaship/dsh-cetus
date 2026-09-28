@@ -163,8 +163,9 @@ internal fun WorkspaceSidebar(
                 visibleCandidates.filter { workspaceGroupKey(it.sessionId, workspaceAccounts, deletedWorkspaces) == activeWorkspace }
             }
         }
-        // 概况行：等你处理 / 在跑 的条数（筛选后）；离线时整行换成重连卡
-        if (online) {
+        // 概况行：等你处理 / 在跑 的条数（筛选后）；离线时整行换成重连卡。
+        // 一条会话都没有（空态，稿 09）时不画概况行——空态自己就是一句话结论。
+        if (online && scoped.isNotEmpty()) {
             HomeSummaryRow(
                 awaitingCount = scoped.count { it.awaitingInput },
                 runningCount = scoped.count { it.running && !it.awaitingInput },
@@ -276,6 +277,7 @@ internal fun WorkspaceSidebar(
                                     onFork = { actions.onForkSession(s.sessionId) },
                                     goalSummary = goalSummaries[s.sessionId],
                                     containerColor = containerColor,
+                                    offline = !online,
                                 )
                             }
                         }
