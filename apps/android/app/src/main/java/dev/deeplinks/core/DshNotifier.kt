@@ -16,27 +16,31 @@ import dev.deeplinks.R
 import dev.deeplinks.native.WorkspaceActivity
 
 /**
- * DSH 会话事件系统通知（对标 dsh-mobile 的 DshNotify 桥）：
- * - 审批请求：会话在后台时需要用户处理
- * - 任务完成 / 已停止：会话结束提示
- * 点击通知回到对应主机的工作台并直接打开该会话。
- * 仅当 App 不在前台时发（前台有审批卡/运行状态，无需打扰）。
+ * DSH 会话事件系统通知：审批请求（会话在后台等你处理）与任务完成 / 已停止。
+ * 点击回到对应主机的工作台并直接打开该会话；仅当 App 不在前台时发（前台已有审批卡与运行状态）。
  */
 object DshNotifier {
-    private const val CHANNEL_ID = "dsh_events"
+    // 方案 8：两个频道（审批要「现在处理」= 高优先级，完成是「有空看」= 默认）
+    private const val CHANNEL_ID_APPROVAL = "dsh_approvals"
+    private const val CHANNEL_ID_TASK = "dsh_tasks"
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        val channel = NotificationChannel(CHANNEL_ID, L.notifChannelName, NotificationManager.IMPORTANCE_DEFAULT).apply {
-            description = L.notifChannelDesc
-        }
-        manager.createNotificationChannel(channel)
+        manager.createNotificationChannel(
+            channelOf(CHANNEL_ID_APPROVAL, L.notifChannelApprovals, L.notifChannelApprovalsDesc, NotificationManager.IMPORTANCE_HIGH),
+        )
+        manager.createNotificationChannel(
+            channelOf(CHANNEL_ID_TASK, L.notifChannelTasks, L.notifChannelTasksDesc, NotificationManager.IMPORTANCE_DEFAULT),
+        )
     }
+
+    private fun channelOf(id: String, name: String, desc: String, importance: Int): NotificationChannel =
+        NotificationChannel(id, name, importance).apply { description = desc }
 
     /** 审批请求：需要审批「工具名」。 */
     fun notifyApproval(context: Context, host: Host, sessionId: String, toolName: String) {
-        val notification = base(context, host, sessionId)
+        val notification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
             .setContentTitle(L.notifNeedApproval)
             .setContentText(L.notifNeedApprovalBody.format(toolName))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -46,23 +50,21 @@ object DshNotifier {
     }
 
     /** 任务完成。 */
-    fun notifyTaskDone(context: Context, host: Host, sessionId: String, title: String) {
-        val notification = base(context, host, sessionId)
-            .setContentTitle(L.notifTaskDone)
-            .setContentText(L.notifTaskDoneBody.format(title))
-            .setAutoCancel(true)
-            .build()
-        postNotification(context, notificationId(host, sessionId, 2), notification)
-    }
+    fun notifyTaskDone(context: Context, host: Host, sessionId: String, title: String) =
+        post(context, host, sessionId, 2, L.notifTaskDone, L.notifTaskDoneBody.format(title))
 
     /** 会话停止（非正常结束，如 interrupted/error/maxTokens）。 */
-    fun notifyTaskFailed(context: Context, host: Host, sessionId: String, title: String, reason: String) {
+    fun notifyTaskFailed(context: Context, host: Host, sessionId: String, title: String, reason: String) =
+        post(context, host, sessionId, 3, L.notifTaskStopped, L.notifTaskStoppedBody.format(title, reason))
+
+    /** 任务类通知的公共走法：默认频道 + 自动取消（审批那条自己带动作与频道）。 */
+    private fun post(context: Context, host: Host, sessionId: String, kind: Int, title: String, text: String) {
         val notification = base(context, host, sessionId)
-            .setContentTitle(L.notifTaskStopped)
-            .setContentText(L.notifTaskStoppedBody.format(title, reason))
+            .setContentTitle(title)
+            .setContentText(text)
             .setAutoCancel(true)
             .build()
-        postNotification(context, notificationId(host, sessionId, 3), notification)
+        postNotification(context, notificationId(host, sessionId, kind), notification)
     }
 
     fun cancelApproval(context: Context, host: Host, sessionId: String) {
@@ -87,7 +89,12 @@ object DshNotifier {
         }
     }
 
-    private fun base(context: Context, host: Host, sessionId: String): NotificationCompat.Builder {
+    private fun base(
+        context: Context,
+        host: Host,
+        sessionId: String,
+        channelId: String = CHANNEL_ID_TASK,
+    ): NotificationCompat.Builder {
         val intent = Intent(context, WorkspaceActivity::class.java).apply {
             host.putInto(this)
             putExtra("sessionId", sessionId)
@@ -99,7 +106,7 @@ object DshNotifier {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_dsh)
             .setContentIntent(pending)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
