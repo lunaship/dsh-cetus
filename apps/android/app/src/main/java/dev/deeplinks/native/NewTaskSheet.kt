@@ -73,19 +73,69 @@ internal fun NewTaskSheet(
     onSend: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val s = DshS
     DshSheet(
         onDismiss = onDismiss,
-        title = s.homeNewTask,
+        title = DshS.homeNewTask,
         showClose = true,
         skipPartiallyExpanded = true,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                // 面板本身会随键盘上移（DshSheet 里已有 imePadding），内容超高时内部滚动
-                .verticalScroll(rememberScrollState()),
-        ) {
+        NewTaskSheetContent(
+            workspaces = workspaces,
+            selectedWorkspace = selectedWorkspace,
+            onSelectWorkspace = onSelectWorkspace,
+            onOpenWorkspacePicker = onOpenWorkspacePicker,
+            lastTask = lastTask,
+            onOpenLastTask = onOpenLastTask,
+            input = input,
+            onInputChange = onInputChange,
+            modelName = modelName,
+            modelEffort = modelEffort,
+            permissionPreset = permissionPreset,
+            permissionLabel = permissionLabel,
+            onOpenModelPicker = onOpenModelPicker,
+            onOpenModePicker = onOpenModePicker,
+            onAttach = onAttach,
+            sending = sending,
+            error = error,
+            onSend = onSend,
+        )
+    }
+}
+
+/**
+ * 面板内容（不含 ModalBottomSheet 外壳）：外壳只管浮层与把手，内容可单独渲染与复用。
+ *
+ * 注意：**这套截图测试覆盖不到它**——输入卡用的是 ComposerEditField（真实 EditText，
+ * 为了中文输入法稳定），AndroidView 在 Compose 预览截图宿主里无法渲染，AGP 会报
+ * ScreenshotRenderException。面板的视觉验收只能走真机截图（与稿 02 对照）。
+ */
+@Composable
+internal fun NewTaskSheetContent(
+    workspaces: List<String>,
+    selectedWorkspace: String?,
+    onSelectWorkspace: (String) -> Unit,
+    onOpenWorkspacePicker: () -> Unit,
+    lastTask: LastTaskSummary?,
+    onOpenLastTask: () -> Unit,
+    input: String,
+    onInputChange: (String) -> Unit,
+    modelName: String?,
+    modelEffort: String?,
+    permissionPreset: String,
+    permissionLabel: String,
+    onOpenModelPicker: () -> Unit,
+    onOpenModePicker: () -> Unit,
+    onAttach: () -> Unit,
+    sending: Boolean,
+    error: String?,
+    onSend: () -> Unit,
+) {
+    val s = DshS
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+    ) {
             if (lastTask != null) {
                 LastTaskCard(task = lastTask, onClick = onOpenLastTask)
                 Spacer(Modifier.size(DshSpace.s16))
@@ -143,7 +193,6 @@ internal fun NewTaskSheet(
             }
         }
     }
-}
 
 /** 「继续上次的任务」：tonal 底、不加描边（SurfaceHierarchyTest 禁容器描边），整卡可点。 */
 @Composable
@@ -254,3 +303,4 @@ private fun InputCard(
         }
     }
 }
+
