@@ -466,7 +466,24 @@ private fun FileHeader(
     ) {
         PanelIconButton(ChevronLeftOutline14, ChangesL.backToFiles, onBack)
         Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
-            Text(file.name, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    file.name,
+                    color = Dsh.labelPrimary,
+                    style = DshType.bodyStrong,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                // 稿 04 的文件条：‹ 文件名 1 / N ›——知道「第几个 / 共几个」才敢用左右滑
+                Spacer(Modifier.width(DshSpace.s6))
+                Text(
+                    "${index + 1} / $count",
+                    color = Dsh.labelTertiary,
+                    style = DshType.caption,
+                    maxLines = 1,
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (file.directory.isNotEmpty()) {
                     Text(
