@@ -111,7 +111,8 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 | 20–22 / 粗 | 首页概况「1 件等你处理」、空状态标题 | `headlineMedium`（20/26）；后半句同尺寸、Medium、`labelSecondary` |
 | 16–17 / 粗 | 电脑名、审批卡标题 | `titleLarge`（17/24，配 SemiBold） |
 | 15 / Medium | 列表行标题、按钮 | `title`（15/22 Medium） |
-| 15 / 常规 | 对话正文、输入文字 | `body`（15/22） |
+| 15 / 常规 | 输入文字、列表副标题 | `body`（15/22） |
+| 稿 15.5 / 26 | 对话页回答正文 | `bodyLarge`（**16/26**）：稿值 15.5 不在 M3 字阶表内，且 26/15.5 = 1.677 超过 `DshTypeScaleTest` 的行高比上限 1.65，因此就近取 16/26；`InlineMarkdownText` 的段落默认样式本来就是它，无需改动 |
 | 13–14 | 行副标题、说明 | `titleSmall`（13/18）/ `supporting`（14/20） |
 | 12 | 分组标签、时间、状态胶囊 | `captionRelaxed`（12/18）/ `captionMedium`（12/18 Medium） |
 | 16 / Medium | 悬浮主按钮、设置行标题 | `bodyLarge`（16/26，配 Medium） |
