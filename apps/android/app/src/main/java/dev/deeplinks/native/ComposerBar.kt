@@ -185,7 +185,7 @@ internal fun InputBar(
             }
             // 原生 EditText：保住中文输入法 composition / 语音转写的 InputConnection。
             // Compose BasicTextField 在 canSend 切换 imeAction 或双状态同步时易断连。
-            val composerHint = if (isListening) L.listening else L.chatPlaceholder
+            val composerHint = composerPlaceholder(isListening, running)
             ComposerEditField(
                 value = inputText,
                 onValueChange = onInputChange,

@@ -88,3 +88,14 @@ internal fun composerPermissionLabel(preset: String): String = when (preset) {
     "danger-full-access" -> L.permFullAccess
     else -> L.permWorkspaceWrite
 }
+
+/**
+ * 输入条占位文案：听写中 / 执行中 / 空闲。
+ * 执行中要写清楚这条消息的去向（方案 5.5：补充说明，这一步结束后发给它），
+ * 不能沿用空闲时的「给智能体发消息」，否则用户不知道是插话还是排队。
+ */
+internal fun composerPlaceholder(isListening: Boolean, running: Boolean): String = when {
+    isListening -> L.listening
+    running -> L.composerRunningQueue
+    else -> L.chatPlaceholder
+}

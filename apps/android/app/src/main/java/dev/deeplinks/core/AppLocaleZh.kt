@@ -472,6 +472,7 @@ val DshStringsZh = DshStrings(
         put("homeLastSeenPrefix", "最后看到：")
         put("homeDoneFallback", "已完成")
         put("homeFilesChanged", "改了 %d 个文件")
+        put("composerRunningQueue", "补充说明，这一步结束后发给它")
         put("chatExecuting", "正在执行")
         put("newTaskContinueLast", "继续上次的任务")
         put("newTaskWorkspace", "在哪个工作区")

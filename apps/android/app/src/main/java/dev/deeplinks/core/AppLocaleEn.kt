@@ -473,6 +473,7 @@ val DshStringsEn = DshStrings(
         put("homeLastSeenPrefix", "Last seen: ")
         put("homeDoneFallback", "Done")
         put("homeFilesChanged", "%d files changed")
+        put("composerRunningQueue", "Add a note — it goes out after this step")
         put("chatExecuting", "Executing")
         put("newTaskContinueLast", "Continue the last task")
         put("newTaskWorkspace", "Which workspace")
