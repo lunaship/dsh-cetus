@@ -666,8 +666,9 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
             Text(row.text, color = Dsh.labelTertiary, style = style, maxLines = 1, softWrap = false)
             return@Row
         }
+        // 稿 04：行号列只显示**新文件**的行号；删除行没有新行号，就留空（不是显示旧行号）
         Text(
-            (row.oldNo?.toString() ?: "").padStart(digits) + " " + (row.newNo?.toString() ?: "").padStart(digits),
+            (row.newNo?.toString() ?: "").padStart(digits),
             color = Dsh.labelTertiary,
             style = style,
             maxLines = 1,
