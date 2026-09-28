@@ -116,6 +116,7 @@ import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.SettingsPageCanvas
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.BranchOutline16
+import dev.deeplinks.native.StopFill16
 import dev.deeplinks.native.CloudOffOutline16
 import dev.deeplinks.native.DocumentCheckOutline16
 import dev.deeplinks.native.ListOutline16
@@ -246,13 +247,37 @@ private fun InboxWall() {
         DshStatusIcon(LockOutline16, container = Dsh.warnContainer, content = Dsh.warnLabel)
         DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
     }
-    SectionTitle("Group card — 白色分组卡 + 分隔线")
+    SectionTitle("Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
     DshGroupCard {
-        DshListRow(title = "完善审批状态同步", subtitle = "正在运行 go test ./... · 第 12 步", value = "3 分钟")
+        DshListRow(
+            title = "完善审批状态同步",
+            subtitle = "正在运行 go test ./... · 第 12 步",
+            value = "3 分钟",
+            iconSlot = 32.dp,
+        )
         DshCardDivider()
-        DshListRow(title = "2026-09-27_DSH-L", subtitle = "完成 · 改了 79 个文件，门禁全绿", value = "昨天")
+        DshListRow(
+            title = "2026-09-27_DSH-L",
+            subtitle = "完成 · 改了 79 个文件，门禁全绿",
+            value = "昨天",
+            leading = { DshStatusIcon(DocumentCheckOutline16) },
+            iconSlot = 32.dp,
+        )
         DshCardDivider()
-        DshListRow(title = "修复手机模型切换", subtitle = "已停止 · 你中断了这一轮", value = "周四")
+        DshListRow(
+            title = "修复手机模型切换",
+            subtitle = "已停止 · 你中断了这一轮",
+            value = "周四",
+            leading = {
+                DshStatusIcon(
+                    StopFill16,
+                    container = Dsh.bgSubtle,
+                    content = Dsh.labelSecondary,
+                    iconSize = 16.dp,
+                )
+            },
+            iconSlot = 32.dp,
+        )
     }
     SectionTitle("Section label + floating pill")
     DshSectionLabel("等你处理")
