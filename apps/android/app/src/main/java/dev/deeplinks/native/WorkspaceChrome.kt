@@ -648,7 +648,9 @@ internal fun ToolGroupHeader(
         Row(
             modifier = Modifier
                 .heightIn(min = 36.dp)
-                .clip(RoundedCornerShape(DshRadius.control))
+                // 稿 03：过程折叠行是一颗灰底胶囊（tonal 填充，不加描边）
+                .clip(RoundedCornerShape(DshRadius.full))
+                .background(Dsh.bgSubtle)
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .semantics {
                     role = Role.Button
