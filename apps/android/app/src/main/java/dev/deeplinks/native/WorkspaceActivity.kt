@@ -602,7 +602,7 @@ fun WorkspaceScreen(
     val shareOwnerKey = composerOwnerKey()
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
-        showPhoneChat()
+        showNewTaskSheet = true // 分享进来的内容落在新任务面板里预填（阶段 4），不再进对话页草稿态
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
