@@ -508,6 +508,18 @@ internal fun SettingsHome(
             onSave = { alias = it.trim(); notifyPrefs.hostAlias = it; renameOpen = false },
         )
     }
+    // 方案 7 第 5 条上半段：「解除配对」独立一块红字。
+    // 真实的吊销流程在 DevicesActivity（带确认弹窗与「离线时只能移除本机记录」分支），
+    // 这里只做入口、不重写逻辑——重写一遍吊销是最容易造成配对数据不一致的地方。
+    if (host != null) {
+        DshListSection {
+            DshListActionRow(
+                label = s.deleteDevice,
+                destructive = true,
+                onClick = onOpenDevices,
+            )
+        }
+    }
     // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，
     // 「关于」仍可点进 ABOUT（开源许可在里面，不能丢）
     DshListNote(
