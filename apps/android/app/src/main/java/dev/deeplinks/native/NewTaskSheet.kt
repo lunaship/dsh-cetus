@@ -51,6 +51,66 @@ internal data class LastTaskSummary(
     val workspaceLabel: String?,
 )
 
+/**
+ * 面板的展示状态与动作各打包成一件：调用点在 WorkspaceActivity 里，
+ * 那个文件有 CodeHygieneTest 的行数预算（只降不升），参数铺开会把预算顶掉。
+ */
+internal data class NewTaskSheetState(
+    val workspaces: List<String>,
+    val selectedWorkspace: String?,
+    /** 最近一条会话；标题与工作区名由宿主自己映射，免掉调用点的样板。 */
+    val lastSession: MobileSession?,
+    val input: String,
+    val modelName: String?,
+    val modelEffort: String?,
+    val permissionPreset: String,
+    val permissionLabel: String,
+    val sending: Boolean,
+    val error: String?,
+)
+
+internal class NewTaskSheetActions(
+    val onSelectWorkspace: (String) -> Unit,
+    val onOpenWorkspacePicker: () -> Unit,
+    val onOpenLastTask: (String) -> Unit,
+    val onInputChange: (String) -> Unit,
+    val onOpenModelPicker: () -> Unit,
+    val onOpenModePicker: () -> Unit,
+    val onAttach: () -> Unit,
+    val onSend: () -> Unit,
+    val onDismiss: () -> Unit,
+)
+
+@Composable
+internal fun NewTaskSheetHost(state: NewTaskSheetState, actions: NewTaskSheetActions) {
+    NewTaskSheet(
+        workspaces = state.workspaces,
+        selectedWorkspace = state.selectedWorkspace,
+        onSelectWorkspace = actions.onSelectWorkspace,
+        onOpenWorkspacePicker = actions.onOpenWorkspacePicker,
+        lastTask = state.lastSession?.let { last ->
+            LastTaskSummary(
+                title = displaySessionTitle(last.title),
+                workspaceLabel = last.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+            )
+        },
+        onOpenLastTask = { state.lastSession?.let { actions.onOpenLastTask(it.sessionId) } },
+        input = state.input,
+        onInputChange = actions.onInputChange,
+        modelName = state.modelName,
+        modelEffort = state.modelEffort,
+        permissionPreset = state.permissionPreset,
+        permissionLabel = state.permissionLabel,
+        onOpenModelPicker = actions.onOpenModelPicker,
+        onOpenModePicker = actions.onOpenModePicker,
+        onAttach = actions.onAttach,
+        sending = state.sending,
+        error = state.error,
+        onSend = actions.onSend,
+        onDismiss = actions.onDismiss,
+    )
+}
+
 @Composable
 internal fun NewTaskSheet(
     workspaces: List<String>,

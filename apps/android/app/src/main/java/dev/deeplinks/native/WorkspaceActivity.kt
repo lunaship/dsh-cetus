@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.activity.result.contract.ActivityResultContracts
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
@@ -21,7 +22,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
@@ -66,6 +66,7 @@ import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.selectShareTurns
 import dev.deeplinks.native.util.WorkspaceAccount
 import dev.deeplinks.native.util.relativeTime
+import dev.deeplinks.native.util.sessionMillis
 import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
@@ -334,6 +335,15 @@ fun WorkspaceScreen(
     var showSubagentSheet by remember { mutableStateOf(false) }
     /** 新会话阶段的默认模型（create 后 selectModel）。 */
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
+    // 新任务面板（方案阶段 4）：首页、空态起手式、侧栏与分享都从这里起新任务，
+    // 不再走对话页的草稿态（ComposerTopRow 起始块已删）。
+    var showNewTaskSheet by remember { mutableStateOf(false) }
+    var showNewTaskWorkspacePicker by remember { mutableStateOf(false) }
+    // 建会话成功后收起面板；失败时 currentSessionId 仍为空 → 面板保持打开并显示错误（方案 4.5）
+    LaunchedEffect(currentSessionId) {
+        if (currentSessionId != null) showNewTaskSheet = false
+    }
+
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
     var deleteWorkspaceSaving by remember { mutableStateOf(false) }
@@ -1011,9 +1021,7 @@ fun WorkspaceScreen(
                 showPhoneSessions()
             }
             LocalKind.NEW_SESSION -> {
-                startComposeSession(pendingSessionCwd)
-                selectViewMode("chat")
-                showPhoneChat()
+                showNewTaskSheet = true
             }
             LocalKind.OPEN_SETTINGS -> {
                 // 与顶栏抽屉设置按钮共享入口；CONSUMED 显示可以放在 picker 选中后的 toast 中
@@ -1072,8 +1080,8 @@ fun WorkspaceScreen(
     }
 
     fun createSessionIn(cwd: String?) {
-        startComposeSession(cwd)
-        showPhoneChat()
+        if (cwd != null) pendingSessionCwd = cwd
+        showNewTaskSheet = true
     }
 
     fun appendStreamMessage(m: MobileMessage) {
@@ -1820,10 +1828,7 @@ fun WorkspaceScreen(
 
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
-        onNewSession = {
-            startComposeSession(null)
-            showPhoneChat()
-        },
+        onNewSession = { showNewTaskSheet = true },
         onSelectSession = { sid ->
             selectSession(sid)
             showPhoneChat()
@@ -2586,55 +2591,6 @@ fun WorkspaceScreen(
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
-                if (viewMode == "chat" && currentSessionId == null) {
-                    ComposerTopRow(
-                        setupTitle = L.newSession,
-                        setupCaption = host.name,
-                        sessions = sessions,
-                        deletedWorkspaces = deletedWorkspaces,
-                        registeredPaths = workspaceRegistry,
-                        registryReady = workspaceRegistryReady,
-                        currentCwd = if (currentSessionId == null) {
-                            pendingSessionCwd?.takeUnless { it in deletedWorkspaces }
-                        } else {
-                            currentSessionId?.let {
-                                workspaceGroupKey(it, workspaceAccounts, deletedWorkspaces)
-                            }
-                        },
-                        lastCwd = if (currentSessionId == null) {
-                            workspacePrefs.lastSelectedWorkspace
-                                ?.takeUnless { it in deletedWorkspaces }
-                        } else {
-                            null
-                        },
-                        harnessLabel = harnessLabel,
-                        showHarness = currentSessionId == null,
-                        workspaceEditable = currentSessionId == null,
-                        harnessEditable = currentSessionId == null,
-                        workspaceCatalogKind = catalogKind(
-                            hasItems = workspaceCatalogItems.isNotEmpty(),
-                            initialLoad = workspacesInitialLoad,
-                            hasError = workspacesLoadError != null,
-                        ),
-                        workspaceCatalogError = workspacesLoadError,
-                        onRetryWorkspaces = { refreshWorkspaces() },
-                        onOpenHarnessPicker = if (currentSessionId == null) {
-                            {
-                                showAgentPresetPicker = true
-                                if (agentPresets.isEmpty()) loadAgentPresets()
-                            }
-                        } else {
-                            null
-                        },
-                        onStartSession = { cwd ->
-                            pendingSessionCwd = cwd
-                            if (cwd != null) workspacePrefs.lastSelectedWorkspace = cwd
-                        },
-                        // 「回到底部」已改为消息流内的悬浮按钮（不再占用输入区上方整行），
-                        // 所以这里不再有 trailing 内容。
-                        trailingContent = {},
-                    )
-                }
                 // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
@@ -2812,6 +2768,57 @@ fun WorkspaceScreen(
     }
 
     // 模型选择底部抽屉
+    // 面板里的模型 / 模式座沿用输入卡的那份预设（这里而不是更早，是因为依赖 appSettings）
+    val newTaskPermissionPreset = canonicalComposerPermission(
+        composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset),
+    )
+
+    if (showNewTaskSheet) {
+        NewTaskSheetHost(
+            state = NewTaskSheetState(
+                workspaces = workspaceCatalogItems.map { it.path },
+                selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
+                lastSession = sessions.maxByOrNull { sessionMillis(it.updatedAt) },
+                input = inputText,
+                modelName = pendingModel?.second ?: appSettings.defaultModel,
+                modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
+                permissionPreset = newTaskPermissionPreset,
+                permissionLabel = composerPermissionLabel(newTaskPermissionPreset),
+                sending = isSending,
+                error = composerActionError,
+            ),
+            actions = NewTaskSheetActions(
+                onSelectWorkspace = { pendingSessionCwd = it; workspacePrefs.lastSelectedWorkspace = it },
+                onOpenWorkspacePicker = { showNewTaskWorkspacePicker = true },
+                onOpenLastTask = { selectSession(it); showPhoneChat() },
+                onInputChange = { inputText = it },
+                onOpenModelPicker = { showModelPicker = true },
+                onOpenModePicker = { showAgentPresetPicker = true },
+                onAttach = { imagePickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onSend = { submitComposer() },
+                onDismiss = { showNewTaskSheet = false },
+            ),
+        )
+    }
+
+    if (showNewTaskWorkspacePicker) {
+        WorkspacePickerSheet(
+            sessions = sessions,
+            deletedWorkspaces = deletedWorkspaces,
+            registeredPaths = workspaceRegistry,
+            registryReady = workspaceRegistryReady,
+            selectedPath = pendingSessionCwd,
+            onDismiss = { showNewTaskWorkspacePicker = false },
+            onPick = { path ->
+                showNewTaskWorkspacePicker = false
+                if (path != null) {
+                    pendingSessionCwd = path
+                    workspacePrefs.lastSelectedWorkspace = path
+                }
+            },
+        )
+    }
+
     if (showModelPicker) {
         ModelPickerSheet(
             catalog = modelCatalog,
