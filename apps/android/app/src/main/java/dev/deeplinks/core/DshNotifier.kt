@@ -89,6 +89,37 @@ object DshNotifier {
         return builder.build()
     }
 
+    /**
+     * 完成通知两个动作带出去的意图（方案 8）；消费端在 WorkspaceScreen 的一个 LaunchedEffect 里
+     * 分派：看改动掀开右侧改动面板，回复把焦点交给输入框并弹键盘。
+     */
+    const val INTENT_ACTION_CHANGES = "openChanges"
+    const val INTENT_ACTION_REPLY = "reply"
+
+    /** 完成通知的深链动作：带 sessionId + 一个意图 extra，不带令牌。 */
+    private fun deepLinkAction(
+        context: Context,
+        host: Host,
+        sessionId: String,
+        label: String,
+        extraKey: String,
+        requestCode: Int,
+    ): NotificationCompat.Action {
+        val intent = Intent(context, WorkspaceActivity::class.java).apply {
+            host.putInto(this)
+            putExtra("sessionId", sessionId)
+            putExtra(extraKey, true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            requestCode + notificationId(host, sessionId, 2),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Action.Builder(R.drawable.ic_stat_dsh, label, pending).build()
+    }
+
     /** 审批已被处理：通知文字改成结果，几秒后自己消失（方案 8）。 */
     fun markApprovalAnswered(context: Context, host: Host, sessionId: String, approve: Boolean) {
         val id = notificationId(host, sessionId, 1)
@@ -138,6 +169,10 @@ object DshNotifier {
             title = if (summary != null) sessionDone else L.notifTaskDone,
             text = sessionDone,
             bigText = summary,
+            actions = listOf(
+                dev.deeplinks.native.ChangesL.viewChanges to INTENT_ACTION_CHANGES,
+                L.sendMessage to INTENT_ACTION_REPLY,
+            ),
         )
     }
 
@@ -156,6 +191,8 @@ object DshNotifier {
         title: String,
         text: String,
         bigText: String? = null,
+        /** 额外动作（完成通知的「查看改动 / 回复」）；审批那条自己带动作与频道。 */
+        actions: List<Pair<String, String>> = emptyList(),
     ) {
         var builder = base(context, host, sessionId)
             .setContentTitle(title)
@@ -163,6 +200,9 @@ object DshNotifier {
             .setAutoCancel(true)
         // 结果一句话可能有好几行：折叠态只显示一行，展开用 BigTextStyle 看全
         if (bigText != null) builder = builder.setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+        actions.forEachIndexed { index, (label, extraKey) ->
+            builder = builder.addAction(deepLinkAction(context, host, sessionId, label, extraKey, 21 + index))
+        }
         postNotification(context, notificationId(host, sessionId, kind), builder.build())
     }
 

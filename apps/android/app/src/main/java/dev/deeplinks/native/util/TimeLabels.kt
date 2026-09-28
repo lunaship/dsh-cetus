@@ -56,3 +56,5 @@ fun homeTimeLabel(
     }
 }
 
+/** 「上次在线」的时间戳 → 相对时间文案；0/负数表示没有记录，返回 null（不写假时间）。 */
+fun lastOnlineLabel(lastOnlineAt: Long): String? = lastOnlineAt.takeIf { it > 0 }?.let(::relativeTime)

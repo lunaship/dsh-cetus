@@ -247,6 +247,14 @@ internal fun AppNavHost(
                             liveIntent.getStringExtra(EXTRA_SHARE_IMAGE),
                         ),
                         initialShareSeq = liveIntent.getLongExtra(EXTRA_SHARE_SEQ, 0L),
+                        // 通知动作（方案 8）：看改动 / 回复
+                        initialIntentAction = when {
+                            liveIntent.getBooleanExtra(dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES, false) ->
+                                dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES
+                            liveIntent.getBooleanExtra(dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY, false) ->
+                                dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY
+                            else -> null
+                        },
                         initialShareNotice = liveIntent.getStringExtra(EXTRA_SHARE_NOTICE),
                         onOpenDevice = { notice ->
                             if (notice.isNullOrBlank()) {

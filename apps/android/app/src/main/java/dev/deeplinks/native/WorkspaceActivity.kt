@@ -134,6 +134,8 @@ fun WorkspaceScreen(
     initialShareText: String? = null,
     initialShareImages: List<String> = emptyList(),
     initialShareSeq: Long = 0L,
+    /** 通知动作带进来的意图（方案 8）：看改动 / 聚焦输入。 */
+    initialIntentAction: String? = null,
     initialShareNotice: String? = null,
     /** 打开设备（配对）页；authNotice 非空时在设备页顶部说明原因。 */
     onOpenDevice: (authNotice: String?) -> Unit,
@@ -597,12 +599,17 @@ fun WorkspaceScreen(
     var appliedShareOwner by rememberSaveable { mutableStateOf("") }
     var shareConsumed by rememberSaveable { mutableStateOf(false) }
     /**
-     * 外部分享带入的、以 `/` 开头的文本（原样存 composer 文本）。
-     * 系统分享内容不可信，不能让它直接变成可一键触发的命令入口；
-     * 只有用户手动编辑（inputText 与该快照不再相等）后才恢复命令候选。
+     * 外部分享带入的、以 `/` 开头的文本：系统分享不可信，不能让它直接变成可一键触发的命令入口，
+     * 只有用户手动编辑（不再等于该快照）后才恢复命令候选。
      */
     var shareCommandGuard by remember { mutableStateOf<String?>(null) }
     val shareOwnerKey = composerOwnerKey()
+    LaunchedEffect(initialIntentAction) {
+        when (initialIntentAction) {
+            dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES -> changesPanel.open()
+            dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> { composerFocusRequester.requestFocus(); composerKeyboardController?.show() }
+        }
+    }
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
         showNewTaskSheet = true // 分享进来的内容落在新任务面板里预填（阶段 4），不再进对话页草稿态
@@ -1874,9 +1881,8 @@ fun WorkspaceScreen(
         onOpenSettings = onOpenSettings,
     )
 
-    // 首页顶栏连接状态（2026-09-28 重设计 · 稿 01/08）：
-    // 首页没有会话 SSE（streamClient 只在打开会话时存在），所以在线与延迟都来自一次健康探测，
-    // 30s 节流；探测不到就按离线显示，并用 LastOnlineStore 里的时间戳写「离线 · N 分钟前在线」。
+    // 首页顶栏连接状态（稿 01/08）：首页没有会话 SSE，在线与延迟只能来自 30s 一次的健康探测；
+    // 探测不到就按离线显示，并用 LastOnlineStore 的时间戳写「离线 · N 分钟前在线」。
     var hostReachable by remember(host) { mutableStateOf(true) }
     var hostLatencyMs by remember(host) { mutableStateOf<Long?>(null) }
     LaunchedEffect(host) {
@@ -1891,11 +1897,7 @@ fun WorkspaceScreen(
             delay(30_000)
         }
     }
-    val offlineSinceLabel = if (hostReachable) {
-        null
-    } else {
-        LastOnlineStore.read(context).takeIf { it > 0 }?.let { relativeTime(it) }
-    }
+    val offlineSinceLabel = if (hostReachable) null else dev.deeplinks.native.util.lastOnlineLabel(LastOnlineStore.read(context))
 
     // 首页审批卡（方案 D1-A）：只有当前打开的那个会话才可能被手机接管，
     // 它的 pending 审批已经在 messages 里（refreshMessages 拉过 /requests 快照并合并过）。
