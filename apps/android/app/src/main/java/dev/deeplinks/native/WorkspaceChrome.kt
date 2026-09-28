@@ -78,6 +78,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.stateDescription
 import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
+import dev.deeplinks.native.ui.DshTextTabs
 import dev.deeplinks.native.ui.DshTopSegment
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
@@ -737,6 +738,8 @@ internal fun ToolGroupHeader(
 internal fun WorkspaceTopBar(
     running: Boolean,
     title: String,
+    /** 第二行：工作区 · 电脑名，或执行中的「◌ 正在执行 · 第 12 步 · 3 分钟」（稿 03/10）。 */
+    subtitle: String? = null,
     showBack: Boolean,
     onNavigate: () -> Unit,
     viewMode: String,
@@ -776,38 +779,42 @@ internal fun WorkspaceTopBar(
                 )
             }
 
+            // 两行标题：会话名（粗）+ 工作区·电脑名 / 执行中状态（稿 03/10）。
+            // 分段控件从这一行挪到下面一行，成为「对话 / 轨迹」文字 Tab。
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
+                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (running) {
+                if (running && subtitle.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(Dsh.brand400),
+                            .background(Dsh.labelPrimary),
                     )
                     Spacer(Modifier.width(DshSpace.s6))
                 }
-                // 与分段同排时字号用 title：titleLarge 在手机宽度下会把会话名截断
-                Text(
-                    title,
-                    color = Dsh.labelPrimary,
-                    style = DshType.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            if (showViewModeTabs) {
-                DshTopSegment(
-                    labels = listOf(L.tabChat, L.tabTrace),
-                    selectedIndex = if (viewMode == "trace") 1 else 0,
-                    onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        color = Dsh.labelPrimary,
+                        style = DshType.title,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            subtitle,
+                            color = Dsh.labelSecondary,
+                            style = DshType.captionRelaxed,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
 
             Box {
@@ -834,6 +841,15 @@ internal fun WorkspaceTopBar(
                     items = menuItems,
                 )
             }
+        }
+
+        if (showViewModeTabs) {
+            DshTextTabs(
+                labels = listOf(L.tabChat, L.tabTrace),
+                selectedIndex = if (viewMode == "trace") 1 else 0,
+                onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
+                modifier = Modifier.padding(start = DshSpace.s16),
+            )
         }
     }
 }

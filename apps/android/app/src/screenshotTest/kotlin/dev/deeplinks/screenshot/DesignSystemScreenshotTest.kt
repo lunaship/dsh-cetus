@@ -577,6 +577,7 @@ private fun TopBarWall() {
     WorkspaceTopBar(
         running = true,
         title = "调研 t3code 移动端设计并对比项目",
+        subtitle = "dsh-links · Mac mini",
         showBack = true,
         onNavigate = {},
         viewMode = "chat",
