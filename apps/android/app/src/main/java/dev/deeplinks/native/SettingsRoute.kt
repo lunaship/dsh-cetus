@@ -477,14 +477,12 @@ internal fun SettingsHome(
             onCheckedChange = { notifyDone = it; notifyPrefs.notifyOnDone = it },
         )
     }
-    DshListSection(header = s.sectionMore) {
-        DshListRow(
-            title = s.tabAbout,
-            icon = InfoOutline16,
-            value = BuildConfig.VERSION_NAME,
-            onClick = { onOpen(SettingsDest.ABOUT) },
-        )
-    }
+    // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，
+    // 「关于」仍可点进 ABOUT（开源许可在里面，不能丢）
+    DshListNote(
+        text = "DeepLinks ${BuildConfig.VERSION_NAME} · ${s.tabAbout}",
+        onClick = { onOpen(SettingsDest.ABOUT) },
+    )
 }
 
 // ---------- 通用：语言与配对（WI-004：服务端设置为唯一真实源，保存需读回校验） ----------

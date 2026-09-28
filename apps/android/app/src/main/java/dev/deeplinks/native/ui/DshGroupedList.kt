@@ -687,12 +687,22 @@ fun DshListNote(
     modifier: Modifier = Modifier,
     error: Boolean = false,
     inset: Boolean = false,
+    /** 可点备注（设置页页脚的「关于」）：给了就整行可点，仍保持备注的安静样式。 */
+    onClick: (() -> Unit)? = null,
 ) {
     Text(
         text,
         color = if (error) Dsh.error else Dsh.labelTertiary,
         style = DshType.body,
-        modifier = modifier
+        modifier = modifier.then(
+            if (onClick == null) {
+                Modifier
+            } else {
+                Modifier
+                    .clip(RoundedCornerShape(DshRadius.control))
+                    .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
+            },
+        )
             .dividerInset(inset)
             .fillMaxWidth()
             .heightIn(min = RowMinHeight)
