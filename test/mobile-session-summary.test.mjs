@@ -44,3 +44,25 @@ test("真实预设与 cwd 仍会下发", () => {
   assert.equal(summary.cwd, "/Volumes/Space/Dev/workspace")
   assert.equal(summary.title, "未命名会话")
 })
+
+test("activity / lastResult 只在有值时才下发（旧 Host 与推导失败走同一条回退）", () => {
+  const bare = mobileSessionSummary({ sessionId: "s1", projections: { values: {} } })
+  assert.equal("activity" in bare, false)
+  assert.equal("lastResult" in bare, false)
+})
+
+test("activity / lastResult 按 extra 原样下发", () => {
+  const running = mobileSessionSummary(
+    { sessionId: "s1", updatedAt: 5, running: true, projections: { values: {} } },
+    { activity: { kind: "tool", label: "go test ./...", step: 12 } },
+  )
+  assert.deepEqual(running.activity, { kind: "tool", label: "go test ./...", step: 12 })
+  assert.equal("lastResult" in running, false)
+
+  const done = mobileSessionSummary(
+    { sessionId: "s2", updatedAt: 6, running: false, projections: { values: {} } },
+    { lastResult: { text: "门禁全绿", files: 79 } },
+  )
+  assert.deepEqual(done.lastResult, { text: "门禁全绿", files: 79 })
+  assert.equal("activity" in done, false)
+})
