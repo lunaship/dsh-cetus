@@ -184,116 +184,13 @@ private val TopSegmentInset = 2.dp
  * 选中态再叠字重，弱视/动态取色下也能分辨。
  */
 @Composable
-fun DshTopSegment(
-    labels: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (labels.isEmpty()) return
-    val safeIndex = selectedIndex.coerceIn(0, labels.lastIndex)
-    val haptic = rememberDshHaptic()
-    val trackColor = Dsh.bgSubtle
-    // 药丸比轨道亮一档（浅色取白面、深色取高亮槽），避开动态取色里同档撞色
-    val pillColor = if (Dsh.isDark) Dsh.bgSelected else Dsh.bgCard
-    val pressTint = Dsh.pressed
-    // 文字是 sp、药丸是 dp：fontScale 1.3+ 不放大会把字顶出胶囊，
-    // 所以按「标签行高 × fontScale」撑大药丸/轨道，1.0 时仍是 26/30dp。
-    val labelStyle = DshType.title
-    val lineSp = if (labelStyle.lineHeight.isSp) {
-        labelStyle.lineHeight.value
-    } else {
-        labelStyle.fontSize.value * 1.5f
-    }
-    val textLineHeight = (lineSp * LocalDensity.current.fontScale).dp
-    val pillHeight = maxOf(TopSegmentPillHeight, textLineHeight + TopSegmentInset * 2)
-    val trackHeight = maxOf(TopSegmentTrackHeight, pillHeight + TopSegmentInset * 2)
-    Row(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .drawBehind {
-                val track = trackHeight.toPx()
-                drawRoundRect(
-                    color = trackColor,
-                    topLeft = Offset(0f, (size.height - track) / 2f),
-                    size = Size(size.width, track),
-                    cornerRadius = CornerRadius(track / 2f),
-                )
-            },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        labels.forEachIndexed { index, label ->
-            val selected = index == safeIndex
-            val interaction = remember { MutableInteractionSource() }
-            val pressed by interaction.collectIsPressedAsState()
-            val pillAlpha by animateFloatAsState(
-                targetValue = if (selected) 1f else 0f,
-                animationSpec = tween(motionDuration(DshDuration.fast), easing = DshEasing.out),
-                label = "topSegmentPill",
-            )
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .drawBehind {
-                        // 药丸与按压反馈都只画在胶囊尺寸内（不用 ripple：48dp 热区的水波会盖过胶囊）；
-                        // 四边内缩 2dp，是浮在轨道上的药丸，不是贴边的色块。
-                        val inset = TopSegmentInset.toPx()
-                        val pill = pillHeight.toPx()
-                        val top = (size.height - pill) / 2f
-                        val pillRect = Size(size.width - inset * 2f, pill)
-                        val radius = CornerRadius(pill / 2f)
-                        if (pillAlpha > 0f) {
-                            drawRoundRect(
-                                color = pillColor,
-                                alpha = pillAlpha,
-                                topLeft = Offset(inset, top),
-                                size = pillRect,
-                                cornerRadius = radius,
-                            )
-                        }
-                        if (pressed) {
-                            drawRoundRect(
-                                color = pressTint,
-                                topLeft = Offset(inset, top),
-                                size = pillRect,
-                                cornerRadius = radius,
-                            )
-                        }
-                    }
-                    .selectable(
-                        selected = selected,
-                        interactionSource = interaction,
-                        indication = null,
-                        role = Role.Tab,
-                        onClick = {
-                            if (index != safeIndex) haptic(DshHaptic.Tick)
-                            onSelect(index)
-                        },
-                    )
-                    .padding(horizontal = DshSpace.s12),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    color = if (selected) Dsh.labelPrimary else Dsh.labelSecondary,
-                    style = DshType.title,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
 // ---------- 文字标签页（无底框） ----------
 
 /**
  * 文字标签页：纯文字 + 选中下划线，无底框、无药丸。
- * 比胶囊 / 分段控件更安静——适合设置分区这类次要位置；顶栏已改用 [DshTopSegment]。
+ * 比胶囊 / 分段控件更安静——适合设置分区这类次要位置。
  * 视觉：选中 labelPrimary + Medium + 品牌色 2dp 下划线；未选中 labelTertiary + Normal。
  */
-@Composable
 fun DshTextTabs(
     labels: List<String>,
     selectedIndex: Int,
