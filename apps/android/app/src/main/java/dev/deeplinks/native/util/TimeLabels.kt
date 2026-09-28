@@ -40,10 +40,12 @@ fun homeTimeLabel(
     locale: Locale = Locale.getDefault(),
 ): String {
     if (timestamp <= 0) return ""
-    val diff = now - timestamp
+    // 旧 Host 给的是秒：先归一到毫秒，否则 diff 会算成几十年
+    val ts = sessionMillis(timestamp)
+    val diff = now - ts
     if (diff < 60_000) return L.justNowShort
     if (diff < 3_600_000) return L.minutesShort.format(diff / 60_000)
-    val day = Instant.ofEpochMilli(sessionMillis(timestamp)).atZone(zone).toLocalDate()
+    val day = Instant.ofEpochMilli(ts).atZone(zone).toLocalDate()
     val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
     val days = ChronoUnit.DAYS.between(day, today)
     return when {

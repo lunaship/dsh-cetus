@@ -375,7 +375,7 @@ private fun HomeRunningSpinner() {
  * - 等你处理：说明这条审批在电脑端网页上处理；
  * - 最近：lastResult 的一句话，没有就写「已完成」。
  */
-private fun homeRowSubtitle(session: MobileSession, goalSummary: String?, offline: Boolean = false): String {
+internal fun homeRowSubtitle(session: MobileSession, goalSummary: String?, offline: Boolean = false): String {
     val s = L
     return when {
         session.awaitingInput -> s.homeApprovalOnDesktop
