@@ -54,9 +54,29 @@ object DshNotifier {
     }
 
     /** 任务完成。 */
-    fun notifyTaskDone(context: Context, host: Host, sessionId: String, title: String) {
+    fun notifyTaskDone(
+        context: Context,
+        host: Host,
+        sessionId: String,
+        title: String,
+        /** 插件下发的「结果一句话」（阶段 2 的 lastResult）；没有就退回「会话名 已完成」。 */
+        resultText: String? = null,
+    ) {
         if (!WorkspacePrefs(context).notifyOnDone) return
-        post(context, host, sessionId, 2, L.notifTaskDone, L.notifTaskDoneBody.format(title))
+        val summary = resultText?.trim()?.takeIf { it.isNotEmpty() }
+        val sessionDone = L.notifTaskDoneBody.format(title)
+        // 有结果一句话：标题写「会话「x」已完成」、正文写那句话（方案 8 稿 06 的形态）。
+        // 没有（旧插件 / 还没产出结果）就沿用原来的「任务完成 / 会话「x」已完成」，
+        // 不能两处都写同一句——标题与正文重复等于浪费一行。
+        post(
+            context = context,
+            host = host,
+            sessionId = sessionId,
+            kind = 2,
+            title = if (summary != null) sessionDone else L.notifTaskDone,
+            text = sessionDone,
+            bigText = summary,
+        )
     }
 
     /** 会话停止（非正常结束，如 interrupted/error/maxTokens）。 */
@@ -66,13 +86,22 @@ object DshNotifier {
     }
 
     /** 任务类通知的公共走法：默认频道 + 自动取消（审批那条自己带动作与频道）。 */
-    private fun post(context: Context, host: Host, sessionId: String, kind: Int, title: String, text: String) {
-        val notification = base(context, host, sessionId)
+    private fun post(
+        context: Context,
+        host: Host,
+        sessionId: String,
+        kind: Int,
+        title: String,
+        text: String,
+        bigText: String? = null,
+    ) {
+        var builder = base(context, host, sessionId)
             .setContentTitle(title)
             .setContentText(text)
             .setAutoCancel(true)
-            .build()
-        postNotification(context, notificationId(host, sessionId, kind), notification)
+        // 结果一句话可能有好几行：折叠态只显示一行，展开用 BigTextStyle 看全
+        if (bigText != null) builder = builder.setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+        postNotification(context, notificationId(host, sessionId, kind), builder.build())
     }
 
     fun cancelApproval(context: Context, host: Host, sessionId: String) {
