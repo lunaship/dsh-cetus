@@ -1,0 +1,252 @@
+package dev.deeplinks.native
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import dev.deeplinks.core.Dsh
+import dev.deeplinks.core.DshS
+import dev.deeplinks.core.DshType
+import dev.deeplinks.native.ui.DshFilterChip
+import dev.deeplinks.native.ui.DshIconAction
+import dev.deeplinks.native.ui.DshSectionLabel
+import dev.deeplinks.native.ui.DshSheet
+
+/**
+ * 新任务底部面板（2026-09-28 重设计 · 方案阶段 4 · 稿 02）。
+ *
+ * 新任务从首页浮起来，不再是一个空页面：面板里先给「继续上次的任务」和「在哪个工作区」，
+ * 再是真正要写的任务内容。对话页里那套新会话草稿态（ComposerTopRow 起始块）随之删掉。
+ *
+ * 状态全部由参数注入，面板本身不碰网络；创建会话→发首条消息由 Activity 在 [onSend] 里做，
+ * 失败时把错误写回 [error]，面板不关（方案 4.5）。
+ */
+
+/** 「继续上次的任务」卡要显示的内容。 */
+internal data class LastTaskSummary(
+    val title: String,
+    val workspaceLabel: String?,
+)
+
+@Composable
+internal fun NewTaskSheet(
+    workspaces: List<String>,
+    selectedWorkspace: String?,
+    onSelectWorkspace: (String) -> Unit,
+    onOpenWorkspacePicker: () -> Unit,
+    lastTask: LastTaskSummary?,
+    onOpenLastTask: () -> Unit,
+    input: String,
+    onInputChange: (String) -> Unit,
+    modelName: String?,
+    modelEffort: String?,
+    permissionPreset: String,
+    permissionLabel: String,
+    onOpenModelPicker: () -> Unit,
+    onOpenModePicker: () -> Unit,
+    onAttach: () -> Unit,
+    sending: Boolean,
+    error: String?,
+    onSend: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val s = DshS
+    DshSheet(
+        onDismiss = onDismiss,
+        title = s.homeNewTask,
+        showClose = true,
+        skipPartiallyExpanded = true,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                // 面板本身会随键盘上移（DshSheet 里已有 imePadding），内容超高时内部滚动
+                .verticalScroll(rememberScrollState()),
+        ) {
+            if (lastTask != null) {
+                LastTaskCard(task = lastTask, onClick = onOpenLastTask)
+                Spacer(Modifier.size(DshSpace.s16))
+            }
+
+            DshSectionLabel(s.newTaskWorkspace)
+            Spacer(Modifier.size(DshSpace.s8))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                workspaces.forEach { cwd ->
+                    DshFilterChip(
+                        label = cwd.substringAfterLast('/'),
+                        selected = cwd == selectedWorkspace,
+                        onClick = { onSelectWorkspace(cwd) },
+                    )
+                }
+                DshIconAction(
+                    icon = ChevronDownOutline14,
+                    contentDescription = s.selectWorkspaceShort,
+                    onClick = onOpenWorkspacePicker,
+                    size = 48.dp,
+                    iconSize = 16.dp,
+                )
+            }
+            Spacer(Modifier.size(DshSpace.s16))
+
+            DshSectionLabel(s.newTaskContent)
+            Spacer(Modifier.size(DshSpace.s8))
+            InputCard(
+                input = input,
+                onInputChange = onInputChange,
+                modelName = modelName,
+                modelEffort = modelEffort,
+                permissionPreset = permissionPreset,
+                permissionLabel = permissionLabel,
+                onOpenModelPicker = onOpenModelPicker,
+                onOpenModePicker = onOpenModePicker,
+                onAttach = onAttach,
+                sending = sending,
+                onSend = onSend,
+            )
+            if (!error.isNullOrBlank()) {
+                Spacer(Modifier.size(DshSpace.s8))
+                Text(
+                    error,
+                    color = Dsh.error,
+                    style = DshType.supporting,
+                    modifier = Modifier.padding(horizontal = DshSpace.s4),
+                )
+            }
+        }
+    }
+}
+
+/** 「继续上次的任务」：tonal 底、不加描边（SurfaceHierarchyTest 禁容器描边），整卡可点。 */
+@Composable
+private fun LastTaskCard(task: LastTaskSummary, onClick: () -> Unit) {
+    val s = DshS
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgSubtle)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = DshSpace.s12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                s.newTaskContinueLast,
+                color = Dsh.labelPrimary,
+                style = DshType.bodyStrong,
+                maxLines = 1,
+            )
+            Spacer(Modifier.size(DshSpace.s2))
+            val detail = listOfNotNull(task.title, task.workspaceLabel)
+                .filter { it.isNotBlank() }
+                .joinToString(" · ")
+            Text(
+                detail,
+                color = Dsh.labelSecondary,
+                style = DshType.captionRelaxed,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            ChevronRightOutline14,
+            contentDescription = null,
+            tint = Dsh.labelTertiary,
+            modifier = Modifier.size(14.dp),
+        )
+    }
+}
+
+/** 输入卡：「+ 附件 / 模型 ⌄ / 模式 ⌄ / 发送」，多行输入复用 ComposerEditField（保住中文输入法）。 */
+@Composable
+private fun InputCard(
+    input: String,
+    onInputChange: (String) -> Unit,
+    modelName: String?,
+    modelEffort: String?,
+    permissionPreset: String,
+    permissionLabel: String,
+    onOpenModelPicker: () -> Unit,
+    onOpenModePicker: () -> Unit,
+    onAttach: () -> Unit,
+    sending: Boolean,
+    onSend: () -> Unit,
+) {
+    val s = DshS
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(DshRadius.composer))
+            .background(Dsh.bgInput)
+            .padding(start = DshSpace.s16, end = DshSpace.s12, top = DshSpace.s12, bottom = DshSpace.s8),
+    ) {
+        ComposerEditField(
+            value = input,
+            onValueChange = onInputChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 72.dp),
+            hint = s.newTaskHint,
+            textColor = Dsh.labelPrimary,
+            hintColor = Dsh.labelTertiary,
+            cursorColor = Dsh.brand500,
+        )
+        Spacer(Modifier.size(DshSpace.s8))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DshIconAction(
+                icon = PlusOutline16,
+                contentDescription = s.newTaskAttach,
+                onClick = onAttach,
+                size = 44.dp,
+                iconSize = 18.dp,
+            )
+            Spacer(Modifier.width(DshSpace.s4))
+            ComposerSeatsRow(
+                modelName = modelName,
+                modelEffort = modelEffort,
+                permissionPreset = permissionPreset,
+                permissionLabel = permissionLabel,
+                compact = true,
+                onOpenModelPicker = onOpenModelPicker,
+                onOpenPermissionPicker = onOpenModePicker,
+            )
+            Spacer(Modifier.weight(1f))
+            DshIconAction(
+                icon = SendOutline16,
+                contentDescription = s.sendMessage,
+                onClick = onSend,
+                size = 44.dp,
+                iconSize = 18.dp,
+                containerColor = if (sending) Dsh.labelDimmed else Dsh.brand500,
+            )
+        }
+    }
+}

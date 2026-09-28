@@ -532,6 +532,11 @@ class DshStrings(private val values: Map<String, String>) {
     val homeFilesChanged: String get() = t("homeFilesChanged")
 
     /** 「正在运行 %s」；`%s` 是命令或参数摘要。 */
+    val newTaskContinueLast: String get() = t("newTaskContinueLast")
+    val newTaskWorkspace: String get() = t("newTaskWorkspace")
+    val newTaskContent: String get() = t("newTaskContent")
+    val newTaskHint: String get() = t("newTaskHint")
+    val newTaskAttach: String get() = t("newTaskAttach")
     val homeWantsCommand: String get() = t("homeWantsCommand")
     val homeRunningInline: String get() = t("homeRunningInline")
     /** 「第 %d 步」；`%d` 是步号。 */
