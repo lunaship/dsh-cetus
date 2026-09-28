@@ -61,3 +61,10 @@ fun localHideAfterRemote(accepted: Boolean): Boolean = accepted
 
 /** 分叉响应必须带回新会话 id，空 id 视为失败。 */
 fun forkAccepted(newSessionId: String?): Boolean = !newSessionId.isNullOrBlank()
+
+/** 智能体权限预设的展示名（设置首页电脑卡与设置二级页共用，避免两处 when 各写一遍）。 */
+fun permissionPresetLabel(preset: String, strings: dev.deeplinks.core.DshStrings): String = when (preset) {
+    "read-only" -> strings.permReadOnly
+    "danger-full-access" -> strings.permFullAccess
+    else -> strings.permWorkspaceWrite
+}

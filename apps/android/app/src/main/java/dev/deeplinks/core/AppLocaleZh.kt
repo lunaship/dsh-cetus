@@ -542,6 +542,7 @@ val DshStringsZh = DshStrings(
         put("notifyOnApproval", "需要审批时提醒")
         put("notifyOnDone", "任务完成时提醒")
         put("notifyExplain", "审批可以在锁屏上直接处理。")
+        put("agentPermission", "智能体权限")
         put("modelsAndBalance", "模型与余额")
         put("sectionBalance", "账户余额")
         put("balanceUnavailable", "未连接电脑，无法读取余额")

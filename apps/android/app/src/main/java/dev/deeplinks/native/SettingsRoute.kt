@@ -410,6 +410,14 @@ internal fun SettingsHome(
                 onClick = onOpenDevices,
             )
         }
+        // 方案 7：电脑卡里放「智能体权限」——原「通用设置」里的「对话」行撤销后，
+        // 这一行就是 settingsConversation 二级页（权限预设 + 执行中发消息）的唯一入口
+        DshListRow(
+            title = s.agentPermission,
+            icon = ShieldOutline16,
+            value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
+            onClick = { onOpen(SettingsDest.CONVERSATION) },
+        )
         // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
         DshListRow(
             title = s.modelsAndBalance,
@@ -429,12 +437,6 @@ internal fun SettingsHome(
             icon = PaletteOutline16,
             value = themeLabel,
             onClick = { onOpen(SettingsDest.APPEARANCE) },
-        )
-        DshListRow(
-            title = s.settingsConversation,
-            icon = MessageOutline16,
-            value = presetDisplayName(appSettings.agentPreset, null, s),
-            onClick = { onOpen(SettingsDest.CONVERSATION) },
         )
     }
     DshListSection(header = s.sectionNotifications, footer = s.notifyExplain) {
