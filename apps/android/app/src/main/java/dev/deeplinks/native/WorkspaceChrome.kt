@@ -670,8 +670,10 @@ internal fun ToolGroupHeader(
                 )
                 Spacer(Modifier.width(10.dp))
             } else {
+                // 已结束用「带勾文档」（阶段 1 补的图标），与首页「最近」分组的完成态同一符号；
+                // 原先的 CodeOutline16 只表示「这是代码」，不带状态语义
                 Icon(
-                    CodeOutline16,
+                    DocumentCheckOutline16,
                     contentDescription = null,
                     tint = Dsh.labelTertiary,
                     modifier = Modifier.size(14.dp),
