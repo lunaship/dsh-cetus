@@ -25,6 +25,9 @@ import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.dshTypography
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.MessageItem
+import dev.deeplinks.native.ChangedFile
+import dev.deeplinks.native.WorkspaceChangesSummary
+import dev.deeplinks.native.ROLE_WORKSPACE_CHANGES
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -110,6 +113,30 @@ private val completedTurn = listOf(
             |```
         """.trimMargin(),
         durationMs = 42_000,
+    ),
+    // 整页墙要展示改动卡（稿 03 里正文之后就是它），所以这一轮补一条 workspace_changes
+    MobileMessage(
+        id = "c1",
+        role = ROLE_WORKSPACE_CHANGES,
+        text = "",
+        changes = WorkspaceChangesSummary(
+            seq = 120,
+            turn = 7,
+            total = 6,
+            added = 148,
+            deleted = 37,
+            files = listOf(
+                // 注意 ChangedFile.name 取的是 display 的最后一段，所以 display 必须是**完整文件路径**
+                // （第一版我传了目录，卡片就把目录名当成了文件名——样例的坑，不是产品的坑）
+                ChangedFile("src/workspace-changes.js", "../dsh-links/src/workspace-changes.js", added = 118),
+                ChangedFile(
+                    "WorkspaceChangesPanel.kt",
+                    "app/src/main/java/dev/deeplinks/native/WorkspaceChangesPanel.kt",
+                    added = 22,
+                    deleted = 9,
+                ),
+            ),
+        ),
     ),
 )
 
