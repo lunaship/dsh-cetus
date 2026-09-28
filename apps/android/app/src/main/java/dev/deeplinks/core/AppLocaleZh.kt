@@ -472,6 +472,7 @@ val DshStringsZh = DshStrings(
         put("homeLastSeenPrefix", "最后看到：")
         put("homeDoneFallback", "已完成")
         put("homeFilesChanged", "改了 %d 个文件")
+        put("homeWantsCommand", "想运行一条命令：")
         put("homeRunningInline", "正在运行 %s")
         put("homeStepLabel", "第 %d 步")
         put("homeThinking", "正在思考")

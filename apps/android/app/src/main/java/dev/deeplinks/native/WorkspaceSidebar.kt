@@ -2,6 +2,8 @@ package dev.deeplinks.native
 
 import dev.deeplinks.core.DshS
 import dev.deeplinks.native.ui.DshEmptyState
+import dev.deeplinks.native.util.homeTimeLabel
+import dev.deeplinks.native.util.HomeSection
 import dev.deeplinks.native.util.homeSections
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -91,6 +93,9 @@ internal fun WorkspaceSidebar(
     onSelectWorkspace: (String?) -> Unit,
     onOpenArchived: () -> Unit,
     onPickStarter: (String) -> Unit,
+    /** 当前会话里由手机接管的 pending 审批（方案 D1-A）：首页只对它有拒绝/批准。 */
+    activeApproval: MobileMessage?,
+    onAnswerApproval: (String, String, (Boolean) -> Unit) -> Unit,
     containerColor: Color,
     collapsed: Boolean = false,
     goalSummaries: Map<String, String> = emptyMap(),
@@ -267,6 +272,25 @@ internal fun WorkspaceSidebar(
                     rows.forEach { s ->
                         item(key = "home-session-${s.sessionId}") {
                             Box(Modifier.animateItem()) {
+                                if (section == HomeSection.AWAITING &&
+                                    activeApproval != null &&
+                                    s.sessionId == currentSessionId
+                                ) {
+                                    HomeApprovalCard(
+                                        title = displaySessionTitle(s.title),
+                                        workspaceLabel = s.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+                                        timeLabel = if (s.updatedAt > 0) homeTimeLabel(s.updatedAt) else null,
+                                        toolName = activeApproval.toolName,
+                                        chipText = DshS.homeChipWaitingApproval,
+                                        onReject = {
+                                            activeApproval.approvalId?.let { onAnswerApproval(it, "rejected") {} }
+                                        },
+                                        onApprove = {
+                                            activeApproval.approvalId?.let { onAnswerApproval(it, "allowed-once") {} }
+                                        },
+                                    )
+                                    return@Box
+                                }
                                 SessionRowItem(
                                     session = s,
                                     isSelected = s.sessionId == currentSessionId,

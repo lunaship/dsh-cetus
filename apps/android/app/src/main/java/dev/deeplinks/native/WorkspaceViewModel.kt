@@ -20,6 +20,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import dev.deeplinks.core.DshNotifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 /**
@@ -37,7 +40,7 @@ import kotlinx.coroutines.launch
 internal class WorkspaceViewModel(
     private val host: Host,
     savedStateHandle: SavedStateHandle,
-    appContext: Context,
+    private val appContext: Context,
 ) : ViewModel() {
 
     val repo = WorkspaceRepository(host, appContext)
@@ -46,6 +49,25 @@ internal class WorkspaceViewModel(
     val client get() = repo.api
 
     val local = repo.local
+
+    /**
+     * 首页审批卡提交（方案 D1-A）：只有「手机已接管该审批」的那条才会走到这里。
+     * 与对话页 ChatFeedActions 的行为一致——成功后把该条消息置为已决，并撤掉对应通知。
+     */
+    fun answerApproval(sessionId: String, approvalId: String, outcome: String, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val accepted = runCatching {
+                withContext(Dispatchers.IO) { client.answerApproval(sessionId, approvalId, outcome) }
+            }.getOrDefault(false)
+            if (accepted) {
+                messages.value = messages.value.map { msg ->
+                    if (msg.approvalId == approvalId) applyRequestState(msg, approvalUiStatus(outcome), outcome) else msg
+                }
+                DshNotifier.cancelApproval(appContext, host, sessionId)
+            }
+            onDone(accepted)
+        }
+    }
 
     // ===== 会话数据 =====
 

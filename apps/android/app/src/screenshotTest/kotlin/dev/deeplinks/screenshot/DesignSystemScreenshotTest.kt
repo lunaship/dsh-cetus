@@ -3,6 +3,7 @@ package dev.deeplinks.screenshot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import dev.deeplinks.native.util.HomeSection
+import dev.deeplinks.native.HomeApprovalCard
 import dev.deeplinks.native.HomeNewTaskFab
 import androidx.compose.ui.draw.alpha
 import dev.deeplinks.native.HomeEmptyStarters
@@ -1097,13 +1098,22 @@ private fun SidebarWall() {
             onOpenArchived = {},
         )
         HomeSectionHeader(HomeSection.AWAITING)
-        SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        // 稿 07：最早一件展开成审批卡（手机已接管），其余收成行
+        HomeApprovalCard(
+            title = "任务首页改版",
+            workspaceLabel = "dsh-links",
+            timeLabel = "2 分钟前",
+            toolName = "./gradlew :app:connectedDebugAndroidTest",
+            chipText = DshS.homeChipWaitingApproval,
+            onReject = {},
+            onApprove = {},
+        )
         SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RUNNING)
         SessionRowItem(session("s2", "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RECENT)
         SessionRowItem(session("s3", "修复手机模型切换", lastResult = MobileSessionResult(text = "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s4", "整理工作区导航", lastResult = MobileSessionResult(text = "改了 6 个文件，门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s4", "整理工作区导航", lastResult = MobileSessionResult(text = "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s6", "补齐移动端测试", lastResult = MobileSessionResult(text = "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         Spacer(Modifier.height(24.dp))
         HomeNewTaskFab(onClick = {})

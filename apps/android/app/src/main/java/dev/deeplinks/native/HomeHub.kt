@@ -36,6 +36,9 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshFloatingPill
+import dev.deeplinks.native.ui.DshStatusChip
+import dev.deeplinks.native.ui.DshGroupCard
+import dev.deeplinks.native.ui.DshChipTone
 import dev.deeplinks.native.ui.DshIconAction
 import dev.deeplinks.native.ui.DshPillButton
 import dev.deeplinks.native.ui.DshPillTone
@@ -167,6 +170,81 @@ internal fun HomeHeader(
             size = 44.dp,
             iconSize = 18.dp,
         )
+    }
+}
+
+/**
+ * 首页审批卡（稿 01/07 · 方案 3.4 + D1-A）。
+ *
+ * 只在「这条审批由手机接管」时出现（App 正订阅该会话、requests 快照里有 pending）；
+ * 其余等你处理的会话一律走 [HomeAwaitingRow] 的「在电脑上处理」样式。批准按钮是页面上
+ * 唯一的实心强调色——它确实是「需要你动手」的动作。
+ *
+ * 命令文本：DSH 的审批请求不带工具参数（dsh-user-approval 明确不重复 presented tool call 的
+ * arguments），所以这里按用户确认的「诚实降级」只写工具名。
+ */
+@Composable
+internal fun HomeApprovalCard(
+    title: String,
+    workspaceLabel: String?,
+    timeLabel: String?,
+    toolName: String?,
+    chipText: String,
+    onReject: () -> Unit,
+    onApprove: () -> Unit,
+) {
+    val s = DshS
+    DshGroupCard(modifier = Modifier.padding(horizontal = DrawerEdgePadding + DshSpace.s6)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DshStatusChip(text = chipText, tone = DshChipTone.Approval)
+            if (!workspaceLabel.isNullOrBlank()) {
+                Spacer(Modifier.width(DshSpace.s8))
+                Text(workspaceLabel, color = Dsh.labelSecondary, style = DshType.captionRelaxed, maxLines = 1)
+            }
+            Spacer(Modifier.weight(1f))
+            if (!timeLabel.isNullOrBlank()) {
+                Text(timeLabel, color = Dsh.labelSecondary, style = DshType.captionRelaxed, maxLines = 1)
+            }
+        }
+        Spacer(Modifier.size(DshSpace.s6))
+        Text(
+            title,
+            color = Dsh.labelPrimary,
+            style = DshType.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.size(DshSpace.s6))
+        Text(s.homeWantsCommand, color = Dsh.labelSecondary, style = DshType.supporting)
+        Spacer(Modifier.size(DshSpace.s6))
+        Text(
+            toolName ?: s.toolFallbackName,
+            color = Dsh.labelPrimary,
+            style = DshType.captionRelaxed,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(DshRadius.container))
+                .background(Dsh.bgCode)
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        )
+        Spacer(Modifier.size(DshSpace.s12))
+        Row {
+            DshPillButton(
+                label = s.reject,
+                onClick = onReject,
+                tone = DshPillTone.Tonal,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(DshSpace.s8))
+            DshPillButton(
+                label = s.allowOnce,
+                onClick = onApprove,
+                tone = DshPillTone.Accent,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

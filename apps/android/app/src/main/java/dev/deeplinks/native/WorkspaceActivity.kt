@@ -1888,6 +1888,15 @@ fun WorkspaceScreen(
         LastOnlineStore.read(context).takeIf { it > 0 }?.let { relativeTime(it) }
     }
 
+    // 首页审批卡（方案 D1-A）：只有当前打开的那个会话才可能被手机接管，
+    // 它的 pending 审批已经在 messages 里（refreshMessages 拉过 /requests 快照并合并过）。
+    val homePendingApproval = remember(messages, currentSessionId) {
+        if (currentSessionId == null) {
+            null
+        } else {
+            messages.lastOrNull { it.role == "approval" && it.approvalId != null && it.requestStatus == REQUEST_PENDING }
+        }
+    }
     // 根容器：承载抽屉框架与置顶 Snackbar
     Box(
         modifier = Modifier
@@ -1922,6 +1931,12 @@ fun WorkspaceScreen(
                 onSelectWorkspace = { selectedHomeWorkspace = it },
                 onOpenArchived = onOpenSettings,
                 onPickStarter = { sidebarActions.onNewSession() },
+                activeApproval = homePendingApproval,
+                onAnswerApproval = { approvalId, outcome, onDone ->
+                    val sid = currentSessionId
+                    if (sid == null) onDone(false)
+                    else workspaceViewModel.answerApproval(sid, approvalId, outcome, onDone)
+                },
                 containerColor = Dsh.bgDrawer,
                 collapsed = sidebarCollapsed,
                 goalSummaries = workspaceViewModel.goalSummaries.value,
@@ -1978,6 +1993,12 @@ fun WorkspaceScreen(
                     onSelectWorkspace = { selectedHomeWorkspace = it },
                     onOpenArchived = onOpenSettings,
                     onPickStarter = { sidebarActions.onNewSession() },
+                    activeApproval = homePendingApproval,
+                    onAnswerApproval = { approvalId, outcome, onDone ->
+                        val sid = currentSessionId
+                        if (sid == null) onDone(false)
+                        else workspaceViewModel.answerApproval(sid, approvalId, outcome, onDone)
+                    },
                     containerColor = Dsh.bgBase,
                     collapsed = false,
                     goalSummaries = workspaceViewModel.goalSummaries.value,

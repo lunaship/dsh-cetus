@@ -473,6 +473,7 @@ val DshStringsEn = DshStrings(
         put("homeLastSeenPrefix", "Last seen: ")
         put("homeDoneFallback", "Done")
         put("homeFilesChanged", "%d files changed")
+        put("homeWantsCommand", "Wants to run a command:")
         put("homeRunningInline", "Running %s")
         put("homeStepLabel", "step %d")
         put("homeThinking", "Thinking")
