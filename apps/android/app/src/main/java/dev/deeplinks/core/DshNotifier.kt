@@ -39,18 +39,80 @@ object DshNotifier {
     private fun channelOf(id: String, name: String, desc: String, importance: Int): NotificationChannel =
         NotificationChannel(id, name, importance).apply { description = desc }
 
-    /** 审批请求：需要审批「工具名」。 */
-    fun notifyApproval(context: Context, host: Host, sessionId: String, toolName: String) {
+    /** 审批请求：需要审批「工具名」；带 approvalId 时附「允许一次 / 拒绝」两个动作（方案 8）。 */
+    fun notifyApproval(
+        context: Context,
+        host: Host,
+        sessionId: String,
+        toolName: String,
+        approvalId: String? = null,
+    ) {
         // 阶段 8 第 3 条：设置页的两个开关（存本机）决定发不发。关卡放在这里而不是调用点，
         // 是为了「一个地方管住所有通知」——调用点分散在 WorkspaceActivity 多处，漏一处就是 bug。
         if (!WorkspacePrefs(context).notifyOnApproval) return
-        val notification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+        val builder = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
             .setContentTitle(L.notifNeedApproval)
             .setContentText(L.notifNeedApprovalBody.format(toolName))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+        if (!approvalId.isNullOrBlank()) {
+            // 「允许一次」要求先解锁（Android 12+）；「拒绝」是安全的默认方向，不必解锁
+            builder.addAction(approvalAction(context, host, sessionId, approvalId, true, L.allowOnce, 11))
+            builder.addAction(approvalAction(context, host, sessionId, approvalId, false, L.reject, 12))
+        }
+        postNotification(context, notificationId(host, sessionId, 1), builder.build())
+    }
+
+    private fun approvalAction(
+        context: Context,
+        host: Host,
+        sessionId: String,
+        approvalId: String,
+        approve: Boolean,
+        label: String,
+        requestCode: Int,
+    ): NotificationCompat.Action {
+        val intent = Intent(context, ApprovalActionReceiver::class.java).apply {
+            host.putInto(this)
+            putExtra(ApprovalActionReceiver.EXTRA_SESSION_ID, sessionId)
+            putExtra(ApprovalActionReceiver.EXTRA_APPROVAL_ID, approvalId)
+            putExtra(ApprovalActionReceiver.EXTRA_APPROVE, approve)
+        }
+        val pending = PendingIntent.getBroadcast(
+            context,
+            requestCode + notificationId(host, sessionId, 1),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = NotificationCompat.Action.Builder(R.drawable.ic_stat_dsh, label, pending)
+        if (approve) builder.setAuthenticationRequired(true)
+        return builder.build()
+    }
+
+    /** 审批已被处理：通知文字改成结果，几秒后自己消失（方案 8）。 */
+    fun markApprovalAnswered(context: Context, host: Host, sessionId: String, approve: Boolean) {
+        val id = notificationId(host, sessionId, 1)
+        val notification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+            .setContentTitle(L.notifNeedApproval)
+            .setContentText(if (approve) L.approvalAllowedSent else L.approvalNotAccepted)
+            .setAutoCancel(true)
             .build()
-        postNotification(context, notificationId(host, sessionId, 1), notification)
+        postNotification(context, id, notification)
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { NotificationManagerCompat.from(context).cancel(id) },
+            4_000,
+        )
+    }
+
+    /** 打开该会话（动作失败时的兜底，与点通知同一条路）。 */
+    fun openSession(context: Context, host: Host, sessionId: String) {
+        context.startActivity(
+            Intent(context, WorkspaceActivity::class.java).apply {
+                host.putInto(this)
+                putExtra("sessionId", sessionId)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+        )
     }
 
     /** 任务完成。 */

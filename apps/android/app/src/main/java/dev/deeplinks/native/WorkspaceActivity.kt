@@ -1390,7 +1390,7 @@ fun WorkspaceScreen(
                 ))
                 val sid = currentSessionId
                 if (!isForeground && sid != null) {
-                    DshNotifier.notifyApproval(context, host, sid, data.optString("toolName", L.toolFallbackName))
+                    DshNotifier.notifyApproval(context, host, sid, data.optString("toolName", L.toolFallbackName), approvalId)
                 }
             }
             "approval/decided" -> {

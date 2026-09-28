@@ -108,5 +108,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+        <!-- 审批通知的动作按钮（方案 8）：exported=false，只有本 App 的 PendingIntent 能触发 -->
+        <receiver
+            android:name="dev.deeplinks.core.ApprovalActionReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>
