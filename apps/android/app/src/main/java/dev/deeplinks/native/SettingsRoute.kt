@@ -381,6 +381,11 @@ internal fun SettingsHome(
     onOpenDevices: () -> Unit = {},
 ) {
     val s = DshS
+    // 通知开关存本机（方案 7.3）：与 LastOnlineStore 同一层，阶段 8 的 DshNotifier 从这里读
+    val notifyContext = androidx.compose.ui.platform.LocalContext.current
+    val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
+    var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
+    var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
         "dark" -> s.themeDark
@@ -430,6 +435,18 @@ internal fun SettingsHome(
             icon = MessageOutline16,
             value = presetDisplayName(appSettings.agentPreset, null, s),
             onClick = { onOpen(SettingsDest.CONVERSATION) },
+        )
+    }
+    DshListSection(header = s.sectionNotifications, footer = s.notifyExplain) {
+        DshSwitchRow(
+            title = s.notifyOnApproval,
+            checked = notifyApproval,
+            onCheckedChange = { notifyApproval = it; notifyPrefs.notifyOnApproval = it },
+        )
+        DshSwitchRow(
+            title = s.notifyOnDone,
+            checked = notifyDone,
+            onCheckedChange = { notifyDone = it; notifyPrefs.notifyOnDone = it },
         )
     }
     DshListSection(header = s.sectionMore) {

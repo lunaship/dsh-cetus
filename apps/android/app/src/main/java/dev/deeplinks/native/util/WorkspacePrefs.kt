@@ -74,6 +74,20 @@ class WorkspacePrefs(context: Context) {
         }
 
     /** 是否已询问过通知权限。 */
+    /** 通知开关（2026-09-28 重设计 · 方案 7.3）：存本机，`DshNotifier` 发通知前读这两个值。 */
+    var notifyOnApproval: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFY_APPROVAL, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_NOTIFY_APPROVAL, value).apply()
+        }
+
+    /** 任务完成提醒。 */
+    var notifyOnDone: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFY_DONE, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_NOTIFY_DONE, value).apply()
+        }
+
     var notifPermissionAsked: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ASKED, false)
         set(value) {
@@ -215,6 +229,9 @@ class WorkspacePrefs(context: Context) {
         const val KEY_NOTIF_ASKED = "notif_permission_asked"
 
         // 新增键：加 `workspace_` 前缀避免与旧键混淆
+        const val KEY_NOTIFY_APPROVAL = "notify_on_approval"
+        const val KEY_NOTIFY_DONE = "notify_on_done"
+
         const val KEY_LAST_WORKSPACE = "workspace_last_selected_cwd"
         const val KEY_SESSION_SNAPSHOTS = "workspace_session_snapshots"
         const val KEY_PARKED_SEND = "workspace_parked_send"

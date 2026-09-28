@@ -516,9 +516,11 @@ fun DshSwitchRow(
 
 @Composable
 fun dshSwitchColors(): SwitchColors = SwitchDefaults.colors(
-    checkedThumbColor = Dsh.onBrand,
-    checkedTrackColor = Dsh.brand400,
-    checkedBorderColor = Dsh.brand400,
+    // 开关开启态 = 墨色（2026-09-28 重设计 · 方案 2.2/7.3）：品牌蓝只给「需要你动手」的动作
+    // （批准、发送），开关是状态而不是动作
+    checkedThumbColor = Dsh.bgCard,
+    checkedTrackColor = Dsh.labelPrimary,
+    checkedBorderColor = Dsh.labelPrimary,
     uncheckedThumbColor = Dsh.labelSecondary,
     uncheckedTrackColor = Dsh.bgSubtle,
     uncheckedBorderColor = Dsh.borderStrong,
