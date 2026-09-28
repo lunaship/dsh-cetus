@@ -71,6 +71,11 @@ data class DshColors(
     val success: Color,
     val warn: Color,
     val warnLabel: Color,
+    /**
+     * 「等你批准 / 等你回答」胶囊的暖色容器（重设计稿 2026-09-28，方案 2.2）。
+     * 与 [warnLabel] 成对，参照 [successContainer] 的容器/内容写法；DSH 没有 warning 容器档。
+     */
+    val warnContainer: Color = Color.Unspecified,
     val error: Color,
     val errorBg: Color,
     val buttonElevated: Color,
@@ -101,36 +106,39 @@ data class DshColors(
 
 val DarkDshColors = DshColors(
     isDark = true,
-    bgBase = Dsw.neutralBluish950,           // alias-bg-base
-    bgSidePanel = Dsw.neutralBluish900,      // specific-sidebar-fill
-    bgCard = Dsw.neutralBluish875,           // alias-bg-layer-1
-    bgInput = Dsw.neutralBluish850,          // specific-input-major
-    bgSubtle = Dsw.neutralBluish800,         // alias-interactive-bg-hover-solid
-    bgCode = Dsw.neutralBluish900,           // alias-markdown-code-block
-    bgCodeBanner = Dsw.neutralBluish850,     // alias-markdown-code-block-banner
-    bgSelected = Dsw.neutralBluish800,       // specific-sidebar-nav-item-active-accent
-    bgPressed = Dsw.neutralBluish800,        // alias-interactive-bg-hover-solid
-    bgDrawer = Dsw.neutralBluish900,         // specific-sidebar-fill
-    bgNavSelected = Dsw.neutralBluish800,    // specific-sidebar-nav-item-active-accent
-    bgTrack = Dsw.neutralBluish800,          // alias-interactive-bg-hover-solid
-    bgOverlay = Dsw.mask1Dark,               // alias-bg-mask-1
-    // DSH 没有「凹进」面；思考轨迹取调色板最深一档，比画布再暗一级
-    bgRecessed = Dsw.neutralBluish1000,
-    bgSurface = Dsw.neutralBluish900,        // specific-sidebar-fill（比画布高一级，同旧关系）
-    labelPrimary = Dsw.neutralBluish50,      // alias-label-primary
-    labelSecondary = Dsw.neutralBluish300,   // alias-label-secondary
-    labelTertiary = Dsw.neutralBluish400,    // alias-label-tertiary
-    labelDimmed = Dsw.neutralBluish750,      // alias-label-dimmed
-    borderSubtle = Dsw.borderL2Dark,         // alias-border-l2
+    // ===== 2026-09-28 重设计稿深色板（方案 2.2）=====
+    // 画布压到近黑、卡片抬一档、输入与代码各占一层；这套取值与 DSH neutral-bluish 不同族，
+    // 因此下面每一行都按 DshPaletteProvenanceTest 的要求标注偏离原因。
+    bgBase = Color(0xFF121214),              // 偏离 DSH：2026-09-28 重设计稿（深色页面底 #121214）
+    bgSidePanel = Color(0xFF121214),         // 偏离 DSH：同上（导航面与页面底同档）
+    bgCard = Color(0xFF1C1D21),              // 偏离 DSH：重设计稿卡片/面板面 #1C1D21
+    bgInput = Color(0xFF121214),             // 偏离 DSH：重设计稿输入条底 #121214（在 #1C1D21 对话页上凹进去）
+    bgSubtle = Color(0xFF2A2B30),            // 偏离 DSH：重设计稿用户气泡与胶囊底 #2A2B30
+    bgCode = Color(0xFF26272C),              // 偏离 DSH：重设计稿代码块底 #26272C
+    bgCodeBanner = Color(0xFF222328),        // 偏离 DSH：重设计稿卡片头/弱底 #222328
+    bgSelected = Color(0xFF26272C),          // 偏离 DSH：重设计稿选中态改中性灰（不再用品牌蓝 tonal）
+    bgPressed = Dsw.interactiveHoverDark,    // alias-interactive-bg-hover
+    bgDrawer = Color(0xFF121214),            // 偏离 DSH：重设计稿抽屉底与页面底同档
+    bgNavSelected = Color(0xFF26272C),       // 偏离 DSH：与 bgSelected 同一 selection container
+    bgTrack = Color(0xFF3A3B41),             // 偏离 DSH：重设计稿进行中轨道 #3A3B41
+    bgOverlay = Color(0x99000000),           // 偏离 DSH：重设计稿遮罩 rgba(0,0,0,.6)
+    bgRecessed = Color(0xFF17181B),          // 偏离 DSH：重设计稿凹进面（思考轨迹）比卡片再暗一档
+    bgSurface = Color(0xFF1C1D21),           // 偏离 DSH：重设计稿面板面 #1C1D21
+    labelPrimary = Color(0xFFEDEDEF),        // 偏离 DSH：重设计稿主文字 #EDEDEF
+    labelSecondary = Color(0xFFA3A7AE),      // 偏离 DSH：重设计稿次要文字 #A3A7AE
+    labelTertiary = Color(0xFF8B8F96),       // 偏离 DSH：重设计稿第三级文字/箭头 #8B8F96
+    labelDimmed = Color(0xFF4A4D53),         // 偏离 DSH：重设计稿禁用 #4A4D53
+    borderSubtle = Color(0xFF2A2B30),        // 偏离 DSH：重设计稿分隔线 #2A2B30（只用于分隔线，不做容器描边）
     borderStrong = Dsw.borderL3Dark,         // alias-border-l3
     pressed = Dsw.interactiveHoverDark,      // alias-interactive-bg-hover
     activated = Dsw.interactiveActiveDark,   // alias-interactive-bg-active
-    brand400 = Dsw.deepseek400,              // alias-link
-    brand500 = Dsw.deepseek450,              // alias-brand-primary-new-color
-    success = Dsw.green500,                  // alias-state-success-primary
+    brand400 = Color(0xFF7C93FF),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
+    brand500 = Color(0xFF7C93FF),            // 偏离 DSH：重设计稿强调蓝 #7C93FF（批准、发送）
+    success = Color(0xFF3BC476),             // 偏离 DSH：重设计稿在线点 #3BC476
     warn = Dsw.amber500,                     // DSH 无 warning alias，取 static amber
-    warnLabel = Dsw.amber400,                // 深底上的警告文字用亮一档
-    error = Dsw.red400,                      // alias-state-error-primary
+    warnLabel = Color(0xFFF0B86A),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #F0B86A
+    warnContainer = Color(0xFF3A2A12),       // 偏离 DSH：重设计稿「等你批准」胶囊底 #3A2A12
+    error = Color(0xFFFF8A7E),               // 偏离 DSH：重设计稿危险文字 #FF8A7E
     errorBg = Dsw.interactiveHoverDangerDark, // alias-interactive-bg-hover-danger
     buttonElevated = Dsw.neutralBluish750,   // alias-button-elevated-fill
     buttonFloating = Dsw.neutralBluish850,   // alias-button-floating-fill
@@ -140,50 +148,53 @@ val DarkDshColors = DshColors(
     traceReasoning = Color(0xFF7B93F8),      // 偏离 DSH：无对应角色；推理轨蓝系弱强调（非紫）
     traceApproval = Color(0xFFE07A3A),       // 偏离 DSH：无对应角色；审批降噪橙
     traceTodo = Color(0xFF5BB8C9),           // 偏离 DSH：无对应角色；待办青
-    brandTint = Dsw.deepseek450.copy(alpha = 0.1f),
-    onBrand = Dsw.neutralBluish00,
-    successContent = Color(0xFF86EFAC),      // 偏离 DSH：DSH 没有深底上的绿色文字档
-    successContainer = Dsw.green900,         // alias-state-success-tertiary
+    brandTint = Color(0xFF7C93FF).copy(alpha = 0.1f), // 偏离 DSH：随重设计稿强调蓝
+    // 重设计稿：深色强调底 #7C93FF 上必须写深字（白字只有 2.8:1），本测试下限是 3:1
+    onBrand = Color(0xFF121214),             // 偏离 DSH：重设计稿深色强调底上的内容色（非白）
+    successContent = Color(0xFF5CC38A),      // 偏离 DSH：重设计稿完成图标 #5CC38A（DSH 没有深底绿字档）
+    successContainer = Color(0xFF16301F),    // 偏离 DSH：重设计稿完成图标圈底 #16301F
     cloudContent = Dsw.deepseek300,
     cloudContainer = Dsw.deepseek800,        // alias-state-business-tertiary
 )
 
 val LightDshColors = DshColors(
     isDark = false,
-    bgBase = Dsw.neutralBluish00,            // alias-bg-base
-    bgSidePanel = Dsw.neutralBluish50,       // specific-sidebar-fill
-    bgCard = Dsw.neutralBluish00,            // alias-bg-layer-1
-    bgInput = Dsw.neutralBluish00,           // specific-input-major
-    bgSubtle = Dsw.neutralBluish75,          // alias-interactive-bg-hover-solid
-    bgCode = Dsw.neutralBluish50,            // alias-markdown-code-block
-    bgCodeBanner = Dsw.neutralBluish50,      // alias-markdown-code-block-banner
-    bgSelected = Dsw.deepseek100,            // specific-sidebar-nav-item-active-accent
-    bgPressed = Dsw.neutralBluish75,         // alias-interactive-bg-hover-solid
-    bgDrawer = Dsw.neutralBluish50,          // specific-sidebar-fill
-    bgNavSelected = Dsw.deepseek100,         // specific-sidebar-nav-item-active-accent
-    // 与暗色同语义（bgTrack == bgSubtle）：50 与白画布/抽屉底同档，胶囊与轨道会整块消失
-    bgTrack = Dsw.neutralBluish75,           // alias-interactive-bg-hover-solid
-    bgOverlay = Dsw.mask1Light,              // alias-bg-mask-1
-    bgRecessed = Dsw.neutralBluish60,        // linear-think-select 的起始色
-    bgSurface = Dsw.neutralBluish00,         // alias-bg-base
-    labelPrimary = Dsw.neutralBluish1000,    // alias-label-primary
-    // 偏离 DSH（alias-label-secondary = 700 #61666B）：tertiary 为达 AA 已偏到 #70757A，
-    // 再用 700 两级灰几乎同色；secondary 下压一档（7.5:1）把层级拉开
-    labelSecondary = Color(0xFF50555C),      // 偏离 DSH：见上
-    labelTertiary = Color(0xFF70757A),       // 偏离 DSH：alias-label-tertiary（600 #81858C）白底 3.7:1，10–13sp 不达 AA
-    labelDimmed = Dsw.neutralBluish200,      // alias-label-dimmed
-    borderSubtle = Dsw.borderL2Light,        // alias-border-l2
+    // ===== 2026-09-28 重设计稿浅色板（方案 2.2）=====
+    // 与旧浅色板最大的差别：**页面底是灰的、卡片才白**。分层靠这一组 tonal 差，
+    // 不给卡片加描边（docs/visual-rules.md 第二节）。
+    bgBase = Color(0xFFF5F5F2),              // 偏离 DSH：2026-09-28 重设计稿（页面底 #F5F5F2）
+    bgSidePanel = Color(0xFFF5F5F2),         // 偏离 DSH：同上（导航面与页面底同档）
+    bgCard = Color(0xFFFFFFFF),              // 偏离 DSH：重设计稿卡片/面板面 #FFFFFF（与灰底成对）
+    bgInput = Color(0xFFF5F5F2),             // 偏离 DSH：重设计稿输入条底 #F5F5F2（在白色对话页上凹进去）
+    // 稿子写 #F1F1ED：与页面底 #F5F5F2 只差 1.04:1，过不了 DshContrastTest 的 1.05 分层下限，
+    // 下压一档到 #EAEAE5（气泡与选中/胶囊共用这一层）
+    bgSubtle = Color(0xFFEAEAE5),            // 偏离 DSH：重设计稿气泡 #F1F1ED 下压一档（见上）
+    bgCode = Color(0xFFF3F3EF),              // 偏离 DSH：重设计稿代码块底 #F3F3EF
+    bgCodeBanner = Color(0xFFFAFAF8),        // 偏离 DSH：重设计稿卡片头/弱底 #FAFAF8
+    bgSelected = Color(0xFFE7E7E1),          // 偏离 DSH：重设计稿选中态改中性灰（不再用品牌蓝 tonal）
+    bgPressed = Dsw.interactiveHoverLight,   // alias-interactive-bg-hover
+    bgDrawer = Color(0xFFF5F5F2),            // 偏离 DSH：重设计稿抽屉底与页面底同档
+    bgNavSelected = Color(0xFFE7E7E1),       // 偏离 DSH：与 bgSelected 同一 selection container
+    bgTrack = Color(0xFFE6E6E1),             // 偏离 DSH：重设计稿进行中轨道 #E6E6E1
+    bgOverlay = Color(0x6B16171A),           // 偏离 DSH：重设计稿遮罩 rgba(22,23,26,.42)
+    bgRecessed = Color(0xFFF3F3EF),          // 偏离 DSH：重设计稿凹进面（思考轨迹）#F3F3EF
+    bgSurface = Color(0xFFFFFFFF),           // 偏离 DSH：重设计稿面板面 #FFFFFF
+    labelPrimary = Color(0xFF16171A),        // 偏离 DSH：重设计稿主文字 #16171A
+    labelSecondary = Color(0xFF5B5F66),      // 偏离 DSH：重设计稿次要文字 #5B5F66（灰底 5.9:1）
+    labelTertiary = Color(0xFF6E7278),       // 偏离 DSH：重设计稿第三级文字/箭头 #6E7278
+    labelDimmed = Color(0xFFB5B7BB),         // 偏离 DSH：重设计稿禁用 #B5B7BB
+    borderSubtle = Color(0xFFEEEEE9),        // 偏离 DSH：重设计稿分隔线 #EEEEE9（只用于分隔线，不做容器描边）
     borderStrong = Dsw.borderL3Light,        // alias-border-l3
     pressed = Dsw.interactiveHoverLight,     // alias-interactive-bg-hover
     activated = Dsw.interactiveActiveLight,  // alias-interactive-bg-active
-    // alias-link 是 deepseek-500，白底 4.2:1 不达 AA；链接和小字取调色板下一档 600（5.4:1）
-    brand400 = Dsw.deepseek600,
-    brand500 = Dsw.deepseek500,              // alias-brand-primary-new-color
-    success = Dsw.green500,                  // alias-state-success-primary
+    brand400 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
+    brand500 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝 #3F5BD6（批准、发送）
+    success = Color(0xFF1F9D55),             // 偏离 DSH：重设计稿在线点 #1F9D55
     warn = Dsw.amber600,                     // DSH 无 warning alias，取 static amber
-    warnLabel = Color(0xFFB45309),           // 偏离 DSH：amber 族白底都不达 AA，文字用更深的琥珀
-    error = Color(0xFFD92D20),               // 偏离 DSH：alias-state-error-primary（red-600 #EC1313）纯红配粉底过刺眼；本值 4.8:1
-    errorBg = Color(0x1AD92D20),             // 偏离 DSH：随 error 同色相
+    warnLabel = Color(0xFF8A4B00),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #8A4B00
+    warnContainer = Color(0xFFFFF1DE),       // 偏离 DSH：重设计稿「等你批准」胶囊底 #FFF1DE
+    error = Color(0xFFB42318),               // 偏离 DSH：重设计稿危险文字 #B42318（4.8:1）
+    errorBg = Color(0x1AB42318),             // 偏离 DSH：随 error 同色相
     buttonElevated = Dsw.neutralBluish00,    // alias-button-elevated-fill
     buttonFloating = Dsw.neutralBluish00,    // alias-button-floating-fill
     shadowCard = Dsw.shadowLv1,              // shadow-lv1 的颜色分量
@@ -192,10 +203,10 @@ val LightDshColors = DshColors(
     traceReasoning = Color(0xFF5B6FB8),      // 偏离 DSH：无对应角色；11sp 标签需 AA（4.8:1）
     traceApproval = Dsw.amber600,
     traceTodo = Color(0xFF0E8A9A),           // 偏离 DSH：无对应角色；待办青
-    brandTint = Dsw.deepseek500.copy(alpha = 0.1f),
-    onBrand = Dsw.neutralBluish00,
-    successContent = Color(0xFF166534),      // 偏离 DSH：DSH 绿色族白底都不达 AA
-    successContainer = Dsw.green100,         // alias-state-success-tertiary
+    brandTint = Color(0xFF3F5BD6).copy(alpha = 0.1f), // 偏离 DSH：随重设计稿强调蓝
+    onBrand = Dsw.neutralBluish00,           // 浅色强调底上写白字（#3F5BD6 上 5.7:1）
+    successContent = Color(0xFF17753F),      // 偏离 DSH：重设计稿完成图标 #17753F（DSH 绿色族白底不达 AA）
+    successContainer = Color(0xFFE6F4EC),    // 偏离 DSH：重设计稿完成图标圈底 #E6F4EC
     cloudContent = Dsw.deepseek600,          // 在 deepseek-100 上 4.6:1
     cloudContainer = Dsw.deepseek100,        // alias-state-business-tertiary
 )
@@ -677,6 +688,12 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.warnLabel
+
+    /** 「等你批准 / 等你回答」胶囊的暖色容器（与 [warnLabel] 成对）。 */
+    val warnContainer: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.warnContainer
 
     val error: Color
         @Composable
