@@ -1079,7 +1079,9 @@ private fun SidebarWall() {
     ) = MobileSession(
         sessionId = id,
         title = title,
-        updatedAt = 0L,
+        // 真实一点的更新时间：进行中的行要有「3 分钟」这类已运行时长（方案 3.5 要求行尾有时长），
+        // 最近的行要有「昨天 / 周五」。全填 0L 会让墙上看不到任何时间，掩盖真实问题。
+        updatedAt = System.currentTimeMillis() - if (running) 3L * 60_000 else 26L * 3_600_000,
         running = running,
         blank = false,
         cwd = "/Users/me/dsh-links",
