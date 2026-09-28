@@ -51,10 +51,8 @@ import androidx.core.content.ContextCompat
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.DshBanner
@@ -881,28 +879,8 @@ fun WorkspaceScreen(
         tailRequestId++
     }
 
-    /**
-     * 把列表真正贴到底：scrollToItem 只会把条目顶到视口顶部，
-     * 长回复需要再 scrollBy 把溢出部分推上去，否则最新内容仍在视口外。
-     */
-    suspend fun alignListToBottom() {
-        val total = listState.layoutInfo.totalItemsCount
-        if (total == 0) return
-        val lastIndex = total - 1
-        listState.scrollToItem(lastIndex)
-        withFrameNanos { }
-        repeat(2) {
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull() ?: return
-            val overflow = (last.offset + last.size) - info.viewportEndOffset
-            if (overflow > 0) {
-                listState.scrollBy(overflow.toFloat())
-                withFrameNanos { }
-            } else {
-                return
-            }
-        }
-    }
+    /** 把列表真正贴到底（含长回复溢出补偿），见 ChatTailPositioning.kt。 */
+    suspend fun alignListToBottom() = listState.alignToBottom()
 
     /** 立即滚到列表末尾；失败写入可检索日志。 */
     fun scrollToTail(tag: String) {
@@ -1626,7 +1604,10 @@ fun WorkspaceScreen(
             modelCatalogError = null
             tailRequestId++
         }
-        refreshMessages(autoScroll = preserveMessages)
+        // 首屏 history（含本地快照被网络结果接管）到达且有变化时仍走贴底跟随：
+        // 首个尾部请求可能已超时，或快照之后网络又追加了新消息。
+        // followIfNearBottom 只在 stickToBottom / 贴底时生效，用户已上翻则不强拉。
+        refreshMessages(autoScroll = true)
         refreshModels()
         // SSE 实时流：订阅事件，增量更新消息列表。
         // 流由 VM 持有（viewModelScope）：Activity 重建时组合虽销毁、流与游标仍在，
@@ -1643,15 +1624,13 @@ fun WorkspaceScreen(
         if (tailRequestId == 0 || tailRequestId == lastTailRequestId) return@LaunchedEffect
         lastTailRequestId = tailRequestId
         try {
-            withTimeoutOrNull(3000) {
-                snapshotFlow {
-                    messages.isNotEmpty() &&
-                        listState.layoutInfo.totalItemsCount > 0 &&
-                        !listState.isScrollInProgress
-                }.first { it }
-            }
-            withFrameNanos { }
-            alignListToBottom()
+            // 不能只看 totalItemsCount > 0：messages 刚提交时 layoutInfo 仍是上一帧
+            // （加载骨架 1 项），按它 scrollToItem 会落到新列表顶部（「加载更早」行）。
+            // positionAtTail 先等一次完整布局再对齐，并在头部条目晚插入时复核。
+            listState.positionAtTail(hasContent = { messages.isNotEmpty() })
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 被更新的尾部请求取代 / 离开组合：正常路径，不记失败
+            throw e
         } catch (e: Exception) {
             Log.w("WorkspaceActivity", "tail position request-$tailRequestId failed: ${e.message}")
         }
@@ -2220,6 +2199,13 @@ fun WorkspaceScreen(
                     fork = { sid -> forkNow(sid) },
                     openChanges = { seq, fileIndex -> scope.launch { changesPanel.open(seq, fileIndex) } },
                 )
+            }
+            // 消息列表进入组合（手机从首页点进会话、轨迹切回对话）时补一次贴底：
+            // 会话可能早在后台恢复好（冷启动恢复上次会话），当时列表不在屏上，
+            // 尾部请求无从对齐；点进同一会话 currentSessionId 不变，也不会再发请求。
+            // 用户离开前已上翻（stickToBottom=false）则保留原位置。
+            LaunchedEffect(Unit) {
+                if (stickToBottom && messages.isNotEmpty()) requestTailPosition()
             }
             // 列表高度随 IME/底栏变化时：贴底用户按变矮像素上推，跟手不跳
             var chatListHeightPx by remember { mutableIntStateOf(0) }
