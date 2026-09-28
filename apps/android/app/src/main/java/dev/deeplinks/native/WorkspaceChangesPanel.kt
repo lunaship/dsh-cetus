@@ -655,6 +655,8 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
         DiffRow.Kind.DELETE -> Triple(Dsh.error.copy(alpha = 0.12f), Dsh.error, "−")
         DiffRow.Kind.HUNK -> Triple(Dsh.bgTrack, Dsh.labelTertiary, "")
         DiffRow.Kind.CONTEXT -> Triple(Dsh.bgCode, Dsh.labelTertiary, " ")
+        // 折叠行：灰底、无行号，点一下展开（本轮先落到能渲染且不崩，交互下一片接）
+        DiffRow.Kind.FOLD -> Triple(Dsh.bgCodeBanner, Dsh.labelSecondary, "")
     }
     Row(
         modifier = Modifier

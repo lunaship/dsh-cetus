@@ -190,11 +190,56 @@ data class DiffRow(
     val newNo: Int?,
     val text: String,
     val emphasis: List<IntRange> = emptyList(),
+    /** 折叠行专用：被折起来的上下文行数（0 = 普通行）。 */
+    val hiddenCount: Int = 0,
 ) {
-    enum class Kind { HUNK, CONTEXT, ADD, DELETE }
+    enum class Kind { HUNK, CONTEXT, ADD, DELETE, FOLD }
 }
 
 fun diffRows(hunks: List<DiffHunk>): List<DiffRow> = withIntralineEmphasis(plainDiffRows(hunks))
+
+/** 折叠阈值：一段未改动的上下文超过这么多行才折（保留首尾各 [CONTEXT_FOLD_KEEP] 行）。 */
+const val CONTEXT_FOLD_MIN = 10
+const val CONTEXT_FOLD_KEEP = 3
+
+/**
+ * 把过长的未改动上下文折成一行「展开中间 N 行」（2026-09-28 重设计 · 方案 6.3）。
+ *
+ * [expandedFolds] 放的是「被折叠的上下文片段在**输入 rows 里**的起始下标」（不是输出里的
+ * 折叠行下标），由 UI 持有一份；纯函数只负责按它决定这一轮该显示哪些行，便于单测。
+ *
+ * hunk 头是天然的分隔符：不在 hunk 之间跨行合并，否则会把两段互不相邻的改动连起来。
+ */
+fun foldContextRows(rows: List<DiffRow>, expandedFolds: Set<Int> = emptySet()): List<DiffRow> {
+    val out = mutableListOf<DiffRow>()
+    var i = 0
+    while (i < rows.size) {
+        if (rows[i].kind != DiffRow.Kind.CONTEXT) {
+            out += rows[i]
+            i++
+            continue
+        }
+        var j = i
+        while (j < rows.size && rows[j].kind == DiffRow.Kind.CONTEXT) j++
+        val length = j - i
+        if (length <= CONTEXT_FOLD_MIN || i in expandedFolds) {
+            out += rows.subList(i, j)
+        } else {
+            out += rows.subList(i, i + CONTEXT_FOLD_KEEP)
+            out += DiffRow(
+                kind = DiffRow.Kind.FOLD,
+                oldNo = null,
+                newNo = null,
+                text = "",
+                hiddenCount = length - CONTEXT_FOLD_KEEP * 2,
+            )
+            out += rows.subList(j - CONTEXT_FOLD_KEEP, j)
+        }
+        i = j
+    }
+    return out
+}
+
 
 private fun plainDiffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
     for (hunk in hunks) {
