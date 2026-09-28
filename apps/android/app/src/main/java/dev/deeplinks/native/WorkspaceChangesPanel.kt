@@ -639,6 +639,17 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
         val contentWidth = with(density) {
             maxOf(maxWidth, ((gutterChars + longest) * charWidthPx).toDp() + 24.dp)
         }
+        // 自动换行时文本列的真实可用宽度：整宽 −（实测的行号列 + 标记列）− 内边距 − 安全余量。
+        // 上一版按「字符数 = 宽度 / 单字宽」估算，偏乐观导致长行被裁；这次改成实测像素宽，
+        // 并用 TextMeasurer 按这个宽度拿真实断点（见 DiffLineRow），两者一致才不会裁字。
+        val gutterPx = remember(codeStyle, digits) {
+            val numbers = "0".repeat(digits) + " "
+            measurer.measure(numbers, codeStyle).size.width.toFloat() +
+                measurer.measure(" + ", codeStyle).size.width.toFloat()
+        }
+        val textWidthPx = with(density) {
+            (maxWidth.toPx() - gutterPx - 16f - 8f).toInt().coerceAtLeast(48)
+        }
         val hScroll = rememberScrollState()
         val listModifier = if (wrap) {
             Modifier.fillMaxSize()
@@ -656,6 +667,7 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
                         digits = digits,
                         wrap = wrap,
                         style = codeStyle,
+                        textWidthPx = textWidthPx,
                         // 折叠行自带被折叠片段的起始下标（数据层给的），UI 不用反推
                         onExpandFold = { c ->
                             if (c >= 0) expandedFolds = expandedFolds + c
@@ -673,6 +685,8 @@ private fun DiffLineRow(
     digits: Int,
     wrap: Boolean,
     style: androidx.compose.ui.text.TextStyle,
+    /** 自动换行时文本列的可用像素宽；<= 0 表示走横向滚动那条路径，不做悬挂缩进。 */
+    textWidthPx: Int = 0,
     onExpandFold: (Int) -> Unit = {},
 ) {
     val (bg, signColor, sign) = when (row.kind) {
@@ -716,15 +730,59 @@ private fun DiffLineRow(
             softWrap = false,
         )
         Text(" $sign ", color = signColor, style = style, maxLines = 1, softWrap = false)
-        Text(
-            remember(row, signColor) { diffLineText(row, signColor.copy(alpha = 0.3f)) },
-            color = Dsh.labelPrimary,
-            style = style,
-            softWrap = wrap,
-            maxLines = if (wrap) Int.MAX_VALUE else 1,
-            overflow = TextOverflow.Clip,
-            modifier = Modifier.weight(1f),
-        )
+        val lineText = remember(row, signColor) { diffLineText(row, signColor.copy(alpha = 0.3f)) }
+        // 稿 04：折行的续行要 2ch 悬挂缩进。断点由真实排版给出（TextMeasurer + 约束宽度），
+        // 不按字符数猜；切片走 AnnotatedString，行内改动的加深底色不会丢。
+        val lineMeasurer = rememberTextMeasurer()
+        val lineRanges = remember(lineText, textWidthPx, wrap) {
+            if (!wrap || textWidthPx <= 0) {
+                emptyList()
+            } else {
+                val measured = lineMeasurer.measure(
+                    text = lineText,
+                    style = style,
+                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = textWidthPx),
+                    softWrap = true,
+                    maxLines = Int.MAX_VALUE,
+                )
+                if (measured.lineCount <= 1) {
+                    emptyList()
+                } else {
+                    (0 until measured.lineCount).map { i ->
+                        measured.getLineStart(i) to measured.getLineEnd(i, visibleEnd = true)
+                    }
+                }
+            }
+        }
+        if (lineRanges.isEmpty()) {
+            Text(
+                lineText,
+                color = Dsh.labelPrimary,
+                style = style,
+                softWrap = false,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Column(modifier = Modifier.weight(1f)) {
+                lineRanges.forEachIndexed { index, (from, to) ->
+                    val slice = lineText.subSequence(from, to)
+                    Text(
+                        if (index == 0) {
+                            slice
+                        } else {
+                            AnnotatedString(" ".repeat(HANGING_INDENT_CHARS) + slice.text, slice.spanStyles, slice.paragraphStyles)
+                        },
+                        color = Dsh.labelPrimary,
+                        style = style,
+                        softWrap = false,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                }
+            }
+        }
     }
 }
 
