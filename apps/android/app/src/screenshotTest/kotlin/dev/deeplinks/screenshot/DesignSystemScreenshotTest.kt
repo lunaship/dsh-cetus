@@ -524,7 +524,7 @@ internal fun WorkspaceChromeLight() {
 
 /** 对话页底部整体：上下文条 + 输入卡（两层输入区）。 */
 @Composable
-private fun ChatBottomWall(capWidth: Boolean = false) {
+internal fun ChatBottomWall(capWidth: Boolean = false) {
     val stats = MobileSessionStats(
         turns = 3, steps = 421, uncachedInputTokens = 2_100_000, cacheReadTokens = 126_000_000, outputTokens = 1_000_000,
         contextPressureTokens = 60_000, contextWindow = 128_000,
@@ -1016,7 +1016,7 @@ internal fun SettingsAboutDarkEn() {
     GroupedWall(dark = true, english = true) { AboutSettings(onOpenLegal = { _, _ -> }) }
 }
 
-private val PreviewHost = Host(
+internal val PreviewHost = Host(
     name = "MacBook Pro",
     baseUrl = "https://192.168.1.8:18640",
     token = "preview",

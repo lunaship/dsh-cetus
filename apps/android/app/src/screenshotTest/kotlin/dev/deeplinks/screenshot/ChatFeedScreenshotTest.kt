@@ -25,6 +25,13 @@ import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.dshTypography
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.MessageItem
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import dev.deeplinks.native.ChatFeedActions
+import dev.deeplinks.native.MobileApiClient
+import dev.deeplinks.native.chatMessageItems
+import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.ToolGroupHeader
 import dev.deeplinks.native.MobileMessage
@@ -289,4 +296,58 @@ internal fun ProcessRowLightZh() {
 @Composable
 internal fun ProcessRowDarkEn() {
     ProcessRows(dark = true, english = true)
+}
+
+/**
+ * 整屏对话页（方案阶段 10 第 4 项「与设计稿并排」要的那张图）：
+ * 分组后的消息流（含过程折叠行、改动卡、轮末行）+ 底部区，与稿 03 同构。
+ *
+ * 之前只有逐条消息的墙，所以对话页没法与整页稿并排——README 里把这条记成覆盖边界。
+ */
+@Composable
+private fun ChatPage(dark: Boolean, english: Boolean) {
+    ChatFrame(dark = dark, english = english) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val scope = rememberCoroutineScope()
+        val actions = remember(context) {
+            ChatFeedActions(
+                client = MobileApiClient(PreviewHost),
+                scope = scope,
+                context = context,
+                host = PreviewHost,
+                currentSessionId = { null },
+                messages = { completedTurn },
+                setMessages = {},
+                olderMessages = { emptyList() },
+                composerText = { "" },
+                setComposerText = {},
+                setComposerError = {},
+                isRunning = { false },
+                busyEnter = { "queue" },
+                isFeedbackSupported = { false },
+                feedbackFor = { null },
+                updateFeedback = {},
+                refreshSessions = {},
+                fork = {},
+            )
+        }
+        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                chatMessageItems(
+                    visibleGroups = groupMessages(completedTurn),
+                    sweepingId = null,
+                    toolQuery = "",
+                    actions = actions,
+                )
+            }
+            ChatBottomWall()
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "chat page light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun ChatPageLightZh() {
+    ChatPage(dark = false, english = false)
 }
