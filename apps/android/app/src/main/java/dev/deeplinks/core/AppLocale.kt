@@ -612,6 +612,7 @@ class DshStrings(private val values: Map<String, String>) {
     val notifyOnDone: String get() = t("notifyOnDone")
     val notifyExplain: String get() = t("notifyExplain")
     val sectionNotifications: String get() = t("sectionNotifications")
+    val renameComputerDesc: String get() = t("renameComputerDesc")
     val connectionMethod: String get() = t("connectionMethod")
     val changeComputer: String get() = t("changeComputer")
     val agentPermission: String get() = t("agentPermission")

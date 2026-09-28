@@ -393,6 +393,8 @@ internal fun SettingsHome(
     val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
     var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
     var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
+    var alias by remember { mutableStateOf(notifyPrefs.hostAlias) }
+    var renameOpen by remember { mutableStateOf(false) }
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
         "dark" -> s.themeDark
@@ -419,6 +421,13 @@ internal fun SettingsHome(
         }
         // 方案 7 电脑卡三行：连接方式 / 智能体权限 / 更换电脑。前两者与「更换电脑」都进
         // 既有设备页（那里本来就有换机与连线方式），这里只补入口，不新写流程
+        // 方案 7：电脑卡「重命名」。存本机别名（host 侧没有改名 API），只影响这台手机显示
+        DshListRow(
+            title = s.rename,
+            icon = EditOutline16,
+            value = alias.ifBlank { null },
+            onClick = { renameOpen = true },
+        )
         DshListRow(
             title = s.connectionMethod,
             icon = LinkOutline16,
@@ -487,6 +496,15 @@ internal fun SettingsHome(
             title = s.notifyOnDone,
             checked = notifyDone,
             onCheckedChange = { notifyDone = it; notifyPrefs.notifyOnDone = it },
+        )
+    }
+    if (renameOpen) {
+        DshRenameDialog(
+            currentName = alias.ifBlank { host?.name.orEmpty() },
+            title = s.rename,
+            message = s.renameComputerDesc,
+            onDismiss = { renameOpen = false },
+            onSave = { alias = it.trim(); notifyPrefs.hostAlias = it; renameOpen = false },
         )
     }
     // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，

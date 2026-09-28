@@ -74,6 +74,17 @@ class WorkspacePrefs(context: Context) {
         }
 
     /** 是否已询问过通知权限。 */
+    /**
+     * 电脑的本机别名（2026-09-28 重设计 · 阶段 7「重命名」）。
+     * 存本机而不是改 host 名字：仓库里没有 host 侧改名 API，而且「我给它起的名字」本来就
+     * 只对我这台手机有意义。空串 = 没起过名，各处回退到 host.name / 地址。
+     */
+    var hostAlias: String
+        get() = prefs.getString(KEY_HOST_ALIAS, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_HOST_ALIAS, value.trim()).apply()
+        }
+
     /** 通知开关（2026-09-28 重设计 · 方案 7.3）：存本机，`DshNotifier` 发通知前读这两个值。 */
     var notifyOnApproval: Boolean
         get() = prefs.getBoolean(KEY_NOTIFY_APPROVAL, true)
@@ -229,6 +240,7 @@ class WorkspacePrefs(context: Context) {
         const val KEY_NOTIF_ASKED = "notif_permission_asked"
 
         // 新增键：加 `workspace_` 前缀避免与旧键混淆
+        const val KEY_HOST_ALIAS = "host_alias"
         const val KEY_NOTIFY_APPROVAL = "notify_on_approval"
         const val KEY_NOTIFY_DONE = "notify_on_done"
 

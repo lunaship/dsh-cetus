@@ -179,6 +179,9 @@ internal fun DshRenameDialog(
     currentName: String,
     error: String? = null,
     saving: Boolean = false,
+    /** 标题/说明可换：会话改名与电脑改名共用同一个对话框。 */
+    title: String = L.renameSession,
+    message: String = L.renameSessionDesc,
     onDismiss: () -> Unit,
     onClearError: () -> Unit = {},
     onSave: (String) -> Unit,
@@ -187,8 +190,8 @@ internal fun DshRenameDialog(
     val kind = renameDialogKind(saving, error)
     val canSave = name.isNotBlank() && kind != RenameDialogKind.Saving
     DshDialogFrame(onDismiss = onDismiss, dismissible = kind != RenameDialogKind.Saving) { requestDismiss ->
-        DshDialogTitle(L.renameSession)
-        DshDialogMessage(L.renameSessionDesc)
+        DshDialogTitle(title)
+        DshDialogMessage(message)
         Spacer(Modifier.height(DshSpace.s16))
         DshTextField(
             value = name,
