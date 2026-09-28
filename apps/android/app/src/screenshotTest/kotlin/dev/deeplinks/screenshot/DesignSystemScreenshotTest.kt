@@ -95,6 +95,7 @@ import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.LightDshColors
+import dev.deeplinks.core.pureBlack
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
@@ -286,6 +287,42 @@ internal fun InboxComponentsLightZh() {
 @Composable
 internal fun InboxComponentsDarkEn() {
     Wall(dark = true, english = true) { InboxWall() }
+}
+
+/**
+ * 纯黑（OLED）模式：只压画布 / 侧栏 / 代码底，卡片与气泡保持原色阶。
+ * 色板换值后这一档最容易出现「卡片和底糊在一起」，所以单独留一张基线。
+ */
+@Composable
+private fun PureBlackWall(content: @Composable () -> Unit) {
+    val colors = DarkDshColors.pureBlack()
+    val typography = dshTypography(DshFontFamily)
+    MaterialTheme(typography = typography) {
+        CompositionLocalProvider(
+            LocalDshColors provides colors,
+            LocalDshStrings provides DshStringsZh,
+            LocalDshFontFamily provides DshFontFamily,
+            LocalTextStyle provides typography.bodyMedium,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Dsh.bgBase)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "inbox components pure black zh", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun InboxComponentsPureBlackZh() {
+    PureBlackWall { InboxWall() }
 }
 
 @Composable
