@@ -52,7 +52,21 @@
 `DshNotifier` 内部，一处管住所有通知）；完成通知正文改用 `lastResult`（带 `BigTextStyle`，
 无结果时退回「任务完成 / 会话「x」已完成」）。
 
-**剩余**：审批通知的动作按钮（批准需解锁 / 拒绝 / 打开），完成通知的两个动作（查看改动 / 回复）。
+**已完成**（本轮补）：审批通知的动作按钮——`ApprovalActionReceiver`（exported=false）+ 清单注册
++ Notifier 动作 + 调用点传 `approvalId`；「允许一次」要求解锁、「拒绝」不要求；成功改文案后 4 秒
+消失、失败清通知并打开会话。
+
+**剩余**：完成通知的两个动作（查看改动 / 回复）。落点已经查清，留作下一片：
+
+- 两个动作都是 `PendingIntent` 指向 `WorkspaceActivity`，各自带一个 extra（`openChanges` /
+  `focusComposer`），`FLAG_IMMUTABLE`。
+- **难点不在通知侧，而在消费侧**：`WorkspaceActivity.onCreate` 会把路由转给 `MainActivity`
+  （`EXTRA_START_ROUTE`），外部 Intent 的真正解析在 `core/StartupRouting.kt`；而「打开改动面板」
+  与「聚焦输入框」都要改 `WorkspaceScreen` 里的状态——那个函数预算是 2955 行、当前正好 2955，
+  文件 3084/3087。所以要先抽一层（把两个 extra 的解析放进 `StartupRouting.kt`，并在
+  `WorkspaceScreen` 里各留一行调用），并且多半要再合并几处相邻参数腾出行数。
+- 参考：`composerFocusRequester` 在 244 行声明、2699 行传入；`composerKeyboardController?.show()`
+  与 `requestFocus()` 的搭配在 2547–2550 行有一个现成写法可抄。
 写之前已查清的事实：
 
 | 需要的东西 | 现成的 |
