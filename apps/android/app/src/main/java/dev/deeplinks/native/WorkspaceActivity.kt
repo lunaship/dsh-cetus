@@ -65,6 +65,7 @@ import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.selectShareTurns
 import dev.deeplinks.native.util.WorkspaceAccount
+import dev.deeplinks.native.util.chatTopSubtitle
 import dev.deeplinks.native.util.relativeTime
 import dev.deeplinks.native.util.sessionMillis
 import dev.deeplinks.native.util.normalizeWorkspacePath
@@ -2262,7 +2263,8 @@ fun WorkspaceScreen(
                 running = running,
                 // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
                 title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
-                // 项目与连接状态写在输入卡上方的上下文条里，顶栏只留标题
+                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」
+                subtitle = chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), host.name, currentSession?.activity, elapsedSec),
                 showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
@@ -2769,9 +2771,6 @@ fun WorkspaceScreen(
 
     // 模型选择底部抽屉
     // 面板里的模型 / 模式座沿用输入卡的那份预设（这里而不是更早，是因为依赖 appSettings）
-    val newTaskPermissionPreset = canonicalComposerPermission(
-        composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset),
-    )
 
     if (showNewTaskSheet) {
         NewTaskSheetHost(
@@ -2782,8 +2781,8 @@ fun WorkspaceScreen(
                 input = inputText,
                 modelName = pendingModel?.second ?: appSettings.defaultModel,
                 modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
-                permissionPreset = newTaskPermissionPreset,
-                permissionLabel = composerPermissionLabel(newTaskPermissionPreset),
+                permissionPreset = canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset)),
+                permissionLabel = composerPermissionLabel(canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset))),
                 sending = isSending,
                 error = composerActionError,
             ),
