@@ -3,6 +3,7 @@ package dev.deeplinks.native
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -234,19 +236,21 @@ private fun InputCard(
                 modelEffort = modelEffort,
                 permissionPreset = permissionPreset,
                 permissionLabel = permissionLabel,
-                compact = true,
                 onOpenModelPicker = onOpenModelPicker,
                 onOpenPermissionPicker = onOpenModePicker,
             )
             Spacer(Modifier.weight(1f))
-            DshIconAction(
-                icon = SendOutline16,
-                contentDescription = s.sendMessage,
-                onClick = onSend,
-                size = 44.dp,
-                iconSize = 18.dp,
-                containerColor = if (sending) Dsh.labelDimmed else Dsh.brand500,
-            )
+            // 发送中：整体降透明并拦住重复点击（DshIconAction 没有 enabled 参数）
+            Box(modifier = Modifier.alpha(if (sending) 0.55f else 1f)) {
+                DshIconAction(
+                    icon = SendOutline16,
+                    contentDescription = s.sendMessage,
+                    onClick = { if (!sending) onSend() },
+                    size = 44.dp,
+                    iconSize = 18.dp,
+                    containerColor = Dsh.brand500,
+                )
+            }
         }
     }
 }
