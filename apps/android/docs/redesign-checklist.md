@@ -45,3 +45,31 @@
 ### 红线
 
 验收时**不要点「解除配对」「更换电脑」**（方案红线 5）。
+
+## 阶段 8　通知（进行中）
+
+**已完成**：频道拆两个（`dsh_approvals` 高优先级 / `dsh_tasks` 默认）；两个开关生效（关卡放在
+`DshNotifier` 内部，一处管住所有通知）；完成通知正文改用 `lastResult`（带 `BigTextStyle`，
+无结果时退回「任务完成 / 会话「x」已完成」）。
+
+**剩余**：审批通知的动作按钮（批准需解锁 / 拒绝 / 打开），完成通知的两个动作（查看改动 / 回复）。
+写之前已查清的事实：
+
+| 需要的东西 | 现成的 |
+|---|---|
+| 提交审批 | `MobileApiClient(host).answerApproval(sessionId, approvalId, outcome): Boolean`（同步阻塞，接收器里要挪到工作线程） |
+| outcome 取值 | `"allowed-once"`（批准）、`"rejected"`（拒绝），与 `ApprovalCard.kt:86` 一致 |
+| 取回 host | `HostStore.current(context)`；Intent 里也带 `host.putInto()` 的三个 extra，可用 `List<Host>.resolveFromIntent(intent)` 校验 |
+| 通知触发点 | `WorkspaceActivity` 约 1393 行，`approvalId` 那个局部值就在同一段作用域 |
+| 清单 | `AndroidManifest.xml` 第 111 行 `</application>` 之前；目前**没有任何 receiver** |
+
+**必须守住三条**：① `PendingIntent` 一律 `FLAG_IMMUTABLE`，Intent 只带 `sessionId`/`approvalId`、
+**不带 token**（token 由 `HostStore` 在进程内取）；② `ApprovalActionReceiver` 注册为
+`exported="false"`；③ 批准动作要 `setAuthenticationRequired(true)`（Android 12+ 先解锁），
+拒绝不需要。
+
+**为什么不留半成品**：这一片要么整体写对（Receiver + 清单 + Notifier 动作 + 调用点传 `approvalId`），
+要么一行都不写。一个「注册了但没接上」或「点了没反应」的接收器，比不做更糟——门禁全绿但功能是假的。
+
+**真机验证项**（当前 `adb devices` 为空）：锁屏下批准需解锁、拒绝不需要；动作成功 / 失败两条路径；
+两个开关生效。
