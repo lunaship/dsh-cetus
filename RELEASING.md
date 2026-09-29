@@ -1,13 +1,13 @@
 # Release 核对
 
-GitHub `lunaship/dsh-links` = **插件源码、Relay 源码（`relay/`）、Android 源码（`apps/android/`）与文档**。Relay 为维护者内测：文档可以说明流程，但不得提交接入码、Relay 主机凭据或 `state.json`。npm 包仍只包含插件文件，不含 `relay/` 或 `apps/android/`。
+GitHub `lunaship/dsh-links` = **插件源码、DLP/1 中继源码（`relay/`）、Android 源码（`apps/android/`）与文档**。不得提交 `state.json`（含插件的远程主机密钥）或服务器凭据。npm 包仍只包含插件文件，不含 `relay/` 或 `apps/android/`。中继单独部署（`relay/README.md`），不随插件发版。
 
 ## 发布前
 
-- [ ] 本仓 `git ls-files` 不得出现 keystore、token、`state.json`、接入码、Relay 主机凭据、`local.properties` 或任何私密配置。
+- [ ] 本仓 `git ls-files` 不得出现 keystore、token、`state.json`、服务器凭据、`local.properties` 或任何私密配置。
 - [ ] `npm test` 通过，`npm pack --dry-run` 的文件清单仅包含声明的插件发布文件。
 - [ ] npm 已登录，包名与版本正确；发布后在干净 profile 以 `dsh plugin --profile web add dsh-links@<version>` 成功安装。
-- [ ] 用真实 Android 设备完成扫码配对、会话/SSE、审批、吊销、重启后重连验收。
+- [ ] 用真实 Android 设备完成扫码配对、会话/SSE、审批、吊销、重启后重连验收；远程改动还要在蜂窝网络下跑一遍远程首配与 Wi‑Fi / 蜂窝切换。
 - [ ] APK 是正式签名产物；在 GitHub Release（`app-v*` tag）附版本号、SHA-256、最低 Android 版本和安装说明。
 - [ ] `apps/android/scripts/release-apk.sh` 输出校验和与当前 tag 一致。
 
@@ -36,6 +36,6 @@ GitHub `lunaship/dsh-links` = **插件源码、Relay 源码（`relay/`）、Andr
 
 ## 对外口径
 
-- **Beta / Android only / Trusted LAN / Relay 内测（需接入码）/ DSH `0.1.5-rc.1`**。
+- **Beta / Android only / Trusted LAN / 远程连接（DLP/1）实验性、默认关闭**；DSH 基线见 `docs/COMPATIBILITY.md`。
 - 用户自行使用内网穿透仅为实验性个人部署，不是支持路径，也不提供安全或兼容承诺。
-- 不得将 `18640` 直接暴露到公网。Relay 已跑通但仍是邀请制内测；不要把接入码写进 README、Release 说明或 npm 包。
+- 不得将 `18640` 直接暴露到公网；跨网络请用插件内置的远程连接（手机与电脑都只向外连中继）。

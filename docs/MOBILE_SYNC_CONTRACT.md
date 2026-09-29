@@ -1,6 +1,6 @@
 # 移动端同步与请求状态合同
 
-业务层协议，独立于 DLR/1。内层证书指纹、设备 Token 和邀请制不因本文件升级改变。
+业务层协议，独立于传输（局域网直连或 DLP/1 中继）。内层证书指纹与设备 Token 不因本文件升级改变。
 
 当前插件 `protocol` 为 `2`。App 在建流时发送 `caps=sync2,multiQuestion,requestState`。
 
@@ -110,7 +110,7 @@ Host 挂载了该服务时 bootstrap / SSE `ready` 下发：
     `replaces` 里的旧设备（批准响应用 `replacedDeviceIds` 返回），拒绝/超时不碰旧设备。
 - `replace: true` 而无同名冲突时就是普通配对（不返回 `replacedDeviceIds`）。
 - 手机卸载重装会销毁 Keystore 里的 token，重装后必须重新扫码；上述流程让重装恢复
-  不需要先到电脑端手工吊销。接入码（Relay ENROLL）与此无关，不受 App 更新/卸载影响。
+  不需要先到电脑端手工吊销。
 
 二维码 / `pair-info` 载荷新增两个时效戳（Unix 毫秒，主机时钟）：
 
@@ -119,25 +119,22 @@ Host 挂载了该服务时 bootstrap / SSE `ready` 下发：
   「请刷新电脑面板上的二维码」，不要提交注定 401 的码，避免撞限流冷却。
 - 旧插件不下发这两个字段；缺失时 App 回退为直接尝试配对。
 
-## 云端路由快照
+## 远程能力（DLP/1）
 
-`GET /dsh-link/mobile/bootstrap` 在设备 token 鉴权后附带当前插件 Relay 路由（与扫码 `pair-info?via=relay` 同形）：
+完整合同见 [`rfc/0001-dlp1-remote-pipe.md`](rfc/0001-dlp1-remote-pipe.md) §5.2、§6.3、§6.4。
 
-```json
-{
-  "relay": {
-    "v": 2,
-    "client": "relay.example:8443",
-    "routeId": "<b64u>",
-    "routeSecret": "<b64u>",
-    "tlsFingerprint": "<optional sha256 hex>"
-  }
-}
-```
-
-未接入、已吊销或已「释放名额」时下发 `"relay": null`，App 清掉本机云端字段并保留局域网配对。旧插件不下发该键，App 不得因此擦掉已存路由。旧 App 忽略未知字段。该快照不含 Control 登录地址；接入串里的 `c=` 只给电脑插件，Android App 不登录 Control。
-
-插件更换 Relay / 释放名额后，旧 `routeId` 的 CONNECT 在 MAC 通过后返回 DLR `REVOKED`。App 不得把整台配对删掉：同一网络仍可用设备 token；恢复云端需重新扫码（纯远程手机在下次进局域网或重扫之前拿不到新路由）。App 在本机记下「需扫码恢复云端」，设备列表保留扫码入口，不登录 Control。插件在已有有效路由时即显示云端配对码，不必等 Agent 心跳在线；暂停或吊销后隐藏。换路由后按非密钥路由戳刷新该码，避免扫到旧路由。该码不含 Control 登录地址。
+- **二维码 / `pair-info`**：远程已就绪时二维码额外带 `remote: { e, r, s, p? }`（中继地址、routeId、
+  一次性 bootstrap 种子、可选外层证书指纹）。`s` 只编进二维码图片，面板的 `pair-info` JSON 不带它，
+  只给 `remoteStatus: { state, host }`。旧 App 不认识 `remote`，按 `urls` 走局域网配对。
+- **`POST /dsh-link/pair`** 成功时，远程已启用则附带该设备的 `remote: { e, r, h, k, p? }`（设备 handle
+  与会合密钥），pending 设备也有。经中继首配（bootstrap 来源）一律 `pending: true`，不受「配对需本机确认」开关影响。
+- **`GET /dsh-link/mobile/bootstrap`**：`remote` 为对象 = 更新远程能力（已配对设备此时自动补发 handle，无需重扫）；
+  `null` = 远程已停用，App 只清远程字段、保留局域网配对；缺键（旧插件）= 不动。
+  `relay` 固定为 `null`：旧版 DLR/1 已下线，旧 App 据此清掉失效的云端路由。
+- 中继转来的错误码（`UNKNOWN_KEY`、`BAD_MAC` 等）可能被伪造，App 只能据此提示，不得删除或改写本机凭据；
+  删除凭据只认插件在内层 TLS 上的明确答复（设备已吊销）。
+- 设备列表（`/dsh-link/mobile/devices` 与面板）的 `via`：`lan` / `remote`（经中继首配）/ `relay`（旧版云端配对，已停用）；
+  `remote: true` 表示该设备已有远程能力。`remoteHandle` 从不下发。
 
 | 组合 | 行为 |
 | --- | --- |

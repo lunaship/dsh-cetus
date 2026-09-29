@@ -180,21 +180,23 @@ dsh-links/
 ├── src/                          # DSH 插件（npm 包唯一发布内容）
 │   ├── index.js                  # 入口：路由注册、配对 / 设备状态机、Runtime 装配
 │   ├── mobile-api.js             # 手机 HTTPS API 唯一实现（/dsh-link/mobile/*）
-│   ├── panel.js                # 「手机连接」面板源码（client.js 由 build-client.mjs 生成）
+│   ├── panel.js                  # 「手机连接」面板源码（client.js 由 build-client.mjs 生成）
 │   ├── workspace-*.js            # 工作区注册、改动转发、文件与目录沙箱
-│   └── remote/                   # 远程连接 Agent（DLP/1）
-├── relay/                        # Relay 服务端（Go），独立部署
+│   └── remote/                   # 远程连接：Agent、运行时、state（DLP/1）
+├── relay/                        # DLP/1 中继服务端（Go，dlp-relay），独立部署
 ├── apps/android/                 # Android App（Android Studio 打开这里）
 │   ├── app/src/main/java/dev/deeplinks/
 │   │   ├── core/                 # 跨屏契约：主题 / 排版 / 颜色 token、本地化、加密、布局推导
+│   │   │   └── remote/           # DLP/1：自动选路、隧道 socket、远程路由
 │   │   ├── native/               # 工作台屏幕与 Compose 组件
 │   │   └── devices/              # 配对、扫码与设备管理
 │   ├── app/src/test/             # JVM 单测与架构门禁（token / 间距 / 色源 / 体量预算）
 │   ├── app/src/screenshotTest/   # Compose 截图测试；基准图在 screenshotTestDebug/reference
 │   └── docs/                     # 视觉合同与 UI 贡献规则
 ├── test/                         # 插件 node:test 套件
-├── scripts/                      # DLR/1 向量对拍、架构冒烟、内测证据收集
-└── docs/                         # 架构、同步契约、兼容矩阵、内测计划
+├── scripts/                      # 真中继端到端、架构冒烟、内测证据收集
+├── testdata/dlp1/                # DLP/1 三端共用测试向量（JS / Go / Kotlin）
+└── docs/                         # 架构、同步契约、兼容矩阵、RFC、内测计划
 ```
 
 ---
@@ -215,7 +217,7 @@ dsh-links/
 3. **开始使用**：在 App 里选择已配对的电脑，进入会话工作台。
 
 > [!NOTE]
-> 局域网配对不需要接入码。远程访问（内置远程连接、Tailscale、Cloudflare Tunnel）见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。**不要**把 `18640` 端口直接做路由器端口转发。
+> 配对不需要账号。远程访问（内置远程连接、Tailscale、Cloudflare Tunnel）见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。**不要**把 `18640` 端口直接做路由器端口转发。
 
 ---
 
@@ -225,7 +227,7 @@ dsh-links/
 
 - **Node.js** `>= 20`，**pnpm**（插件依赖锁定在 `pnpm-lock.yaml`）
 - **JDK 17 与 Android SDK**（`minSdk 26`、`targetSdk 36`；AGP 9.3、Kotlin 2.4）
-- **Go** `1.25`（仅 Relay）
+- **Go** `1.25`（仅中继）
 - 一台运行 DeepSeek Harness 的电脑；当前基线见 [兼容矩阵](docs/COMPATIBILITY.md)
 
 ### 插件
@@ -252,16 +254,18 @@ cd apps/android
 
 debug 变体的包名带 `.debug` 后缀，与签名 release 共存、互不覆盖；真机设备测试一律走 debug 变体（完整命令见 [`apps/android/README.md`](apps/android/README.md)）。
 
-### Relay
+### 中继
 
 ```bash
 cd relay
-gofmt -l . && go vet ./... && go build ./...
+gofmt -l . && go vet ./... && go build ./... && go test ./... -race
 ```
+
+自建部署见 [`relay/README.md`](relay/README.md)。
 
 ### 质量门禁
 
-CI 分三路：插件跑 DLR/1 向量对拍、面板生成物一致性、`node:test`、打包清单与依赖审计；Relay 跑 race 测试、vet 与协议 fuzz；App 跑向量对拍、JVM 单测 + lint、截图校验与 debug 构建。App 单测里包含一组**架构门禁**：
+CI 分三路：插件跑面板生成物一致性、`node:test`、打包清单与依赖审计；中继跑 race 测试、vet 与控制帧 fuzz；App 跑 JVM 单测（含 DLP/1 三端共用向量）+ lint、截图校验与 debug 构建。App 单测里包含一组**架构门禁**：
 
 | 门禁 | 守住什么 |
 |---|---|

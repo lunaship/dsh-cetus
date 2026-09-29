@@ -2,7 +2,7 @@
 
 DeepLinks connects a phone to [DeepSeek Harness (dsh)](https://github.com/deepseek-ai) instances that can run tools and execute code on the host machine. Treat a paired device as a privileged remote console.
 
-This public Beta supports **trusted LAN** as the documented product path. DeepLinks Relay is in **private testing**: remote pairing has been exercised end-to-end, but enrollment requires a maintainer-issued invite code. Invite codes, Relay host credentials, and `state.json` must not appear in this repository, GitHub Releases, or the npm package.
+This public Beta supports **trusted LAN** as the documented product path. Remote access over the DLP/1 relay is **experimental and off by default**: both the plugin and the app only dial out to the relay, the plugin verifies the phone's rendezvous key before it connects its local port, the inner TLS is still pinned to the plugin certificate, and business authorization is still the device token. The relay holds no accounts or secrets. `state.json` (it contains the plugin's remote host key) must never appear in this repository, GitHub Releases, or the npm package.
 
 If you use an intranet-tunnelling product yourself, treat it as an **experimental personal deployment**: it is not a supported Beta configuration and receives no compatibility or security guarantee. Do not expose port `18640` directly to the public Internet.
 
@@ -33,10 +33,9 @@ If you use an intranet-tunnelling product yourself, treat it as an **experimenta
 ## Do not
 
 - Expose `0.0.0.0:18640` to untrusted networks.
-- Treat Cloudflare Tunnel, Tailscale, frp, or invite-only Relay testing as a supported public Beta feature.
-- Commit `local.properties`, keystores, `state.json`, invite codes, Relay host credentials, or any `*.token` / `*.pem` files.
-- Paste invite codes into README, issues, screenshots, or pull requests.
-- Screenshot or share the **cloud pairing QR**: it embeds the Relay route credential (`routeSecret`) and is as sensitive as an invite code. If it leaks, disconnect Relay on the「手机连接」panel to invalidate the credential.
+- Treat Cloudflare Tunnel, Tailscale, frp, or the experimental DLP/1 relay as a supported public Beta feature.
+- Commit `local.properties`, keystores, `state.json`, or any `*.token` / `*.pem` files.
+- Screenshot or share the **phone connection QR** while it is valid: it can add a device. When remote access is on, the QR also carries a one-time bootstrap seed; a remote first pairing through it always waits for approval on this computer, but still refresh the QR (it rotates after use or expiry) if it leaks. If remote credentials may have leaked, use「重置远程身份」on the panel.
 - Rely on Host/Origin rewriting as authentication — auth is the device token.
 - Expect a mobile permission change or file download to succeed from a device that is not currently viewing that session: both require an active SSE subscription for the session, and will fail with `403` otherwise.
 - Assume a valid token grants mobile `danger-full-access`: it is refused unless the host enables `allowMobileDangerFullAccess`.
@@ -55,7 +54,7 @@ On the host, enable「配对需本机确认」so an unexpected device still need
 
 ## Source and APK trust
 
-- The public repository opens the `dsh-links` plugin, Relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The npm package still ships the plugin only; it does not include `relay/` or `apps/android/`.
+- The public repository opens the `dsh-links` plugin, the DLP/1 relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The npm package still ships the plugin only; it does not include `relay/` or `apps/android/`.
 - Do not trust third-party rebuilds or sideloaded APKs that claim to be DeepLinks.
 
 ## Reporting
