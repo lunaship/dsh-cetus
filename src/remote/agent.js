@@ -48,6 +48,8 @@ export class RemoteAgent extends EventEmitter {
   #nonces
 
   #status = "off"
+  /** 控制连接最近一次失败的原因（面板用）；注册成功即清空。只含错误码或简短原因，不含秘密。 */
+  #lastError = ""
   #stopped = true
   #ctrl = null
   #registeredAt = 0
@@ -114,6 +116,10 @@ export class RemoteAgent extends EventEmitter {
 
   get routeId() {
     return Buffer.from(this.#routeId)
+  }
+
+  get lastError() {
+    return this.#lastError
   }
 
   /** 来源标签（§6.1）；插件以 req.socket.remotePort 查询。 */
@@ -245,6 +251,7 @@ export class RemoteAgent extends EventEmitter {
           return
         }
         registered = true
+        this.#lastError = ""
         this.#registeredAt = this.#now()
         this.#startPing(ws, Number.isSafeInteger(msg.ping) && msg.ping > 0 ? msg.ping : 20)
         this.#logger.info("dlp-agent: registered")
@@ -255,12 +262,15 @@ export class RemoteAgent extends EventEmitter {
       } else if (msg.t === "pong" && registered) {
         // 只用于保活
       } else if (msg.t === "error") {
-        this.#logger.warn(`dlp-agent: relay error code=${safeCode(msg.code)}`)
+        this.#lastError = safeCode(msg.code)
+        this.#logger.warn(`dlp-agent: relay error code=${this.#lastError}`)
       } else {
         ws.close(CLOSE.PROTOCOL_ERROR)
       }
     })
-    ws.on("error", () => {})
+    ws.on("error", (err) => {
+      if (this.#ctrl === ws) this.#lastError = describeSocketError(err)
+    })
     ws.on("close", (code) => this.#onControlClose(ws, code, registered))
   }
 
@@ -573,6 +583,21 @@ function decodeField(value, length) {
   } catch {
     return null
   }
+}
+
+/**
+ * 外层连接失败的简短原因。只取 Node 错误码或已知的几类消息：
+ * ws 的 message 可能带完整 URL，虽不含秘密，也没必要原样进面板。
+ */
+function describeSocketError(err) {
+  const code = typeof err?.code === "string" ? err.code : ""
+  if (/^[A-Z0-9_]{2,40}$/.test(code)) return code
+  const message = String(err?.message ?? "")
+  if (/pin mismatch/i.test(message)) return "OUTER_PIN_MISMATCH"
+  const status = /Unexpected server response: (\d{3})/.exec(message)
+  if (status) return `HTTP_${status[1]}`
+  if (/timed out/i.test(message)) return "TIMEOUT"
+  return "CONNECT_FAILED"
 }
 
 function publicTag(tag) {

@@ -1,35 +1,27 @@
 /**
  * RemoteAgent（RFC §5.4、§5.5、§6.1、§6.5、§6.7、§11 第 5 条）。
  *
- * 测试内自带最小假 Relay（ws 的 WebSocketServer）与假插件端口（net.createServer）；
+ * 最小假 Relay 在 test/helpers/fake-dlp-relay.mjs；假插件端口（net.createServer）在本文件；
  * 不依赖 Go、网络或真实 state。核心断言：任何拒绝分支都不 dial 本地端口，ready 之前也不 dial。
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import http from "node:http"
-import https from "node:https"
 import net from "node:net"
-import { EventEmitter, once } from "node:events"
-import { createHash, createPublicKey, randomBytes, verify } from "node:crypto"
-import { WebSocketServer } from "ws"
+import { once } from "node:events"
+import { createHash, randomBytes } from "node:crypto"
 import { generate } from "selfsigned"
 import { RemoteAgent } from "../src/remote/agent.js"
 import { BootstrapTable, NonceCache } from "../src/remote/bootstrap.js"
 import {
-  acceptTranscript, b64u, bootstrapKeys, clientMac, clientTranscript, deviceRelayKey, hostPublicKey,
-  registerTranscript, routeId as deriveRouteId,
+  b64u, bootstrapKeys, clientMac, clientTranscript, deviceRelayKey, hostPublicKey, routeId as deriveRouteId,
 } from "../src/remote/crypto.js"
 import { CLOSE, HOST_MAX_STREAMS, REJECT } from "../src/remote/wire.js"
+import { startFakeRelay } from "./helpers/fake-dlp-relay.mjs"
 
 const HOST_KEY_SEED = Buffer.from(Array.from({ length: 32 }, (_, i) => 0x40 + i))
 const KEY_SEED = Buffer.from(Array.from({ length: 32 }, (_, i) => 0x80 + i))
 const HOST_PUB = hostPublicKey(HOST_KEY_SEED)
 const ROUTE = deriveRouteId(HOST_PUB)
-const SPKI_ED25519_PREFIX = Buffer.from("302a300506032b6570032100", "hex")
-
-function edPublicKey(raw) {
-  return createPublicKey({ key: Buffer.concat([SPKI_ED25519_PREFIX, raw]), format: "der", type: "spki" })
-}
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -39,67 +31,6 @@ async function until(fn, timeoutMs = 3_000) {
     if (Date.now() - started > timeoutMs) throw new Error("condition not met in time")
     await delay(10)
   }
-}
-
-/** 最小假 Relay：hello → host_register 验签 → registered；open 由测试推送；host_accept 验签后交给测试。 */
-async function startFakeRelay({ tlsOptions } = {}) {
-  const server = tlsOptions ? https.createServer(tlsOptions) : http.createServer()
-  const wss = new WebSocketServer({ server, perMessageDeflate: false })
-  const relay = new EventEmitter()
-  relay.ctrl = null
-  relay.registrations = 0
-  relay.ctrlMessages = []
-  wss.on("connection", (ws) => {
-    const ch = randomBytes(32)
-    ws.on("error", () => {})
-    ws.send(JSON.stringify({ t: "hello", v: 1, ch: b64u(ch), now: Math.floor(Date.now() / 1000) }))
-    ws.once("message", (data) => {
-      const msg = JSON.parse(String(data))
-      if (msg.t === "host_register") {
-        const pub = Buffer.from(msg.pub, "base64url")
-        const ok = verify(null, registerTranscript(ch, pub), edPublicKey(pub), Buffer.from(msg.sig, "base64url"))
-        if (!ok) return ws.close(CLOSE.AUTH_FAILED)
-        relay.ctrl = ws
-        relay.registrations++
-        ws.on("message", (raw) => {
-          const m = JSON.parse(String(raw))
-          relay.ctrlMessages.push(m)
-          relay.emit("ctrl", m)
-        })
-        ws.send(JSON.stringify({ t: "registered", route: b64u(deriveRouteId(pub)), ping: 20 }))
-        relay.emit("registered", ws)
-      } else if (msg.t === "host_accept") {
-        const pub = Buffer.from(msg.pub, "base64url")
-        const sid = Buffer.from(msg.sid, "base64url")
-        const sigOk = verify(null, acceptTranscript(ch, pub, sid), edPublicKey(pub), Buffer.from(msg.sig, "base64url"))
-        relay.emit("accept", { ws, msg, sigOk })
-      }
-    })
-  })
-  server.listen(0, "127.0.0.1")
-  await once(server, "listening")
-  relay.url = `${tlsOptions ? "wss" : "ws"}://127.0.0.1:${server.address().port}/ws`
-  relay.sendOpen = (req) => {
-    const sid = b64u(randomBytes(16))
-    relay.ctrl.send(JSON.stringify({ t: "open", sid, req }))
-    return sid
-  }
-  relay.nextCtrl = (type) => new Promise((resolve) => {
-    const onCtrl = (m) => {
-      if (m.t !== type) return
-      relay.off("ctrl", onCtrl)
-      resolve(m)
-    }
-    relay.on("ctrl", onCtrl)
-  })
-  relay.nextAccept = () => once(relay, "accept").then(([value]) => value)
-  relay.close = async () => {
-    for (const client of wss.clients) client.terminate()
-    wss.close()
-    server.closeAllConnections?.()
-    await new Promise((resolve) => server.close(resolve))
-  }
-  return relay
 }
 
 /** 假插件端口：回显；记录每条连接与它第一次收到数据时查到的来源标签。 */

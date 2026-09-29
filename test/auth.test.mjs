@@ -445,7 +445,7 @@ test("replace 对不存在的同名设备是普通配对", async () => {
   assert.equal((await callRoute(revokeRoute(), { body: { deviceId: body.deviceId } })).status, 200)
 })
 
-test("pair via=relay 与局域网设备分开列出", async () => {
+test("请求体自报 via=relay 不再影响来源：局域网连接一律记为 lan（RFC §6.1）", async () => {
   const info = await callRoute(pairInfoRoute())
   const code = info.body.pairingCode
   const pair = await proxyFetch(`/dsh-link/pair`, {
@@ -457,10 +457,13 @@ test("pair via=relay 与局域网设备分开列出", async () => {
   const extra = await pair.json()
   const list = await callRoute(devicesRoute())
   assert.equal(list.status, 200)
-  const cloud = list.body.devices.find((d) => d.deviceId === extra.deviceId)
+  const selfReported = list.body.devices.find((d) => d.deviceId === extra.deviceId)
   const lan = list.body.devices.find((d) => d.deviceId === globalThis.__testDevice.deviceId)
-  assert.equal(cloud?.via, "relay")
+  assert.equal(selfReported?.via, "lan")
+  assert.equal(selfReported?.remote, false)
   assert.equal(lan?.via, "lan")
+  // 远程未启用：配对响应不带 remote
+  assert.equal(extra.remote, undefined)
   const rev = await callRoute(revokeRoute(), { body: { deviceId: extra.deviceId } })
   assert.equal(rev.status, 200)
 })
