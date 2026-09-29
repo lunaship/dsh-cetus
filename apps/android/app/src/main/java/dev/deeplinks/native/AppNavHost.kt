@@ -255,6 +255,10 @@ internal fun AppNavHost(
                                 dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY
                             else -> null
                         },
+                        initialIntentActionRequestId = liveIntent.getLongExtra(
+                            dev.deeplinks.core.DshNotifier.EXTRA_ACTION_REQUEST_ID,
+                            0L,
+                        ),
                         initialShareNotice = liveIntent.getStringExtra(EXTRA_SHARE_NOTICE),
                         onOpenDevice = { notice ->
                             if (notice.isNullOrBlank()) {

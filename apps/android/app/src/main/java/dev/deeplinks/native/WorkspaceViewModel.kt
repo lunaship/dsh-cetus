@@ -412,6 +412,18 @@ internal class WorkspaceViewModel(
         }
     }
 
+    /** SSE 订阅建立后再取请求快照；history 先于订阅时的 403 不代表电脑端接管。 */
+    fun refreshRequestSnapshot() {
+        val sid = currentSessionId.value ?: return
+        val generation = historyGeneration
+        viewModelScope.launch {
+            val snapshot = runCatching { repo.sessionRequests(sid) }.getOrNull() ?: return@launch
+            if (currentSessionId.value != sid || historyGeneration != generation) return@launch
+            messages.value = mergeMessagesWithRequestSnapshot(messages.value, snapshot)
+            olderMessages.value = applyRequestSnapshotToMessages(olderMessages.value, snapshot)
+        }
+    }
+
     /** 打开会话时先铺上次的本地快照；已有内容（含 SSE 已到）或会话已切换则放弃。 */
     private suspend fun applyCachedHistory(sid: String, generation: Long) {
         val cached = try {

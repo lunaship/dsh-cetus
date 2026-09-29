@@ -135,7 +135,7 @@ fun WorkspaceScreen(
     initialShareImages: List<String> = emptyList(),
     initialShareSeq: Long = 0L,
     /** 通知动作带进来的意图（方案 8）：看改动 / 聚焦输入。 */
-    initialIntentAction: String? = null,
+    initialIntentAction: String? = null, initialIntentActionRequestId: Long = 0L,
     initialShareNotice: String? = null,
     /** 打开设备（配对）页；authNotice 非空时在设备页顶部说明原因。 */
     onOpenDevice: (authNotice: String?) -> Unit,
@@ -604,15 +604,32 @@ fun WorkspaceScreen(
      */
     var shareCommandGuard by remember { mutableStateOf<String?>(null) }
     val shareOwnerKey = composerOwnerKey()
-    LaunchedEffect(initialIntentAction) {
+    LaunchedEffect(initialIntentAction, initialIntentActionRequestId, initialSessionId, currentSessionId) {
+        if (!initialSessionId.isNullOrBlank() && currentSessionId != initialSessionId) return@LaunchedEffect
         when (initialIntentAction) {
             dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES -> changesPanel.open()
             dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> { composerFocusRequester.requestFocus(); composerKeyboardController?.show() }
         }
     }
+    fun startComposeSession(cwd: String? = null) {
+        switchComposer(null, composingNew = true)
+        pendingSessionCwd = cwd
+        pendingAgentPreset = appSettings.agentPreset
+        pendingModel = null
+        messages = emptyList()
+        olderMessages = emptyList()
+        sessionStats = null
+        historyLoadError = null
+        stoppedReason = null
+        liveRunning = false
+        seedMaxSeq = 0L
+        isLoadingOlder = false
+        loadOlderFailed = false
+        initialLoadInFlight = false
+    }
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
-        showNewTaskSheet = true // 分享进来的内容落在新任务面板里预填（阶段 4），不再进对话页草稿态
+        startComposeSession(); showNewTaskSheet = true // 分享进来的内容落在新任务面板里预填（阶段 4），不再进对话页草稿态
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
@@ -671,23 +688,6 @@ fun WorkspaceScreen(
                 showPhoneChat()
             }
         }
-    }
-
-    fun startComposeSession(cwd: String? = null) {
-        switchComposer(null, composingNew = true)
-        pendingSessionCwd = cwd
-        pendingAgentPreset = appSettings.agentPreset
-        pendingModel = null
-        messages = emptyList()
-        olderMessages = emptyList()
-        sessionStats = null
-        historyLoadError = null
-        stoppedReason = null
-        liveRunning = false
-        seedMaxSeq = 0L
-        isLoadingOlder = false
-        loadOlderFailed = false
-        initialLoadInFlight = false
     }
 
     var authExpired by remember { mutableStateOf(false) }
@@ -1031,7 +1031,7 @@ fun WorkspaceScreen(
                 showPhoneSessions()
             }
             LocalKind.NEW_SESSION -> {
-                showNewTaskSheet = true
+                startComposeSession(); showNewTaskSheet = true
             }
             LocalKind.OPEN_SETTINGS -> {
                 // 与顶栏抽屉设置按钮共享入口；CONSUMED 显示可以放在 picker 选中后的 toast 中
@@ -1052,11 +1052,11 @@ fun WorkspaceScreen(
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_START -> {
                     isForeground = true
-                    streamClient?.start()
+                    SessionMonitorLifecycle.onForeground(currentSessionId, streamClient)
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
                     isForeground = false
-                    streamClient?.stop()
+                    SessionMonitorLifecycle.onBackground(context, host, currentSessionId, sessions, streamClient)
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
                     // 回前台：SSE 断线时立即补全消息，并刷新会话列表（移动网络切换场景）
@@ -1090,8 +1090,7 @@ fun WorkspaceScreen(
     }
 
     fun createSessionIn(cwd: String?) {
-        if (cwd != null) pendingSessionCwd = cwd
-        showNewTaskSheet = true
+        startComposeSession(cwd); showNewTaskSheet = true
     }
 
     fun appendStreamMessage(m: MobileMessage) {
@@ -1395,9 +1394,10 @@ fun WorkspaceScreen(
                     seq = item.seq,
                     requestStatus = REQUEST_PENDING,
                 ))
+                workspaceViewModel.refreshRequestSnapshot()
                 val sid = currentSessionId
                 if (!isForeground && sid != null) {
-                    DshNotifier.notifyApproval(context, host, sid, data.optString("toolName", L.toolFallbackName), approvalId)
+                    DshNotifier.notifyApproval(context, host, sid, data.optString("toolName", L.toolFallbackName))
                 }
             }
             "approval/decided" -> {
@@ -1439,6 +1439,7 @@ fun WorkspaceScreen(
         when (item) {
             is SessionStreamClient.Item.Ready -> {
                 lastStreamEventAt = System.currentTimeMillis()
+                workspaceViewModel.refreshRequestSnapshot()
                 // 服务端 stream 游标领先本地 history 标记时补一次全量（多设备/重启）
                 if (seedMaxSeq > 0 && item.resumeSeq > seedMaxSeq) {
                     refreshMessages(autoScroll = true)
@@ -1738,7 +1739,7 @@ fun WorkspaceScreen(
 
     val currentSession = sessions.find { it.sessionId == currentSessionId }
     val running = liveRunning || currentSession?.running == true
-
+    SessionMonitorActivation(host, currentSessionId, currentSession?.title.orEmpty(), running, currentSession?.awaitingInput == true, streamClient)
     val activeHarnessPresetId = if (currentSessionId == null) {
         pendingAgentPreset
     } else {
@@ -1838,7 +1839,7 @@ fun WorkspaceScreen(
 
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
-        onNewSession = { showNewTaskSheet = true },
+        onNewSession = { startComposeSession(); showNewTaskSheet = true },
         onSelectSession = { sid ->
             selectSession(sid)
             showPhoneChat()
@@ -1918,7 +1919,7 @@ fun WorkspaceScreen(
                         val textToSend = rawText
                         val startedOnSession = currentSessionId
                         var sendOwnerId = startedOnSession
-                        val createCwd = pendingSessionCwd
+                        val createCwd = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace
                         val createWsId = workspaceCatalogItems.firstOrNull {
                             normalizeWorkspacePath(it.path) == createCwd?.let(::normalizeWorkspacePath) &&
                                 it.workspaceId.isNotBlank()

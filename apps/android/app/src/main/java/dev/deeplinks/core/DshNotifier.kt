@@ -15,15 +15,19 @@ import androidx.core.content.ContextCompat
 import dev.deeplinks.R
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.WorkspaceActivity
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * DSH 会话事件系统通知：审批请求（会话在后台等你处理）与任务完成 / 已停止。
  * 点击回到对应主机的工作台并直接打开该会话；仅当 App 不在前台时发（前台已有审批卡与运行状态）。
  */
 object DshNotifier {
+    const val TASK_MONITOR_NOTIFICATION_ID = 70_001
+    private val answeredApprovalUntil = ConcurrentHashMap<Int, Long>()
     // 方案 8：两个频道（审批要「现在处理」= 高优先级，完成是「有空看」= 默认）
     private const val CHANNEL_ID_APPROVAL = "dsh_approvals"
     private const val CHANNEL_ID_TASK = "dsh_tasks"
+    private const val CHANNEL_ID_MONITOR = "dsh_active_monitor"
     /** 阶段 8 之前的单频道 id，只用于清理。 */
     private const val LEGACY_CHANNEL_ID = "dsh_events"
 
@@ -36,6 +40,9 @@ object DshNotifier {
         manager.createNotificationChannel(
             channelOf(CHANNEL_ID_TASK, L.notifChannelTasks, L.notifChannelTasksDesc, NotificationManager.IMPORTANCE_DEFAULT),
         )
+        manager.createNotificationChannel(
+            channelOf(CHANNEL_ID_MONITOR, L.notifChannelMonitor, L.notifChannelMonitorDesc, NotificationManager.IMPORTANCE_LOW),
+        )
         // 升级遗留：阶段 8 之前只有一个 dsh_events 频道，装过旧版的设备上它会一直留着，
         // 用户在系统通知设置里看到三个频道、其中一个永远不会响。这里一次性清掉。
         manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
@@ -43,6 +50,21 @@ object DshNotifier {
 
     private fun channelOf(id: String, name: String, desc: String, importance: Int): NotificationChannel =
         NotificationChannel(id, name, importance).apply { description = desc }
+
+    /** Required by Android while a user-started conversation is monitored in the background. */
+    fun taskMonitorNotification(context: Context, host: Host, sessionId: String, title: String): Notification =
+        base(context, host, sessionId, CHANNEL_ID_MONITOR)
+            .setContentTitle(L.notifMonitorTitle)
+            .setContentText(L.notifMonitorBody.format(title))
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+    fun cancelTaskMonitor(context: Context, host: Host, sessionId: String) {
+        NotificationManagerCompat.from(context).cancel(TASK_MONITOR_NOTIFICATION_ID)
+    }
 
     /** 审批请求：需要审批「工具名」；带 approvalId 时附「允许一次 / 拒绝」两个动作（方案 8）。 */
     fun notifyApproval(
@@ -100,6 +122,7 @@ object DshNotifier {
      */
     const val INTENT_ACTION_CHANGES = "openChanges"
     const val INTENT_ACTION_REPLY = "reply"
+    const val EXTRA_ACTION_REQUEST_ID = "notificationActionRequestId"
 
     /** 完成通知的深链动作：带 sessionId + 一个意图 extra，不带令牌。 */
     private fun deepLinkAction(
@@ -114,6 +137,9 @@ object DshNotifier {
             host.putInto(this)
             putExtra("sessionId", sessionId)
             putExtra(extraKey, true)
+            // MainActivity may already be showing this same action for this session. A fresh
+            // request id makes tapping the same notification action again observable to Compose.
+            putExtra(EXTRA_ACTION_REQUEST_ID, android.os.SystemClock.elapsedRealtimeNanos())
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pending = PendingIntent.getActivity(
@@ -128,6 +154,8 @@ object DshNotifier {
     /** 审批已被处理：通知文字改成结果，几秒后自己消失（方案 8）。 */
     fun markApprovalAnswered(context: Context, host: Host, sessionId: String, approve: Boolean) {
         val id = notificationId(host, sessionId, 1)
+        val expiresAt = android.os.SystemClock.elapsedRealtime() + 4_000
+        answeredApprovalUntil[id] = expiresAt
         val notification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
             .setContentTitle(L.notifNeedApproval)
             .setContentText(if (approve) L.approvalAllowedSent else L.approvalNotAccepted)
@@ -135,7 +163,9 @@ object DshNotifier {
             .build()
         postNotification(context, id, notification)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
-            { NotificationManagerCompat.from(context).cancel(id) },
+            {
+                if (answeredApprovalUntil.remove(id, expiresAt)) NotificationManagerCompat.from(context).cancel(id)
+            },
             4_000,
         )
     }
@@ -212,7 +242,10 @@ object DshNotifier {
     }
 
     fun cancelApproval(context: Context, host: Host, sessionId: String) {
-        NotificationManagerCompat.from(context).cancel(notificationId(host, sessionId, 1))
+        val id = notificationId(host, sessionId, 1)
+        if (android.os.SystemClock.elapsedRealtime() >= (answeredApprovalUntil[id] ?: 0L)) {
+            NotificationManagerCompat.from(context).cancel(id)
+        }
     }
 
     /** 打开会话时清掉该会话的残留通知。 */

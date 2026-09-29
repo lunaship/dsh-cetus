@@ -538,7 +538,7 @@ class MobileApiClient(private val host: Host) {
     fun answerApproval(sessionId: String, approvalId: String, outcome: String): Boolean {
         val root = request("POST", "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") + "/approval",
             JSONObject().put("approvalId", approvalId).put("outcome", outcome))
-        return root.optBoolean("accepted", false)
+        return root.optBoolean("accepted", false) && root.optString("outcome", outcome) == outcome
     }
 
     fun getSessionRequests(sessionId: String): SessionRequestSnapshot {

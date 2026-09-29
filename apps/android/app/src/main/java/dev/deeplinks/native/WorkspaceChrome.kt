@@ -1037,6 +1037,26 @@ internal fun ComposerContextStrip(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        if (changes != null) {
+            ContextStripSegment(
+                onClick = onOpenChanges,
+                description = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(changes)}",
+            ) {
+                Icon(
+                    EditOutline16,
+                    contentDescription = null,
+                    tint = Dsh.labelSecondary,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(DshSpace.s4))
+                Text(
+                    ChangesL.viewChanges,
+                    color = Dsh.labelSecondary,
+                    style = DshType.label,
+                    maxLines = 1,
+                )
+            }
+        }
         if (summary != null && stats != null) {
             ContextStripSegment(onClick = { detailOpen = true }, description = "${strings.statsViewDetails}: $summary") {
                 Text(

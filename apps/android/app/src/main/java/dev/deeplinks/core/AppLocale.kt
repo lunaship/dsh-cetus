@@ -49,6 +49,7 @@ val DshS: DshStrings
 
 class DshStrings(private val values: Map<String, String>) {
     private fun t(key: String): String = values[key] ?: key
+    internal fun translation(key: String): String = t(key)
 
     val cancel: String get() = t("cancel")
     val save: String get() = t("save")
@@ -142,7 +143,6 @@ class DshStrings(private val values: Map<String, String>) {
     val notifChannelApprovals: String get() = t("notifChannelApprovals")
     val notifChannelApprovalsDesc: String get() = t("notifChannelApprovalsDesc")
     val notifChannelTasks: String get() = t("notifChannelTasks")
-    val notifChannelTasksDesc: String get() = t("notifChannelTasksDesc")
     val notifNeedApproval: String get() = t("notifNeedApproval")
     val notifNeedApprovalBody: String get() = t("notifNeedApprovalBody")
     val notifTaskDone: String get() = t("notifTaskDone")
