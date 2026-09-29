@@ -133,6 +133,23 @@ export function deriveActivity(events) {
  * 去掉 Markdown 记号，只留可读正文。
  * 不追求完整解析：目标是把一段回复压成能放进单行的纯文本，宁可多丢符号也不要漏出 `**` 或 ```。
  */
+/**
+ * 这一轮是怎么结束的（`turn/end` 的 `reason.kind`）。返回 null 表示正常完成或没找到，
+ * 否则是 interrupted / stopped / error / maxTokens 之类。与 history.js 的会话详情口径一致。
+ *
+ * 放在这里是因为同一遍已经读了 session.history——列表页不额外拉一次历史。
+ */
+export function deriveStoppedReason(events) {
+  const list = Array.isArray(events) ? events : []
+  for (let i = list.length - 1; i >= 0; i--) {
+    const e = eventOf(list[i])
+    if (!e || e.type !== "turn/end") continue
+    const kind = e.data?.reason?.kind ?? null
+    return kind && kind !== "completed" ? kind : null
+  }
+  return null
+}
+
 export function stripMarkdown(raw) {
   let text = String(raw ?? "")
   text = text.replace(/```[\s\S]*?```/g, " ")          // 围栏代码块

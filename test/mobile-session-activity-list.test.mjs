@@ -166,3 +166,32 @@ test("rt 没有缓存 Map 时也能跑（不写缓存，不报错）", async () 
   })
   assert.equal(sessions[0].activity.label, "go test ./...")
 })
+
+test("已结束的会话：stoppedReason 跟着摘要一起下发（首页「最近」用它区分已完成 / 已停止）", async () => {
+  const { attachSessionActivity } = await import("../src/mobile-api.js")
+  const { mobileSessionSummary } = await import("../src/mobile-session-summary.js")
+  const sessions = [{ sessionId: "s1", updatedAt: 5, running: false, status: "idle" }]
+  await attachSessionActivity({}, null, sessions, {
+    readEvents: async () => [
+      { event: { seq: 1, time: 1, type: "user/message", data: { content: [{ text: "跑测试" }] } } },
+      { event: { seq: 2, time: 2, type: "turn/end", data: { reason: { kind: "interrupted" } } } },
+    ],
+    changesService: null,
+  })
+  assert.equal(sessions[0].stoppedReason, "interrupted")
+  // 生产路径：先 summarizeSession 出摘要，attachSessionActivity 再把字段挂到**摘要对象**上
+  // （所以这里要按 extra 契约验证，而不是拿原始行去问摘要）
+  assert.equal(mobileSessionSummary({ sessionId: "s1" }, { stoppedReason: "interrupted" }).stoppedReason, "interrupted")
+})
+
+test("正常完成的会话不下发 stoppedReason（回退成「已完成」）", async () => {
+  const { attachSessionActivity } = await import("../src/mobile-api.js")
+  const sessions = [{ sessionId: "s2", updatedAt: 6, running: false, status: "idle" }]
+  await attachSessionActivity({}, null, sessions, {
+    readEvents: async () => [
+      { event: { seq: 3, time: 3, type: "turn/end", data: { reason: { kind: "completed" } } } },
+    ],
+    changesService: null,
+  })
+  assert.equal(sessions[0].stoppedReason, undefined)
+})

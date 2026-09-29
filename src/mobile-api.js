@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto"
 import { homedir, hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
 import { mobileSessionSummary } from "./mobile-session-summary.js"
-import { deriveActivity, deriveLastResult } from "./mobile-session-activity.js"
+import { deriveActivity, deriveLastResult, deriveStoppedReason } from "./mobile-session-activity.js"
 import { handleMobileModelsApi } from "./mobile-models.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
@@ -126,15 +126,19 @@ export async function attachSessionActivity(rt, targetPort, sessions, deps = {})
       if (hit) {
         if (hit.activity) row.activity = hit.activity
         if (hit.lastResult) row.lastResult = hit.lastResult
+        if (hit.stoppedReason) row.stoppedReason = hit.stoppedReason
         continue
       }
       const events = await readEvents(row.sessionId)
       if (!events) continue
+      // 已结束的会话：这一轮是怎么结束的（首页「最近」要靠它区分已完成 / 已停止）
+      const stoppedReason = deriveStoppedReason(events)
+      if (stoppedReason) row.stoppedReason = stoppedReason
       if (row.running) {
         const activity = deriveActivity(events)
         if (activity) {
           row.activity = activity
-          cache?.set(key, { activity })
+          cache?.set(key, { activity, stoppedReason: row.stoppedReason })
         }
       } else {
         const lastResult = deriveLastResult(
@@ -143,7 +147,7 @@ export async function attachSessionActivity(rt, targetPort, sessions, deps = {})
         )
         if (lastResult) {
           row.lastResult = lastResult
-          cache?.set(key, { lastResult })
+          cache?.set(key, { lastResult, stoppedReason: row.stoppedReason })
         }
       }
     }

@@ -35,5 +35,6 @@ export function mobileSessionSummary(item, extra = {}) {
     awaitingInput: extra.awaitingInput ? true : null,
     activity: extra.activity ?? null,
     lastResult: extra.lastResult ?? null,
+    stoppedReason: extra.stoppedReason ?? null,
   })
 }

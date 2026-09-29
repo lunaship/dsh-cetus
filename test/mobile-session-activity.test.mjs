@@ -195,3 +195,16 @@ test("collapseToLine：压空白、超长截断", () => {
   assert.equal(long.length, MAX_RESULT_TEXT_CHARS)
   assert.equal(long.endsWith("…"), true)
 })
+
+test("deriveStoppedReason：正常完成返回 null，非 completed 返回原因", async () => {
+  const { deriveStoppedReason } = await import("../src/mobile-session-activity.js")
+  // 真实历史行是包了一层的（eventOf 取 item.event），测试要照同样的形状
+  const end = (kind) => ({ event: { seq: 1, time: 1, type: "turn/end", data: { reason: { kind } } } })
+  assert.equal(deriveStoppedReason([end("completed")]), null)
+  assert.equal(deriveStoppedReason([end("interrupted")]), "interrupted")
+  assert.equal(deriveStoppedReason([end("maxTokens")]), "maxTokens")
+  // 没有 turn/end：不知道就不说
+  assert.equal(deriveStoppedReason([{ event: { seq: 2, time: 2, type: "assistant/message", data: {} } }]), null)
+  // 取最后一个 turn/end
+  assert.equal(deriveStoppedReason([end("interrupted"), end("completed")]), null)
+})
