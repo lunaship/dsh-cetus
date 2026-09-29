@@ -182,7 +182,7 @@ internal fun WorkspaceSidebar(
                 onDeleteWorkspace = { actions.onDeleteWorkspace(it) },
                 onOpenArchived = onOpenArchived,
             )
-        } else {
+        } else if (!online) {
             HomeOfflineCard(
                 hostName = hostName,
                 sinceLabel = offlineSinceLabel,
