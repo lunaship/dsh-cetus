@@ -152,3 +152,43 @@ cd apps/android && ./gradlew :app:installDebug
 复现主题四态的办法（模拟器）：写 `shared_prefs/dsh_settings.xml`（键：`theme` / `dark_pure_black` /
 `dynamic_color` / `font_scale`），`run-as` 拷进 App 数据目录后重启 App。注意 `run-as` 下 heredoc
 建不了临时文件，要「本地写好 → `adb push` → `run-as cp`」。
+
+## 用「隔离 DSH 实例 + 模拟器」做端到端验证（2026-09-29 记，含踩到的坑）
+
+**为什么**：用户手机拔线后，验证剩余三项（看改动 / 通知 / 平板）需要一台与 host 同网且已配对的设备。
+App 的配对记录是 Keystore 加密的、造不出来，所以要在本机另起一个**不碰用户 host**的实例。
+
+**配方**（全程未碰用户的 `~/.dsh/dsh-links/state.json` 与 18640 端口）：
+
+```bash
+# 1) 临时 stateDir + 换端口（插件默认 18640，必须让开）
+cat > /tmp/isolated.yml <<'EOF'
+- id: dsh-links
+  config:
+    stateDir: /tmp/link-scratch
+    port: 19441
+EOF
+# 2) 用现成的隔离 profile（~/.dsh/profiles/redesign-smoke，已链到本工作树）
+export PATH="$HOME/.nvm/versions/node/v24.21.0/bin:$PATH"
+DSH_HOME=~/.dsh dsh --profile redesign-smoke --patch /tmp/isolated.yml \
+  --host 127.0.0.1 --port 19400 --no-open
+# 3) 取配对码（面板端点，必须带同源 Origin；它在 web 端口上，不在插件端口）
+curl -s -H "Origin: http://127.0.0.1:19400" http://127.0.0.1:19400/dsh-link/pair-info
+```
+
+**已验证**：隔离实例正常起来；`pair-info` 拿到码、端口、自签指纹、`requireConfirm:false`；
+用 curl 直接 `POST https://127.0.0.1:19441/dsh-link/pair {"code","deviceName"}` → `{ok:true, token, deviceId}`，
+设备登记成功（**服务端配对链路是通的**）。
+
+**卡在**：模拟器里的 App 走手动配对时，TOFU 取指纹这一步拿不到服务器证书，报
+「服务器没有提供证书，无法确认指纹」。已排除环境：模拟器 → 宿主 ping ✓ / TCP 19441 ✓；
+宿主侧 `curl https://127.0.0.1:19441/dsh-link/health` → `{"ok":true}`、openssl 看到 1 张 `CN=dsh-links` 自签证书 ✓。
+**原因尚未定位**（App 的 OkHttp TOFU 客户端为什么拿到空链/无握手，待查）。
+
+**顺带修掉的真问题**（提交 436e048）：那条报错原文是 `Empty list doesn't contain element at index 0.`
+——`PinnedSsl` 两处对证书链直接取下标（`chain[0]` / `certs[0]`），空链时抛出不可读的越界文案，
+把真实原因完全掩盖。已改为显式判空 + 人话错误。
+
+**复现小抄**（模拟器手动配对）：配对面板坐标要**用 `uiautomator dump` 取**，别按截图比例估
+（我第一次估的 y 差了 300px）；表单用 **TAB（keyevent 61）**逐格跳，不要连点——软键盘弹出会
+把表单顶上去，后续点击全部落空（我第一遍就把三段文字全塞进了名称格）。
