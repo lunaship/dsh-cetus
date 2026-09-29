@@ -70,36 +70,45 @@ test("只算最近 20 个会话", async () => {
   assert.equal(sessions[19].activity.label, "go test ./...")
 })
 
-test("按 sessionId + updatedAt 缓存：updatedAt 不变不重复拉历史", async () => {
+test("按 sessionId + updatedAt 缓存：已结束的会话 updatedAt 不变不重复拉历史", async () => {
   const rt = { sessionActivityCache: new Map() }
   let reads = 0
   const deps = {
-    readEvents: async () => { reads += 1; return runningEvents },
+    readEvents: async () => { reads += 1; return doneEvents },
     changesService: null,
   }
-  const first = rows(2)
+  const first = rows(2, { running: false })
   await attachSessionActivity(rt, 0, first, deps)
   assert.equal(reads, 2)
 
   // 同一批（updatedAt 未变）再拉一次：命中缓存，不再读历史
-  const again = rows(2)
+  const again = rows(2, { running: false })
   await attachSessionActivity(rt, 0, again, deps)
   assert.equal(reads, 2)
-  assert.equal(again[0].activity.label, "go test ./...")
+  assert.equal(again[0].lastResult.text, "门禁全绿")
 
   // updatedAt 变了（有新事件）才重算
-  const changed = rows(2).map((r) => ({ ...r, updatedAt: r.updatedAt + 10 }))
+  const changed = rows(2, { running: false }).map((r) => ({ ...r, updatedAt: r.updatedAt + 10 }))
   await attachSessionActivity(rt, 0, changed, deps)
   assert.equal(reads, 4)
 })
 
-test("running 与已结束用不同的缓存键，同一个会话切换状态不会串味", async () => {
+test("进行中的行每次都重读历史（审批不改 updatedAt，缓存会让首页漏掉「等你处理」）", async () => {
   const rt = { sessionActivityCache: new Map() }
-  const deps = { readEvents: async () => runningEvents, changesService: null }
-  const running = [{ sessionId: "s1", updatedAt: 5, running: true }]
-  await attachSessionActivity(rt, 0, running, deps)
-  assert.equal(running[0].activity.label, "go test ./...")
+  let reads = 0
+  await attachSessionActivity(rt, 0, [{ sessionId: "s1", updatedAt: 5, running: true }], {
+    readEvents: async () => { reads += 1; return runningEvents },
+    changesService: null,
+  })
+  assert.equal(reads, 1)
+  // 同 key 再拉一次：running 行必须重读，否则新来的审批事件永远看不到
+  await attachSessionActivity(rt, 0, [{ sessionId: "s1", updatedAt: 5, running: true }], {
+    readEvents: async () => { reads += 1; return askedEvents },
+    changesService: null,
+  })
+  assert.equal(reads, 2)
 
+  // 已结束的行仍走缓存键（running 与已结束不串味）
   const done = [{ sessionId: "s1", updatedAt: 5, running: false }]
   await attachSessionActivity(rt, 0, done, {
     readEvents: async () => doneEvents,
@@ -211,9 +220,9 @@ test("历史里有没人回答的审批 → 行上带 awaitingInput（首页「�
     changesService: null,
   })
   assert.equal(sessions[0].awaitingInput, true)
-  // 缓存命中也要保留（同一会话不会再拉历史）
+  // running 行每次都重读历史：审批不改 updatedAt，靠缓存会一直命中旧的「没在等」那行
   const again = [{ sessionId: "wait", updatedAt: 5, running: true }]
-  await attachSessionActivity(rt, 0, again, { readEvents: async () => null, changesService: null })
+  await attachSessionActivity(rt, 0, again, { readEvents: async () => askedEvents, changesService: null })
   assert.equal(again[0].awaitingInput, true)
 })
 

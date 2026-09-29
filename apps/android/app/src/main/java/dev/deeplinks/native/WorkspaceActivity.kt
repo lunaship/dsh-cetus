@@ -1899,13 +1899,12 @@ fun WorkspaceScreen(
     }
     val offlineSinceLabel = if (hostReachable) null else dev.deeplinks.native.util.lastOnlineLabel(LastOnlineStore.read(context))
 
-    // 首页审批卡（方案 D1-A）：只有当前打开的那个会话才可能被手机接管，
-    // 它的 pending 审批已经在 messages 里（refreshMessages 拉过 /requests 快照并合并过）。
+    // 首页审批卡（D1-A）：只给手机接管的审批按钮；takenOverByPhone 见 MobileMessage 注释。
     val homePendingApproval = remember(messages, currentSessionId) {
-        if (currentSessionId == null) {
-            null
-        } else {
-            messages.lastOrNull { it.role == "approval" && it.approvalId != null && it.requestStatus == REQUEST_PENDING }
+        if (currentSessionId == null) null
+        else messages.lastOrNull {
+            it.role == "approval" && it.approvalId != null &&
+                it.requestStatus == REQUEST_PENDING && it.takenOverByPhone
         }
     }
     // 发送主体：新任务面板与输入卡共用同一条路径（原先内联在对话页分支里）。

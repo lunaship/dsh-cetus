@@ -166,4 +166,38 @@ class RequestStateTest {
         assertEquals("q-1", snapshot.questions[0].id)
         assertTrue(snapshot.questions[0].questionsJson!!.contains("选一个"))
     }
+
+    // 方案 D1-A：只有「手机接管」（/requests 快照成功合并）才允许在首页给「拒绝 / 批准」按钮。
+    // 仅来自历史的 approval 消息（插件已 passthrough 给电脑端）必须不带标记，走「在电脑上处理」行。
+    @Test
+    fun `快照合并给审批消息打上手机接管标记`() {
+        val history = listOf(
+            MobileMessage(
+                id = "approval-a1",
+                role = "approval",
+                text = "escalate sandbox",
+                toolName = "bash",
+                approvalId = "a1",
+                type = "approval",
+                requestStatus = "pending",
+            ),
+        )
+        val snapshot = SessionRequestSnapshot(
+            approvals = listOf(
+                SessionRequestState(id = "a1", kind = "approval", status = "pending", outcome = null, toolName = "bash", callId = "c1"),
+            ),
+            questions = emptyList(),
+        )
+        val merged = mergeMessagesWithRequestSnapshot(history, snapshot)
+        val row = merged.first { it.approvalId == "a1" }
+        assertTrue("快照合并过的审批必须标记为手机接管", row.takenOverByPhone)
+
+        // 没有快照（插件把请求交给了电脑端）→ 不带标记，首页不给按钮
+        val untouched = MobileMessage(
+            id = "approval-a2", role = "approval", text = "escalate sandbox",
+            approvalId = "a2", type = "approval", requestStatus = "pending",
+        )
+        assertTrue("仅来自历史的审批不得标记为接管", !untouched.takenOverByPhone)
+    }
+
 }

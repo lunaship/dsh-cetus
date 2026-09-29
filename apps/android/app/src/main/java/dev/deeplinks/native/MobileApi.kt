@@ -36,6 +36,12 @@ data class MobileMessage(
     // SSE 流式消息为 true：播放入场动画；历史/全量刷新消息为 false：跳过（避免整列重放）
     val entrance: Boolean = false,
     val seq: Long = 0L,
+    /**
+     * 这条审批/提问来自**请求快照**——即插件把该会话的请求交给了这台手机（D1-A 的「手机接管」）。
+     * 只有它才能显示「拒绝 / 批准」按钮；仅来自历史的 approval 消息一律走「在电脑上处理」行。
+     * `/requests` 只对「正在查看该会话的设备」返回 200，所以拿到快照就等于接管成立。
+     */
+    val takenOverByPhone: Boolean = false,
     /** ask_user_question 的 rpcId（role=question） */
     val questionRpcId: String? = null,
     /** 选项 label 列表（JSON 亦可塞 toolArgs；此处便于 UI） */

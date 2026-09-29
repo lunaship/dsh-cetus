@@ -122,7 +122,10 @@ export async function attachSessionActivity(rt, targetPort, sessions, deps = {})
     while (cursor < targets.length) {
       const row = targets[cursor++]
       const key = `${row.sessionId}:${row.updatedAt ?? ""}:${row.running ? "r" : "d"}`
-      const hit = cache?.get(key)
+      // running 的行**不读缓存**：审批/提问这类事件不一定改 updatedAt，用缓存会一直命中
+      // 那条「没有在等」的旧行，首页就漏掉「等你处理」（2026-09-29 真机：会话卡在审批，
+      // awaitingInput 三次查询都是 none）。running 通常只有一两条，代价可控。
+      const hit = row.running ? undefined : cache?.get(key)
       if (hit) {
         if (hit.activity) row.activity = hit.activity
         if (hit.lastResult) row.lastResult = hit.lastResult
