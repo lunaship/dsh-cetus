@@ -22,7 +22,7 @@ import { NonceCache } from "./bootstrap.js"
 import {
   ACCEPT_READY_TIMEOUT_MS, BOOTSTRAP_MAX_STREAMS, CHALLENGE_BYTES, CLOCK_SKEW_SEC, CLOSE, DATA_CHUNK_BYTES,
   DEVICE_MAX_STREAMS, DLP_VERSION, FIRST_MESSAGE_TIMEOUT_MS, HOST_MAX_STREAMS, KEY_BYTES, MAC_BYTES,
-  MAX_DATA_MESSAGE_BYTES, NONCE_BYTES, PREWARM_IDLE_MS, RECONNECT_BASE_MS, RECONNECT_JITTER, RECONNECT_MAX_MS,
+  MAX_DATA_MESSAGE_BYTES, NONCE_BYTES, RECONNECT_BASE_MS, RECONNECT_JITTER, RECONNECT_MAX_MS,
   RECONNECT_STABLE_MS, REJECT, REPLACED_BACKOFF_MS, ROUTE_BYTES, SID_BYTES, WRITE_TIMEOUT_MS,
   encodeControl, parseControlFrame, safeCode,
 } from "./wire.js"
@@ -42,7 +42,6 @@ export class RemoteAgent extends EventEmitter {
   #bootstrap
   #isLocalReady
   #logger
-  #prewarmTarget
   #now
   #timers
   #random
@@ -61,7 +60,6 @@ export class RemoteAgent extends EventEmitter {
   #streams = new Map()
   /** 本地 socket 的 localPort → 来源标签（§6.1） */
   #origins = new Map()
-  #prewarm = []
   #selftest = null
 
   constructor({
@@ -75,7 +73,6 @@ export class RemoteAgent extends EventEmitter {
     isLocalReady,
     logger,
     allowInsecureWs = false,
-    prewarm = 0,
     now = () => Date.now(),
     // 以下仅供测试注入（不是协议的一部分）
     timers = { setTimeout, clearTimeout, setInterval, clearInterval },
@@ -105,10 +102,6 @@ export class RemoteAgent extends EventEmitter {
     this.#bootstrap = bootstrap
     this.#isLocalReady = isLocalReady
     this.#logger = logger ?? { info() {}, warn() {} }
-    // RFC 待定：§10.3 第 5 条让预热连接空闲到 60 秒，但 §5.4 规定 Relay 对 5 秒内不发首条消息的连接
-    // 以 4000 关闭——两者矛盾，预热连接活不过 5 秒。按规则 A 取保守一方：默认不预热（0），
-    // 显式开启时预热连接空闲上限压到首条消息超时之内。
-    this.#prewarmTarget = Math.max(0, Math.min(2, prewarm | 0))
     this.#now = now
     this.#timers = timers
     this.#random = random
@@ -154,7 +147,6 @@ export class RemoteAgent extends EventEmitter {
       if (rec.ws) closing.push(closeAndWait(rec.ws, CLOSE.NORMAL))
       this.#finishStream(rec)
     }
-    for (const slot of this.#prewarm.splice(0)) closing.push(closeAndWait(slot.ws, CLOSE.NORMAL))
     await Promise.all(closing)
     this.#setStatus("off")
   }
@@ -258,7 +250,6 @@ export class RemoteAgent extends EventEmitter {
         this.#logger.info("dlp-agent: registered")
         this.#setStatus("ready")
         this.#settleStart(null)
-        this.#refillPrewarm()
       } else if (msg.t === "open" && registered) {
         this.#handleOpen(msg)
       } else if (msg.t === "pong" && registered) {
@@ -367,8 +358,7 @@ export class RemoteAgent extends EventEmitter {
   #verifyOpen(req) {
     // 1. 格式
     const fields = parseClientOpen(req)
-    // RFC 待定：§5.5 第 1、2 步没有指定拒绝码，且规则 A 禁止新增错误码。
-    // 格式错误按鉴权失败处理（BAD_MAC），route 不符按「凭据不属于本机」处理（UNKNOWN_KEY）；两者 App 都不重试、不删凭据。
+    // RFC §5.5（v2.2 定稿）：格式错误回 BAD_MAC，route 不符回 UNKNOWN_KEY，不新增错误码。
     if (!fields) return { code: REJECT.BAD_MAC }
     // 2. route
     if (!fields.route.equals(this.#routeId)) return { code: REJECT.UNKNOWN_KEY }
@@ -424,8 +414,8 @@ export class RemoteAgent extends EventEmitter {
   // ─── 数据连接 ────────────────────────────────────────────────────────────
 
   #acceptStream(rec) {
-    const slot = this.#takePrewarm()
-    const ws = slot?.ws ?? this.#newSocket()
+    // v1 不预热（RFC §10.3 第 5 条）：验证通过后才新建数据连接
+    const ws = this.#newSocket()
     rec.ws = ws
     const readyTimer = this.#timers.setTimeout(() => {
       // ready 没来：Relay 那边手机会得到 OPEN_TIMEOUT，这里只收尾
@@ -465,11 +455,6 @@ export class RemoteAgent extends EventEmitter {
       this.#timers.clearTimeout(readyTimer)
       this.#finishStream(rec)
     })
-    if (slot) {
-      slot.ws.off("message", slot.onMessage)
-      sendAccept(slot.ch)
-      this.#refillPrewarm()
-    }
   }
 
   /** ready 之后才连本地（§5.5 第 10 步）。 */
@@ -541,47 +526,6 @@ export class RemoteAgent extends EventEmitter {
     rec.local?.destroy()
     if (rec.ws && rec.ws.readyState !== WebSocket.CLOSED && rec.ws.readyState !== WebSocket.CLOSING) rec.ws.close(CLOSE.NORMAL)
     if (rec.opened) this.emit("stream-close", publicTag(rec.tag))
-  }
-
-  // ─── 预热 ────────────────────────────────────────────────────────────────
-
-  #refillPrewarm() {
-    if (this.#stopped || this.#status !== "ready") return
-    while (this.#prewarm.length < this.#prewarmTarget) {
-      const ws = this.#newSocket()
-      const slot = { ws, ch: null, onMessage: null, timer: null }
-      slot.onMessage = (data, isBinary) => {
-        const msg = isBinary ? null : parseControlFrame(data)
-        const ch = msg?.t === "hello" && msg.v === DLP_VERSION ? decodeField(msg.ch, CHALLENGE_BYTES) : null
-        if (!ch || slot.ch) {
-          ws.close(CLOSE.PROTOCOL_ERROR)
-          return
-        }
-        slot.ch = ch
-      }
-      ws.on("message", slot.onMessage)
-      ws.on("error", () => {})
-      ws.on("close", () => {
-        this.#timers.clearTimeout(slot.timer)
-        const index = this.#prewarm.indexOf(slot)
-        if (index >= 0) {
-          this.#prewarm.splice(index, 1)
-          this.#refillPrewarm()
-        }
-      })
-      // 空闲上限压在 Relay 首条消息超时之内（见构造函数里的 RFC 待定）
-      slot.timer = this.#timers.setTimeout(() => ws.close(CLOSE.NORMAL), Math.min(PREWARM_IDLE_MS, FIRST_MESSAGE_TIMEOUT_MS - 1_000))
-      slot.timer?.unref?.()
-      this.#prewarm.push(slot)
-    }
-  }
-
-  #takePrewarm() {
-    const index = this.#prewarm.findIndex((slot) => slot.ch && slot.ws.readyState === WebSocket.OPEN)
-    if (index < 0) return null
-    const [slot] = this.#prewarm.splice(index, 1)
-    this.#timers.clearTimeout(slot.timer)
-    return slot
   }
 
   // ─── 外层连接 ────────────────────────────────────────────────────────────

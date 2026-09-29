@@ -29,6 +29,8 @@
 
 **v2.1 细节补充（2026-09-28 晚，为无人值守执行而补）**：主机密钥统一存 32 字节种子（§5.3）；Agent 收到 `ready` 后才连本地端口（§5.5）；关闭原因字段固定为错误码字符串（§5.7）；每 IP 并发连接按角色分开计（§5.8）；`remote-test` 的自检身份定义（§6.6）；Agent 模块接口（§10.3）；依赖安装方式、测试文件位置、端到端测试不进 `npm test`（§10）。执行任务单见桌面 `dsh-links-DLP1-M0M1任务单.md`。
 
+**v2.2 定稿（2026-09-29，M1 原型验证后）**：① Agent 对 `open` 的格式错误回 `BAD_MAC`、route 不符回 `UNKNOWN_KEY`，不新增错误码（§5.5、§5.7）；② v1 不做预热连接——预热连接不发首条消息，会被 Relay 的 5 秒首条消息超时关闭，与协议冲突（§4.2、§10.3）；③ 限额关闭码的分工：按时间窗口计的速率 / 配额超限 → `4004`，并发 / 容量超限 → `4005`（§5.7）。三条都与 M1 原型的实际行为一致，Relay 无需改动。
+
 ---
 
 ## 1. 一句话结论
@@ -120,7 +122,7 @@ LAN 配对码、设备确认、Token、TLS 指纹与 `18640` 的暴露规则均�
 
 与 DLR/1 一致：DLR/1 的 Agent 本来就是「收 OPEN → 新开连接 BIND → 与本地 socket 对接」（`src/relay/agent.js` 的 `handleOpen` / `bridgeToPlugin`），DLP/1 只是把传输换成 WSS、把认证换成主机签名 + 设备 MAC。
 
-**为什么不多路复用**：多条流共用一条 socket 必须自己实现按流的额度窗口，否则慢消费者会阻塞整条 socket 上的所有流（队头阻塞）。一流一 socket 时，Relay 的 `Read → Write` 循环写不进去就不再读，背压沿 TCP 自然传回发送端，不需要任何流控帧。代价是每条新连接在 Agent 侧多一次 WSS 建连；OkHttp 连接池会复用已建连接，所以开销按连接计，不按请求计。实现可以预热（§10.2.4），协议无需变化。
+**为什么不多路复用**：多条流共用一条 socket 必须自己实现按流的额度窗口，否则慢消费者会阻塞整条 socket 上的所有流（队头阻塞）。一流一 socket 时，Relay 的 `Read → Write` 循环写不进去就不再读，背压沿 TCP 自然传回发送端，不需要任何流控帧。代价是每条新连接在 Agent 侧多一次 WSS 建连；OkHttp 连接池会复用已建连接，所以开销按连接计，不按请求计。v1 不预热（§10.3 第 5 条）：预热连接会被 Relay 的首条消息超时关闭。
 
 ### 4.3 信任与可见性
 
@@ -269,8 +271,10 @@ Agent → Relay：
 
 Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `reject` 且不 dial**：
 
-1. 字段格式校验（长度、`v == 1`、`kind` 合法）。
-2. `route` 必须等于本机 `routeId`。
+1. 字段格式校验（长度、`v == 1`、`kind` 合法），否则 `BAD_MAC`。
+2. `route` 必须等于本机 `routeId`，否则 `UNKNOWN_KEY`。
+
+   第 1、2 步不新增错误码：Relay 已先校验格式、按 route 路由，这两步只在 Relay 有缺陷或被篡改时触发；App 对 `BAD_MAC` / `UNKNOWN_KEY` 的处理（不重试、不删凭据）正好适用。
 3. 时间：`|ts − now| ≤ 60`，否则 `CLOCK_SKEW`（附 `hostNow`）。
 4. 取 key：
    - `device`：在 `state.devices` 中查找 `remoteHandle == key` 的设备；找不到（未配对 / 已吊销 / pending 已过期）→ `UNKNOWN_KEY`。`deviceRelayKey = HMAC-SHA-256(keySeed, "DLP1 device key\0" ‖ relayHandle)`。
@@ -279,7 +283,7 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
 6. 重放：`(kind, key, nonce)` 已在缓存中 → `REPLAY`。否则写入缓存，保留到 `ts + 60` 秒；缓存上限 10,000 条，满了 → `SERVER_BUSY`（不淘汰未过期条目）。
 7. 容量：该设备活跃流 ≥ 6（bootstrap 每个 id ≥ 4）→ `DEVICE_LIMIT`；本机活跃流 ≥ 32 → `SERVER_BUSY`。
 8. 插件本地服务未就绪（readiness ≠ ready）→ `LOCAL_UNAVAILABLE`。
-9. 打开数据 WSS（或取一条预热连接）发送 `host_accept`，等待 `ready`（10 秒）。
+9. 打开数据 WSS，发送 `host_accept`，等待 `ready`（10 秒）。
 10. 收到 `ready` 后才连接 `127.0.0.1:<pluginPort>`；在本地 socket 的 `connect` 事件里、**转发任何字节之前**登记来源标签（§6.1）。本地连接失败 → 以 `1011` 关闭数据 WSS。
 11. 数据阶段中，本地 socket 与数据 WSS 任一方关闭或出错，另一方随即关闭，并删除来源登记与活跃计数。
 
@@ -306,8 +310,8 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
 
 | code | 含义 | App 行为 |
 | --- | --- | --- |
-| `BAD_MAC` | MAC 不符 | 不重试；提示「远程凭据无效，请回到局域网或重新扫码」；**不删凭据** |
-| `UNKNOWN_KEY` | 设备 handle 未知（可能已吊销） | 同上；**不删凭据**（见 §7.4） |
+| `BAD_MAC` | MAC 不符；或 `open` 请求字段格式不合法（§5.5 第 1 步） | 不重试；提示「远程凭据无效，请回到局域网或重新扫码」；**不删凭据** |
+| `UNKNOWN_KEY` | 设备 handle 未知（可能已吊销）；或 `route` 不是本机（§5.5 第 2 步） | 同上；**不删凭据**（见 §7.4） |
 | `CLOCK_SKEW` | 时间偏差 > 60 秒；附 `hostNow` | 用 `hostNow − 本机时间` 作为本主机的偏移量重试一次；仍失败则提示「手机时间不准」 |
 | `REPLAY` | nonce 重复 | 生成新 nonce 立即重试一次 |
 | `BOOTSTRAP_UNKNOWN` / `BOOTSTRAP_EXPIRED` | 二维码已刷新 / 过期 / 插件重启过 | 提示「请刷新电脑上的二维码」 |
@@ -326,8 +330,8 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
 | `4001` | `UNSUPPORTED_VERSION` | `v` 不支持 |
 | `4002` | `AUTH_FAILED` | 主机签名无效 |
 | `4003` | `ROUTE_OFFLINE` | route 无在线控制连接 → App 显示「电脑离线」 |
-| `4004` | `RATE_LIMITED` | IP / route 限流 |
-| `4005` | `SERVER_BUSY` | Relay 全局容量满 |
+| `4004` | `RATE_LIMITED` | 按时间窗口计的速率 / 配额超限：每 IP `client_open`、每 IP `host_register`、每 route 日流量 |
+| `4005` | `SERVER_BUSY` | 并发 / 容量超限：每 IP 并发客户或主机连接、每 route 并发流、Relay 全局并发流 |
 | `4006` | `OPEN_TIMEOUT` | 10 秒内 Agent 未接受 |
 | `4007` | （Agent 拒绝码） | 见上表 |
 | `4008` | `IDLE_TIMEOUT` | 数据流空闲超时 |
@@ -353,7 +357,7 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
 | Relay 全局并发流 | 2,000 | Relay | 可调 |
 | 每 IP `client_open` | 60 次/分钟，突发 20 | Relay | 可下调 |
 | 每 IP 并发客户连接（`client_open` 角色 + 尚未确定角色的连接） | 64 | Relay | 可下调，下限 16 |
-| 每 IP 并发主机连接（控制 + 数据 + 预热） | 256 | Relay | 可下调，下限 64（同一 NAT 后可能有多台电脑） |
+| 每 IP 并发主机连接（控制 + 数据） | 256 | Relay | 可下调，下限 64（同一 NAT 后可能有多台电脑） |
 | 每 IP `host_register` | 10 次/分钟 | Relay | 可下调 |
 | 每 route 日流量（官方 Relay） | 5 GiB | Relay | 自建默认关闭 |
 
@@ -602,7 +606,7 @@ apps/android/app/src/test/java/dev/deeplinks/core/remote/*Test.kt
 2. 外层 TLS：默认 CA 校验；有 `outerPin` 时 `rejectUnauthorized: false`，并在 `upgrade` 之前的 `secureConnect` 阶段比对 `getPeerCertificate().raw` 的 SHA-256，不符立即销毁 socket。
 3. Ed25519：`crypto.sign(null, data, privateKey)`；HKDF：`crypto.hkdfSync`；比较用 `crypto.timingSafeEqual`。
 4. `open` 处理严格按 §5.5 的顺序；每一步有单测。
-5. **预热（可选，默认开启）**：Agent 保持最多 2 条已收到 `hello` 的空闲数据 WSS；收到 `open` 且验证通过后，用其中一条（用它自己的 `ch`）发送 `host_accept`，并立即补一条新的。空闲 60 秒的预热连接关闭并重建。
+5. **不预热（v2.2 定稿）**：Agent 在 `open` 验证通过后才新建数据 WSS。预热连接收到 `hello` 后不发消息，会被 Relay 的首条消息超时（5 秒，不可配置）以 `4000` 关闭，与本协议冲突；新建连接的开销由 App 侧连接池复用摊薄（§4.2）。若将来需要预热，须作为协议变更另行设计（例如给 Relay 增加预热角色）。
 6. 本地对接：`net.createConnection({ host: "127.0.0.1", port: pluginPort })`；在 `connect` 回调里先 `remoteOrigins.set(local.localPort, tag)`，再 `pipeline(wsStream, local)` 与 `pipeline(local, wsStream)`；`close` 时删除登记。
 7. **模块接口**（M1 按此实现，M2 由 `src/index.js` 调用；M1 不修改 `src/index.js`）：
 
@@ -620,7 +624,6 @@ export class RemoteAgent extends EventEmitter {
     isLocalReady,      // () => boolean
     logger,            // { info, warn }；禁止传入秘密
     allowInsecureWs = false,
-    prewarm = 2,
     now = () => Date.now(),
   })
   start(): Promise<void>        // 启动并保持重连；resolve 于首次 registered
