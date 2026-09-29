@@ -167,9 +167,19 @@ func (h *Hub) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	unknownReserved = true
-	firstCtx, cancel := context.WithTimeout(ctx, h.cfg.FirstMessageTimeout)
-	kind, raw, err := readMessage(firstCtx, c, MaxControlBytes)
-	cancel()
+	// 超时不能交给读 ctx：coder/websocket 的读 ctx 一旦取消就直接断开底层连接，
+	// 来不及按 §5.7 先发 error 再以 4000 关闭。改由定时器在读阻塞期间主动 fail，
+	// 读随之返回错误；定时器已触发时后续一律放弃。
+	timedOut := make(chan struct{})
+	timer := time.AfterFunc(h.cfg.FirstMessageTimeout, func() {
+		defer close(timedOut)
+		h.fail(c, "PROTOCOL_ERROR", 4000)
+	})
+	kind, raw, err := readMessage(ctx, c, MaxControlBytes)
+	if !timer.Stop() {
+		<-timedOut
+		return
+	}
 	if err != nil || kind != websocket.MessageText {
 		h.fail(c, "PROTOCOL_ERROR", 4000)
 		return

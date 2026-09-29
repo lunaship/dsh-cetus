@@ -251,6 +251,24 @@ func TestHostAcceptRejectsUnknownCrossRouteBadSignatureAndOldChallenge(t *testin
 	}
 }
 
+// §5.4 / §5.7：客户端在首条消息超时内一言不发，Relay 必须先发 error 再以 4000 关闭，
+// 而不是直接断开 TCP（读 ctx 超时会让 coder/websocket 直接拆连接）。
+func TestFirstMessageTimeoutSendsProtocolErrorAnd4000(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.FirstMessageTimeout = 80 * time.Millisecond
+	s := testServer(t, cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	c, _ := dialWithHello(t, ctx, s)
+	defer c.CloseNow()
+	if code, _ := stringField(readJSON(t, ctx, c), "code"); code != "PROTOCOL_ERROR" {
+		t.Fatalf("error code=%q", code)
+	}
+	if status := websocket.CloseStatus(readErr(ctx, c)); status != 4000 {
+		t.Fatalf("close=%d", status)
+	}
+}
+
 func TestDataIdleTimeoutAndLifetimeCloseCodes(t *testing.T) {
 	for _, scenario := range []struct {
 		name       string
