@@ -49,9 +49,7 @@ async function startFakeRelay({ tlsOptions } = {}) {
   relay.ctrl = null
   relay.registrations = 0
   relay.ctrlMessages = []
-  relay.connections = []
   wss.on("connection", (ws) => {
-    relay.connections.push({ ws, at: Date.now() })
     const ch = randomBytes(32)
     ws.on("error", () => {})
     ws.send(JSON.stringify({ t: "hello", v: 1, ch: b64u(ch), now: Math.floor(Date.now() / 1000) }))
@@ -392,24 +390,6 @@ test("outerPin：指纹不符时不注册，相符时正常注册", async (t) =>
   const right = await setup(t, { relayOptions: { tlsOptions: { key: pems.private, cert: pems.cert } }, agentOptions: { outerPin: pin } })
   await right.agent.start()
   assert.equal(right.relay.registrations, 1)
-})
-
-test("预热（显式开启）：open 通过验证后复用已收到 hello 的空闲数据连接发 host_accept", async (t) => {
-  const handle = randomBytes(16)
-  const env = await setup(t, { devices: new Map([[b64u(handle), { deviceId: "dev-a" }]]), agentOptions: { prewarm: 1 } })
-  await env.agent.start()
-  await until(() => env.relay.connections.length === 2) // 控制连接 + 1 条预热
-  await delay(100) // 让预热连接收到 hello
-  const prewarmed = env.relay.connections[1].ws
-  const openedAt = Date.now()
-  const accepted = env.relay.nextAccept()
-  env.relay.sendOpen(deviceOpen({ handle }))
-  const { ws, sigOk } = await accepted
-  assert.equal(sigOk, true)
-  assert.equal(ws, prewarmed, "host_accept 应走 open 之前就建好的预热连接")
-  assert.ok(env.relay.connections[1].at < openedAt)
-  // 用掉之后立即补一条新的预热
-  await until(() => env.relay.connections.length === 3)
 })
 
 test("生产配置只接受 wss://（ws:// 需显式 allowInsecureWs）", () => {

@@ -30,7 +30,7 @@ export const DEVICE_MAX_STREAMS = 6
 export const BOOTSTRAP_MAX_STREAMS = 4
 export const HOST_MAX_STREAMS = 32
 
-/** Relay 的首条消息超时（不可配置）；预热连接空闲不能超过它，见 agent.js。 */
+/** Relay 的首条消息超时（不可配置）。也是 v1 不预热的原因（RFC §10.3 第 5 条）。 */
 export const FIRST_MESSAGE_TIMEOUT_MS = 5_000
 /** host_accept 之后等待 ready（RFC §5.5 第 9 步）。 */
 export const ACCEPT_READY_TIMEOUT_MS = 10_000
@@ -43,9 +43,6 @@ export const RECONNECT_MAX_MS = 60_000
 export const RECONNECT_JITTER = 0.3
 export const RECONNECT_STABLE_MS = 60_000
 export const REPLACED_BACKOFF_MS = 60_000
-
-/** 预热连接最长空闲（RFC §10.3 第 5 条）。 */
-export const PREWARM_IDLE_MS = 60_000
 
 /** Agent 拒绝码（RFC §5.7）。不得自行新增。 */
 export const REJECT = Object.freeze({
