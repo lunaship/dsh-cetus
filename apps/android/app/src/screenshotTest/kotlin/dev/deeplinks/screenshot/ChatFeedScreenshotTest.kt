@@ -166,6 +166,8 @@ private val approvals = listOf(
         toolArgs = """{"command":"rm -rf build/"}""",
         approvalId = "appr-1",
         requestStatus = "pending",
+        // 墙上画的是「手机接管」态（稿 07 的可交互审批卡）；未接管会让卡片降级成一行只读说明
+        takenOverByPhone = true,
     ),
     MobileMessage(
         id = "ap2",

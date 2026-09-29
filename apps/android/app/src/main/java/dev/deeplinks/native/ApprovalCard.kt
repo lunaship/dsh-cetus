@@ -124,6 +124,21 @@ internal fun ApprovalCard(
         )
         return
     }
+    // 方案 D1-A 诚实降级：这版 DSH 上插件接不到审批（approval/request 钩子不触发，实测），
+    // 所以 takenOverByPhone 恒为 false——此时**不给选中/提交按钮**，否则点了必然 409。
+    // 只有真的被手机接管（/requests 快照里有这条 pending）才画可交互的审批卡。
+    if (msg.requestStatus == REQUEST_PENDING && !msg.takenOverByPhone) {
+        Text(
+            L.homeApprovalOnDesktop,
+            color = Dsh.labelSecondary,
+            style = DshType.body,
+            modifier = Modifier
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(Dsh.bgSubtle)
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        )
+        return
+    }
     if (msg.requestStatus == REQUEST_UNKNOWN) {
         Text(
             L.approvalStatusUnknown,
