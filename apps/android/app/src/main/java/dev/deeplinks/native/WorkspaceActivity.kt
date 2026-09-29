@@ -2786,7 +2786,7 @@ fun WorkspaceScreen(
                 lastSession = sessions.maxByOrNull { sessionMillis(it.updatedAt) },
                 input = inputText,
                 modelName = pendingModel?.second ?: appSettings.defaultModel, modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
-                permissionPreset = canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset)), permissionLabel = composerPermissionLabel(canonicalComposerPermission(composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset))),
+                permissionPreset = appSettings.agentPreset, permissionLabel = presetDisplayName(appSettings.agentPreset, null),
                 sending = isSending, error = composerActionError,
             ),
             actions = NewTaskSheetActions(

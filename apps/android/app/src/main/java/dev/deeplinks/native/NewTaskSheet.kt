@@ -342,7 +342,9 @@ private fun InputCard(
             Spacer(Modifier.width(DshSpace.s4))
             ComposerSeatsRow(
                 modelName = modelName,
-                modelEffort = modelEffort,
+                // 稿 02 的面板里只写模型名、不写推理档（档位在模型选择器里改）：
+                // 带「High」后缀时这一行放不下第二个座，真机上「标准模式」被截成「标准…」。
+                modelEffort = null,
                 permissionPreset = permissionPreset,
                 permissionLabel = permissionLabel,
                 onOpenModelPicker = onOpenModelPicker,
