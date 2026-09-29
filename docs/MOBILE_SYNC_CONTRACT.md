@@ -207,3 +207,14 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 ## 后台通知
 
 完整后台推送（ENH-01）渠道待定，未实施。现有通知仍只覆盖 App 进程收到当前会话 SSE 之后的本地提醒。
+
+### `stoppedReason`（与 `activity` / `lastResult` 同一批）
+
+- **位置**：会话列表每一项（`GET /dsh-link/mobile/sessions` 与 bootstrap 里的 `sessions`）。
+- **含义**：这一轮是**怎么结束**的——`turn/end` 的 `reason.kind`；`completed` 或取不到时**不下发该键**。
+- **取值**：`interrupted` / `stopped` / `error` / `maxTokens` 等，与**会话详情**里的同名字段同一口径。
+- **口径**：与 `activity` / `lastResult` 复用同一遍历史读取（最近 20 个会话、缓存键含 `updatedAt`），
+  不额外拉一次历史。
+- **回退**：旧插件不下发该键时，App 把这一行当作「已完成」（方案 3.6 的明文回退）；**图标与文案
+  必须同时按这一个判断走**，否则会出现「已完成」配灰底方块的自相矛盾（这正是 2026-09-29 真机走查
+  抓到的第 5 处问题）。
