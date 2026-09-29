@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   collapseToLine,
   deriveActivity,
+  deriveAwaitingInput,
   deriveLastResult,
   stripMarkdown,
   summarizeToolCall,
@@ -207,4 +208,19 @@ test("deriveStoppedReason：正常完成返回 null，非 completed 返回原因
   assert.equal(deriveStoppedReason([{ event: { seq: 2, time: 2, type: "assistant/message", data: {} } }]), null)
   // 取最后一个 turn/end
   assert.equal(deriveStoppedReason([end("interrupted"), end("completed")]), null)
+})
+
+test("deriveAwaitingInput：问了没答才算等人", () => {
+  const asked = (id, seq = 1) => ({ event: { seq, type: "approval/asked", data: { id } } })
+  const decided = (id, seq = 2) => ({ event: { seq, type: "approval/decided", data: { id } } })
+  assert.equal(deriveAwaitingInput([asked("a1")]), true)
+  assert.equal(deriveAwaitingInput([asked("a1"), decided("a1")]), false)
+  // 多轮：前一轮答过、后一轮又问了 → 仍在等人
+  assert.equal(deriveAwaitingInput([asked("a1"), decided("a1"), asked("a2")]), true)
+  // 只有回答、没有问过（历史被截断）→ 不算等人
+  assert.equal(deriveAwaitingInput([decided("a1")]), false)
+  // 空 / 缺 id 的事件安全跳过
+  assert.equal(deriveAwaitingInput([]), false)
+  assert.equal(deriveAwaitingInput(undefined), false)
+  assert.equal(deriveAwaitingInput([{ event: { type: "approval/asked", data: {} } }]), false)
 })

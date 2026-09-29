@@ -195,3 +195,56 @@ test("正常完成的会话不下发 stoppedReason（回退成「已完成」）
   })
   assert.equal(sessions[0].stoppedReason, undefined)
 })
+
+// 2026-09-29 真机走查：沙箱升级这类审批不经过插件的 approval/request 钩子（探针实测），
+// 于是等审批的会话被首页错归到「进行中」。改为按历史推导：approval/asked 没配上 decided。
+const askedEvents = [
+  ev(2, "tool/call", { callId: "c1", name: "shell", arguments: { command: "echo hi > /usr/local/x" }, step: 1 }),
+  ev(3, "approval/asked", { id: "ap-1", toolName: "shell" }),
+]
+
+test("历史里有没人回答的审批 → 行上带 awaitingInput（首页「等你处理」）", async () => {
+  const rt = { sessionActivityCache: new Map() }
+  const sessions = [{ sessionId: "wait", updatedAt: 5, running: true }]
+  await attachSessionActivity(rt, 0, sessions, {
+    readEvents: async () => askedEvents,
+    changesService: null,
+  })
+  assert.equal(sessions[0].awaitingInput, true)
+  // 缓存命中也要保留（同一会话不会再拉历史）
+  const again = [{ sessionId: "wait", updatedAt: 5, running: true }]
+  await attachSessionActivity(rt, 0, again, { readEvents: async () => null, changesService: null })
+  assert.equal(again[0].awaitingInput, true)
+})
+
+test("审批已被回答 → 不带 awaitingInput", async () => {
+  const rt = { sessionActivityCache: new Map() }
+  const sessions = [{ sessionId: "answered", updatedAt: 6, running: true }]
+  await attachSessionActivity(rt, 0, sessions, {
+    readEvents: async () => [...askedEvents, ev(4, "approval/decided", { id: "ap-1", outcome: "allowed-once" })],
+    changesService: null,
+  })
+  assert.equal(sessions[0].awaitingInput, undefined)
+})
+
+test("非 running 的会话里残留的未答审批不算等人（上一轮已作废）", async () => {
+  const rt = { sessionActivityCache: new Map() }
+  const sessions = [{ sessionId: "stopped", updatedAt: 7, running: false }]
+  await attachSessionActivity(rt, 0, sessions, {
+    readEvents: async () => [...askedEvents, ev(5, "turn/end", { reason: { kind: "interrupted" } })],
+    changesService: null,
+  })
+  assert.equal(sessions[0].stoppedReason, "interrupted")
+  assert.equal(sessions[0].awaitingInput, undefined)
+})
+
+test("running 的会话即便挂着上一轮的 interrupted，也要算在等人（真机实测的坑）", async () => {
+  const rt = { sessionActivityCache: new Map() }
+  const sessions = [{ sessionId: "running-stale", updatedAt: 8, running: true }]
+  await attachSessionActivity(rt, 0, sessions, {
+    readEvents: async () => [...askedEvents, ev(5, "turn/end", { reason: { kind: "interrupted" } })],
+    changesService: null,
+  })
+  assert.equal(sessions[0].stoppedReason, "interrupted")
+  assert.equal(sessions[0].awaitingInput, true)
+})

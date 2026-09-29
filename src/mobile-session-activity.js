@@ -211,3 +211,25 @@ export function deriveLastResult(events, changesSummary) {
   if (text === null && files === null) return null
   return omitNullFields({ text, files, added, deleted })
 }
+
+/**
+ * 历史里是否有**没人回答的审批**：`approval/asked` 出现了、却没有配对的 `approval/decided`。
+ *
+ * 为什么按历史推导而不是插件钩子：DSH 0.1.5-rc.3 上沙箱升级这类审批**不经过**
+ * `approval/request` 瀑布（探针实测：100 秒里钩子一次没触发），但历史里会留下
+ * `approval/asked`（投影出的手机消息带 `requestStatus: "pending"`、`outcome: null`）。
+ * 首页「等你处理」分区据此判定，否则等审批的会话会被错归到「进行中」。
+ */
+export function deriveAwaitingInput(events) {
+  const asked = new Set()
+  const decided = new Set()
+  for (const item of events ?? []) {
+    const ev = item?.event ?? item
+    const id = ev?.data?.id
+    if (!id) continue
+    if (ev.type === "approval/asked") asked.add(id)
+    else if (ev.type === "approval/decided") decided.add(id)
+  }
+  for (const id of asked) if (!decided.has(id)) return true
+  return false
+}
