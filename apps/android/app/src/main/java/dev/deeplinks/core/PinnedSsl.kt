@@ -12,7 +12,9 @@ import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.X509TrustManager
+import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
+import okhttp3.TlsVersion
 import okhttp3.Request
 
 /**
@@ -141,29 +143,47 @@ object PinnedSsl {
      * 返回值不得在未经用户确认时写入 HostStore。
      */
     @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
-    internal fun tofuReadTrustManager(): X509TrustManager =
-        object : X509TrustManager {
-            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+    /**
+     * TOFU 阶段的信任管理器：**同时把服务端证书链记下来**。
+     *
+     * 为什么不从 `response.handshake.peerCertificates` 取：在真机上（Android 16 / Conscrypt）
+     * 它对这套自定义 socketFactory 返回的是**空链**，即使握手成功、TLS 1.2/1.3 都一样
+     * （2026-09-29 手动配对卡死就是这么来的）。而 `checkServerTrusted` 的参数恰恰就是服务端
+     * 递过来的那条链，拿它最稳。
+     */
+    internal class TofuReadTrustManager : X509TrustManager {
+        @Volatile
+        var lastChain: List<X509Certificate> = emptyList()
+
+        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+            lastChain = chain.toList()
         }
+    }
 
     /** TOFU：先看清服务器证书指纹（仅用于展示确认，随后按该指纹钉死）。 */
     fun peekFingerprint(baseUrl: String): String {
         val url = "${normalizeUrl(baseUrl).trimEnd('/')}/dsh-link/health"
-        val trustManager = tofuReadTrustManager()
+        val trustManager = TofuReadTrustManager()
         val ctx = SSLContext.getInstance("TLS")
         ctx.init(null, arrayOf(trustManager), SecureRandom())
         val client = OkHttpClient.Builder()
             .sslSocketFactory(ctx.socketFactory, trustManager)
+            // 只走 TLS 1.2：TLS 1.3 的**会话恢复**握手不带证书（服务端用 PSK 直接完成），
+            // 于是 response.handshake.peerCertificates 会是空链——真机上表现为「取不到指纹、
+            // 手动配对卡死」。同一张证书在 1.2 下必定随握手发过来，指纹不变。
+            .connectionSpecs(
+                listOf(ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS).tlsVersions(TlsVersion.TLS_1_2).build()),
+            )
             .hostnameVerifier(HostnameVerifier { _, _ -> true })
             .connectTimeout(6, TimeUnit.SECONDS)
             .readTimeout(6, TimeUnit.SECONDS)
             .build()
         client.newCall(Request.Builder().url(url).build()).execute().use { response ->
-            val certs = response.handshake?.peerCertificates
-            if (certs.isNullOrEmpty()) throw IOException("服务器没有提供证书，无法确认指纹")
-            return fingerprintOf(certs.first() as X509Certificate)
+            val certs = trustManager.lastChain
+            if (certs.isEmpty()) throw IOException("服务器没有提供证书，无法确认指纹")
+            return fingerprintOf(certs.first())
         }
     }
 
