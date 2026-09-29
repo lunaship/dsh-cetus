@@ -4,11 +4,11 @@
 
 | 指标 | 值 |
 |---|---|
-| 提交数（`git rev-list --count a864afd..HEAD`） | **108**（2026-09-29 深夜实测） |
+| 提交数（`git rev-list --count a864afd..HEAD`） | **109**（实测） |
 | 改动规模 | 153 个文件，+5797 / −987 |
 | 工作树 | 干净（0 项改动） |
-| Android 门禁 | 五条全绿：`assembleDebug` / `assembleDebugAndroidTest` / `testDebugUnitTest`（**549 例**，本轮 `--rerun-tasks` 实跑）/ `lintDebug` / `validateDebugScreenshotTest`（**59 张**基线） |
-| 插件门禁 | `node --test test/*.mjs` **277 例全过**；`npm run prepack` 亦通过 |
+| Android 门禁 | 五条全绿：`assembleDebug` / `assembleDebugAndroidTest` / `testDebugUnitTest`（**550 例**）/ `lintDebug` / `validateDebugScreenshotTest`（**59 张**基线） |
+| 插件门禁 | `node --test test/*.mjs` **282 例全过**；`npm run prepack` 亦通过 |
 | 空白检查 | `git diff --check` 干净 |
 | Relay | 本次未改动（diff 为 0）；本机无 Go 工具链，未执行 |
 | 设计稿对照 | **15 组**并排（其中 3 组用真机/模拟器实拍） |
