@@ -40,7 +40,8 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "qrcode": "1.5.4",
-    "selfsigned": "5.5.0"
+    "selfsigned": "5.5.0",
+    "ws": "^8"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2"

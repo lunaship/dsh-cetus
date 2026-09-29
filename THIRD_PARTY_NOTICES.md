@@ -17,4 +17,5 @@ This repository is MIT. The Android client lives in `apps/android/`; its third-p
 | @deepseek-ai/schemastery | 3.18.1 | MIT | https://www.npmjs.com/package/@deepseek-ai/schemastery |
 | qrcode | 1.5.4 | MIT | https://github.com/soldair/node-qrcode |
 | selfsigned | 5.5.0 | MIT | https://github.com/jfromaniello/selfsigned |
+| ws | 8.22.0 (^8) | MIT | https://github.com/websockets/ws |
 | @deepseek-ai/cordis (peer) | ^4.0.1 | MIT | https://www.npmjs.com/package/@deepseek-ai/cordis |
