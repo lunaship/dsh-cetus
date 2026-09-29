@@ -74,7 +74,7 @@
 > [!IMPORTANT]
 > **本项目为独立的社区项目。** DeepLinks 与 DeepSeek 无隶属、授权或背书关系；DeepSeek Harness 的名称与相关标识归各自所有者。问题请在本仓库反馈，不要提交给上游。
 >
-> **项目处于公开 Beta。** 正式支持范围是**可信局域网**；远端 Relay 为邀请制内测。插件、App 与同步协议迭代较快，升级前请看 [`CHANGELOG.md`](CHANGELOG.md) 与 [兼容矩阵](docs/COMPATIBILITY.md)。
+> **项目处于公开 Beta。** 正式支持范围是**可信局域网**；远程连接（DLP/1 中继）为实验性功能。插件、App 与同步协议迭代较快，升级前请看 [`CHANGELOG.md`](CHANGELOG.md) 与 [兼容矩阵](docs/COMPATIBILITY.md)。
 
 ---
 
@@ -88,7 +88,7 @@
 |---|---|---|---|
 | **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | npm（`beta` dist-tag） |
 | **Android App** | [`apps/android/`](apps/android/) | 扫码配对、原生会话工作台、实时流、审批与提问 | 签名 APK，见 [Releases](https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true)（`app-v*`） |
-| **Relay** | [`relay/`](relay/) | 跨网络配对的信令与加密转发（DLR/1） | 源码公开；使用需维护者接入码 |
+| **Relay** | [`relay/`](relay/) | 远程连接的哑管道中继（DLP/1，`cmd/dlp-relay`），只拼接两条 WSS | 源码公开；可用官方中继或自建，无需接入码 |
 
 ---
 
@@ -160,13 +160,13 @@ flowchart LR
         Host["DSH Host<br/>会话 · 工具 · 工作区"]
     end
 
-    Relay["Relay（Go · 内测）<br/>信令 · 加密转发"]
+    Relay["Relay（Go · DLP/1）<br/>只拼接两条 WSS"]
 
     App <-->|"HTTPS + 设备 token<br/>SSE：事件 · 审批 · 提问"| Plugin
     Panel -->|"同源回环 POST"| Plugin
     Plugin -->|"回环 RPC · 127.0.0.1"| Host
-    App -.->|"远端模式（持接入码）"| Relay
-    Relay -.->|"DLR/1 加密字节流"| Plugin
+    App -.->|"远程（同一张连接码）"| Relay
+    Relay -.->|"内层 TLS 字节流"| Plugin
 ```
 
 一条请求的生命线、目录契约与两条关键设计线（审批式工作区注册、SSE 续传）见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)；手机 API 的字段级契约见 [`docs/MOBILE_SYNC_CONTRACT.md`](docs/MOBILE_SYNC_CONTRACT.md)。
@@ -182,7 +182,7 @@ dsh-links/
 │   ├── mobile-api.js             # 手机 HTTPS API 唯一实现（/dsh-link/mobile/*）
 │   ├── module2.js                # 「手机连接」面板源码（client.js 由 build-client.mjs 生成）
 │   ├── workspace-*.js            # 工作区注册、改动转发、文件与目录沙箱
-│   └── relay/                    # Relay 客户端协议（DLR/1）
+│   └── remote/                   # 远程连接 Agent（DLP/1）
 ├── relay/                        # Relay 服务端（Go），独立部署
 ├── apps/android/                 # Android App（Android Studio 打开这里）
 │   ├── app/src/main/java/dev/deeplinks/
@@ -215,7 +215,7 @@ dsh-links/
 3. **开始使用**：在 App 里选择已配对的电脑，进入会话工作台。
 
 > [!NOTE]
-> 局域网配对不需要接入码。远端访问的可选路径（Tailscale、Cloudflare Tunnel、DeepLinks Relay）见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。**不要**把 `18640` 端口直接做路由器端口转发。
+> 局域网配对不需要接入码。远程访问（内置远程连接、Tailscale、Cloudflare Tunnel）见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。**不要**把 `18640` 端口直接做路由器端口转发。
 
 ---
 
@@ -281,9 +281,9 @@ CI 分三路：插件跑 DLR/1 向量对拍、面板生成物一致性、`node:t
 
 - 配对 token、TLS 证书指纹与会话本地快照均以 Android Keystore 密钥加密保存，禁用云备份；敏感界面启用 `FLAG_SECURE`。
 - App 只走 TLS；渲染不可信内容的 WebView 禁止文件与 content URL 访问；release 构建剥离并脱敏日志。
-- Relay 只实时转发 App 与已配对电脑之间的加密字节流，不持久化聊天正文、Prompt、文件、工作区内容、审批内容或响应正文。
-- Relay 的控制面会保留设备、路由、凭证生命周期、撤销状态、在线心跳、聚合流量统计与必要的审计元数据——这些不是会话内容。因此准确的表述是「Relay 不存储业务内容，仅保存最小控制元数据」。
-- 云端二维码内含 Relay 路由凭据，与接入码同等敏感，请勿截图分享；issue、截图与 PR 中不要张贴接入码。
+- 中继（DLP/1）只拼接手机与电脑各自向外建立的 WebSocket，转发的是内层 TLS 加密字节流；它不保存账号、设备档案或任何业务内容，只在内存里保留在线路由、活跃流与聚合流量计数。
+- 电脑只在验证过手机的会合密钥之后才连本机端口；业务授权仍是设备 Token，吊销设备立即断开它的远程连接。
+- 手机连接码在有效期内可以添加新设备（远程首配仍需电脑上批准），请勿截图外传。
 
 完整说明见 [`PRIVACY.md`](PRIVACY.md) 与 [`SECURITY.md`](SECURITY.md)。
 
