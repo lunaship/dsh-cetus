@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 // Control holds dependencies
 type Control struct {
 	store             *store.Store
+	deviceLifecycleMu sync.Mutex
 	issuerPriv        ed25519.PrivateKey
 	issuerPub         ed25519.PublicKey
 	routeMasterKey    []byte // 32 bytes, if set; otherwise routeSecret derivation not available for direct enroll? But control derives secret
@@ -1089,7 +1091,10 @@ func (c *Control) ListDevices() ([]DeviceInfo, error) {
 // DisableDevice disables an anonymous device and cascades: every live host of
 // the device is revoked and pushed to relays immediately.
 func (c *Control) DisableDevice(id string) error {
-	hosts, err := c.store.ListHostsByDevice(id)
+	c.deviceLifecycleMu.Lock()
+	defer c.deviceLifecycleMu.Unlock()
+
+	hosts, err := c.store.DisableDeviceAndListHosts(id)
 	if err != nil {
 		return err
 	}
@@ -1100,18 +1105,23 @@ func (c *Control) DisableDevice(id string) error {
 			}
 		}
 	}
-	return c.store.SetDeviceEnabled(id, false)
+	return nil
 }
 
 // EnableDevice re-enables a previously disabled device. Its hosts stay
 // revoked; the device may enroll fresh hosts up to its quota.
 func (c *Control) EnableDevice(id string) error {
+	c.deviceLifecycleMu.Lock()
+	defer c.deviceLifecycleMu.Unlock()
 	return c.store.SetDeviceEnabled(id, true)
 }
 
 // DeleteDevice revokes all hosts and removes the device identity.
 func (c *Control) DeleteDevice(id string) error {
-	hosts, err := c.store.ListHostsByDevice(id)
+	c.deviceLifecycleMu.Lock()
+	defer c.deviceLifecycleMu.Unlock()
+
+	hosts, err := c.store.DisableDeviceAndListHosts(id)
 	if err != nil {
 		return err
 	}

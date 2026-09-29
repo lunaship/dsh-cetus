@@ -162,14 +162,19 @@ class ScanActivity : AppCompatActivity() {
                     }
                     for (u in urls) {
                         try {
-                            val pin = qrFp.takeIf { it.isNotBlank() && PinnedSsl.shouldPin(u) }
+                            // Honor an advertised QR fingerprint even for public DNS hosts;
+                            // system PKI alone does not bind that connection to the scanned QR.
+                            val pin = qrFp.takeIf { it.isNotBlank() }
                             val phoneName = DeviceName.of(this, if (cloud) DeviceName.Kind.CLOUD else DeviceName.Kind.LAN)
-                            val r = try {
-                                PairClient.pair(u, code, phoneName, pin, if (cloud) effectiveRelay else null, preferRelay = cloud, requestId = requestId)
-                            } catch (e: PinnedSsl.CertChangedException) {
-                                if (PinnedSsl.shouldPin(u)) throw e
-                                PairClient.pair(u, code, phoneName, null, if (cloud) effectiveRelay else null, preferRelay = cloud, requestId = requestId)
-                            }
+                            val r = PairClient.pair(
+                                u,
+                                code,
+                                phoneName,
+                                pin,
+                                if (cloud) effectiveRelay else null,
+                                preferRelay = cloud,
+                                requestId = requestId,
+                            )
                             saveAndFinish(r, cloud)
                             return@execute
                         } catch (e: Exception) {

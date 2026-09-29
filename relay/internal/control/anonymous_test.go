@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -13,6 +14,63 @@ import (
 	"github.com/lunaship/dsh-links/relay/internal/protocol"
 	"github.com/lunaship/dsh-links/relay/internal/store"
 )
+
+func TestDisableDeviceBlocksEnrollmentBeforeRevocationFinishes(t *testing.T) {
+	ctrl, st := newTestControlWithPolicy(t, AnonymousPolicy{Enabled: true, MaxHosts: 2, MaxStreams: 2}, 0)
+	defer st.Close()
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce, _ := cryptoutil.GenerateNonce()
+	challenge, _ := cryptoutil.RandomBytes(32)
+	ts := time.Now().Unix()
+	proof := ed25519.Sign(priv, cryptoutil.BuildBootstrapTranscript(pub, ts, nonce, challenge))
+	token, err := ctrl.Bootstrap(pub, ts, nonce, challenge, proof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := ctrl.Enroll(enrollRequestWithToken(t, token, "first", pub, priv))
+	if err != nil {
+		t.Fatalf("initial enroll: %v", err)
+	}
+
+	deviceID := store.DeviceFingerprint(pub)
+	revokeStarted := make(chan struct{}, 1)
+	continueRevoke := make(chan struct{})
+	ctrl.SetRevokeFn(func(string, string) (int, int) {
+		revokeStarted <- struct{}{}
+		<-continueRevoke
+		return 1, 1
+	})
+	disableDone := make(chan error, 1)
+	go func() { disableDone <- ctrl.DisableDevice(deviceID) }()
+	select {
+	case <-revokeStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("disable did not reach host revocation")
+	}
+
+	// The device is disabled before revoke propagation can complete, so a
+	// concurrently presented bootstrap token cannot create an unrevoked host.
+	second, err := ctrl.Enroll(enrollRequestWithToken(t, token, "second", pub, priv))
+	if err == nil {
+		t.Fatalf("enrollment succeeded during disable: host=%s first=%s", second.HostId, first.HostId)
+	}
+	if !errors.Is(err, store.ErrDeviceDisabled) {
+		t.Fatalf("enrollment error = %v, want %v", err, store.ErrDeviceDisabled)
+	}
+	close(continueRevoke)
+	select {
+	case err := <-disableDone:
+		if err != nil {
+			t.Fatalf("disable device: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("disable did not finish")
+	}
+}
 
 func newTestControlWithPolicy(t *testing.T, policy AnonymousPolicy, capTTL time.Duration) (*Control, *store.Store) {
 	t.Helper()

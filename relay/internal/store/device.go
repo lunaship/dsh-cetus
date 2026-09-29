@@ -119,6 +119,20 @@ func (s *Store) SetDeviceEnabled(id string, enabled bool) error {
 	return err
 }
 
+// DisableDeviceAndListHosts prevents new anonymous enrollment before taking
+// the host snapshot that the control layer must revoke. It shares the same
+// lock as EnrollAnonymousHost, so an enrollment either finishes before this
+// snapshot or observes the disabled device and fails.
+func (s *Store) DisableDeviceAndListHosts(id string) ([]*Host, error) {
+	s.enrollMu.Lock()
+	defer s.enrollMu.Unlock()
+
+	if err := s.SetDeviceEnabled(id, false); err != nil {
+		return nil, err
+	}
+	return s.ListHostsByDevice(id)
+}
+
 // DeleteDevice removes the device row. Callers must revoke/delete its hosts
 // first (or accept that orphaned hosts remain until revoked).
 func (s *Store) DeleteDevice(id string) error {
@@ -270,7 +284,8 @@ type RouteLookup struct {
 }
 
 // GetHostByRouteWithDevice returns the host for a route and whether its
-// device is enabled (hosts without a device link count as enabled).
+// device is enabled. Hosts without a device link count as enabled; a linked
+// host whose device row is missing fails closed.
 func (s *Store) GetHostByRouteWithDevice(routeID []byte) (*RouteLookup, error) {
 	row := s.db.QueryRow(
 		`SELECT h.id, h.user_id, h.route_id, h.host_name, h.host_pubkey,
@@ -296,8 +311,10 @@ func (s *Store) GetHostByRouteWithDevice(routeID []byte) (*RouteLookup, error) {
 		return nil, err
 	}
 	enabled := true
-	if deviceID.Valid && deviceEnabled.Valid {
-		enabled = deviceEnabled.Int64 != 0
+	if deviceID.Valid {
+		// An anonymous host whose device row is missing is an orphan and must
+		// fail closed, especially during device deletion/revocation.
+		enabled = deviceEnabled.Valid && deviceEnabled.Int64 != 0
 	}
 	return &RouteLookup{Host: &h, DeviceEnabled: enabled}, nil
 }
