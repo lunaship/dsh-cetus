@@ -1,7 +1,7 @@
 <div align="center">
   <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="DeepLinks Logo" />
   <h1>DeepLinks</h1>
-  <p><b>DeepSeek Harness 的手机端</b> · 局域网配对 · 原生 Android 会话工作台</p>
+  <p><b>DeepSeek Harness 的手机端</b> · 任务收件箱 · 局域网配对 · 原生 Android 工作台</p>
 
   <p>
     <img src="https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform" />
@@ -22,20 +22,52 @@
 
 <table>
   <tr>
-    <td width="25%"><img src="docs/images/android-home-2026-09-27.png" alt="任务首页" /></td>
-    <td width="25%"><img src="docs/images/android-chat-2026-09-27.png" alt="会话工作台" /></td>
-    <td width="25%"><img src="docs/images/android-tree-2026-09-27.png" alt="浏览工作区文件" /></td>
-    <td width="25%"><img src="docs/images/android-settings-2026-09-27.png" alt="设置" /></td>
+    <td width="25%"><img src="docs/images/redesign/01-首页.png" alt="任务收件箱" /></td>
+    <td width="25%"><img src="docs/images/redesign/03-对话页.png" alt="会话工作台" /></td>
+    <td width="25%"><img src="docs/images/redesign/04-看改动.png" alt="查看代码改动" /></td>
+    <td width="25%"><img src="docs/images/redesign/05-设置.png" alt="设置" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>任务首页 · 按工作区筛选</sub></td>
+    <td align="center"><sub>任务收件箱 · 等你处理 / 进行中 / 最近</sub></td>
     <td align="center"><sub>会话工作台 · Markdown 与工具轨迹</sub></td>
-    <td align="center"><sub>浏览工作区文件</sub></td>
+    <td align="center"><sub>查看改动 · 文件差异与提问</sub></td>
     <td align="center"><sub>设置</sub></td>
   </tr>
 </table>
 
-<p align="center"><sub>真机截图于 2026-09-27（HyperOS，<code>0.5.0-beta.20</code> 源码 debug 构建）。主机名与非本仓库的工作区名已替换为示例值。</sub></p>
+<p align="center"><sub>Android 重设计页面预览（15 个手机 / 平板、浅色 / 深色页面与状态）；图片来自 <code>docs/images/redesign/</code>。</sub></p>
+
+<details>
+  <summary>查看全部 15 个页面与状态</summary>
+
+  <table>
+    <tr>
+      <td><img src="docs/images/redesign/01-首页.png" width="180" alt="首页" /><br /><sub>01 · 首页</sub></td>
+      <td><img src="docs/images/redesign/02-新任务面板.png" width="180" alt="新任务面板" /><br /><sub>02 · 新任务面板</sub></td>
+      <td><img src="docs/images/redesign/03-对话页.png" width="180" alt="对话页" /><br /><sub>03 · 对话页</sub></td>
+    </tr>
+    <tr>
+      <td><img src="docs/images/redesign/04-看改动.png" width="180" alt="看改动" /><br /><sub>04 · 看改动</sub></td>
+      <td><img src="docs/images/redesign/05-设置.png" width="180" alt="设置" /><br /><sub>05 · 设置</sub></td>
+      <td><img src="docs/images/redesign/06-通知.png" width="180" alt="通知" /><br /><sub>06 · 通知</sub></td>
+    </tr>
+    <tr>
+      <td><img src="docs/images/redesign/07-首页-多件待处理.png" width="180" alt="首页多件待处理" /><br /><sub>07 · 多件待处理</sub></td>
+      <td><img src="docs/images/redesign/08-首页-电脑离线.png" width="180" alt="首页电脑离线" /><br /><sub>08 · 电脑离线</sub></td>
+      <td><img src="docs/images/redesign/09-首页-还没有任务.png" width="180" alt="首页空态" /><br /><sub>09 · 首页空态</sub></td>
+    </tr>
+    <tr>
+      <td><img src="docs/images/redesign/10-对话-执行中.png" width="180" alt="对话执行中" /><br /><sub>10 · 对话执行中</sub></td>
+      <td><img src="docs/images/redesign/11-平板横屏.png" width="180" alt="平板横屏" /><br /><sub>11 · 平板横屏</sub></td>
+      <td><img src="docs/images/redesign/12-首页-深色.png" width="180" alt="深色首页" /><br /><sub>12 · 深色首页</sub></td>
+    </tr>
+    <tr>
+      <td><img src="docs/images/redesign/13-对话-深色.png" width="180" alt="深色对话" /><br /><sub>13 · 深色对话</sub></td>
+      <td><img src="docs/images/redesign/14-看改动-深色.png" width="180" alt="深色看改动" /><br /><sub>14 · 深色看改动</sub></td>
+      <td><img src="docs/images/redesign/15-设置-深色.png" width="180" alt="深色设置" /><br /><sub>15 · 深色设置</sub></td>
+    </tr>
+  </table>
+</details>
 
 ---
 
@@ -86,6 +118,12 @@
 - **输入**：模型与推理强度选择、图片附件、系统分享到 App、语音输入、命令面板（`/plan`、`/goal` 等）。
 - **自适应布局**：手机单栏；平板与折叠屏展开时改用侧边导航栏，改动审查面在宽屏贴右展开。
 - **中英双语**：界面文案随系统或手动切换。
+
+### 任务收件箱与新任务
+
+- **任务集中处理**：首页按「等你处理 / 进行中 / 最近」分组，显示电脑在线状态、工作区筛选和任务摘要；电脑离线时保留最近状态并提供重连入口。
+- **手机接管审批**：仅在手机正在接管对应会话时展示可操作审批卡；其他待处理事项明确提示在电脑上处理。
+- **新任务面板**：从首页打开底部面板，选择工作区、继续上次任务，并设置模型与执行模式后发送。
 
 ### 审批与提问
 

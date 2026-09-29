@@ -8,7 +8,7 @@ DeepLinks Android 客户端。
 - 远程中继：公开仓 [`../relay/`](../relay/)
 
 版本基线、发布状态和已验证组合统一维护在
-[`dsh-links 的兼容矩阵`](https://github.com/lunaship/dsh-links/blob/main/docs/COMPATIBILITY.md)，本仓库不维护另一份版本表。当前源码 `versionName` 为 `0.5.0-beta.19`（versionCode 29）；与插件 `0.1.0-beta.17` 搭配可使用重同步、多题校验并跟随 Web 归档集合，旧组合忽略新字段、不破坏既有行为。
+[`dsh-links 的兼容矩阵`](https://github.com/lunaship/dsh-links/blob/main/docs/COMPATIBILITY.md)，本仓库不维护另一份版本表。当前源码 `versionName` 为 `0.5.0-beta.20`（versionCode 30），对应插件 `dsh-links 0.1.0-beta.18`；支持边界与已验证组合以兼容矩阵为准。
 
 支持边界：公开支持为可信局域网；Relay 为邀请制私测（自建用 admin 发码，托管由维护者开通租户后自行发码；App 与插件配对，不登录 Control）；
 自管 Tailscale / Cloudflare Tunnel 仅为实验路径。

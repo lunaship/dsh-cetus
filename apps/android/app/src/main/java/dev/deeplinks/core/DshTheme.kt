@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
@@ -172,7 +173,7 @@ val LightDshColors = DshColors(
     bgCode = Color(0xFFF3F3EF),              // 偏离 DSH：重设计稿代码块底 #F3F3EF
     bgCodeBanner = Color(0xFFFAFAF8),        // 偏离 DSH：重设计稿卡片头/弱底 #FAFAF8
     bgSelected = Color(0xFFE7E7E1),          // 偏离 DSH：重设计稿选中态改中性灰（不再用品牌蓝 tonal）
-    bgPressed = Dsw.interactiveHoverLight,   // alias-interactive-bg-hover
+    bgPressed = Color(0x103F5BD6),           // 偏离 DSH：浅色按压改低透明品牌蓝，避免叠加成近黑色阴影
     bgDrawer = Color(0xFFF5F5F2),            // 偏离 DSH：重设计稿抽屉底与页面底同档
     bgNavSelected = Color(0xFFE7E7E1),       // 偏离 DSH：与 bgSelected 同一 selection container
     bgTrack = Color(0xFFE6E6E1),             // 偏离 DSH：重设计稿进行中轨道 #E6E6E1（Main.dc.html 的转圈底）
@@ -185,7 +186,7 @@ val LightDshColors = DshColors(
     labelDimmed = Color(0xFFB5B7BB),         // 偏离 DSH：重设计稿禁用 #B5B7BB
     borderSubtle = Color(0xFFEEEEE9),        // 偏离 DSH：重设计稿分隔线 #EEEEE9（只用于分隔线，不做容器描边）
     borderStrong = Dsw.borderL3Light,        // alias-border-l3
-    pressed = Dsw.interactiveHoverLight,     // alias-interactive-bg-hover
+    pressed = Color(0x103F5BD6),             // 偏离 DSH：与 bgPressed 统一，浅色点击保持轻微品牌色反馈
     activated = Dsw.interactiveActiveLight,  // alias-interactive-bg-active
     brand400 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
     brand500 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝 #3F5BD6（批准、发送）
@@ -525,7 +526,9 @@ fun DshTheme(
                 fontScale = baseDensity.fontScale * fontMultiplier,
             ),
         ) {
-            content()
+            CompositionLocalProvider(LocalIndication provides dshRipple()) {
+                content()
+            }
         }
     }
 }
