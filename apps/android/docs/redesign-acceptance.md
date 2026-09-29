@@ -216,3 +216,40 @@ curl -s -H "Origin: http://127.0.0.1:19400" http://127.0.0.1:19400/dsh-link/pair
 
 **隔离实例这条路仍然值得留下**：它让配对打通、App 首次在模拟器上跑起来，并因此抓到三个真机才
 暴露的问题（TOFU 取链、不可读报错、离线卡误判）。
+
+## 用真实会话跑出来的验证（2026-09-29，模拟器 + 隔离实例）
+
+用户授权后，我在**隔离实例**上用移动 API 自己做了一条完整链路：注册一个 `/private/tmp/link-demo`
+工作区（面板审批）→ 建会话 → 发任务 → 智能体真的写文件 → 再让它改已跟踪文件产出真 diff。
+
+**阶段 2 的字段在真实会话上端到端成立**（不是单测，是真数据）：
+
+```json
+{ "title": "创建 hello.txt 文件", "cwd": "/private/tmp/link-demo", "running": false, "blank": false,
+  "lastResult": { "text": "已创建 hello.txt，内容为 hello。" } }
+```
+
+`lastResult` 是从助手回复里推出来的一句；`stoppedReason` / `activity` **正确地不下发**
+（该轮正常完成、且没在跑）。
+
+**真机（模拟器）逐项确认**：
+
+| 项 | 看到什么 |
+|---|---|
+| 01 首页「最近」行 | `创建 hello.txt 文件` + `刚刚`/`1分钟` + **`已创建 hello.txt，内容为 hello。`**（lastResult 上屏） |
+| 概况行 | `0 件等你处理` + `全部工作区` |
+| 03 对话页 | 两行标题（`创建 hello.txt 文件` / **`link-demo · dsh-test`**）、文字 Tab（对话/轨迹）、用户气泡、`上下文注入 · runtime, file-policy` 与 `skill-catalog` 两条折叠行、**`已完成工作 · 已编辑 1 个文件`**（第二次是 2 个）、正文、轮末行（复制/分叉 + 时间）、**`本轮产出` 卡**、底部一行小字 **无 `+A −D`**、模型座 `DeepSeek-V41-Flash High ⌄` |
+| 文件预览 | 点「本轮产出」的文件 chip → 文件内容 + `关闭` |
+| 设备与配对面板 | `dsh-test / 在线 · 882ms · 局域网 / 10.0.2.2:19441 / 重新检测连接 / 更换电脑 / 解除配对`（**未点后两项**） |
+
+**04 看改动为什么在这条路上验不了**：`workspace_changes` 条目由宿主的 **`workspace/changes` 事件**
+驱动，而那个事件来自**桌面运行时**的改动服务；隔离的 web profile 实例不发它——bootstrap 里
+`capabilities.files` 只有 `{workspace, maxBytes, tree, treeMaxEntries}`，**没有 `changes`/`diff`**。
+App 据此**正确地隐藏了「看改动」入口**（不是 bug，是按能力位降级）。要验 04 必须用桌面 host。
+
+**顺手记一条：边缘左滑与系统返回手势的关系**。`ChangesSwipeArea` 读 `WindowInsets.systemGestures`，
+把边缘区**主动让给系统**（`inSystemEdge`），所以从 x=5px 起手会被系统返回吃掉——**代码是对的**，
+手势要从更靠里起手。我用 `input swipe 5 ...` 试的那次是我瞄错了。
+
+**清理**：演示工作区已注销（`workspaces/delete` 带 path，`{"ok":true,"deleted":true}`）；
+演示会话（3 轮，`/tmp/link-demo`）移动 API 没有删除路由，留在会话库里待用户两下删掉。
