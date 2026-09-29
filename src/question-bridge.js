@@ -9,7 +9,7 @@
  */
 import { request as httpRequest } from "node:http"
 import { randomBytes } from "node:crypto"
-import { sseMessageFrame } from "./stream-cursor.js"
+import { sseBacklogExceeded, sseMessageFrame } from "./stream-cursor.js"
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
@@ -24,7 +24,7 @@ function writeSse(writers, frame) {
     try {
       const ok = conn.res.write(frame)
       flushSse(conn.res)
-      if (ok === false) {
+      if (ok === false && sseBacklogExceeded(conn.res)) {
         writers.delete(conn)
         try { conn.res.destroy() } catch {}
       }
@@ -82,7 +82,7 @@ function handleSessionEvent(payload, rt, requestPoll) {
       const ok = conn.res.write(sseMessageFrame(event))
       flushSse(conn.res)
       conn.lastSeq = event.seq
-      if (ok === false) {
+      if (ok === false && sseBacklogExceeded(conn.res)) {
         writers.delete(conn)
         try { conn.res.destroy() } catch {}
       }
@@ -130,7 +130,7 @@ export function flushSeedQueue(conn, sessionId, requestPoll) {
       const ok = conn.res.write(sseMessageFrame(event))
       flushSse(conn.res)
       conn.lastSeq = event.seq
-      if (ok === false) {
+      if (ok === false && sseBacklogExceeded(conn.res)) {
         try { conn.res.destroy() } catch {}
         return
       }

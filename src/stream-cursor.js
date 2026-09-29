@@ -193,3 +193,76 @@ export function sseResyncFrame({ sessionId, reason, afterSeq, oldestAvailableSeq
     nextCursor: nextCursor ?? afterSeq ?? 0,
   })
 }
+
+/**
+ * SSE 慢消费者的积压上限。
+ *
+ * `res.write()` 返回 false 只说明缓冲超过了 highWaterMark（默认 16 KiB）：补历史时连续同步写几十帧、
+ * 或单帧较大（上下文注入、长工具输出）都会触发，这不是断线。曾经把它当断线直接 destroy，
+ * 结果手机一订阅就被掐断并无限重连——插件看不到订阅，审批全部交给了电脑网页。
+ * 只有积压真的超过这个上限，才认定对端读不动。
+ */
+export const SSE_MAX_BACKLOG_BYTES = 4 * 1024 * 1024
+
+export function sseBacklogExceeded(res) {
+  return (res?.writableLength ?? 0) > SSE_MAX_BACKLOG_BYTES
+}
+
+/**
+ * 向一条连接补发 assess 结果。积压超过上限时先停在已写出的最后一帧（conn.lastSeq 已推进），
+ * 等缓冲排空后经 requestPoll 接着补下一段；连接本身不断，实时推送遇到空洞也会走同一条补洞路径。
+ */
+export function writeCatchup(writers, conn, assessed, sessionId, requestPoll) {
+  try {
+    if (assessed.complete) {
+      // 上一段还在等排空：这次不往积压里追加，drain 后会再请求补洞
+      if (conn.catchupPaused) return
+      for (const e of assessed.events) {
+        if (e.seq <= conn.lastSeq) continue
+        const ok = conn.res.write(sseMessageFrame(e))
+        try { conn.res.flush?.() } catch {}
+        conn.lastSeq = e.seq
+        if (ok === false && sseBacklogExceeded(conn.res)) {
+          if (!conn.catchupPaused) {
+            conn.catchupPaused = true
+            conn.res.once?.("drain", () => {
+              conn.catchupPaused = false
+              requestPoll?.(sessionId)
+            })
+          }
+          return
+        }
+      }
+      if (assessed.events.length > 0 && assessed.projections) {
+        try { conn.res.write(sseNamedFrame("stats", assessed.projections)) } catch {}
+      }
+      return
+    }
+    const now = Date.now()
+    if (conn.lastResyncAt && now - conn.lastResyncAt < 2_000) return
+    conn.lastResyncAt = now
+    const frame = conn.caps?.sync2
+      ? sseResyncFrame({
+        sessionId,
+        reason: assessed.reason,
+        afterSeq: conn.lastSeq,
+        oldestAvailableSeq: assessed.oldestAvailableSeq,
+        nextCursor: assessed.nextCursor,
+      })
+      : sseNamedFrame("error", {
+        code: "resync-required",
+        upgradeRequired: true,
+        sessionId,
+        reason: assessed.reason,
+      })
+    const ok = conn.res.write(frame)
+    try { conn.res.flush?.() } catch {}
+    if (ok === false && sseBacklogExceeded(conn.res)) {
+      writers.delete(conn)
+      try { conn.res.destroy() } catch {}
+    }
+  } catch {
+    writers.delete(conn)
+    try { conn.res.destroy() } catch {}
+  }
+}

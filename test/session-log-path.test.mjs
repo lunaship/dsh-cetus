@@ -43,3 +43,20 @@ test("resolveSessionLogPath 读目录并拼出当前日志路径", () => {
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test("会话目录跟随 DSH_HOME，未设时回落到 ~/.dsh", async () => {
+  const { sessionDirFor } = await import("../src/session-log-path.js")
+  const { homedir } = await import("node:os")
+  assert.equal(
+    sessionDirFor("/Users/me/proj", "session-1", { DSH_HOME: "/tmp/dsh-home" }),
+    "/tmp/dsh-home/sessions/--Users-me-proj--/session-1",
+  )
+  assert.equal(
+    sessionDirFor("/Users/me/proj", "session-1", {}),
+    `${homedir()}/.dsh/sessions/--Users-me-proj--/session-1`,
+  )
+  assert.equal(
+    sessionDirFor("/Users/me/proj", "session-1", { DSH_HOME: "  " }),
+    `${homedir()}/.dsh/sessions/--Users-me-proj--/session-1`,
+  )
+})
