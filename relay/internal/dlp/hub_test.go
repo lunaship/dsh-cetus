@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -22,10 +23,16 @@ import (
 
 func testServer(t *testing.T, cfg Config) *httptest.Server {
 	t.Helper()
-	h := NewHub(cfg, log.New(io.Discard, "", 0))
+	_, server := testServerWithLogger(t, cfg, log.New(io.Discard, "", 0))
+	return server
+}
+
+func testServerWithLogger(t *testing.T, cfg Config, logger *log.Logger) (*Hub, *httptest.Server) {
+	t.Helper()
+	h := NewHub(cfg, logger)
 	s := httptest.NewServer(h.Handler())
 	t.Cleanup(func() { h.Close(); s.Close() })
-	return s
+	return h, s
 }
 
 func wsURL(server *httptest.Server) string {
@@ -511,6 +518,9 @@ func TestRelayBackpressureBoundsHeapWhenClientDoesNotRead(t *testing.T) {
 	defer writerCancel()
 	var written atomic.Int64
 	writeResult := make(chan error, 1)
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
 	go func() {
 		for written.Load() < total {
 			if err := data.Write(writerCtx, websocket.MessageBinary, chunk); err != nil {
@@ -522,11 +532,9 @@ func TestRelayBackpressureBoundsHeapWhenClientDoesNotRead(t *testing.T) {
 		writeResult <- nil
 	}()
 
-	var before, after runtime.MemStats
-	runtime.GC()
-	runtime.ReadMemStats(&before)
 	lastProgress := written.Load()
 	lastChange := time.Now()
+	stalled := false
 	for {
 		select {
 		case err := <-writeResult:
@@ -541,6 +549,7 @@ func TestRelayBackpressureBoundsHeapWhenClientDoesNotRead(t *testing.T) {
 			lastProgress, lastChange = current, time.Now()
 		}
 		if time.Since(lastChange) >= 200*time.Millisecond {
+			stalled = true
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -552,8 +561,14 @@ measured:
 	if growth >= 8*1024*1024 {
 		t.Fatalf("Relay heap grew by %d bytes while client read was stalled", growth)
 	}
-	if written.Load() == 0 {
-		t.Fatal("Agent wrote no data before backpressure")
+	if !stalled || written.Load() == 0 {
+		t.Fatalf("did not observe backpressure after a 20 MiB write attempt: stalled=%t written=%d", stalled, written.Load())
+	}
+	writerCancel()
+	select {
+	case <-writeResult:
+	case <-time.After(time.Second):
+		t.Fatal("Agent writer did not stop after cancellation")
 	}
 }
 
@@ -587,6 +602,91 @@ func TestTextFrameInDataStageClosesPair(t *testing.T) {
 	}
 }
 
+func TestDailyByteQuotaStopsForwardingBeforeLimitIsExceeded(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.RouteDailyBytes = 32 * 1024
+	s := testServer(t, cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	seed := make([]byte, 32)
+	private := ed25519.NewKeyFromSeed(seed)
+	ctrl, route := register(t, ctx, s, seed)
+	defer ctrl.Close(websocket.StatusNormalClosure, "")
+	client, _ := clientOpen(t, ctx, s, route)
+	defer client.Close(websocket.StatusNormalClosure, "")
+	open := readJSON(t, ctx, ctrl)
+	sidText, _ := stringField(open, "sid")
+	sid, _ := decodeB64(sidText, 16)
+	data, challenge := dialWithHello(t, ctx, s)
+	defer data.Close(websocket.StatusNormalClosure, "")
+	pub := private.Public().(ed25519.PublicKey)
+	transcript, _ := AcceptTranscript(challenge, pub, sid)
+	accept := message("host_accept", map[string]any{"v": 1, "pub": encodeB64(pub), "sid": sidText, "sig": encodeB64(ed25519.Sign(private, transcript))})
+	if err := data.Write(ctx, websocket.MessageText, accept); err != nil {
+		t.Fatal(err)
+	}
+	_ = readJSON(t, ctx, data)
+	_ = readJSON(t, ctx, client)
+	if err := client.Write(ctx, websocket.MessageBinary, make([]byte, 64*1024)); err != nil {
+		t.Fatal(err)
+	}
+	typ, reader, err := data.Reader(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typ != websocket.MessageBinary {
+		t.Fatalf("forwarded message type=%v, want binary", typ)
+	}
+	forwarded, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(forwarded); got != int(cfg.RouteDailyBytes) {
+		t.Fatalf("forwarded bytes=%d, want exactly quota %d", got, cfg.RouteDailyBytes)
+	}
+	if status := websocket.CloseStatus(readErr(ctx, data)); int(status) != 4004 {
+		t.Fatalf("host close status=%d, want 4004", status)
+	}
+}
+
+func TestHubCloseClosesControlAndDataConnections(t *testing.T) {
+	cfg := DefaultConfig()
+	hub, server := testServerWithLogger(t, cfg, log.New(io.Discard, "", 0))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	seed := make([]byte, 32)
+	private := ed25519.NewKeyFromSeed(seed)
+	ctrl, route := register(t, ctx, server, seed)
+	client, _ := clientOpen(t, ctx, server, route)
+	open := readJSON(t, ctx, ctrl)
+	sidText, _ := stringField(open, "sid")
+	sid, _ := decodeB64(sidText, 16)
+	data, challenge := dialWithHello(t, ctx, server)
+	pub := private.Public().(ed25519.PublicKey)
+	transcript, _ := AcceptTranscript(challenge, pub, sid)
+	accept := message("host_accept", map[string]any{"v": 1, "pub": encodeB64(pub), "sid": sidText, "sig": encodeB64(ed25519.Sign(private, transcript))})
+	if err := data.Write(ctx, websocket.MessageText, accept); err != nil {
+		t.Fatal(err)
+	}
+	_ = readJSON(t, ctx, data)
+	_ = readJSON(t, ctx, client)
+	pendingClient, _ := clientOpen(t, ctx, server, route)
+	_ = readJSON(t, ctx, ctrl)
+
+	closed := make(chan struct{})
+	go func() { hub.Close(); close(closed) }()
+	for name, conn := range map[string]*websocket.Conn{"control": ctrl, "client": client, "pending client": pendingClient, "data": data} {
+		if status := websocket.CloseStatus(readErr(ctx, conn)); status != websocket.StatusGoingAway {
+			t.Errorf("%s close status=%d, want %d", name, status, websocket.StatusGoingAway)
+		}
+	}
+	select {
+	case <-closed:
+	case <-ctx.Done():
+		t.Fatal("Hub.Close did not complete")
+	}
+}
+
 func TestFuzzParseControlSeeds(t *testing.T) {
 	for _, raw := range []string{`{"t":"ping"}`, `[]`, `{"t":"a","t":"b"}`, `null`, `{"nested":{"x":1,"x":2}}`} {
 		_, _ = ParseControl([]byte(raw))
@@ -602,23 +702,55 @@ func FuzzParseControl(f *testing.F) {
 
 func TestLogsOmitRouteSecrets(t *testing.T) {
 	var output bytes.Buffer
-	h := NewHub(DefaultConfig(), log.New(&output, "", 0))
+	cfg := DefaultConfig()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, server := testServerWithLogger(t, cfg, log.New(&output, "", 0))
 	seed := bytes.Repeat([]byte{0x42}, 32)
 	private := ed25519.NewKeyFromSeed(seed)
 	pub := private.Public().(ed25519.PublicKey)
-	route, err := RouteID(pub)
+	ctrl, route := register(t, ctx, server, seed)
+	defer ctrl.Close(websocket.StatusNormalClosure, "")
+	client, _ := dialWithHello(t, ctx, server)
+	defer client.Close(websocket.StatusNormalClosure, "")
+	keyID := bytes.Repeat([]byte{0x21}, 16)
+	key := bytes.Repeat([]byte{0x51}, 32)
+	nonce := bytes.Repeat([]byte{0x32}, 16)
+	stamp := uint64(time.Now().Unix())
+	transcript, err := ClientTranscript(route[:], 1, keyID, stamp, nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.logEvent("register", "ok", route[:])
+	mac, _ := ClientMAC(key, transcript)
+	open := message("client_open", map[string]any{
+		"v": 1, "route": encodeB64(route[:]), "kind": "device", "key": encodeB64(keyID),
+		"ts": stamp, "nonce": encodeB64(nonce), "mac": encodeB64(mac),
+	})
+	if err := client.Write(ctx, websocket.MessageText, open); err != nil {
+		t.Fatal(err)
+	}
+	request := readJSON(t, ctx, ctrl)
+	sid, _ := stringField(request, "sid")
+	if err := ctrl.Write(ctx, websocket.MessageText, message("reject", map[string]any{"sid": sid, "code": "UNKNOWN_KEY"})); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := stringField(readJSON(t, ctx, client), "code"); code != "UNKNOWN_KEY" {
+		t.Fatalf("client rejection code=%q", code)
+	}
+	if closeCode := websocket.CloseStatus(readErr(ctx, client)); closeCode != 4007 {
+		t.Fatalf("client close=%d", closeCode)
+	}
 	logText := output.String()
-	for _, secret := range []string{encodeB64(route[:]), encodeB64(pub), encodeB64(seed)} {
+	for _, secret := range []string{
+		encodeB64(route[:]), encodeB64(pub), encodeB64(seed), encodeB64(keyID),
+		encodeB64(key), encodeB64(nonce), encodeB64(mac), "127.0.0.1", string(open),
+	} {
 		if strings.Contains(logText, secret) {
 			t.Fatalf("log contains secret material: %s", secret)
 		}
 	}
-	if logText == "" {
-		t.Fatal("expected event log")
+	if !strings.Contains(logText, "event=host_register") || !strings.Contains(logText, "event=client_open") {
+		t.Fatalf("full control flow was not logged: %q", logText)
 	}
 }
 
@@ -628,6 +760,15 @@ func TestParseControlRejectsOversizeAndNestedDuplicate(t *testing.T) {
 	}
 	if _, err := ParseControl([]byte(fmt.Sprintf(`{"x":"%s"}`, strings.Repeat("a", MaxControlBytes)))); err == nil {
 		t.Fatal("oversize control accepted")
+	}
+}
+
+func TestLogEventSanitizesUntrustedCodes(t *testing.T) {
+	var output bytes.Buffer
+	h := NewHub(DefaultConfig(), log.New(&output, "", 0))
+	h.logEvent("client_open", "BAD\x1b[31m\nforged", nil, 0)
+	if got := output.String(); strings.ContainsAny(got, "\r\x1b") || strings.Count(got, "\n") != 1 || !strings.Contains(got, "code=OTHER") {
+		t.Fatalf("untrusted log code was not sanitized: %q", got)
 	}
 }
 
@@ -644,5 +785,100 @@ func TestOpenRateLimiterHonorsBurst(t *testing.T) {
 	}
 	if !lim.allow("client", 60, time.Minute, 20, now.Add(time.Second)) {
 		t.Fatal("token was not replenished")
+	}
+}
+
+func TestConnectionAccountingUsesConfiguredHostLimitAndReclaimsIPs(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.IPMaxConns = 16
+	cfg.IPMaxHostConns = 64
+	h := NewHub(cfg, nil)
+	for i := 0; i < cfg.IPMaxHostConns; i++ {
+		if !h.reserveHost("192.0.2.1") {
+			t.Fatalf("host connection %d unexpectedly rejected", i+1)
+		}
+	}
+	if h.reserveHost("192.0.2.1") {
+		t.Fatal("host connection above configured limit accepted")
+	}
+	for i := 0; i < cfg.IPMaxHostConns; i++ {
+		h.releaseHost("192.0.2.1")
+	}
+	if len(h.hosts) != 0 {
+		t.Fatalf("empty host IP entry retained: %#v", h.hosts)
+	}
+	for i := 0; i < cfg.IPMaxConns; i++ {
+		if !h.promoteClient("192.0.2.2") {
+			t.Fatalf("client connection %d unexpectedly rejected", i+1)
+		}
+	}
+	if h.promoteClient("192.0.2.2") {
+		t.Fatal("client connection above configured limit accepted")
+	}
+	for i := 0; i < cfg.IPMaxConns; i++ {
+		h.releaseClient("192.0.2.2")
+	}
+	if len(h.clients) != 0 {
+		t.Fatalf("empty client IP entry retained: %#v", h.clients)
+	}
+}
+
+func TestLimiterPrunesInactiveIPWindows(t *testing.T) {
+	lim := newLimiter()
+	start := time.Now()
+	if !lim.allow("192.0.2.1", 10, time.Minute, 1, start) {
+		t.Fatal("initial request rejected")
+	}
+	if !lim.allow("192.0.2.2", 10, time.Minute, 1, start.Add(11*time.Minute)) {
+		t.Fatal("request after cleanup rejected")
+	}
+	if len(lim.windows) != 1 {
+		t.Fatalf("inactive limiter windows were not reclaimed: %#v", lim.windows)
+	}
+}
+
+func TestDailyByteReservationsAreAtomicAndOfflineRoutesAreSweptSafely(t *testing.T) {
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	cfg := DefaultConfig()
+	cfg.RouteDailyBytes = 50
+	cfg.Now = func() time.Time { return now }
+	h := NewHub(cfg, nil)
+	var id [16]byte
+	id[0] = 1
+	h.routes[id] = &route{}
+	var accepted atomic.Int64
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if ok, _ := h.reserveBytes(id, 1); ok {
+				accepted.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := accepted.Load(); got != 50 {
+		t.Fatalf("accepted reservations=%d, want 50", got)
+	}
+	if got := h.routes[id].bytesToday; got != 50 {
+		t.Fatalf("reserved bytes=%d, want 50", got)
+	}
+
+	var oldID, activeID [16]byte
+	oldID[0], activeID[0] = 2, 3
+	h.routes[oldID] = &route{bytesDay: "2026-09-28", bytesToday: 40}
+	h.routes[activeID] = &route{active: 1}
+	h.mu.Lock()
+	h.sweepOfflineRoutesLocked(now)
+	h.mu.Unlock()
+	if _, ok := h.routes[oldID]; ok {
+		t.Fatal("prior-day offline route was retained")
+	}
+	if _, ok := h.routes[activeID]; !ok {
+		t.Fatal("active route was swept")
+	}
+	if _, ok := h.routes[id]; !ok {
+		t.Fatal("current-day quota record was swept")
 	}
 }

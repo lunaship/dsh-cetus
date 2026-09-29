@@ -6,8 +6,9 @@ import (
 )
 
 type limiter struct {
-	mu      sync.Mutex
-	windows map[string]window
+	mu          sync.Mutex
+	windows     map[string]window
+	lastCleanup time.Time
 }
 type window struct {
 	tokens  float64
@@ -19,6 +20,14 @@ func newLimiter() *limiter { return &limiter{windows: make(map[string]window)} }
 func (l *limiter) allow(key string, limit int, period time.Duration, burst int, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.lastCleanup.IsZero() || now.Sub(l.lastCleanup) >= time.Minute {
+		for candidate, value := range l.windows {
+			if now.Sub(value.updated) >= 10*time.Minute {
+				delete(l.windows, candidate)
+			}
+		}
+		l.lastCleanup = now
+	}
 	w := l.windows[key]
 	if burst < 1 {
 		burst = 1

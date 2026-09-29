@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -55,9 +56,14 @@ type Hub struct {
 	pending         map[[16]byte]*pendingStream
 	clients         map[string]int
 	hosts           map[string]int
+	unknowns        map[string]int
+	connections     map[*websocket.Conn]struct{}
 	openLimiter     *limiter
 	registerLimiter *limiter
 	logger          *log.Logger
+	logKeyDay       string
+	logKey          [32]byte
+	done            chan struct{}
 	closed          bool
 }
 
@@ -68,7 +74,7 @@ func NewHub(cfg Config, logger *log.Logger) *Hub {
 	if logger == nil {
 		logger = log.New(io.Discard, "", 0)
 	}
-	return &Hub{cfg: cfg, routes: map[[16]byte]*route{}, pending: map[[16]byte]*pendingStream{}, clients: map[string]int{}, hosts: map[string]int{}, openLimiter: newLimiter(), registerLimiter: newLimiter(), logger: logger}
+	return &Hub{cfg: cfg, routes: map[[16]byte]*route{}, pending: map[[16]byte]*pendingStream{}, clients: map[string]int{}, hosts: map[string]int{}, unknowns: map[string]int{}, connections: map[*websocket.Conn]struct{}{}, openLimiter: newLimiter(), registerLimiter: newLimiter(), logger: logger, done: make(chan struct{})}
 }
 
 func (h *Hub) Handler() http.Handler {
@@ -83,20 +89,42 @@ func (h *Hub) Handler() http.Handler {
 
 func (h *Hub) Close() {
 	h.mu.Lock()
-	h.closed = true
-	connections := make([]*websocket.Conn, 0)
-	for _, r := range h.routes {
-		if r.ctrl != nil {
-			connections = append(connections, r.ctrl)
-		}
+	if !h.closed {
+		h.closed = true
+		close(h.done)
 	}
-	for _, p := range h.pending {
-		connections = append(connections, p.client)
+	connections := make([]*websocket.Conn, 0, len(h.connections))
+	for c := range h.connections {
+		connections = append(connections, c)
 	}
 	h.mu.Unlock()
+	var wait sync.WaitGroup
 	for _, c := range connections {
-		_ = c.Close(websocket.StatusGoingAway, "")
+		wait.Add(1)
+		go func(c *websocket.Conn) {
+			defer wait.Done()
+			_ = c.Close(websocket.StatusGoingAway, "")
+		}(c)
 	}
+	wait.Wait()
+}
+
+func (h *Hub) trackConnection(c *websocket.Conn) bool {
+	h.mu.Lock()
+	if h.closed {
+		h.mu.Unlock()
+		_ = c.Close(websocket.StatusGoingAway, "")
+		return false
+	}
+	h.connections[c] = struct{}{}
+	h.mu.Unlock()
+	return true
+}
+
+func (h *Hub) untrackConnection(c *websocket.Conn) {
+	h.mu.Lock()
+	delete(h.connections, c)
+	h.mu.Unlock()
 }
 
 func (h *Hub) serveHTTP(w http.ResponseWriter, r *http.Request) {
@@ -108,10 +136,18 @@ func (h *Hub) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	if !h.trackConnection(c) {
+		return
+	}
+	defer h.untrackConnection(c)
 	c.SetReadLimit(MaxControlBytes)
 	ip := h.clientIP(r)
+	unknownReserved := false
 	clientReserved := false
 	defer func() {
+		if unknownReserved {
+			h.releaseUnknown(ip)
+		}
 		if clientReserved {
 			h.releaseClient(ip)
 		}
@@ -130,7 +166,7 @@ func (h *Hub) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		h.fail(c, "SERVER_BUSY", 4005)
 		return
 	}
-	clientReserved = true
+	unknownReserved = true
 	firstCtx, cancel := context.WithTimeout(ctx, h.cfg.FirstMessageTimeout)
 	kind, raw, err := readMessage(firstCtx, c, MaxControlBytes)
 	cancel()
@@ -150,18 +186,25 @@ func (h *Hub) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch t {
 	case "host_register":
-		h.releaseClient(ip)
-		clientReserved = false
+		h.releaseUnknown(ip)
+		unknownReserved = false
 		h.serveRegister(ctx, c, ip, challenge, frame)
 	case "host_accept":
-		h.releaseClient(ip)
-		clientReserved = false
+		h.releaseUnknown(ip)
+		unknownReserved = false
 		h.serveHostData(ctx, c, ip, challenge, frame)
 	case "client_open":
+		if !h.promoteClient(ip) {
+			unknownReserved = false
+			h.fail(c, "SERVER_BUSY", 4005)
+			return
+		}
+		unknownReserved = false
+		clientReserved = true
 		h.serveClient(ctx, c, ip, frame)
 	default:
-		h.releaseClient(ip)
-		clientReserved = false
+		h.releaseUnknown(ip)
+		unknownReserved = false
 		h.fail(c, "PROTOCOL_ERROR", 4000)
 	}
 }
@@ -169,11 +212,46 @@ func (h *Hub) serveHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) reserveUnknown(ip string) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.clients[ip]+h.hosts[ip] >= h.cfg.IPMaxConns {
+	if h.closed || h.clients[ip]+h.unknowns[ip] >= h.cfg.IPMaxConns {
+		return false
+	}
+	h.unknowns[ip]++
+	return true
+}
+
+func (h *Hub) promoteClient(ip string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.unknowns[ip] > 0 {
+		h.unknowns[ip]--
+	}
+	if h.closed || h.clients[ip] >= h.cfg.IPMaxConns {
+		h.cleanupIPLocked(ip)
 		return false
 	}
 	h.clients[ip]++
 	return true
+}
+
+func (h *Hub) releaseUnknown(ip string) {
+	h.mu.Lock()
+	if h.unknowns[ip] > 0 {
+		h.unknowns[ip]--
+	}
+	h.cleanupIPLocked(ip)
+	h.mu.Unlock()
+}
+
+func (h *Hub) cleanupIPLocked(ip string) {
+	if h.clients[ip] == 0 {
+		delete(h.clients, ip)
+	}
+	if h.hosts[ip] == 0 {
+		delete(h.hosts, ip)
+	}
+	if h.unknowns[ip] == 0 {
+		delete(h.unknowns, ip)
+	}
 }
 
 func (h *Hub) releaseClient(ip string) {
@@ -181,12 +259,13 @@ func (h *Hub) releaseClient(ip string) {
 	if h.clients[ip] > 0 {
 		h.clients[ip]--
 	}
+	h.cleanupIPLocked(ip)
 	h.mu.Unlock()
 }
 func (h *Hub) reserveHost(ip string) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.clients[ip]+h.hosts[ip] >= 256 {
+	if h.closed || h.hosts[ip] >= h.cfg.IPMaxHostConns {
 		return false
 	}
 	h.hosts[ip]++
@@ -197,6 +276,7 @@ func (h *Hub) releaseHost(ip string) {
 	if h.hosts[ip] > 0 {
 		h.hosts[ip]--
 	}
+	h.cleanupIPLocked(ip)
 	h.mu.Unlock()
 }
 
@@ -239,6 +319,7 @@ func (h *Hub) serveRegister(ctx context.Context, c *websocket.Conn, ip string, c
 		h.fail(c, "SERVER_BUSY", 4005)
 		return
 	}
+	h.sweepOfflineRoutesLocked(h.cfg.Now())
 	old := h.routes[routeID]
 	if old == nil {
 		old = &route{}
@@ -251,6 +332,15 @@ func (h *Hub) serveRegister(ctx context.Context, c *websocket.Conn, ip string, c
 	if previous != nil && previous != c {
 		go previous.Close(websocket.StatusCode(4010), "REPLACED")
 	}
+	defer func() {
+		h.mu.Lock()
+		if current := h.routes[routeID]; current != nil && current.ctrl == c {
+			current.ctrl = nil
+		}
+		h.sweepOfflineRoutesLocked(h.cfg.Now())
+		h.mu.Unlock()
+	}()
+	h.logEvent("host_register", "ok", routeID[:], 0)
 	if err := h.writeJSON(c, message("registered", map[string]any{"route": encodeB64(routeID[:]), "ping": 20})); err != nil {
 		return
 	}
@@ -298,11 +388,6 @@ func (h *Hub) serveRegister(ctx context.Context, c *websocket.Conn, ip string, c
 			h.fail(c, "PROTOCOL_ERROR", 4000)
 		}
 	}
-	h.mu.Lock()
-	if current := h.routes[routeID]; current != nil && current.ctrl == c {
-		current.ctrl = nil
-	}
-	h.mu.Unlock()
 }
 
 func (h *Hub) pingConnection(c *websocket.Conn, stop <-chan struct{}) {
@@ -359,6 +444,7 @@ func (h *Hub) serveClient(ctx context.Context, c *websocket.Conn, ip string, fra
 	globalAtLimit := h.activeStreamsLocked() >= h.cfg.MaxStreams
 	h.mu.Unlock()
 	if !online {
+		h.logEvent("client_open", "ROUTE_OFFLINE", routeID[:], 0)
 		h.fail(c, "ROUTE_OFFLINE", 4003)
 		return
 	}
@@ -390,6 +476,7 @@ func (h *Hub) serveClient(ctx context.Context, c *websocket.Conn, ip string, fra
 	h.pending[sid] = p
 	ctrl := r.ctrl
 	h.mu.Unlock()
+	h.logEvent("client_open", "pending", routeID[:], 0)
 	defer h.removePending(sid)
 	req := map[string]any{"v": version, "route": routeText, "kind": kind, "key": keyText, "ts": ts, "nonce": nonceText, "mac": macText}
 	if err := h.writeJSON(ctrl, message("open", map[string]any{"sid": encodeB64(sid[:]), "req": req})); err != nil {
@@ -401,6 +488,10 @@ func (h *Hub) serveClient(ctx context.Context, c *websocket.Conn, ip string, fra
 	select {
 	case data := <-p.accepted:
 		h.mu.Lock()
+		if h.closed {
+			h.mu.Unlock()
+			return
+		}
 		if rr := h.routes[routeID]; rr != nil {
 			if rr.pending > 0 {
 				rr.pending--
@@ -421,9 +512,11 @@ func (h *Hub) serveClient(ctx context.Context, c *websocket.Conn, ip string, fra
 		if rejection.code == "CLOCK_SKEW" && rejection.hostNow > 0 {
 			fields["hostNow"] = rejection.hostNow
 		}
+		h.logEvent("client_open", rejection.code, routeID[:], 0)
 		h.failFields(c, fields, rejection.code, 4007)
 	case <-timer.C:
 		h.fail(c, "OPEN_TIMEOUT", 4006)
+	case <-h.done:
 	case <-ctx.Done():
 	}
 }
@@ -436,25 +529,52 @@ func (h *Hub) activeStreamsLocked() int {
 	return total
 }
 
-func (h *Hub) recordBytes(routeID [16]byte, count int64) bool {
+func (h *Hub) reserveBytes(routeID [16]byte, count int64) (bool, string) {
 	if h.cfg.RouteDailyBytes == 0 {
-		return true
+		return true, ""
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	r := h.routes[routeID]
 	if r == nil {
-		return false
+		return false, ""
 	}
 	day := h.cfg.Now().UTC().Format("2006-01-02")
 	if r.bytesDay != day {
 		r.bytesDay, r.bytesToday = day, 0
 	}
-	if r.bytesToday+count > h.cfg.RouteDailyBytes {
-		return false
+	if count < 0 || count > h.cfg.RouteDailyBytes-r.bytesToday {
+		return false, day
 	}
 	r.bytesToday += count
-	return true
+	return true, day
+}
+
+func (h *Hub) refundBytes(routeID [16]byte, day string, count int64) {
+	if count <= 0 || day == "" {
+		return
+	}
+	h.mu.Lock()
+	if r := h.routes[routeID]; r != nil && r.bytesDay == day {
+		r.bytesToday -= count
+		if r.bytesToday < 0 {
+			r.bytesToday = 0
+		}
+	}
+	h.mu.Unlock()
+}
+
+func (h *Hub) sweepOfflineRoutesLocked(now time.Time) {
+	day := now.UTC().Format("2006-01-02")
+	for id, r := range h.routes {
+		if r.ctrl != nil || r.active != 0 || r.pending != 0 {
+			continue
+		}
+		if h.cfg.RouteDailyBytes > 0 && r.bytesDay == day && r.bytesToday > 0 {
+			continue
+		}
+		delete(h.routes, id)
+	}
 }
 
 func (h *Hub) serveHostData(ctx context.Context, c *websocket.Conn, ip string, challenge []byte, frame map[string]json.RawMessage) {
@@ -500,6 +620,7 @@ func (h *Hub) serveHostData(ctx context.Context, c *websocket.Conn, ip string, c
 		h.fail(c, "PROTOCOL_ERROR", 4000)
 	}
 	select {
+	case <-h.done:
 	case <-ctx.Done():
 	case <-p.result:
 	case <-p.done:
@@ -531,6 +652,7 @@ func (h *Hub) removePending(sid [16]byte) {
 		if r := h.routes[p.route]; r != nil && r.pending > 0 {
 			r.pending--
 		}
+		h.sweepOfflineRoutesLocked(h.cfg.Now())
 	}
 }
 
@@ -541,12 +663,24 @@ func (h *Hub) bridge(ctx context.Context, sid, routeID [16]byte, client, host *w
 	defer cancel()
 	deadline := h.cfg.Now().Add(h.cfg.MaxLifetime)
 	activity := make(chan struct{}, 1)
+	var bytesForwarded atomic.Int64
 	var once sync.Once
 	closing := make(chan struct{})
 	closed := make(chan struct{})
 	finish := func(code int, reason string) {
 		once.Do(func() {
+			h.mu.Lock()
+			shuttingDown := h.closed
+			h.mu.Unlock()
+			if shuttingDown {
+				code, reason = int(websocket.StatusGoingAway), ""
+			}
 			close(closing)
+			logCode := reason
+			if logCode == "" {
+				logCode = strconv.Itoa(code)
+			}
+			h.logEvent("stream_close", logCode, routeID[:], bytesForwarded.Load())
 			go func() {
 				defer close(closed)
 				results := make(chan struct{}, 2)
@@ -574,19 +708,52 @@ func (h *Hub) bridge(ctx context.Context, sid, routeID [16]byte, client, host *w
 			writeCtx, writeCancel := context.WithTimeout(bridgeCtx, h.cfg.WriteTimeout)
 			writer, err := dst.Writer(writeCtx, websocket.MessageBinary)
 			if err == nil {
-				written, copyErr := io.CopyN(writer, reader, MaxDataMessage+1)
-				closeErr := writer.Close()
-				if written > MaxDataMessage {
-					err = errors.New("data frame too large")
-					finish(4000, "PROTOCOL_ERROR")
-				} else if copyErr != nil && copyErr != io.EOF {
-					err = copyErr
-				} else {
-					err = closeErr
+				buffer := make([]byte, 16*1024)
+				var frameBytes int64
+				closeCode := 0
+				for {
+					count, readErr := reader.Read(buffer)
+					if count > 0 {
+						if frameBytes+int64(count) > MaxDataMessage {
+							err = errors.New("data frame too large")
+							closeCode = 4000
+							break
+						}
+						reserved, day := h.reserveBytes(routeID, int64(count))
+						if !reserved {
+							err = errors.New("route daily byte limit exceeded")
+							closeCode = 4004
+							break
+						}
+						written, writeErr := writer.Write(buffer[:count])
+						if written < count {
+							h.refundBytes(routeID, day, int64(count-written))
+						}
+						frameBytes += int64(written)
+						bytesForwarded.Add(int64(written))
+						if writeErr != nil {
+							err = writeErr
+							break
+						}
+						if written != count {
+							err = io.ErrShortWrite
+							break
+						}
+					}
+					if readErr != nil {
+						if readErr != io.EOF {
+							err = readErr
+						}
+						break
+					}
 				}
-				if err == nil && !h.recordBytes(routeID, written) {
-					err = errors.New("route daily byte limit exceeded")
+				closeErr := writer.Close()
+				if closeCode == 4000 {
+					finish(4000, "PROTOCOL_ERROR")
+				} else if closeCode == 4004 {
 					finish(4004, "RATE_LIMITED")
+				} else if err == nil {
+					err = closeErr
 				}
 			}
 			writeCancel()
@@ -655,6 +822,7 @@ func (h *Hub) bridge(ctx context.Context, sid, routeID [16]byte, client, host *w
 	if r := h.routes[routeID]; r != nil && r.active > 0 {
 		r.active--
 	}
+	h.sweepOfflineRoutesLocked(h.cfg.Now())
 	h.mu.Unlock()
 	_ = sid
 	_ = done
@@ -740,10 +908,34 @@ func routeLogID(dailyKey []byte, routeID []byte) string {
 	return hex.EncodeToString(h.Sum(nil)[:8])
 }
 
-func (h *Hub) logEvent(event, code string, routeID []byte) {
+func (h *Hub) logEvent(event, code string, routeID []byte, bytes int64) {
+	if !safeLogCode(code) {
+		code = "OTHER"
+	}
 	day := h.cfg.Now().UTC().Format("2006-01-02")
-	dailyKey := sha256.Sum256([]byte("DLP1 daily log\x00" + day))
-	h.logger.Printf("event=%s code=%s route=%s", event, code, routeLogID(dailyKey[:], routeID))
+	h.mu.Lock()
+	if h.logKeyDay != day {
+		if _, err := rand.Read(h.logKey[:]); err != nil {
+			h.mu.Unlock()
+			return
+		}
+		h.logKeyDay = day
+	}
+	key := h.logKey
+	h.mu.Unlock()
+	h.logger.Printf("event=%s code=%s route=%s bytes=%d", event, code, routeLogID(key[:], routeID), bytes)
+}
+
+func safeLogCode(code string) bool {
+	if code == "" || len(code) > 32 {
+		return false
+	}
+	for _, char := range code {
+		if (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 func (h *Hub) String() string {

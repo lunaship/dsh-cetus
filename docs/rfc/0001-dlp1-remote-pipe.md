@@ -591,7 +591,7 @@ apps/android/app/src/test/java/dev/deeplinks/core/remote/*Test.kt
    - `pending map[[16]byte]*pendingStream`，`pendingStream{route [16]byte, client *conn, created time.Time, accepted chan *conn}`。
 6. 拼接：两个 goroutine，各自循环 `typ, r, err := src.Reader(ctx)`；非二进制即关闭；`w := dst.Writer(ctx, MessageBinary)`；`io.CopyN(w, r, 256KiB+1)`，超过上限即关闭；写操作使用带 30 秒超时的 ctx。空闲 / 寿命计时用 `time.Timer`。
 7. 日志：只记事件类型、错误码、日轮换 HMAC 后的 route 标识（`HMAC(dailyKey, routeId)[0:8]` hex）、字节聚合。禁止记录原始 IP（官方模式）、`routeId`、任何消息体。`DLP_LOG_IP=1` 仅供自建调试。
-8. 配置（环境变量）：`DLP_LISTEN`（默认 `127.0.0.1:8411`）、`DLP_TRUSTED_PROXIES`、`DLP_MAX_STREAMS`、`DLP_ROUTE_MAX_STREAMS`、`DLP_IP_OPEN_PER_MIN`、`DLP_IP_MAX_CONNS`、`DLP_IDLE_TIMEOUT`、`DLP_MAX_LIFETIME`、`DLP_ROUTE_DAILY_BYTES`（0 = 关闭）。低于下限的值拒绝启动。
+8. 配置（环境变量）：`DLP_LISTEN`（默认 `127.0.0.1:8411`）、`DLP_TRUSTED_PROXIES`、`DLP_MAX_STREAMS`、`DLP_ROUTE_MAX_STREAMS`、`DLP_IP_OPEN_PER_MIN`、`DLP_IP_MAX_CONNS`（客户端默认 64、下限 16）、`DLP_IP_MAX_HOST_CONNS`（主机默认 256、下限 64）、`DLP_IDLE_TIMEOUT`、`DLP_MAX_LIFETIME`、`DLP_ROUTE_DAILY_BYTES`（0 = 关闭）。低于下限的值拒绝启动。客户端和主机连接上限独立计算。
 9. 门禁：`cd relay && gofmt -l . && go vet ./... && go build ./... && go test ./internal/dlp/... -race`。
 
 ### 10.3 插件 Agent（Node）

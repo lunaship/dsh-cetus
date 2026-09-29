@@ -16,6 +16,7 @@ type Config struct {
 	RouteMaxStreams     int
 	IPOpenPerMinute     int
 	IPMaxConns          int
+	IPMaxHostConns      int
 	IdleTimeout         time.Duration
 	MaxLifetime         time.Duration
 	RouteDailyBytes     int64
@@ -29,7 +30,7 @@ func DefaultConfig() Config {
 	return Config{
 		Listen:         "127.0.0.1:8411",
 		TrustedProxies: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32"), netip.MustParsePrefix("::1/128")},
-		MaxStreams:     2000, RouteMaxStreams: 64, IPOpenPerMinute: 60, IPMaxConns: 64,
+		MaxStreams:     2000, RouteMaxStreams: 64, IPOpenPerMinute: 60, IPMaxConns: 64, IPMaxHostConns: 256,
 		IdleTimeout: 10 * time.Minute, MaxLifetime: 6 * time.Hour,
 		OpenTimeout: 10 * time.Second, FirstMessageTimeout: 5 * time.Second, WriteTimeout: 30 * time.Second,
 		Now: time.Now,
@@ -52,6 +53,9 @@ func LoadConfig() (Config, error) {
 		return cfg, err
 	}
 	if cfg.IPMaxConns, err = envInt("DLP_IP_MAX_CONNS", cfg.IPMaxConns); err != nil {
+		return cfg, err
+	}
+	if cfg.IPMaxHostConns, err = envInt("DLP_IP_MAX_HOST_CONNS", cfg.IPMaxHostConns); err != nil {
 		return cfg, err
 	}
 	if cfg.IdleTimeout, err = envDuration("DLP_IDLE_TIMEOUT", cfg.IdleTimeout); err != nil {
@@ -78,7 +82,7 @@ func LoadConfig() (Config, error) {
 
 func (c Config) Validate() error {
 	if c.Listen == "" || c.MaxStreams < 1 || c.RouteMaxStreams < 16 || c.RouteMaxStreams > 64 ||
-		c.IPOpenPerMinute < 1 || c.IPMaxConns < 16 || c.IdleTimeout < 2*time.Minute ||
+		c.IPOpenPerMinute < 1 || c.IPMaxConns < 16 || c.IPMaxHostConns < 64 || c.IdleTimeout < 2*time.Minute ||
 		c.MaxLifetime < 30*time.Minute || c.RouteDailyBytes < 0 {
 		return fmt.Errorf("DLP configuration is below protocol limits")
 	}
