@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,6 +66,7 @@ import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.util.answerMetaSummary
 import dev.deeplinks.native.util.buildAnswerMeta
 import dev.deeplinks.native.util.formatClockTime
+import dev.deeplinks.native.util.isModelChangedNotice
 import dev.deeplinks.native.util.loadOlderKind
 import dev.deeplinks.native.util.LoadOlderKind
 import dev.deeplinks.native.util.contextInjectionLabels
@@ -124,6 +126,8 @@ internal fun MessageItem(
             msg.role == "context_injection" || isContextInjectionText(msg.text) -> {
                 if (isGoalRoundText(msg.text)) GoalRoundRow(msg.text) else ContextInjectionRow(msg.text)
             }
+            // 模型切换提示：安静的居中一行（既不是用户气泡，也不是可展开的上下文注入）
+            msg.role == "system_notice" || isModelChangedNotice(msg.text) -> SystemNoticeRow(msg.text)
             msg.role == "user" -> {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -196,23 +200,14 @@ internal fun MessageItem(
                                         contentDescription = L.copy,
                                         onClick = onCopy,
                                     )
-                                    // 赞 / 踩（对齐 Web：复制与分叉之间；已标记显示实心，点按取消）
-                                    if (onRate != null) {
-                                        val positive = feedbackRating == "positive"
-                                        MessageActionIcon(
-                                            icon = if (positive) LikeFill16 else LikeOutline16,
-                                            contentDescription = if (positive) L.feedbackRetract else L.feedbackLike,
-                                            onClick = { if (positive) onRetract?.invoke() else onRate("positive") },
-                                        )
-                                        val negative = feedbackRating == "negative"
-                                        MessageActionIcon(
-                                            icon = if (negative) DislikeFill16 else DislikeOutline16,
-                                            contentDescription = if (negative) L.feedbackRetract else L.feedbackDislike,
-                                            onClick = { if (negative) onRetract?.invoke() else onRate("negative") },
-                                        )
-                                    }
+                                    // 方案 5.2：轮末行只留复制与分叉；赞踩移入长按菜单
+                                    MessageActionIcon(
+                                        icon = BranchOutline16,
+                                        contentDescription = L.forkSession,
+                                        onClick = onFork,
+                                    )
                                     // 行尾轻量 meta：钟点时间 + 这条回复自己的耗时（对齐 Web 助手行末尾）；
-                                    // 会话累计用量只在输入框下方，不在每条回复里重复。
+                                    // 会话累计用量只在输入卡上方的上下文条，不在每条回复里重复。
                                     val clock = formatClockTime(msg.time)
                                     val tail = listOfNotNull(
                                         clock.takeIf { it.isNotBlank() },
@@ -263,6 +258,24 @@ internal fun MessageItem(
                     add(DshMenuItem(RefreshOutline16, L.regenerate) {
                         menuOpen = false
                         onRegenerate()
+                    })
+                }
+                if (onRate != null) {
+                    val positive = feedbackRating == "positive"
+                    add(DshMenuItem(
+                        if (positive) LikeFill16 else LikeOutline16,
+                        if (positive) L.feedbackRetract else L.feedbackLike,
+                    ) {
+                        menuOpen = false
+                        if (positive) onRetract?.invoke() else onRate("positive")
+                    })
+                    val negative = feedbackRating == "negative"
+                    add(DshMenuItem(
+                        if (negative) DislikeFill16 else DislikeOutline16,
+                        if (negative) L.feedbackRetract else L.feedbackDislike,
+                    ) {
+                        menuOpen = false
+                        if (negative) onRetract?.invoke() else onRate("negative")
                     })
                 }
                 if (onFeedback != null) {
@@ -539,7 +552,23 @@ private fun GoalRoundRow(text: String) {
     }
 }
 
-// 上下文注入行（对标 Web：上下文注入 · skill-catalog，默认折叠）
+/**
+ * 系统提示行（模型切换等）：居中、次要色、不可点——它只是告知，不需要用户回应，
+ * 也不该长得像用户说过的话。文字是 DSH 自己生成的英文标记，原样显示。
+ */
+@Composable
+private fun SystemNoticeRow(text: String) {
+    Text(
+        text = text.trim(),
+        color = Dsh.labelTertiary,
+        style = DshType.supporting,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DshSpace.s24, vertical = DshSpace.s8),
+    )
+}
+
 @Composable
 private fun ContextInjectionRow(text: String) {
     var expanded by remember { mutableStateOf(false) }
@@ -825,7 +854,7 @@ internal fun LoadOlderRow(
 }
 
 // 已停止标记（按 turn/end reason 显示具体原因）
-private fun stoppedReasonLabel(reason: String): String = when (reason.lowercase()) {
+internal fun stoppedReasonLabel(reason: String): String = when (reason.lowercase()) {
     "interrupted" -> L.interrupted
     "stopped" -> L.stopped
     "error" -> L.errorStopped

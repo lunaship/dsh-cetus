@@ -45,6 +45,7 @@ import androidx.compose.ui.layout.ParentDataModifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,9 +87,17 @@ private val RowPaddingV = 12.dp
 private val IconSlot = 22.dp
 /** 自有图标是满幅绘制（无内边距），18dp 与原先 22dp 的 Material 图标视觉等大。 */
 private val IconSize = 18.dp
-private val IconGap = 14.dp
-/** 单行设置行：48dp 触控下限，不再额外加高。 */
-private val RowMinHeight = 48.dp
+/**
+ * 图标槽与文字的间距。
+ * 2026-09-28 重设计稿的列表行是 `16px 边距 + 32px 图标圈 + 12px 间距`（文字起点 60），
+ * 取 s12 后 16+32+12 = 60 与稿子一致；原先的 14 是刻度外的存量（方案 2.3）。
+ */
+private val IconGap = DshSpace.s12
+/**
+ * 单行最小高。
+ * 方案 2.3 规定「设置行、列表行最小 52」，2026-09-28 重设计把原先的 48 提到 52。
+ */
+private val RowMinHeight = 52.dp
 /** 右侧取值的最大宽度：取值贴右、尾标成一条竖线；超长时截断取值而不是挤压标题。 */
 private val ValueMaxWidth = 168.dp
 private val TextInsetWithIcon = RowPaddingH + IconSlot + IconGap
@@ -98,8 +107,8 @@ private data class DividerInset(val start: Dp) : ParentDataModifier {
 }
 
 /** 行的根节点声明分隔线起点；卡片用它画「上一行与本行之间」的那根线。 */
-private fun Modifier.dividerInset(hasIcon: Boolean): Modifier =
-    then(DividerInset(if (hasIcon) TextInsetWithIcon else RowPaddingH))
+private fun Modifier.dividerInset(hasIcon: Boolean, iconSlot: Dp = IconSlot): Modifier =
+    then(DividerInset(if (hasIcon) RowPaddingH + iconSlot + IconGap else RowPaddingH))
 
 /** Section 容器策略：默认扁平；tonal 必须有独立分组理由（总结 / 警告 / 独立数据块）。 */
 enum class DshSectionContainer {
@@ -295,6 +304,8 @@ fun DshListRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    /** 副标题用等宽字体（方案 7：电脑卡的地址要等宽，让 IP 与端口对齐好读）。 */
+    subtitleMono: Boolean = false,
     icon: ImageVector? = null,
     iconTint: Color = Dsh.labelSecondary,
     value: String? = null,
@@ -306,6 +317,12 @@ fun DshListRow(
     trailing: DshListTrailing = if (onClick != null) DshListTrailing.Chevron else DshListTrailing.None,
     leading: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
+    /**
+     * 行首图标槽宽（含 `leading` 槽）。
+     * 默认 22dp 是设置/设备行的紧凑规格；收件箱行传 32dp——重设计稿的列表行首是
+     * 32dp 状态圈（方案阶段 1），分隔线缩进随之变成 16+32+12 = 60，与稿子一致。
+     */
+    iconSlot: Dp = IconSlot,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val clickable = if (onClick != null) {
@@ -320,9 +337,10 @@ fun DshListRow(
         Modifier
     }
     DshListRowLayout(
-        modifier = modifier.dividerInset(icon != null || leading != null).then(clickable),
+        modifier = modifier.dividerInset(icon != null || leading != null, iconSlot).then(clickable),
         title = title,
         subtitle = subtitle,
+        subtitleMono = subtitleMono,
         icon = icon,
         iconTint = iconTint,
         value = value,
@@ -333,6 +351,7 @@ fun DshListRow(
         trailing = trailing,
         leading = leading,
         trailingContent = trailingContent,
+        iconSlot = iconSlot,
     )
 }
 
@@ -341,6 +360,7 @@ private fun DshListRowLayout(
     modifier: Modifier,
     title: String,
     subtitle: String?,
+    subtitleMono: Boolean = false,
     icon: ImageVector?,
     iconTint: Color,
     value: String?,
@@ -351,6 +371,7 @@ private fun DshListRowLayout(
     trailing: DshListTrailing,
     leading: (@Composable () -> Unit)?,
     trailingContent: (@Composable () -> Unit)?,
+    iconSlot: Dp = IconSlot,
 ) {
     val titleColor = when {
         !enabled -> Dsh.labelTertiary
@@ -368,11 +389,11 @@ private fun DshListRowLayout(
     ) {
         when {
             leading != null -> {
-                Box(Modifier.size(IconSlot), contentAlignment = Alignment.Center) { leading() }
+                Box(Modifier.size(iconSlot), contentAlignment = Alignment.Center) { leading() }
                 Spacer(Modifier.width(IconGap))
             }
             icon != null -> {
-                Box(Modifier.size(IconSlot), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(iconSlot), contentAlignment = Alignment.Center) {
                     Icon(
                         icon,
                         contentDescription = null,
@@ -384,9 +405,17 @@ private fun DshListRowLayout(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text(title, color = titleColor, style = DshType.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // 标题一行：真机上见过主机名带换行（配对时输入的名字含 \n），两行会把整行撑开、
+            // 把右侧状态挤走。设置页的电脑卡与列表行都靠这一条保持单行。
+            Text(title, color = titleColor, style = DshType.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, color = Dsh.labelTertiary, style = DshType.supporting, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(
+                    subtitle,
+                    color = Dsh.labelTertiary,
+                    style = if (subtitleMono) DshType.supporting.copy(fontFamily = FontFamily.Monospace) else DshType.supporting,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         if (!value.isNullOrBlank()) {
@@ -412,7 +441,7 @@ private fun DshListRowLayout(
                 error = error,
                 onRetry = onRetry,
                 modifier = Modifier.padding(
-                    start = RowPaddingH + if (hasLeading) IconSlot + IconGap else 0.dp,
+                    start = RowPaddingH + if (hasLeading) iconSlot + IconGap else 0.dp,
                     end = RowPaddingH,
                     bottom = 10.dp,
                 ),
@@ -500,9 +529,11 @@ fun DshSwitchRow(
 
 @Composable
 fun dshSwitchColors(): SwitchColors = SwitchDefaults.colors(
-    checkedThumbColor = Dsh.onBrand,
-    checkedTrackColor = Dsh.brand400,
-    checkedBorderColor = Dsh.brand400,
+    // 开关开启态 = 墨色（2026-09-28 重设计 · 方案 2.2/7.3）：品牌蓝只给「需要你动手」的动作
+    // （批准、发送），开关是状态而不是动作
+    checkedThumbColor = Dsh.bgCard,
+    checkedTrackColor = Dsh.labelPrimary,
+    checkedBorderColor = Dsh.labelPrimary,
     uncheckedThumbColor = Dsh.labelSecondary,
     uncheckedTrackColor = Dsh.bgSubtle,
     uncheckedBorderColor = Dsh.borderStrong,
@@ -669,12 +700,22 @@ fun DshListNote(
     modifier: Modifier = Modifier,
     error: Boolean = false,
     inset: Boolean = false,
+    /** 可点备注（设置页页脚的「关于」）：给了就整行可点，仍保持备注的安静样式。 */
+    onClick: (() -> Unit)? = null,
 ) {
     Text(
         text,
         color = if (error) Dsh.error else Dsh.labelTertiary,
         style = DshType.body,
-        modifier = modifier
+        modifier = modifier.then(
+            if (onClick == null) {
+                Modifier
+            } else {
+                Modifier
+                    .clip(RoundedCornerShape(DshRadius.control))
+                    .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
+            },
+        )
             .dividerInset(inset)
             .fillMaxWidth()
             .heightIn(min = RowMinHeight)

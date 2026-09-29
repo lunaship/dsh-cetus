@@ -269,6 +269,8 @@ internal fun WorkspaceChangesPanel(
     summaries: List<WorkspaceChangesSummary>,
     loadSummary: suspend (Long) -> WorkspaceChangesSummary?,
     loadDiff: suspend (Long, Int) -> WorkspaceFileDiff,
+    /** 稿 04 的底部提问条：带这个文件的上下文回到对话页输入框（null 时不画那一条）。 */
+    onAskAboutFile: ((ChangedFile) -> Unit)? = null,
 ) {
     state.animationMs = motionDuration(DshDuration.slow)
     val scope = rememberCoroutineScope()
@@ -348,7 +350,12 @@ internal fun WorkspaceChangesPanel(
                     onSelectFile = { state.fileIndex = it },
                     onBack = { state.fileIndex = null },
                 )
-                FileDiffBody(state, current.seq, index, file, loadDiff)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) { FileDiffBody(state, current.seq, index, file, loadDiff) }
+                    if (onAskAboutFile != null) {
+                        AskAboutFileBar(file = file, onClick = { onAskAboutFile(file) })
+                    }
+                }
             }
         }
     }
@@ -466,7 +473,24 @@ private fun FileHeader(
     ) {
         PanelIconButton(ChevronLeftOutline14, ChangesL.backToFiles, onBack)
         Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
-            Text(file.name, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    file.name,
+                    color = Dsh.labelPrimary,
+                    style = DshType.bodyStrong,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                // 稿 04 的文件条：‹ 文件名 1 / N ›——知道「第几个 / 共几个」才敢用左右滑
+                Spacer(Modifier.width(DshSpace.s6))
+                Text(
+                    "${index + 1} / $count",
+                    color = Dsh.labelTertiary,
+                    style = DshType.caption,
+                    maxLines = 1,
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (file.directory.isNotEmpty()) {
                     Text(
@@ -597,7 +621,10 @@ private fun DiffNoteRow(text: String) {
 
 @Composable
 private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
-    val rows = remember(diff) { diffRows(diff.hunks) }
+    val allRows = remember(diff) { diffRows(diff.hunks) }
+    // 已展开的折叠段（存「被折叠片段在 allRows 里的起始下标」）；切换文件时随 diff 重置
+    var expandedFolds by remember(diff) { mutableStateOf(emptySet<Int>()) }
+    val rows = remember(allRows, expandedFolds) { foldContextRows(allRows, expandedFolds) }
     val notes = remember(diff) { diffNotes(diff) }
     val digits = remember(rows) {
         rows.maxOfOrNull { maxOf(it.oldNo ?: 0, it.newNo ?: 0) }?.toString()?.length?.coerceAtLeast(2) ?: 2
@@ -612,6 +639,17 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
         val contentWidth = with(density) {
             maxOf(maxWidth, ((gutterChars + longest) * charWidthPx).toDp() + 24.dp)
         }
+        // 自动换行时文本列的真实可用宽度：整宽 −（实测的行号列 + 标记列）− 内边距 − 安全余量。
+        // 上一版按「字符数 = 宽度 / 单字宽」估算，偏乐观导致长行被裁；这次改成实测像素宽，
+        // 并用 TextMeasurer 按这个宽度拿真实断点（见 DiffLineRow），两者一致才不会裁字。
+        val gutterPx = remember(codeStyle, digits) {
+            val numbers = "0".repeat(digits) + " "
+            measurer.measure(numbers, codeStyle).size.width.toFloat() +
+                measurer.measure(" + ", codeStyle).size.width.toFloat()
+        }
+        val textWidthPx = with(density) {
+            (maxWidth.toPx() - gutterPx - 16f - 8f).toInt().coerceAtLeast(48)
+        }
         val hScroll = rememberScrollState()
         val listModifier = if (wrap) {
             Modifier.fillMaxSize()
@@ -623,8 +661,18 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
                 itemsIndexed(notes, key = { i, _ -> "note-$i" }) { _, note ->
                     DiffNoteRow(ChangesL.note(note, diff))
                 }
-                itemsIndexed(rows, key = { i, _ -> i }, contentType = { _, row -> row.kind }) { _, row ->
-                    DiffLineRow(row, digits, wrap, codeStyle)
+                itemsIndexed(rows, key = { i, _ -> i }, contentType = { _, row -> row.kind }) { index, row ->
+                    DiffLineRow(
+                        row = row,
+                        digits = digits,
+                        wrap = wrap,
+                        style = codeStyle,
+                        textWidthPx = textWidthPx,
+                        // 折叠行自带被折叠片段的起始下标（数据层给的），UI 不用反推
+                        onExpandFold = { c ->
+                            if (c >= 0) expandedFolds = expandedFolds + c
+                        },
+                    )
                 }
             }
         }
@@ -632,12 +680,22 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
 }
 
 @Composable
-private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: androidx.compose.ui.text.TextStyle) {
+private fun DiffLineRow(
+    row: DiffRow,
+    digits: Int,
+    wrap: Boolean,
+    style: androidx.compose.ui.text.TextStyle,
+    /** 自动换行时文本列的可用像素宽；<= 0 表示走横向滚动那条路径，不做悬挂缩进。 */
+    textWidthPx: Int = 0,
+    onExpandFold: (Int) -> Unit = {},
+) {
     val (bg, signColor, sign) = when (row.kind) {
         DiffRow.Kind.ADD -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.success, "+")
         DiffRow.Kind.DELETE -> Triple(Dsh.error.copy(alpha = 0.12f), Dsh.error, "−")
         DiffRow.Kind.HUNK -> Triple(Dsh.bgTrack, Dsh.labelTertiary, "")
         DiffRow.Kind.CONTEXT -> Triple(Dsh.bgCode, Dsh.labelTertiary, " ")
+        // 折叠行：灰底、无行号，点一下展开（本轮先落到能渲染且不崩，交互下一片接）
+        DiffRow.Kind.FOLD -> Triple(Dsh.bgCodeBanner, Dsh.labelSecondary, "")
     }
     Row(
         modifier = Modifier
@@ -649,23 +707,82 @@ private fun DiffLineRow(row: DiffRow, digits: Int, wrap: Boolean, style: android
             Text(row.text, color = Dsh.labelTertiary, style = style, maxLines = 1, softWrap = false)
             return@Row
         }
+        if (row.kind == DiffRow.Kind.FOLD) {
+            // 稿 04：「展开中间 N 行」——点一下把这段未改动的上下文放出来
+            Text(
+                ChangesL.expandHiddenRows.format(row.hiddenCount),
+                color = Dsh.labelSecondary,
+                style = style,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(interactionSource = null, indication = dshRipple()) { onExpandFold(row.foldStart) },
+            )
+            return@Row
+        }
+        // 稿 04：行号列只显示**新文件**的行号；删除行没有新行号，就留空（不是显示旧行号）
         Text(
-            (row.oldNo?.toString() ?: "").padStart(digits) + " " + (row.newNo?.toString() ?: "").padStart(digits),
+            (row.newNo?.toString() ?: "").padStart(digits),
             color = Dsh.labelTertiary,
             style = style,
             maxLines = 1,
             softWrap = false,
         )
         Text(" $sign ", color = signColor, style = style, maxLines = 1, softWrap = false)
-        Text(
-            remember(row, signColor) { diffLineText(row, signColor.copy(alpha = 0.3f)) },
-            color = Dsh.labelPrimary,
-            style = style,
-            softWrap = wrap,
-            maxLines = if (wrap) Int.MAX_VALUE else 1,
-            overflow = TextOverflow.Clip,
-            modifier = Modifier.weight(1f),
-        )
+        val lineText = remember(row, signColor) { diffLineText(row, signColor.copy(alpha = 0.3f)) }
+        // 稿 04：折行的续行要 2ch 悬挂缩进。断点由真实排版给出（TextMeasurer + 约束宽度），
+        // 不按字符数猜；切片走 AnnotatedString，行内改动的加深底色不会丢。
+        val lineMeasurer = rememberTextMeasurer()
+        val lineRanges = remember(lineText, textWidthPx, wrap) {
+            if (!wrap || textWidthPx <= 0) {
+                emptyList()
+            } else {
+                val measured = lineMeasurer.measure(
+                    text = lineText,
+                    style = style,
+                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = textWidthPx),
+                    softWrap = true,
+                    maxLines = Int.MAX_VALUE,
+                )
+                if (measured.lineCount <= 1) {
+                    emptyList()
+                } else {
+                    (0 until measured.lineCount).map { i ->
+                        measured.getLineStart(i) to measured.getLineEnd(i, visibleEnd = true)
+                    }
+                }
+            }
+        }
+        if (lineRanges.isEmpty()) {
+            Text(
+                lineText,
+                color = Dsh.labelPrimary,
+                style = style,
+                softWrap = false,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Column(modifier = Modifier.weight(1f)) {
+                lineRanges.forEachIndexed { index, (from, to) ->
+                    val slice = lineText.subSequence(from, to)
+                    Text(
+                        if (index == 0) {
+                            slice
+                        } else {
+                            AnnotatedString(" ".repeat(HANGING_INDENT_CHARS) + slice.text, slice.spanStyles, slice.paragraphStyles)
+                        },
+                        color = Dsh.labelPrimary,
+                        style = style,
+                        softWrap = false,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -681,4 +798,41 @@ private fun diffLineText(row: DiffRow, emphasis: Color): AnnotatedString = build
         cursor = end
     }
     put(cursor, row.text.length)
+}
+
+/**
+ * 稿 04 的底部提问条：贴着差异区底部的输入形状按钮。
+ * 只负责「看起来像输入框、点一下带着这个文件的上下文回对话页」，真正的输入在对话页完成
+ * ——那里已经有草稿、附件、模型与发送链路，重做一套不划算。
+ */
+@Composable
+private fun AskAboutFileBar(file: ChangedFile, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp)
+                .clip(RoundedCornerShape(DshRadius.composer))
+                .background(Dsh.bgInput)
+                .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
+                .semantics { role = Role.Button; contentDescription = ChangesL.askAboutFile }
+                .padding(horizontal = DshSpace.s16),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(MessageOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(DshSpace.s8))
+            Text(
+                ChangesL.askAboutFile,
+                color = Dsh.labelTertiary,
+                style = DshType.body,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }

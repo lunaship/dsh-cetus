@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.core.L
+
 import androidx.compose.ui.unit.dp
 
 /** 输入条 / 消息列宽度。手机原生铺满，左右 12dp 让悬浮卡更贴边。 */
@@ -79,3 +81,21 @@ fun composerPermissionPreset(
 
 /** 无会话时 slash 完整命令不得清空输入；有会话才提交并清空。 */
 fun completableCanSubmit(hasSession: Boolean): Boolean = hasSession
+
+/** 访问模式预设 → 显示名（输入卡与新任务面板的座位共用）。 */
+internal fun composerPermissionLabel(preset: String): String = when (preset) {
+    "read-only" -> L.permReadOnly
+    "danger-full-access" -> L.permFullAccess
+    else -> L.permWorkspaceWrite
+}
+
+/**
+ * 输入条占位文案：听写中 / 执行中 / 空闲。
+ * 执行中要写清楚这条消息的去向（方案 5.5：补充说明，这一步结束后发给它），
+ * 不能沿用空闲时的「给智能体发消息」，否则用户不知道是插话还是排队。
+ */
+internal fun composerPlaceholder(isListening: Boolean, running: Boolean): String = when {
+    isListening -> L.listening
+    running -> L.composerRunningQueue
+    else -> L.chatPlaceholder
+}

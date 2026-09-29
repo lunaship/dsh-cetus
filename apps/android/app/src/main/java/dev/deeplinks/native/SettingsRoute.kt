@@ -113,6 +113,8 @@ internal fun SettingsRoute(
     host: Host?,
     onBack: () -> Unit,
     onOpenDevices: () -> Unit,
+    /** 连通性快照（与首页同一个探针的单一来源，见 util.HostConnectivity）。 */
+    connectivity: dev.deeplinks.native.util.HostConnectivitySnapshot? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
@@ -249,6 +251,10 @@ internal fun SettingsRoute(
                         onOpen = { navController.navigate(it.name) },
                         host = host,
                         onOpenDevices = onOpenDevices,
+                        connectivity = connectivity,
+                        savingNs = savingNs,
+                        saveErrors = saveErrors,
+                        onSave = { ns, patch, onSuccess -> saveNamespace(ns, patch, onSuccess) },
                     )
                 }
             }
@@ -379,8 +385,21 @@ internal fun SettingsHome(
     onOpen: (SettingsDest) -> Unit,
     host: Host? = null,
     onOpenDevices: () -> Unit = {},
+    /** 连通性快照（由上层注入）；null = 还没探过，不写状态。 */
+    connectivity: dev.deeplinks.native.util.HostConnectivitySnapshot? = null,
+    /** 「执行中发消息」写回服务端设置用的通路（与二级页同一套 savingNs/saveErrors 表现）。 */
+    savingNs: String? = null,
+    saveErrors: Map<String, String> = emptyMap(),
+    onSave: (String, org.json.JSONObject, () -> Unit) -> Unit = { _, _, _ -> },
 ) {
     val s = DshS
+    // 通知开关存本机（方案 7.3）：与 LastOnlineStore 同一层，阶段 8 的 DshNotifier 从这里读
+    val notifyContext = androidx.compose.ui.platform.LocalContext.current
+    val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
+    var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
+    var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
+    var alias by remember { mutableStateOf(notifyPrefs.hostAlias) }
+    var renameOpen by remember { mutableStateOf(false) }
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
         "dark" -> s.themeDark
@@ -394,6 +413,15 @@ internal fun SettingsHome(
             DshListRow(
                 title = host.name.ifBlank { address },
                 subtitle = address,
+                subtitleMono = true,
+                value = dev.deeplinks.native.util.hostStatusText(
+                    online = connectivity?.online,
+                    viaCloud = connectivity?.viaCloud == true,
+                    latencyMs = connectivity?.latencyMs,
+                    onlineText = s.statusOnline,
+                    offlineText = s.statusOffline,
+                    viaCloudText = s.viaCloudShort,
+                ),
                 icon = LaptopOutline16,
                 onClick = onOpenDevices,
             )
@@ -405,6 +433,39 @@ internal fun SettingsHome(
                 onClick = onOpenDevices,
             )
         }
+        // 方案 7 电脑卡三行：连接方式 / 智能体权限 / 更换电脑。前两者与「更换电脑」都进
+        // 既有设备页（那里本来就有换机与连线方式），这里只补入口，不新写流程
+        // 方案 7：电脑卡「重命名」。存本机别名（host 侧没有改名 API），只影响这台手机显示
+        DshListRow(
+            title = s.rename,
+            icon = EditOutline16,
+            value = alias.ifBlank { null },
+            onClick = { renameOpen = true },
+        )
+        DshListRow(
+            title = s.connectionMethod,
+            icon = LinkOutline16,
+            onClick = onOpenDevices,
+        )
+        // 方案 7：电脑卡里放「智能体权限」——原「通用设置」里的「对话」行撤销后，
+        // 这一行就是 settingsConversation 二级页（权限预设 + 执行中发消息）的唯一入口
+        DshListRow(
+            title = s.agentPermission,
+            icon = ShieldOutline16,
+            value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
+            onClick = { onOpen(SettingsDest.CONVERSATION) },
+        )
+        DshListRow(
+            title = s.changeComputer,
+            icon = ScanOutline16,
+            onClick = onOpenDevices,
+        )
+        // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
+        DshListRow(
+            title = s.modelsAndBalance,
+            icon = SparkleOutline16,
+            onClick = { onOpen(SettingsDest.MODELS) },
+        )
     }
     DshListSection(header = s.sectionGeneral) {
         DshListRow(
@@ -419,34 +480,65 @@ internal fun SettingsHome(
             value = themeLabel,
             onClick = { onOpen(SettingsDest.APPEARANCE) },
         )
-        DshListRow(
-            title = s.settingsConversation,
-            icon = MessageOutline16,
-            value = presetDisplayName(appSettings.agentPreset, null, s),
-            onClick = { onOpen(SettingsDest.CONVERSATION) },
+    }
+    // 方案 7：执行中发送行为（原「对话」页）挪到「通用设置」，取值仍写 ui-conversation 命名空间
+    val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
+    DshListSection(footer = s.busyEnterDesc) {
+        DshSelectRow(
+            title = s.busyEnter,
+            icon = SendOutline16,
+            value = when (busyEnterId) {
+                "send" -> s.busySend
+                "steer" -> s.busySteer
+                else -> s.busyQueue
+            },
+            options = listOf(s.busySend to "send", s.busySteer to "steer", s.busyQueue to "queue"),
+            selectedId = busyEnterId,
+            saving = savingNs == "ui-conversation",
+            error = saveErrors["ui-conversation"],
+            onRetry = { onSave("ui-conversation", org.json.JSONObject().put("busyEnter", busyEnterId), {}) },
+            onSelect = { _, id -> onSave("ui-conversation", org.json.JSONObject().put("busyEnter", id), {}) },
         )
     }
-    DshListSection(header = s.sectionWorkspace) {
-        DshListRow(
-            title = s.tabModels,
-            icon = SparkleOutline16,
-            value = appSettings.defaultModel ?: s.noneSelected,
-            onClick = { onOpen(SettingsDest.MODELS) },
+    DshListSection(header = s.sectionNotifications, footer = s.notifyExplain) {
+        DshSwitchRow(
+            title = s.notifyOnApproval,
+            checked = notifyApproval,
+            onCheckedChange = { notifyApproval = it; notifyPrefs.notifyOnApproval = it },
         )
-        DshListRow(
-            title = s.tabSessions,
-            icon = ArchiveBoxOutline16,
-            onClick = { onOpen(SettingsDest.SESSIONS) },
-        )
-    }
-    DshListSection(header = s.sectionMore) {
-        DshListRow(
-            title = s.tabAbout,
-            icon = InfoOutline16,
-            value = BuildConfig.VERSION_NAME,
-            onClick = { onOpen(SettingsDest.ABOUT) },
+        DshSwitchRow(
+            title = s.notifyOnDone,
+            checked = notifyDone,
+            onCheckedChange = { notifyDone = it; notifyPrefs.notifyOnDone = it },
         )
     }
+    if (renameOpen) {
+        DshRenameDialog(
+            currentName = alias.ifBlank { host?.name.orEmpty() },
+            title = s.rename,
+            message = s.renameComputerDesc,
+            onDismiss = { renameOpen = false },
+            onSave = { alias = it.trim(); notifyPrefs.hostAlias = it; renameOpen = false },
+        )
+    }
+    // 方案 7 第 5 条上半段：「解除配对」独立一块红字。
+    // 真实的吊销流程在 DevicesActivity（带确认弹窗与「离线时只能移除本机记录」分支），
+    // 这里只做入口、不重写逻辑——重写一遍吊销是最容易造成配对数据不一致的地方。
+    if (host != null) {
+        DshListSection {
+            DshListActionRow(
+                label = s.deleteDevice,
+                destructive = true,
+                onClick = onOpenDevices,
+            )
+        }
+    }
+    // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，
+    // 「关于」仍可点进 ABOUT（开源许可在里面，不能丢）
+    DshListNote(
+        text = "DeepLinks ${BuildConfig.VERSION_NAME} · ${s.tabAbout}",
+        onClick = { onOpen(SettingsDest.ABOUT) },
+    )
 }
 
 // ---------- 通用：语言与配对（WI-004：服务端设置为唯一真实源，保存需读回校验） ----------
@@ -618,30 +710,6 @@ internal fun ConversationSettings(
                 } else {
                     onSave("permission", org.json.JSONObject().put("defaultPreset", id), {})
                 }
-            },
-        )
-    }
-    val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
-    DshListSection(footer = s.busyEnterDesc) {
-        DshSelectRow(
-            title = s.busyEnter,
-            icon = SendOutline16,
-            value = when (busyEnterId) {
-                "send" -> s.busySend
-                "steer" -> s.busySteer
-                else -> s.busyQueue
-            },
-            options = listOf(
-                s.busySend to "send",
-                s.busySteer to "steer",
-                s.busyQueue to "queue",
-            ),
-            selectedId = busyEnterId,
-            saving = savingNs == "ui-conversation",
-            error = saveErrors["ui-conversation"],
-            onRetry = { onSave("ui-conversation", org.json.JSONObject().put("busyEnter", busyEnterId), {}) },
-            onSelect = { _, id ->
-                onSave("ui-conversation", org.json.JSONObject().put("busyEnter", id), {})
             },
         )
     }

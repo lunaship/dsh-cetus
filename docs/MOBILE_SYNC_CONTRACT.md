@@ -31,6 +31,32 @@
 
 `GET /dsh-link/mobile/sessions/search` 同样遵守该集合：成功搜索和降级的标题搜索都不会返回 Web 已归档的 `sessionId`。
 
+### 会话「当前步骤」与「结果一句话」（2026-09-28 重设计新增）
+
+同一批会话行还可带两个可选字段，由插件从 `session.history` 推导（DSH 列表不带，实现在 `src/mobile-session-activity.js`）：
+
+```json
+{
+  "sessionId": "…",
+  "running": true,
+  "activity": { "kind": "tool", "label": "go test ./...", "step": 12, "startedAt": 1759000000000 }
+}
+```
+
+```json
+{
+  "sessionId": "…",
+  "running": false,
+  "lastResult": { "text": "门禁全绿", "files": 79, "added": 1200, "deleted": 300 }
+}
+```
+
+- **只在 `running` 时下发 `activity`，只在非 `running` 时下发 `lastResult`**，两者不会同时出现在一行。
+- `activity.kind` 为 `tool` / `thinking` / `writing`。`tool` 时 `label` 是命令或「工具名 参数」摘要（≤60 字，超出截断加 `…`），`step` 是本轮步号（事件里带才有）；`thinking` / `writing` 没有 `label`，App 按 `kind` 出本地化文案。
+- `lastResult.text` 是最后一条助手回复去 Markdown 后的首段（≤60 字）；`files` / `added` / `deleted` 取自本轮 `workspace/changes` 的摘要，判定与改动卡一致（摘要没列出任何文件就不算改动）。摘要取不到（Host 重启后旧轮次没有摘要）时只丢统计，文本照常；文本与统计都没有则整个字段不下发。
+- **回退语义**：字段缺失（旧插件、推导不出、会话不在最近 20 个之内）时，App 写「运行中」/「已完成」。App 不得因为缺少字段而隐藏或改变会话行。
+- 边界：只对**最近 20 个**会话计算；按 `sessionId + updatedAt` 缓存，`updatedAt` 不变不重算；每次取 `session.history` 的 `maxMessages` 为 8，并发上限 4；单个会话失败只跳过该字段，不影响会话列表本身。
+
 产出文件：历史投影可含 `role: "produced_files"` 与 `files` 路径列表。具备 `capabilities.files.workspace` 时，`GET /dsh-link/mobile/sessions/:id/file?path=` 在该会话 cwd 沙箱内返回原始字节（默认上限 8MB）。路径越出工作区返回 403。旧 App 忽略未知 role，仍可走工具结果文本。
 
 工作区文件树（`capabilities.files.tree`）：`GET /dsh-link/mobile/sessions/:id/tree?path=` 列出该会话 cwd 沙箱内的**一层**目录，App 按层懒加载。与 `/file` 相同的门槛：只有持有该会话活跃 SSE 订阅的设备可调用，否则 403。
@@ -181,3 +207,14 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 ## 后台通知
 
 完整后台推送（ENH-01）渠道待定，未实施。现有通知仍只覆盖 App 进程收到当前会话 SSE 之后的本地提醒。
+
+### `stoppedReason`（与 `activity` / `lastResult` 同一批）
+
+- **位置**：会话列表每一项（`GET /dsh-link/mobile/sessions` 与 bootstrap 里的 `sessions`）。
+- **含义**：这一轮是**怎么结束**的——`turn/end` 的 `reason.kind`；`completed` 或取不到时**不下发该键**。
+- **取值**：`interrupted` / `stopped` / `error` / `maxTokens` 等，与**会话详情**里的同名字段同一口径。
+- **口径**：与 `activity` / `lastResult` 复用同一遍历史读取（最近 20 个会话、缓存键含 `updatedAt`），
+  不额外拉一次历史。
+- **回退**：旧插件不下发该键时，App 把这一行当作「已完成」（方案 3.6 的明文回退）；**图标与文案
+  必须同时按这一个判断走**，否则会出现「已完成」配灰底方块的自相矛盾（这正是 2026-09-29 真机走查
+  抓到的第 5 处问题）。

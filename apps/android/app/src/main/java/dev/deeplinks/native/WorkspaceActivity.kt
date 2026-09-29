@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.activity.result.contract.ActivityResultContracts
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
@@ -10,6 +11,8 @@ import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
+import dev.deeplinks.core.LastOnlineStore
+import dev.deeplinks.core.PairClient
 import dev.deeplinks.core.stableIdentity
 import androidx.activity.ComponentActivity
 import android.Manifest
@@ -19,7 +22,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
@@ -51,10 +53,8 @@ import androidx.core.content.ContextCompat
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.DshBanner
@@ -65,6 +65,9 @@ import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.selectShareTurns
 import dev.deeplinks.native.util.WorkspaceAccount
+import dev.deeplinks.native.util.chatTopSubtitle
+import dev.deeplinks.native.util.relativeTime
+import dev.deeplinks.native.util.sessionMillis
 import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
@@ -131,6 +134,8 @@ fun WorkspaceScreen(
     initialShareText: String? = null,
     initialShareImages: List<String> = emptyList(),
     initialShareSeq: Long = 0L,
+    /** 通知动作带进来的意图（方案 8）：看改动 / 聚焦输入。 */
+    initialIntentAction: String? = null, initialIntentActionRequestId: Long = 0L,
     initialShareNotice: String? = null,
     /** 打开设备（配对）页；authNotice 非空时在设备页顶部说明原因。 */
     onOpenDevice: (authNotice: String?) -> Unit,
@@ -333,6 +338,17 @@ fun WorkspaceScreen(
     var showSubagentSheet by remember { mutableStateOf(false) }
     /** 新会话阶段的默认模型（create 后 selectModel）。 */
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
+    // 新任务面板（方案阶段 4）：首页、空态起手式、侧栏与分享都从这里起新任务，
+    // 不再走对话页的草稿态（ComposerTopRow 起始块已删）。
+    var showNewTaskSheet by remember { mutableStateOf(false) }
+    var showNewTaskWorkspacePicker by remember { mutableStateOf(false) }
+    var showArchivedSheet by remember { mutableStateOf(false) }
+    val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
+    // 建会话成功后收起面板；失败时 currentSessionId 仍为空 → 面板保持打开并显示错误（方案 4.5）
+    LaunchedEffect(currentSessionId) {
+        if (currentSessionId != null) showNewTaskSheet = false
+    }
+
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
     var deleteWorkspaceSaving by remember { mutableStateOf(false) }
@@ -583,15 +599,37 @@ fun WorkspaceScreen(
     var appliedShareOwner by rememberSaveable { mutableStateOf("") }
     var shareConsumed by rememberSaveable { mutableStateOf(false) }
     /**
-     * 外部分享带入的、以 `/` 开头的文本（原样存 composer 文本）。
-     * 系统分享内容不可信，不能让它直接变成可一键触发的命令入口；
-     * 只有用户手动编辑（inputText 与该快照不再相等）后才恢复命令候选。
+     * 外部分享带入的、以 `/` 开头的文本：系统分享不可信，不能让它直接变成可一键触发的命令入口，
+     * 只有用户手动编辑（不再等于该快照）后才恢复命令候选。
      */
     var shareCommandGuard by remember { mutableStateOf<String?>(null) }
     val shareOwnerKey = composerOwnerKey()
+    LaunchedEffect(initialIntentAction, initialIntentActionRequestId, initialSessionId, currentSessionId) {
+        if (!initialSessionId.isNullOrBlank() && currentSessionId != initialSessionId) return@LaunchedEffect
+        when (initialIntentAction) {
+            dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES -> changesPanel.open()
+            dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> { composerFocusRequester.requestFocus(); composerKeyboardController?.show() }
+        }
+    }
+    fun startComposeSession(cwd: String? = null) {
+        switchComposer(null, composingNew = true)
+        pendingSessionCwd = cwd
+        pendingAgentPreset = appSettings.agentPreset
+        pendingModel = null
+        messages = emptyList()
+        olderMessages = emptyList()
+        sessionStats = null
+        historyLoadError = null
+        stoppedReason = null
+        liveRunning = false
+        seedMaxSeq = 0L
+        isLoadingOlder = false
+        loadOlderFailed = false
+        initialLoadInFlight = false
+    }
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
-        showPhoneChat()
+        startComposeSession(); showNewTaskSheet = true // 分享进来的内容落在新任务面板里预填（阶段 4），不再进对话页草稿态
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
@@ -650,23 +688,6 @@ fun WorkspaceScreen(
                 showPhoneChat()
             }
         }
-    }
-
-    fun startComposeSession(cwd: String? = null) {
-        switchComposer(null, composingNew = true)
-        pendingSessionCwd = cwd
-        pendingAgentPreset = appSettings.agentPreset
-        pendingModel = null
-        messages = emptyList()
-        olderMessages = emptyList()
-        sessionStats = null
-        historyLoadError = null
-        stoppedReason = null
-        liveRunning = false
-        seedMaxSeq = 0L
-        isLoadingOlder = false
-        loadOlderFailed = false
-        initialLoadInFlight = false
     }
 
     var authExpired by remember { mutableStateOf(false) }
@@ -881,28 +902,8 @@ fun WorkspaceScreen(
         tailRequestId++
     }
 
-    /**
-     * 把列表真正贴到底：scrollToItem 只会把条目顶到视口顶部，
-     * 长回复需要再 scrollBy 把溢出部分推上去，否则最新内容仍在视口外。
-     */
-    suspend fun alignListToBottom() {
-        val total = listState.layoutInfo.totalItemsCount
-        if (total == 0) return
-        val lastIndex = total - 1
-        listState.scrollToItem(lastIndex)
-        withFrameNanos { }
-        repeat(2) {
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull() ?: return
-            val overflow = (last.offset + last.size) - info.viewportEndOffset
-            if (overflow > 0) {
-                listState.scrollBy(overflow.toFloat())
-                withFrameNanos { }
-            } else {
-                return
-            }
-        }
-    }
+    /** 把列表真正贴到底（含长回复溢出补偿），见 ChatTailPositioning.kt。 */
+    suspend fun alignListToBottom() = listState.alignToBottom()
 
     /** 立即滚到列表末尾；失败写入可检索日志。 */
     fun scrollToTail(tag: String) {
@@ -1030,9 +1031,7 @@ fun WorkspaceScreen(
                 showPhoneSessions()
             }
             LocalKind.NEW_SESSION -> {
-                startComposeSession(pendingSessionCwd)
-                selectViewMode("chat")
-                showPhoneChat()
+                startComposeSession(); showNewTaskSheet = true
             }
             LocalKind.OPEN_SETTINGS -> {
                 // 与顶栏抽屉设置按钮共享入口；CONSUMED 显示可以放在 picker 选中后的 toast 中
@@ -1053,11 +1052,11 @@ fun WorkspaceScreen(
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_START -> {
                     isForeground = true
-                    streamClient?.start()
+                    SessionMonitorLifecycle.onForeground(currentSessionId, streamClient)
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
                     isForeground = false
-                    streamClient?.stop()
+                    SessionMonitorLifecycle.onBackground(context, host, currentSessionId, sessions, streamClient)
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
                     // 回前台：SSE 断线时立即补全消息，并刷新会话列表（移动网络切换场景）
@@ -1091,8 +1090,7 @@ fun WorkspaceScreen(
     }
 
     fun createSessionIn(cwd: String?) {
-        startComposeSession(cwd)
-        showPhoneChat()
+        startComposeSession(cwd); showNewTaskSheet = true
     }
 
     fun appendStreamMessage(m: MobileMessage) {
@@ -1396,6 +1394,7 @@ fun WorkspaceScreen(
                     seq = item.seq,
                     requestStatus = REQUEST_PENDING,
                 ))
+                workspaceViewModel.refreshRequestSnapshot()
                 val sid = currentSessionId
                 if (!isForeground && sid != null) {
                     DshNotifier.notifyApproval(context, host, sid, data.optString("toolName", L.toolFallbackName))
@@ -1440,6 +1439,7 @@ fun WorkspaceScreen(
         when (item) {
             is SessionStreamClient.Item.Ready -> {
                 lastStreamEventAt = System.currentTimeMillis()
+                workspaceViewModel.refreshRequestSnapshot()
                 // 服务端 stream 游标领先本地 history 标记时补一次全量（多设备/重启）
                 if (seedMaxSeq > 0 && item.resumeSeq > seedMaxSeq) {
                     refreshMessages(autoScroll = true)
@@ -1626,7 +1626,10 @@ fun WorkspaceScreen(
             modelCatalogError = null
             tailRequestId++
         }
-        refreshMessages(autoScroll = preserveMessages)
+        // 首屏 history（含本地快照被网络结果接管）到达且有变化时仍走贴底跟随：
+        // 首个尾部请求可能已超时，或快照之后网络又追加了新消息。
+        // followIfNearBottom 只在 stickToBottom / 贴底时生效，用户已上翻则不强拉。
+        refreshMessages(autoScroll = true)
         refreshModels()
         // SSE 实时流：订阅事件，增量更新消息列表。
         // 流由 VM 持有（viewModelScope）：Activity 重建时组合虽销毁、流与游标仍在，
@@ -1643,15 +1646,13 @@ fun WorkspaceScreen(
         if (tailRequestId == 0 || tailRequestId == lastTailRequestId) return@LaunchedEffect
         lastTailRequestId = tailRequestId
         try {
-            withTimeoutOrNull(3000) {
-                snapshotFlow {
-                    messages.isNotEmpty() &&
-                        listState.layoutInfo.totalItemsCount > 0 &&
-                        !listState.isScrollInProgress
-                }.first { it }
-            }
-            withFrameNanos { }
-            alignListToBottom()
+            // 不能只看 totalItemsCount > 0：messages 刚提交时 layoutInfo 仍是上一帧
+            // （加载骨架 1 项），按它 scrollToItem 会落到新列表顶部（「加载更早」行）。
+            // positionAtTail 先等一次完整布局再对齐，并在头部条目晚插入时复核。
+            listState.positionAtTail(hasContent = { messages.isNotEmpty() })
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 被更新的尾部请求取代 / 离开组合：正常路径，不记失败
+            throw e
         } catch (e: Exception) {
             Log.w("WorkspaceActivity", "tail position request-$tailRequestId failed: ${e.message}")
         }
@@ -1738,7 +1739,7 @@ fun WorkspaceScreen(
 
     val currentSession = sessions.find { it.sessionId == currentSessionId }
     val running = liveRunning || currentSession?.running == true
-
+    SessionMonitorActivation(host, currentSessionId, currentSession?.title.orEmpty(), running, currentSession?.awaitingInput == true, streamClient)
     val activeHarnessPresetId = if (currentSessionId == null) {
         pendingAgentPreset
     } else {
@@ -1838,10 +1839,7 @@ fun WorkspaceScreen(
 
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
-        onNewSession = {
-            startComposeSession(null)
-            showPhoneChat()
-        },
+        onNewSession = { startComposeSession(); showNewTaskSheet = true },
         onSelectSession = { sid ->
             selectSession(sid)
             showPhoneChat()
@@ -1884,6 +1882,176 @@ fun WorkspaceScreen(
         onOpenSettings = onOpenSettings,
     )
 
+    // 首页顶栏连接状态（稿 01/08）：首页没有会话 SSE，在线与延迟只能来自 30s 一次的健康探测；
+    // 探测不到就按离线显示，并用 LastOnlineStore 的时间戳写「离线 · N 分钟前在线」。
+    var hostReachable by remember(host) { mutableStateOf(true) }
+    var hostLatencyMs by remember(host) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(host) {
+        while (true) {
+            val ms = withContext(Dispatchers.IO) {
+                runCatching { PairClient.health(host) }.getOrNull()
+            }
+            hostLatencyMs = ms
+            hostReachable = ms != null // 同时写进单一来源：设置页读同一份，不为它另起探针
+            dev.deeplinks.native.util.HostConnectivity.update(ms != null, host.hasRelay, ms)
+            if (ms != null) LastOnlineStore.record(context)
+            delay(30_000)
+        }
+    }
+    val offlineSinceLabel = if (hostReachable) null else dev.deeplinks.native.util.lastOnlineLabel(LastOnlineStore.read(context))
+
+    // 首页审批卡（D1-A）：只给手机接管的审批按钮；takenOverByPhone 见 MobileMessage 注释。
+    val homePendingApproval = remember(messages, currentSessionId) {
+        if (currentSessionId == null) null
+        else messages.lastOrNull {
+            it.role == "approval" && it.approvalId != null &&
+                it.requestStatus == REQUEST_PENDING && it.takenOverByPhone
+        }
+    }
+    // 发送主体：新任务面板与输入卡共用同一条路径（原先内联在对话页分支里）。
+    var submitComposer: () -> Unit = {}
+            submitComposer = {
+                val rawText = inputText.trim()
+                    val images = pendingImages
+                    if ((rawText.isNotBlank() || images.isNotEmpty()) && !isSending) {
+                        // DSH 里 plan / goal 是 `/plan` `/goal` 命令（命令面板里可选），
+                        // 不是输入条上的模式开关，所以这里不再自动加前缀。
+                        val textToSend = rawText
+                        val startedOnSession = currentSessionId
+                        var sendOwnerId = startedOnSession
+                        val createCwd = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace
+                        val createWsId = workspaceCatalogItems.firstOrNull {
+                            normalizeWorkspacePath(it.path) == createCwd?.let(::normalizeWorkspacePath) &&
+                                it.workspaceId.isNotBlank()
+                        }?.workspaceId
+                        val draftText = inputText
+                        val draftImages = pendingImages
+                        workspacePrefs.parkedSend = parkSendForPersistence(
+                            ParkedSend(
+                                slotKey = host.slotKey,
+                                sessionId = startedOnSession,
+                                text = draftText,
+                                images = draftImages,
+                            ),
+                        )
+                        composerActionError = null
+                        isSending = true
+                        stoppedReason = null
+                        liveRunning = true
+                        inputText = ""
+                        pendingImages = emptyList()
+                        if (textToSend.isNotBlank()) {
+                            messages = messages.filterNot { it.id == "local-pending" }
+                            appendStreamMessage(
+                                MobileMessage(
+                                    id = "local-pending",
+                                    role = "user",
+                                    text = textToSend,
+                                    time = System.currentTimeMillis(),
+                                    type = "text",
+                                ),
+                            )
+                            // 用户主动发送：强制贴底，不看是否已上翻
+                            followIfNearBottom(force = true)
+                        }
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                var sid = startedOnSession
+                                val createdNow = sid == null
+                                if (sid == null) {
+                                    sid = client.createSession(
+                                        agentPreset = pendingAgentPreset,
+                                        cwd = createCwd,
+                                        workspaceId = createWsId,
+                                    )
+                                    pendingModel?.let { (provider, model, effort) ->
+                                        client.selectModel(sid, provider, model, effort)
+                                    } ?: run {
+                                        val provider = appSettings.defaultModelProvider
+                                        val model = appSettings.defaultModel
+                                        if (!provider.isNullOrBlank() && !model.isNullOrBlank()) {
+                                            client.selectModel(sid, provider, model, appSettings.defaultReasoningEffort)
+                                        }
+                                    }
+                                }
+                                if (sid != startedOnSession) {
+                                    sendOwnerId = sid
+                                    workspacePrefs.parkedSend = parkSendForPersistence(
+                                        ParkedSend(
+                                            slotKey = host.slotKey,
+                                            sessionId = sid,
+                                            text = draftText,
+                                            images = draftImages,
+                                        ),
+                                    )
+                                }
+                                val stillFocused = withContext(Dispatchers.Main) {
+                                    if (createdNow) {
+                                        // 创建期间用户已切到其它会话：不抢焦点、不发 prompt
+                                        if (currentSessionId != null && currentSessionId != sid) {
+                                            false
+                                        } else {
+                                            val createdId = sid
+                                            preserveMessagesSessionId = createdId
+                                            switchComposer(createdId, composingNew = false)
+                                            if (!createWsId.isNullOrBlank()) {
+                                                workspaceCatalogItems = workspaceCatalogItems.map { ws ->
+                                                    if (ws.workspaceId == createWsId && createdId !in ws.sessionIds) {
+                                                        ws.copy(sessionIds = ws.sessionIds + createdId)
+                                                    } else ws
+                                                }
+                                            }
+                                            refreshSessions()
+                                            refreshWorkspaces()
+                                            refreshModels()
+                                            true
+                                        }
+                                    } else {
+                                        currentSessionId == sid
+                                    }
+                                }
+                                if (!stillFocused) {
+                                    withContext(Dispatchers.Main) {
+                                        messages = messages.filterNot { it.id == "local-pending" }
+                                        liveRunning = sessions.any { it.sessionId == currentSessionId && it.running }
+                                        restoreComposerToOwner(composerDraftKey(sid), ComposerDraft(draftText, draftImages))
+                                        composerActionError = L.sendFailed.format(L.switchedSessionNotSent)
+                                    }
+                                    return@launch
+                                }
+                                val promptMode = resolvePromptMode(!createdNow && running, appSettings.busyEnter)
+                                client.sendPrompt(sid, textToSend, mode = promptMode, images = images)
+                                withContext(Dispatchers.Main) {
+                                    refreshSessions()
+                                    // SSE 已连接时由流增量更新；立刻全量 refresh 容易在服务端
+                                    // 尚未写入 history 时冲掉 local-pending，造成「已发送但本机空白」
+                                    if (streamClient?.isConnected != true) {
+                                        refreshMessages(autoScroll = true)
+                                    } else {
+                                        followIfNearBottom(force = true)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    messages = messages.filterNot { it.id == "local-pending" }
+                                    restoreComposerToOwner(
+                                        composerDraftKey(sendOwnerId),
+                                        ComposerDraft(draftText, draftImages),
+                                    )
+                                    // 发送失败：若尚未真正进入 turn，收回乐观 running
+                                    if (currentSession?.running != true) liveRunning = false
+                                    composerActionError = L.sendFailed.format(e.message ?: L.unknownError)
+                                }
+                            } finally {
+                                withContext(Dispatchers.Main) {
+                                    workspacePrefs.parkedSend = null
+                                    isSending = false
+                                }
+                            }
+                        }
+                    }
+                }
+
     // 根容器：承载抽屉框架与置顶 Snackbar
     Box(
         modifier = Modifier
@@ -1909,9 +2077,21 @@ fun WorkspaceScreen(
                 workspaceRegistryReady = workspaceRegistryReady,
                 sessionsInitialLoad = sessionsInitialLoad,
                 sessionsLoadError = sessionsLoadError,
-                hostName = host.name,
+                hostName = hostLabel,
+                online = hostReachable,
+                viaCloud = host.hasRelay,
+                latencyMs = hostLatencyMs,
+                offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
                 onSelectWorkspace = { selectedHomeWorkspace = it },
+                onOpenArchived = { showArchivedSheet = true },
+                onPickStarter = { sidebarActions.onNewSession() },
+                activeApproval = homePendingApproval,
+                onAnswerApproval = { approvalId, outcome, onDone ->
+                    val sid = currentSessionId
+                    if (sid == null) onDone(false)
+                    else workspaceViewModel.answerApproval(sid, approvalId, outcome, onDone)
+                },
                 containerColor = Dsh.bgDrawer,
                 collapsed = sidebarCollapsed,
                 goalSummaries = workspaceViewModel.goalSummaries.value,
@@ -1959,9 +2139,21 @@ fun WorkspaceScreen(
                     workspaceRegistryReady = workspaceRegistryReady,
                     sessionsInitialLoad = sessionsInitialLoad,
                     sessionsLoadError = sessionsLoadError,
-                    hostName = host.name,
+                    hostName = hostLabel,
+                    online = hostReachable,
+                    viaCloud = host.hasRelay,
+                    latencyMs = hostLatencyMs,
+                    offlineSinceLabel = offlineSinceLabel,
                     selectedWorkspace = selectedHomeWorkspace,
                     onSelectWorkspace = { selectedHomeWorkspace = it },
+                    onOpenArchived = onOpenSettings,
+                    onPickStarter = { sidebarActions.onNewSession() },
+                    activeApproval = homePendingApproval,
+                    onAnswerApproval = { approvalId, outcome, onDone ->
+                        val sid = currentSessionId
+                        if (sid == null) onDone(false)
+                        else workspaceViewModel.answerApproval(sid, approvalId, outcome, onDone)
+                    },
                     containerColor = Dsh.bgBase,
                     collapsed = false,
                     goalSummaries = workspaceViewModel.goalSummaries.value,
@@ -2076,10 +2268,8 @@ fun WorkspaceScreen(
                 running = running,
                 // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
                 title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
-                subtitle = if (currentSessionId == null) null else listOfNotNull(
-                    currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
-                    host.name.takeIf { it.isNotBlank() },
-                ).joinToString(" · "),
+                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」
+                subtitle = chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec),
                 showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
@@ -2098,7 +2288,7 @@ fun WorkspaceScreen(
 
             // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
             DeviceUnreachableBanner(
-                hostName = host.name,
+                hostName = hostLabel,
                 visible = !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty(),
                 onRetry = { refreshSessions(reportFailure = true) },
                 onOpenDevice = { onOpenDevice(null) },
@@ -2220,6 +2410,13 @@ fun WorkspaceScreen(
                     fork = { sid -> forkNow(sid) },
                     openChanges = { seq, fileIndex -> scope.launch { changesPanel.open(seq, fileIndex) } },
                 )
+            }
+            // 消息列表进入组合（手机从首页点进会话、轨迹切回对话）时补一次贴底：
+            // 会话可能早在后台恢复好（冷启动恢复上次会话），当时列表不在屏上，
+            // 尾部请求无从对齐；点进同一会话 currentSessionId 不变，也不会再发请求。
+            // 用户离开前已上翻（stickToBottom=false）则保留原位置。
+            LaunchedEffect(Unit) {
+                if (stickToBottom && messages.isNotEmpty()) requestTailPosition()
             }
             // 列表高度随 IME/底栏变化时：贴底用户按变矮像素上推，跟手不跳
             var chatListHeightPx by remember { mutableIntStateOf(0) }
@@ -2401,74 +2598,30 @@ fun WorkspaceScreen(
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
-                if (viewMode == "chat" && currentSessionId == null) {
-                    ComposerTopRow(
-                        setupTitle = L.newSession,
-                        setupCaption = host.name,
-                        sessions = sessions,
-                        deletedWorkspaces = deletedWorkspaces,
-                        registeredPaths = workspaceRegistry,
-                        registryReady = workspaceRegistryReady,
-                        currentCwd = if (currentSessionId == null) {
-                            pendingSessionCwd?.takeUnless { it in deletedWorkspaces }
-                        } else {
-                            currentSessionId?.let {
-                                workspaceGroupKey(it, workspaceAccounts, deletedWorkspaces)
-                            }
-                        },
-                        lastCwd = if (currentSessionId == null) {
-                            workspacePrefs.lastSelectedWorkspace
-                                ?.takeUnless { it in deletedWorkspaces }
-                        } else {
-                            null
-                        },
-                        harnessLabel = harnessLabel,
-                        showHarness = currentSessionId == null,
-                        workspaceEditable = currentSessionId == null,
-                        harnessEditable = currentSessionId == null,
-                        workspaceCatalogKind = catalogKind(
-                            hasItems = workspaceCatalogItems.isNotEmpty(),
-                            initialLoad = workspacesInitialLoad,
-                            hasError = workspacesLoadError != null,
-                        ),
-                        workspaceCatalogError = workspacesLoadError,
-                        onRetryWorkspaces = { refreshWorkspaces() },
-                        onOpenHarnessPicker = if (currentSessionId == null) {
-                            {
-                                showAgentPresetPicker = true
-                                if (agentPresets.isEmpty()) loadAgentPresets()
-                            }
-                        } else {
-                            null
-                        },
-                        onStartSession = { cwd ->
-                            pendingSessionCwd = cwd
-                            if (cwd != null) workspacePrefs.lastSelectedWorkspace = cwd
-                        },
-                        // 「回到底部」已改为消息流内的悬浮按钮（不再占用输入区上方整行），
-                        // 所以这里不再有 trailing 内容。
-                        trailingContent = {},
-                    )
-                }
                 // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
-                pinnedChanges?.let { latest ->
-                    LatestChangesLine(latest) {
-                        scope.launch { changesPanel.open(latest.seq, null) }
-                    }
+                // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
+                if (currentSessionId != null) {
+                    ComposerContextStrip(
+                        modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
+                        hostName = hostLabel,
+                        online = streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED,
+                        workspaceName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+                        changes = pinnedChanges,
+                        stats = sessionStats,
+                        onBrowseFiles = { showFileBrowser = true },
+                        onOpenChanges = {
+                            pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } }
+                        },
+                    )
                 }
-                // 发送主体与高权限确认的共享状态：submitComposer 在 InputBar 之后赋值，
-                // onSend 与确认弹窗都通过同一个可变引用复用同一条发送路径。
-                var submitComposer: () -> Unit = {}
+                // 发送主体在 WorkspaceScreen 顶层赋值（新任务面板与输入卡共用同一条路径）。
                 var showFullAccessSendConfirm by remember { mutableStateOf(false) }
                 // 访问模式座（DSH conversation.input.permission）：本会话改过的预设优先，否则用全局默认。
                 val inputPermissionPreset = composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset).let(::canonicalComposerPermission)
-                val inputPermissionLabel = when (inputPermissionPreset) {
-                    "read-only" -> L.permReadOnly
-                    "danger-full-access" -> L.permFullAccess
-                    else -> L.permWorkspaceWrite
-                }
+                val inputPermissionLabel = composerPermissionLabel(inputPermissionPreset)
                 InputBar(
+                modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                 inputText = inputText,
                 onInputChange = {
                     inputText = it
@@ -2555,147 +2708,6 @@ fun WorkspaceScreen(
             )
 
             // 发送主体（原 onSend 内联体）：抽成局部函数，让高权限确认弹窗能复用同一条路径。
-            submitComposer = {
-                val rawText = inputText.trim()
-                    val images = pendingImages
-                    if ((rawText.isNotBlank() || images.isNotEmpty()) && !isSending) {
-                        // DSH 里 plan / goal 是 `/plan` `/goal` 命令（命令面板里可选），
-                        // 不是输入条上的模式开关，所以这里不再自动加前缀。
-                        val textToSend = rawText
-                        val startedOnSession = currentSessionId
-                        var sendOwnerId = startedOnSession
-                        val createCwd = pendingSessionCwd
-                        val createWsId = workspaceCatalogItems.firstOrNull {
-                            normalizeWorkspacePath(it.path) == createCwd?.let(::normalizeWorkspacePath) &&
-                                it.workspaceId.isNotBlank()
-                        }?.workspaceId
-                        val draftText = inputText
-                        val draftImages = pendingImages
-                        workspacePrefs.parkedSend = parkSendForPersistence(
-                            ParkedSend(
-                                slotKey = host.slotKey,
-                                sessionId = startedOnSession,
-                                text = draftText,
-                                images = draftImages,
-                            ),
-                        )
-                        composerActionError = null
-                        isSending = true
-                        stoppedReason = null
-                        liveRunning = true
-                        inputText = ""
-                        pendingImages = emptyList()
-                        if (textToSend.isNotBlank()) {
-                            messages = messages.filterNot { it.id == "local-pending" }
-                            appendStreamMessage(
-                                MobileMessage(
-                                    id = "local-pending",
-                                    role = "user",
-                                    text = textToSend,
-                                    time = System.currentTimeMillis(),
-                                    type = "text",
-                                ),
-                            )
-                            // 用户主动发送：强制贴底，不看是否已上翻
-                            followIfNearBottom(force = true)
-                        }
-                        scope.launch(Dispatchers.IO) {
-                            try {
-                                var sid = startedOnSession
-                                val createdNow = sid == null
-                                if (sid == null) {
-                                    sid = client.createSession(
-                                        agentPreset = pendingAgentPreset,
-                                        cwd = createCwd,
-                                        workspaceId = createWsId,
-                                    )
-                                    pendingModel?.let { (provider, model, effort) ->
-                                        client.selectModel(sid, provider, model, effort)
-                                    } ?: run {
-                                        val provider = appSettings.defaultModelProvider
-                                        val model = appSettings.defaultModel
-                                        if (!provider.isNullOrBlank() && !model.isNullOrBlank()) {
-                                            client.selectModel(sid, provider, model, appSettings.defaultReasoningEffort)
-                                        }
-                                    }
-                                }
-                                if (sid != startedOnSession) {
-                                    sendOwnerId = sid
-                                    workspacePrefs.parkedSend = parkSendForPersistence(
-                                        ParkedSend(
-                                            slotKey = host.slotKey,
-                                            sessionId = sid,
-                                            text = draftText,
-                                            images = draftImages,
-                                        ),
-                                    )
-                                }
-                                val stillFocused = withContext(Dispatchers.Main) {
-                                    if (createdNow) {
-                                        // 创建期间用户已切到其它会话：不抢焦点、不发 prompt
-                                        if (currentSessionId != null && currentSessionId != sid) {
-                                            false
-                                        } else {
-                                            val createdId = sid
-                                            preserveMessagesSessionId = createdId
-                                            switchComposer(createdId, composingNew = false)
-                                            if (!createWsId.isNullOrBlank()) {
-                                                workspaceCatalogItems = workspaceCatalogItems.map { ws ->
-                                                    if (ws.workspaceId == createWsId && createdId !in ws.sessionIds) {
-                                                        ws.copy(sessionIds = ws.sessionIds + createdId)
-                                                    } else ws
-                                                }
-                                            }
-                                            refreshSessions()
-                                            refreshWorkspaces()
-                                            refreshModels()
-                                            true
-                                        }
-                                    } else {
-                                        currentSessionId == sid
-                                    }
-                                }
-                                if (!stillFocused) {
-                                    withContext(Dispatchers.Main) {
-                                        messages = messages.filterNot { it.id == "local-pending" }
-                                        liveRunning = sessions.any { it.sessionId == currentSessionId && it.running }
-                                        restoreComposerToOwner(composerDraftKey(sid), ComposerDraft(draftText, draftImages))
-                                        composerActionError = L.sendFailed.format(L.switchedSessionNotSent)
-                                    }
-                                    return@launch
-                                }
-                                val promptMode = resolvePromptMode(!createdNow && running, appSettings.busyEnter)
-                                client.sendPrompt(sid, textToSend, mode = promptMode, images = images)
-                                withContext(Dispatchers.Main) {
-                                    refreshSessions()
-                                    // SSE 已连接时由流增量更新；立刻全量 refresh 容易在服务端
-                                    // 尚未写入 history 时冲掉 local-pending，造成「已发送但本机空白」
-                                    if (streamClient?.isConnected != true) {
-                                        refreshMessages(autoScroll = true)
-                                    } else {
-                                        followIfNearBottom(force = true)
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    messages = messages.filterNot { it.id == "local-pending" }
-                                    restoreComposerToOwner(
-                                        composerDraftKey(sendOwnerId),
-                                        ComposerDraft(draftText, draftImages),
-                                    )
-                                    // 发送失败：若尚未真正进入 turn，收回乐观 running
-                                    if (currentSession?.running != true) liveRunning = false
-                                    composerActionError = L.sendFailed.format(e.message ?: L.unknownError)
-                                }
-                            } finally {
-                                withContext(Dispatchers.Main) {
-                                    workspacePrefs.parkedSend = null
-                                    isSending = false
-                                }
-                            }
-                        }
-                    }
-                }
 
             // 高权限命令的二次确认（文案与 PermissionPickerSheet 的确认弹窗一致）。
             // 取消后 composer 保留原文；确认后只执行一次发送。
@@ -2713,11 +2725,6 @@ fun WorkspaceScreen(
                 )
             }
 
-            // 会话级统计：写在输入卡下方（会话下方）的单行 12sp 居中文本。
-            // 无论浏览对话还是轨迹，累计用量都只在这一处出现；单条回答只保留自身耗时。
-            if (currentSessionId != null) {
-                SessionStatsLine(stats = sessionStats)
-            }
                 }
 
             } // bottom chrome 容器结束
@@ -2730,6 +2737,10 @@ fun WorkspaceScreen(
         summaries = changeSummaries,
         loadSummary = { seq -> currentSessionId?.let { sid -> withContext(Dispatchers.IO) { client.getWorkspaceChanges(sid, seq) } } },
         loadDiff = { seq, index -> client.getWorkspaceChangeDiff(currentSessionId ?: error(L.unknownError), seq, index) },
+        // 稿 04 底部提问条：预填「关于 <文件> 的改动：」，收起面板回聊天
+        onAskAboutFile = { file ->
+            inputText = ChangesL.askAboutFilePrefill.format(file.display) + inputText; scope.launch { changesPanel.settle(false) }; showPhoneChat()
+        },
     )
 
     // Snackbar 叠在抽屉/遮罩之上（抽屉打开时仍可见可点）；底部让开输入区：
@@ -2766,6 +2777,52 @@ fun WorkspaceScreen(
     }
 
     // 模型选择底部抽屉
+    // 面板里的模型 / 模式座沿用输入卡的那份预设（这里而不是更早，是因为依赖 appSettings）
+
+    if (showNewTaskSheet) {
+        NewTaskSheetHost(
+            state = NewTaskSheetState(
+                workspaces = workspaceCatalogItems.map { it.path }, selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
+                lastSession = sessions.maxByOrNull { sessionMillis(it.updatedAt) },
+                input = inputText,
+                modelName = pendingModel?.second ?: appSettings.defaultModel, modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
+                permissionPreset = appSettings.agentPreset, permissionLabel = presetDisplayName(appSettings.agentPreset, null),
+                sending = isSending, error = composerActionError,
+            ),
+            actions = NewTaskSheetActions(
+                onSelectWorkspace = { pendingSessionCwd = it; workspacePrefs.lastSelectedWorkspace = it }, onOpenWorkspacePicker = { showNewTaskWorkspacePicker = true },
+                onOpenLastTask = { selectSession(it); showPhoneChat() },
+                onInputChange = { inputText = it }, onOpenModelPicker = { showModelPicker = true }, onOpenModePicker = { showAgentPresetPicker = true },
+                onAttach = { imagePickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onSend = { submitComposer() },
+                onDismiss = { showNewTaskSheet = false },
+            ),
+        )
+    }
+
+    ArchivedSessionsHost(
+        open = showArchivedSheet, prefs = workspacePrefs, sessions = sessions,
+        loading = sessionsInitialLoad, onDismiss = { showArchivedSheet = false },
+    )
+
+    if (showNewTaskWorkspacePicker) {
+        WorkspacePickerSheet(
+            sessions = sessions,
+            deletedWorkspaces = deletedWorkspaces,
+            registeredPaths = workspaceRegistry,
+            registryReady = workspaceRegistryReady,
+            selectedPath = pendingSessionCwd,
+            onDismiss = { showNewTaskWorkspacePicker = false },
+            onPick = { path ->
+                showNewTaskWorkspacePicker = false
+                if (path != null) {
+                    pendingSessionCwd = path
+                    workspacePrefs.lastSelectedWorkspace = path
+                }
+            },
+        )
+    }
+
     if (showModelPicker) {
         ModelPickerSheet(
             catalog = modelCatalog,

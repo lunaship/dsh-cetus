@@ -66,6 +66,9 @@ class ComponentLanguageTest {
          * 其余页面文件的 pill 形状存量（逐批收敛到共享组件）。
          * 批次 5：composer 座位、上下文计量触发器、流式光标、统计触发器均已迁走；
          * 余下的是 M3 按钮惯例的实心/文字 CTA 与状态 pill（合同允许的场景）。
+         *
+         * 2026-09-28 重设计阶段 3：HomeHub 的胶囊按钮/悬浮主按钮换成共享组件后，
+         * 只剩概况行那个「全部工作区」筛选胶囊，预算由 3 下调到 1（只降不升）。
          */
         val PILL_SHAPE_BUDGET = mapOf(
             "dev/deeplinks/native/WorkspaceSheets.kt" to 1,
@@ -73,7 +76,7 @@ class ComponentLanguageTest {
             "dev/deeplinks/native/WorkspaceChangesPanel.kt" to 1,
             "dev/deeplinks/native/ProducedFiles.kt" to 1,
             "dev/deeplinks/native/WorkspaceChrome.kt" to 5,
-            "dev/deeplinks/native/HomeHub.kt" to 3,
+            "dev/deeplinks/native/HomeHub.kt" to 1,
         )
 
         /** Settings / Devices 的 CircleShape 图标底板存量（批次 3 清零）。 */

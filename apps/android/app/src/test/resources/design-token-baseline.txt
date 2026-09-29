@@ -4,7 +4,7 @@
 # 本轮已把 12/18、13/20、11/16 三组密集字号收敛到 DshType.captionRelaxed / bodyDense / microRelaxed
 # （角色为精确匹配，validateDebugScreenshotTest 通过证明零视觉变化）。
 dev/deeplinks/native/ApprovalCard.kt 1
-dev/deeplinks/native/ComposerBar.kt 4
+dev/deeplinks/native/ComposerBar.kt 2
 dev/deeplinks/native/ComposerEditField.kt 2
 dev/deeplinks/native/DshMenu.kt 1
 dev/deeplinks/native/MarkdownContent.kt 4

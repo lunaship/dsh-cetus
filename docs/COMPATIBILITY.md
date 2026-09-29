@@ -260,3 +260,17 @@ external fact in the relevant release or deployment environment before
 changing the status above. For every verification or release record, lock the
 exact checked-out revision of each repository in that evidence; this matrix
 does not hard-code moving `main` revisions or ahead counts.
+
+### 审批瀑布在 `0.1.5-rc.3` 上不触发（2026-09-29 实测，`0.1.7-alpha.1` 待验）
+
+用隔离实例（`--profile` + 临时 `stateDir`，插件 `link:` 到工作树）跑真实审批时发现：插件挂在
+`approval/request`（与 `user-questions/request`）上的钩子**一次都没被调用**——两轮探针分别在钩子入口
+写文件，各轮 100 秒内文件始终为空；同一条会话的 `session.history` 里却有 `approval/asked` 事件、
+手机侧也能看到审批。
+
+影响：`rt.requests` 永远为空 → 插件「手机接管审批」在这版上不可达（App 侧因此走 D1-A 的诚实降级：
+只显示「在电脑上处理」，不给批准/拒绝按钮）。
+
+**边界**：只在 CLI 的 `0.1.5-rc.3` 上证实。本仓基线的宿主包是 `0.1.7-alpha.1`（见上表），它带真正的
+插件面变更，**该版本上钩子是否触发尚未验证**——换基线复验时请优先看这条。手机端据此推导
+`awaitingInput`（历史里 `approval/asked` 无配对 `approval/decided`）不受影响，两种基线上都成立。

@@ -6,6 +6,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import dev.deeplinks.native.ui.DshChipTone
+import dev.deeplinks.native.ui.DshStatusChip
+import dev.deeplinks.native.ui.DshStatusIcon
+import dev.deeplinks.native.util.homeTimeLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
@@ -106,6 +113,8 @@ internal fun SessionRowItem(
     indent: Dp = 0.dp,
     goalSummary: String? = null,
     containerColor: Color = Color.Unspecified,
+    /** 电脑离线：进行中行改成「静止时钟 + 最后看到：…」（稿 08），不再假装还在实时跑。 */
+    offline: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val itemInteraction = remember { MutableInteractionSource() }
@@ -221,27 +230,27 @@ internal fun SessionRowItem(
                     .padding(horizontal = DrawerInnerPadding, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // 行首 32dp 状态圈（稿 01/07）：最近 = 绿底带勾文档 / 灰底方块，进行中 = 墨色转圈
+                SessionLeadingIcon(session = session, offline = offline)
+                Spacer(Modifier.width(DshSpace.s12))
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    val relTime = if (!session.running && !session.awaitingInput && session.updatedAt > 0) {
-                        relativeTime(session.updatedAt)
-                    } else {
-                        ""
+                    val relTime = if (session.updatedAt > 0) homeTimeLabel(session.updatedAt) else ""
+                    // 等你处理的行先给状态胶囊（稿 07）；其余行标题直接起
+                    if (session.awaitingInput) {
+                        DshStatusChip(
+                            text = s.homeChipOnDesktop,
+                            tone = DshChipTone.Remote,
+                        )
+                        Spacer(Modifier.height(DshSpace.s6))
                     }
-                    // 时间放在标题行尾，副标题只写项目和状态
-                    val meta = formatSessionSubtitle(
-                        session = session,
-                        goalSummary = goalSummary,
-                        runningLabel = s.runningStatus,
-                        awaitingLabel = s.awaitingInputStatus,
-                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             displaySessionTitle(session.title),
                             color = Dsh.labelPrimary,
-                            style = DshType.titleSmall,
+                            style = DshType.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -257,13 +266,14 @@ internal fun SessionRowItem(
                             )
                         }
                     }
+                    val meta = homeRowSubtitle(session = session, goalSummary = goalSummary, offline = offline)
                     if (meta.isNotBlank()) {
                         Spacer(Modifier.height(DshSpace.s2))
                         Text(
                             meta,
-                            color = Dsh.labelTertiary,
+                            color = Dsh.labelSecondary,
                             style = DshType.captionRelaxed,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -299,7 +309,103 @@ internal fun SessionRowItem(
     }
 }
 
-/** 抽屉搜索：40dp 输入框（bgInput + 发丝描边，与工具调用查找条同语义）。 */
+/**
+ * 行首 32dp 状态圈（稿 01/07）：
+ * - 等你处理：电脑图标（这条审批在电脑端网页上处理）；
+ * - 进行中：墨色转圈（系统关动画时静止成一段弧）；
+ * - 已结束：有 lastResult = 完成（绿底带勾文档），否则按「已停止」（灰底方块）。
+ */
+@Composable
+private fun SessionLeadingIcon(session: MobileSession, offline: Boolean) {
+    when {
+        // 离线时进行中行不再转圈：换成静止时钟（稿 08 明确「行首换成静止时钟」）
+        offline && session.running -> DshStatusIcon(
+            icon = ClockOutline16,
+            container = Dsh.bgSubtle,
+            content = Dsh.labelSecondary,
+        )
+        session.awaitingInput -> DshStatusIcon(
+            icon = LaptopOutline16,
+            container = Dsh.bgSubtle,
+            content = Dsh.labelSecondary,
+            iconSize = 16.dp,
+        )
+        session.running -> HomeRunningSpinner()
+        // 已结束的分两种：插件说了「不是正常结束」就是已停止；没说（含旧插件）按方案回退成完成
+        // ——图标与文案必须同时按这一个判断走，否则会出现「已完成」配灰方块的自相矛盾
+        session.stoppedReason != null -> DshStatusIcon(
+            icon = StopFill16,
+            container = Dsh.bgSubtle,
+            content = Dsh.labelSecondary,
+            iconSize = 16.dp,
+        )
+        else -> DshStatusIcon(
+            icon = DocumentCheckOutline16,
+            container = Dsh.successContainer,
+            content = Dsh.successContent,
+        )
+    }
+}
+
+/**
+ * 进行中转圈：底轨 + 一段弧；弧随 rememberMotionSpin 旋转，
+ * 系统关闭动画时它返回 null，这里就画一段静止的弧（稿子要求「减少动态时静止」）。
+ * 不用品牌蓝：蓝色只给需要用户动手的动作。
+ */
+@Composable
+private fun HomeRunningSpinner() {
+    val spin = rememberMotionSpin(1100, label = "homeRunningSpin")
+    val track = Dsh.bgTrack
+    val arc = Dsh.labelPrimary
+    Canvas(modifier = Modifier.size(22.dp)) {
+        val stroke = 2.5.dp.toPx()
+        drawCircle(color = track, style = Stroke(width = stroke))
+        drawArc(
+            color = arc,
+            startAngle = -90f + (spin ?: 0f),
+            sweepAngle = 90f,
+            useCenter = false,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
+    }
+}
+
+
+/**
+ * 行副标题（稿 01/07）：
+ * - 进行中：activity 推出来的「正在运行 go test ./... · 第 12 步」，没有就写「运行中」；
+ * - 等你处理：说明这条审批在电脑端网页上处理；
+ * - 最近：lastResult 的一句话，没有就写「已完成」。
+ */
+internal fun homeRowSubtitle(session: MobileSession, goalSummary: String?, offline: Boolean = false): String {
+    val s = L
+    return when {
+        session.awaitingInput -> s.homeApprovalOnDesktop
+        session.running -> {
+            val activity = session.activity
+            val body = when {
+                activity?.isTool == true && !activity.label.isNullOrBlank() -> {
+                    val step = activity.step?.let { " · ${L.homeStepLabel.format(it)}" } ?: ""
+                    "${s.homeRunningInline.format(activity.label)}$step"
+                }
+                activity?.kind == "thinking" -> s.homeThinking
+                activity?.kind == "writing" -> s.homeWriting
+                !goalSummary.isNullOrBlank() -> goalSummary
+                else -> s.runningStatus
+            }
+            // 离线时这一行是缓存下来的最后状态，加前缀说清楚（稿 08）
+            if (offline) "${s.homeLastSeenPrefix}$body" else body
+        }
+        else -> {
+            val result = session.lastResult
+            val files = result?.files?.takeIf { it > 0 }?.let { s.homeFilesChanged.format(it) }
+            listOfNotNull(files, result?.text?.takeIf { it.isNotBlank() }).joinToString("，")
+                // 没有结果一句话时：已停止的写它是怎么停的，其余按方案回退「已完成」
+                .ifBlank { session.stoppedReason?.let(::stoppedReasonLabel) ?: s.homeDoneFallback }
+        }
+    }
+}
+
 @Composable
 internal fun SidebarSearchField(
     value: String,

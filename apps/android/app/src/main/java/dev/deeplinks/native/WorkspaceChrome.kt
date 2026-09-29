@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +78,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.stateDescription
 import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshTopSegment
+import dev.deeplinks.native.ui.DshTextTabs
 import dev.deeplinks.native.util.StreamBannerKind
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.draw.shadow
@@ -636,16 +637,23 @@ internal fun ToolGroupHeader(
     val groupRunning = sweepingId != null && group.items.any { it.id == sweepingId }
     val pressTint = Dsh.pressed
     val rail = Dsh.borderStrong
-    val summaryTitle = dev.deeplinks.native.util.formatToolGroupSummary(group.items) { L.toolCallCount.format(it) }
+    val summaryTitle = dev.deeplinks.native.util.toolGroupRowLabel(
+        items = group.items,
+        running = groupRunning,
+        donePrefix = L.toolGroupDone,
+        runningPrefix = L.toolGroupRunning,
+    )
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .heightIn(min = 36.dp)
-                .clip(RoundedCornerShape(DshRadius.control))
+                // 稿 03：过程折叠行是一颗灰底胶囊（tonal 填充，不加描边）
+                .clip(RoundedCornerShape(DshRadius.full))
+                .background(Dsh.bgSubtle)
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .semantics {
                     role = Role.Button
-                    contentDescription = summaryTitle
+                    contentDescription = summaryTitle.ifBlank { L.executing }
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
@@ -655,13 +663,16 @@ internal fun ToolGroupHeader(
             if (groupRunning) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(13.dp),
-                    color = Dsh.brand500,
+                    // 进行中转圈用墨色（2026-09-28 重设计：品牌蓝只给需要你动手的动作）
+                    color = Dsh.labelPrimary,
                     strokeWidth = 1.5.dp,
                 )
                 Spacer(Modifier.width(10.dp))
             } else {
+                // 已结束用「带勾文档」（阶段 1 补的图标），与首页「最近」分组的完成态同一符号；
+                // 原先的 CodeOutline16 只表示「这是代码」，不带状态语义
                 Icon(
-                    CodeOutline16,
+                    DocumentCheckOutline16,
                     contentDescription = null,
                     tint = Dsh.labelTertiary,
                     modifier = Modifier.size(14.dp),
@@ -728,14 +739,15 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 会话顶栏：导航、会话名（下挂「项目 · 电脑」一行）、对话/轨迹胶囊分段和溢出菜单。
- * 标题被分段挤窄时，副标题仍交代这是哪个项目、哪台电脑。
+ * 会话顶栏：导航、会话名、对话/轨迹胶囊分段和溢出菜单。
+ * 项目与连接状态在输入卡上方的上下文条（[ComposerContextStrip]），顶栏只放标题。
  * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
  */
 @Composable
 internal fun WorkspaceTopBar(
     running: Boolean,
     title: String,
+    /** 第二行：工作区 · 电脑名，或执行中的「◌ 正在执行 · 第 12 步 · 3 分钟」（稿 03/10）。 */
     subtitle: String? = null,
     showBack: Boolean,
     onNavigate: () -> Unit,
@@ -776,47 +788,42 @@ internal fun WorkspaceTopBar(
                 )
             }
 
+            // 两行标题：会话名（粗）+ 工作区·电脑名 / 执行中状态（稿 03/10）。
+            // 分段控件从这一行挪到下面一行，成为「对话 / 轨迹」文字 Tab。
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
+                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (running) {
+                if (running && subtitle.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(Dsh.brand400),
+                            .background(Dsh.labelPrimary),
                     )
                     Spacer(Modifier.width(DshSpace.s6))
                 }
-                Column(modifier = Modifier.weight(1f)) {
+                Column(Modifier.weight(1f)) {
                     Text(
                         title,
                         color = Dsh.labelPrimary,
-                        style = if (subtitle.isNullOrBlank()) DshType.titleLarge else DshType.title,
+                        style = DshType.title,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (!subtitle.isNullOrBlank()) {
                         Text(
                             subtitle,
-                            color = Dsh.labelTertiary,
+                            color = Dsh.labelSecondary,
                             style = DshType.captionRelaxed,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-            }
-
-            if (showViewModeTabs) {
-                DshTopSegment(
-                    labels = listOf(L.tabChat, L.tabTrace),
-                    selectedIndex = if (viewMode == "trace") 1 else 0,
-                    onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
-                )
             }
 
             Box {
@@ -843,6 +850,15 @@ internal fun WorkspaceTopBar(
                     items = menuItems,
                 )
             }
+        }
+
+        if (showViewModeTabs) {
+            DshTextTabs(
+                labels = listOf(L.tabChat, L.tabTrace),
+                selectedIndex = if (viewMode == "trace") 1 else 0,
+                onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
+                modifier = Modifier.padding(start = DshSpace.s16),
+            )
         }
     }
 }
@@ -957,44 +973,125 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
     }
 }
 
-/**
- * 会话级统计（输入框下方）：一行浅色文字「7 轮 · 223 步 · 23.5M 令牌」，不加底色和图标，
- * 点按打开用量看板。速率、缓存等细项只在看板里出现，这里不抢输入框的视线。
- */
+/** 会话累计用量的一行摘要「7 轮 · 223 步 · 23.5M 令牌」；没有可显示的数时返回 null。 */
 @Composable
-internal fun SessionStatsLine(stats: MobileSessionStats?) {
-    val s = stats ?: return
+internal fun sessionStatsSummary(stats: MobileSessionStats?): String? {
+    val s = stats ?: return null
     val strings = DshS
-    var detailOpen by remember { mutableStateOf(false) }
-
     val totalTokens = s.uncachedInputTokens + s.cacheReadTokens + s.outputTokens
-    val text = buildList {
+    return buildList {
         if (s.turns > 0 || s.steps > 0) add(strings.statsTurnsSteps.format(s.turns, s.steps))
         if (totalTokens > 0) add("${compactTokens(totalTokens)} ${strings.tokenUnitShort}")
-    }.joinToString(" · ")
-    if (text.isEmpty()) return
+    }.joinToString(" · ").ifEmpty { null }
+}
 
-    Box(
-        modifier = Modifier
+/**
+ * 输入卡上方的上下文条（借 Lody 的两层输入区）：左边「● 工作区」+ 最近改动，
+ * 右边会话累计用量。整条不加底色和描边——它是输入卡的页眉，不是第二张卡。
+ *
+ * - 圆点表示这台电脑的实时连接（在线实心绿、否则空心灰），名字写进无障碍描述；
+ * - 工作区点按浏览文件，改动点按打开改动面板，用量点按打开用量看板；
+ * - 原先挂在输入卡下方的统计行收进这里，输入卡成为屏幕最底的元素。
+ */
+@Composable
+internal fun ComposerContextStrip(
+    modifier: Modifier = Modifier,
+    hostName: String,
+    online: Boolean,
+    workspaceName: String?,
+    changes: WorkspaceChangesSummary?,
+    stats: MobileSessionStats?,
+    onBrowseFiles: () -> Unit,
+    onOpenChanges: () -> Unit,
+) {
+    val strings = DshS
+    val summary = sessionStatsSummary(stats)
+    var detailOpen by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = COMPOSER_SIDE_CLEARANCE),
-        contentAlignment = Alignment.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = text,
-            color = Dsh.labelTertiary,
-            style = DshType.microRelaxed.tabularNums(),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.control))
-                .clickable(role = Role.Button, onClickLabel = strings.statsViewDetails, onClick = { detailOpen = true })
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
-        )
+        // 左组吃掉剩余宽度（工作区名优先截断）；右侧用量不加 weight，先按自身宽度量
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            // 一行小字：● 电脑名 在线（工作区名已挪到顶栏副标题，稿 03/10）。
+            // 文件入口不在这里——顶栏「更多」菜单里已有「浏览文件」。
+            val status = "$hostName ${if (online) strings.statusOnline else strings.statusOffline}".trim()
+            Box(
+                modifier = Modifier
+                    .size(DshSpace.s6)
+                    .clip(CircleShape)
+                    .then(
+                        if (online) Modifier.background(Dsh.success)
+                        else Modifier.border(1.dp, Dsh.labelTertiary, CircleShape)
+                    ),
+            )
+            Spacer(Modifier.width(DshSpace.s8))
+            Text(
+                status,
+                color = Dsh.labelSecondary,
+                style = DshType.label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (changes != null) {
+            ContextStripSegment(
+                onClick = onOpenChanges,
+                description = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(changes)}",
+            ) {
+                Icon(
+                    EditOutline16,
+                    contentDescription = null,
+                    tint = Dsh.labelSecondary,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(DshSpace.s4))
+                Text(
+                    ChangesL.viewChanges,
+                    color = Dsh.labelSecondary,
+                    style = DshType.label,
+                    maxLines = 1,
+                )
+            }
+        }
+        if (summary != null && stats != null) {
+            ContextStripSegment(onClick = { detailOpen = true }, description = "${strings.statsViewDetails}: $summary") {
+                Text(
+                    summary,
+                    color = Dsh.labelTertiary,
+                    style = DshType.microRelaxed.tabularNums(),
+                    maxLines = 1,
+                )
+            }
+        }
     }
 
-    if (detailOpen) {
-        SessionStatsDetailDialog(stats = s, onDismiss = { detailOpen = false })
+    if (detailOpen && stats != null) {
+        SessionStatsDetailDialog(stats = stats, onDismiss = { detailOpen = false })
+    }
+}
+
+/** 上下文条里的一段：安静文字，按压才出底色；36dp 高，与上方「最近改动」行同一规格。 */
+@Composable
+private fun ContextStripSegment(
+    onClick: () -> Unit,
+    description: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 36.dp)
+            .clip(RoundedCornerShape(DshRadius.control))
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(horizontal = DshSpace.s6),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        content()
     }
 }
 

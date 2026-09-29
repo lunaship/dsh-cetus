@@ -210,6 +210,8 @@ internal fun AppNavHost(
             // 设置壳层统一（DshPageScaffold），内部二级页保留自己的 NavHost
             SettingsRoute(
                 host = currentHost,
+                // 与首页同一个探针的结果（单一来源），设置页不自己探
+                connectivity = dev.deeplinks.native.util.HostConnectivity.snapshot,
                 onBack = { navController.popBackStack() },
                 onOpenDevices = {
                     navController.navigate(AppRoute.DEVICES) { launchSingleTop = true }
@@ -245,6 +247,18 @@ internal fun AppNavHost(
                             liveIntent.getStringExtra(EXTRA_SHARE_IMAGE),
                         ),
                         initialShareSeq = liveIntent.getLongExtra(EXTRA_SHARE_SEQ, 0L),
+                        // 通知动作（方案 8）：看改动 / 回复
+                        initialIntentAction = when {
+                            liveIntent.getBooleanExtra(dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES, false) ->
+                                dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES
+                            liveIntent.getBooleanExtra(dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY, false) ->
+                                dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY
+                            else -> null
+                        },
+                        initialIntentActionRequestId = liveIntent.getLongExtra(
+                            dev.deeplinks.core.DshNotifier.EXTRA_ACTION_REQUEST_ID,
+                            0L,
+                        ),
                         initialShareNotice = liveIntent.getStringExtra(EXTRA_SHARE_NOTICE),
                         onOpenDevice = { notice ->
                             if (notice.isNullOrBlank()) {

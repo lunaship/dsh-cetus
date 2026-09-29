@@ -36,6 +36,12 @@ data class MobileMessage(
     // SSE 流式消息为 true：播放入场动画；历史/全量刷新消息为 false：跳过（避免整列重放）
     val entrance: Boolean = false,
     val seq: Long = 0L,
+    /**
+     * 这条审批/提问来自**请求快照**——即插件把该会话的请求交给了这台手机（D1-A 的「手机接管」）。
+     * 只有它才能显示「拒绝 / 批准」按钮；仅来自历史的 approval 消息一律走「在电脑上处理」行。
+     * `/requests` 只对「正在查看该会话的设备」返回 200，所以拿到快照就等于接管成立。
+     */
+    val takenOverByPhone: Boolean = false,
     /** ask_user_question 的 rpcId（role=question） */
     val questionRpcId: String? = null,
     /** 选项 label 列表（JSON 亦可塞 toolArgs；此处便于 UI） */
@@ -79,6 +85,36 @@ data class MobileSession(
     val subagentCount: Int? = null,
     /** 有未结束的审批 / 澄清问题（插件自记，见 MOBILE_SYNC_CONTRACT）；首页「等待确认」分区。 */
     val awaitingInput: Boolean = false,
+    /**
+     * 当前步骤（只在 running 时有）：插件从 session.history 推导，字段级约定见 MOBILE_SYNC_CONTRACT。
+     * 旧插件不下发，为 null 时首页写「运行中」。
+     */
+    val activity: MobileSessionActivity? = null,
+    /**
+     * 结果一句话（只在非 running 时有）：最后一条回复摘要 + 本轮改动统计。
+     * 旧插件不下发，为 null 时首页写「已完成」。
+     */
+    val lastResult: MobileSessionResult? = null,
+    /** 这一轮怎么结束的（插件阶段 2 起下发）：null = 正常完成或旧插件 → 各处按「已完成」回退。 */
+    val stoppedReason: String? = null,
+)
+
+/** 会话当前步骤：`kind` 决定文案，`tool` 时 [label] 是命令或参数摘要。 */
+data class MobileSessionActivity(
+    val kind: String,
+    val label: String? = null,
+    val step: Long? = null,
+    val startedAt: Long? = null,
+) {
+    val isTool: Boolean get() = kind == "tool"
+}
+
+/** 会话结果一句话：文本与改动统计都可缺。 */
+data class MobileSessionResult(
+    val text: String? = null,
+    val files: Long? = null,
+    val added: Long? = null,
+    val deleted: Long? = null,
 )
 
 data class MobilePairedDevice(
@@ -206,6 +242,33 @@ internal fun parseHistoryFiles(json: JSONObject): List<String> {
     }
 }
 
+/**
+ * 会话「当前步骤」：字段缺失或 `kind` 为空视为没有（旧插件回退）。
+ * `label` / `step` / `startedAt` 都是可缺的，缺了就不给值，让 UI 走通用文案。
+ */
+internal fun parseMobileSessionActivity(json: JSONObject?): MobileSessionActivity? {
+    val kind = json?.optNullableString("kind") ?: return null
+    return MobileSessionActivity(
+        kind = kind,
+        label = json.optNullableString("label"),
+        step = json.optLong("step", -1L).takeIf { it >= 0 },
+        startedAt = json.optLong("startedAt", -1L).takeIf { it >= 0 },
+    )
+}
+
+/** 会话「结果一句话」：文本与三个统计都可缺；全缺时不下发该字段。 */
+internal fun parseMobileSessionResult(json: JSONObject?): MobileSessionResult? {
+    if (json == null) return null
+    val result = MobileSessionResult(
+        text = json.optNullableString("text"),
+        files = json.optLong("files", -1L).takeIf { it >= 0 },
+        added = json.optLong("added", -1L).takeIf { it >= 0 },
+        deleted = json.optLong("deleted", -1L).takeIf { it >= 0 },
+    )
+    val empty = result.text == null && result.files == null && result.added == null && result.deleted == null
+    return result.takeUnless { empty }
+}
+
 internal fun parseMobileSession(json: JSONObject): MobileSession = MobileSession(
     sessionId = json.getString("sessionId"),
     title = json.optNullableString("title") ?: L.untitledSession,
@@ -218,6 +281,9 @@ internal fun parseMobileSession(json: JSONObject): MobileSession = MobileSession
     parentSessionId = json.optNullableString("parentSessionId"),
     subagentCount = json.optInt("subagentCount", -1).takeIf { it >= 0 },
     awaitingInput = json.optBoolean("awaitingInput"),
+    activity = parseMobileSessionActivity(json.optJSONObject("activity")),
+    lastResult = parseMobileSessionResult(json.optJSONObject("lastResult")),
+    stoppedReason = json.optNullableString("stoppedReason"),
 )
 
 internal fun resolveHarnessLabel(
@@ -472,7 +538,7 @@ class MobileApiClient(private val host: Host) {
     fun answerApproval(sessionId: String, approvalId: String, outcome: String): Boolean {
         val root = request("POST", "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") + "/approval",
             JSONObject().put("approvalId", approvalId).put("outcome", outcome))
-        return root.optBoolean("accepted", false)
+        return root.optBoolean("accepted", false) && root.optString("outcome", outcome) == outcome
     }
 
     fun getSessionRequests(sessionId: String): SessionRequestSnapshot {

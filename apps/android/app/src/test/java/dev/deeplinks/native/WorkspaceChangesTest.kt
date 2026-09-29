@@ -169,4 +169,79 @@ class WorkspaceChangesTest {
         assertTrue(settleChangesPanelOpen(0.5f, 0f, 1_000f))
         assertFalse(settleChangesPanelOpen(0.2f, 300f, 1_000f))
     }
+
+    private fun ctx(n: Int) = DiffRow(DiffRow.Kind.CONTEXT, n, n, "line $n")
+    private fun hunk() = DiffRow(DiffRow.Kind.HUNK, null, null, "@@ -1,20 +1,20 @@")
+    private fun add(n: Int) = DiffRow(DiffRow.Kind.ADD, null, n, "added $n")
+
+    /** 短上下文不折：改动旁边两三行上下文要看得到。 */
+    @Test
+    fun `foldContextRows 短上下文原样保留`() {
+        val rows = listOf(hunk()) + (1..5).map(::ctx)
+        assertEquals(rows, foldContextRows(rows))
+    }
+
+    /** 长上下文折成一行「展开中间 N 行」，首尾各留 3 行。 */
+    @Test
+    fun `foldContextRows 长上下文折起来并保留首尾`() {
+        val rows = listOf(hunk()) + (1..20).map(::ctx) + listOf(add(99))
+        val out = foldContextRows(rows)
+        assertEquals(listOf(1, 2, 3), out.filter { it.kind == DiffRow.Kind.CONTEXT }.take(3).map { it.newNo })
+        val fold = out.single { it.kind == DiffRow.Kind.FOLD }
+        assertEquals(20 - CONTEXT_FOLD_KEEP * 2, fold.hiddenCount)
+        // 尾部 3 行仍在折叠行之后
+        val afterFold = out.dropWhile { it.kind != DiffRow.Kind.FOLD }.drop(1).filter { it.kind == DiffRow.Kind.CONTEXT }
+        assertEquals(listOf(18, 19, 20), afterFold.map { it.newNo })
+        // 新增行没有被折叠吃掉
+        assertTrue(out.any { it.kind == DiffRow.Kind.ADD })
+    }
+
+    /** 展开集合里的下标：整段原样显示。 */
+    @Test
+    fun `foldContextRows 展开后恢复整段`() {
+        val rows = listOf(hunk()) + (1..20).map(::ctx)
+        val folded = foldContextRows(rows)
+        assertTrue(folded.any { it.kind == DiffRow.Kind.FOLD })
+        // expandedFolds 用的是「被折叠片段在输入里的起始下标」：hunk 占 0，上下文从 1 起
+        val expanded = foldContextRows(rows, expandedFolds = setOf(1))
+        assertEquals(rows, expanded)
+    }
+
+    /** hunk 头是分隔符：两段上下文不跨 hunk 合并。 */
+    @Test
+    fun `foldContextRows 不跨 hunk 合并`() {
+        val rows = listOf(hunk()) + (1..8).map(::ctx) + listOf(hunk()) + (9..16).map(::ctx)
+        val out = foldContextRows(rows)
+        assertEquals(0, out.count { it.kind == DiffRow.Kind.FOLD })
+    }
+
+    /** 悬挂缩进（方案 6.3）：放得下就一行，放不下才切，续行带 2 字符缩进。 */
+    @Test
+    fun `splitHangingIndent 放得下不切`() {
+        assertEquals(listOf("abc"), splitHangingIndent("abc", maxChars = 10))
+    }
+
+    @Test
+    fun `splitHangingIndent 续行带两字符缩进`() {
+        val out = splitHangingIndent("0123456789", maxChars = 6, indentChars = 2)
+        assertEquals(listOf("012345", "  6789"), out)
+        // 续行都以缩进开头，首行不带
+        assertTrue(out.first().startsWith("0"))
+        assertTrue(out.drop(1).all { it.startsWith("  ") })
+    }
+
+    /** 每个显示行的宽度都不超过 maxChars——超了就会又被 Text 折一次，悬挂缩进就白做了。 */
+    @Test
+    fun `splitHangingIndent 每行都不超宽`() {
+        val out = splitHangingIndent("x".repeat(50), maxChars = 8, indentChars = 2)
+        assertTrue(out.all { it.length <= 8 })
+        assertEquals(50, out.sumOf { it.trimStart().length })
+    }
+
+    /** maxChars 小到放不下缩进时退化为硬切，不产生空行也不死循环。 */
+    @Test
+    fun `splitHangingIndent 极窄宽度不退化`() {
+        assertEquals(listOf("ab"), splitHangingIndent("ab", maxChars = 2, indentChars = 2))
+        assertEquals(listOf("abcd"), splitHangingIndent("abcd", maxChars = 0))
+    }
 }

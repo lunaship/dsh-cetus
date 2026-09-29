@@ -83,6 +83,26 @@
 - **生成物即契约**：`src/client.js`、DLR/1 向量、截图基线都是生成/校验过的
   工件，CI 用 `git diff --exit-code` 守住「改了源码必须重新生成」。
 
+## 首页收件箱的数据流（2026-09-28 重设计）
+
+首页要回答「有没有在等我、在跑什么、最近干完了什么」，三块数据来源不同：
+
+| 首页元素 | 数据来源 | 缺失时的回退 |
+|---|---|---|
+| `awaitingInput` 分区与「在电脑上处理」行 | 插件钩子计数（`src/awaiting-input.js`），随会话摘要下发 | 不分区 |
+| 进行中行的「正在运行 `命令` · 第 N 步」 | **插件新增 `activity`**：`src/mobile-session-activity.js` 从 `session.history` 推导最近一次未结束的工具调用（只对最近 20 个会话算，按 `sessionId+updatedAt` 缓存，并发 4） | 写「运行中」，副标题退回目标摘要 |
+| 最近行的「改了 N 个文件，<一句话>」 | **插件新增 `lastResult`**：同上文件，取最后一条助手回复去 Markdown 的首段（≤60 字）+ 本轮 `workspace/changes` 的统计 | 写「已完成」 |
+| 顶栏「● 在线 · 云端 · 31ms」 | App 侧每 30s 一次 `PairClient.probe`；通道取 `Host.hasRelay` | 探不到即离线 |
+| 顶栏「离线 · N 分钟前在线」 | **App 本地记录** `core/LastOnlineStore`（Host 里只有设备级 `lastSeenAt`，没有电脑级） | 只写「离线」 |
+| 首页内联审批卡 | 仅当前打开会话的 `/requests` 快照（`WorkspaceViewModel.answerApproval` 提交） | 该行降级为「在电脑上处理」 |
+
+字段级约定（结构、出现时机、回退语义、边界）见
+[`MOBILE_SYNC_CONTRACT.md`](MOBILE_SYNC_CONTRACT.md) 的「会话『当前步骤』与『结果一句话』」。
+
+**多路订阅的边界**：手机只在打开某个会话时才订阅它的 SSE，插件也只在有手机订阅时
+才接管该会话的审批（`src/index.js` 的 `approval/request`）；因此首页能内联批准的行
+至多一行，其余审批仍要到电脑端或进对话页处理。这是方案 D1 选定的诚实降级，不是缺陷。
+
 ## 门禁
 
 | 范围 | 命令 | 依赖 |

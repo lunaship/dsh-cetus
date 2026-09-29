@@ -190,11 +190,111 @@ data class DiffRow(
     val newNo: Int?,
     val text: String,
     val emphasis: List<IntRange> = emptyList(),
+    /** 折叠行专用：被折起来的上下文行数（0 = 普通行）。 */
+    val hiddenCount: Int = 0,
+    /** 折叠行专用：被折叠片段在输入 rows 里的起始下标（-1 = 普通行），供 UI 展开时回填。 */
+    val foldStart: Int = -1,
 ) {
-    enum class Kind { HUNK, CONTEXT, ADD, DELETE }
+    enum class Kind { HUNK, CONTEXT, ADD, DELETE, FOLD }
 }
 
 fun diffRows(hunks: List<DiffHunk>): List<DiffRow> = withIntralineEmphasis(plainDiffRows(hunks))
+
+/** 折叠阈值：一段未改动的上下文超过这么多行才折（保留首尾各 [CONTEXT_FOLD_KEEP] 行）。 */
+const val CONTEXT_FOLD_MIN = 10
+const val CONTEXT_FOLD_KEEP = 3
+
+/**
+ * 把过长的未改动上下文折成一行「展开中间 N 行」（2026-09-28 重设计 · 方案 6.3）。
+ *
+ * [expandedFolds] 放的是「被折叠的上下文片段在**输入 rows 里**的起始下标」（不是输出里的
+ * 折叠行下标），由 UI 持有一份；纯函数只负责按它决定这一轮该显示哪些行，便于单测。
+ *
+ * hunk 头是天然的分隔符：不在 hunk 之间跨行合并，否则会把两段互不相邻的改动连起来。
+ */
+/** 折行时续行的缩进宽度（字符）：稿 04 要求 2ch 悬挂缩进。 */
+
+const val HANGING_INDENT_CHARS = 2
+
+/**
+ * 悬挂缩进的分行区间：返回 [(start, end), …]，首段用满整宽，后续每段先放缩进。
+ *
+ * 单独给出区间而不是字符串，是为了让 UI 能在 `AnnotatedString` 上按区间切片——
+ * 行内改动的加深底色（[DiffRow.emphasis]）只有这样才不会被切丢。
+ */
+fun hangingIndentRanges(
+    length: Int,
+    maxChars: Int,
+    indentChars: Int = HANGING_INDENT_CHARS,
+): List<Pair<Int, Int>> {
+    if (length <= 0) return emptyList()
+    if (maxChars <= 0 || length <= maxChars) return listOf(0 to length)
+    val indent = if (maxChars > indentChars) indentChars else 0
+    val out = mutableListOf<Pair<Int, Int>>()
+    var start = 0
+    while (start < length) {
+        // 首行用满整宽；续行要先放缩进，所以可写宽度少 [indent] 个字符
+        val take = if (out.isEmpty()) maxChars else (maxChars - indent).coerceAtLeast(1)
+        val end = (start + take).coerceAtMost(length)
+        out += start to end
+        start = end
+    }
+    return out
+}
+
+/**
+ * 把一行差异文本按可用宽度切成「首行 + 续行」，续行前面补 [indentChars] 个空格（方案 6.3）。
+ *
+ * 为什么要在数据层切、而不是靠 Text 自动折行：Compose 的 `Text` 没有 `text-indent`，
+ * 自动折行的续行会顶到最左边，与 hunk 的层级混在一起。切好之后再逐行渲染就能做出悬挂缩进。
+ *
+ * 等宽字体下按字符数切是精确的（差异区固定等宽）；制表符已在上游展开成 4 空格。
+ * [maxChars] <= [indentChars] 时不做缩进（避免无限收缩），直接按 [maxChars] 硬切。
+ */
+fun splitHangingIndent(
+    text: String,
+    maxChars: Int,
+    indentChars: Int = HANGING_INDENT_CHARS,
+): List<String> {
+    val ranges = hangingIndentRanges(text.length, maxChars, indentChars)
+    val indent = if (maxChars > indentChars) indentChars else 0
+    val pad = " ".repeat(indent)
+    return ranges.mapIndexed { index, (from, to) ->
+        (if (index == 0) "" else pad) + text.substring(from, to)
+    }
+}
+
+fun foldContextRows(rows: List<DiffRow>, expandedFolds: Set<Int> = emptySet()): List<DiffRow> {
+    val out = mutableListOf<DiffRow>()
+    var i = 0
+    while (i < rows.size) {
+        if (rows[i].kind != DiffRow.Kind.CONTEXT) {
+            out += rows[i]
+            i++
+            continue
+        }
+        var j = i
+        while (j < rows.size && rows[j].kind == DiffRow.Kind.CONTEXT) j++
+        val length = j - i
+        if (length <= CONTEXT_FOLD_MIN || i in expandedFolds) {
+            out += rows.subList(i, j)
+        } else {
+            out += rows.subList(i, i + CONTEXT_FOLD_KEEP)
+            out += DiffRow(
+                kind = DiffRow.Kind.FOLD,
+                oldNo = null,
+                newNo = null,
+                text = "",
+                hiddenCount = length - CONTEXT_FOLD_KEEP * 2,
+                foldStart = i,
+            )
+            out += rows.subList(j - CONTEXT_FOLD_KEEP, j)
+        }
+        i = j
+    }
+    return out
+}
+
 
 private fun plainDiffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
     for (hunk in hunks) {

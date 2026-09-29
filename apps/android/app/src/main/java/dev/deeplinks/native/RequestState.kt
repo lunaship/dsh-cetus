@@ -65,6 +65,7 @@ private fun coalesceKeyedRequestMessages(
             toolName = existing.second.toolName ?: message.toolName,
             callId = existing.second.callId ?: message.callId,
             approvalId = existing.second.approvalId ?: message.approvalId,
+            takenOverByPhone = existing.second.takenOverByPhone || message.takenOverByPhone,
             questionRpcId = existing.second.questionRpcId ?: message.questionRpcId,
             questionPayloadJson = existing.second.questionPayloadJson ?: message.questionPayloadJson,
             questionOptions = existing.second.questionOptions.ifEmpty { message.questionOptions },
@@ -106,15 +107,18 @@ internal fun applyRequestSnapshotToMessages(
                     toolName = withState.toolName ?: rec.toolName,
                     callId = withState.callId ?: rec.callId,
                     text = withState.text.ifBlank { rec.toolName.orEmpty() },
+                    takenOverByPhone = true,
                 )
             }
             msg.role == "question" && !msg.questionRpcId.isNullOrBlank() -> {
                 val rec = snapshot.questions.firstOrNull { it.id == msg.questionRpcId } ?: return@map msg
                 val withState = applyRequestState(msg, rec.status, rec.outcome)
-                if (!withState.questionPayloadJson.isNullOrBlank() || rec.questionsJson.isNullOrBlank()) withState
-                else {
+                if (!withState.questionPayloadJson.isNullOrBlank() || rec.questionsJson.isNullOrBlank()) {
+                    withState.copy(takenOverByPhone = true)
+                } else {
                     val parsed = parseClarifyingQuestions(rec.questionsJson)
                     withState.copy(
+                        takenOverByPhone = true,
                         questionPayloadJson = rec.questionsJson,
                         questionOptions = parsed.firstOrNull()?.options?.map { it.label }.orEmpty(),
                         questionHeader = parsed.firstOrNull()?.header?.takeIf { it.isNotBlank() },
@@ -149,6 +153,7 @@ internal fun mergeMessagesWithRequestSnapshot(
                     type = "approval",
                     requestStatus = rec.status,
                     outcome = rec.outcome,
+                    takenOverByPhone = true,
                 ),
             )
         }

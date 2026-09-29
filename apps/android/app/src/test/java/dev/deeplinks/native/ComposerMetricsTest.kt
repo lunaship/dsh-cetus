@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.core.L
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -126,5 +127,15 @@ class ComposerMetricsTest {
     fun slashCompletableNeedsASession() {
         assertFalse(completableCanSubmit(hasSession = false))
         assertTrue(completableCanSubmit(hasSession = true))
+    }
+
+    /** 执行中不能说空闲文案，否则用户不知道消息是插话还是排队（方案 5.5）。 */
+    @Test
+    fun placeholderFollowsListeningAndRunning() {
+        assertEquals(L.listening, composerPlaceholder(isListening = true, running = false))
+        assertEquals(L.composerRunningQueue, composerPlaceholder(isListening = false, running = true))
+        assertEquals(L.chatPlaceholder, composerPlaceholder(isListening = false, running = false))
+        // 听写优先于执行中：正在录音时提示仍是听写
+        assertEquals(L.listening, composerPlaceholder(isListening = true, running = true))
     }
 }

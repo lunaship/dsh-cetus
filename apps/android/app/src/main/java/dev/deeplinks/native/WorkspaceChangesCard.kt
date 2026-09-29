@@ -77,18 +77,30 @@ internal fun WorkspaceChangesCard(
             visible.forEachIndexed { index, file ->
                 ChangedFileRow(file = file, onClick = { onOpen(index) })
             }
-            val hidden = summary.total - visible.size
-            if (hidden > 0) {
-                Text(
-                    ChangesL.moreFiles.format(hidden),
-                    color = Dsh.labelPrimary,
-                    style = DshType.label,
+            // 方案 5.3：底部是「查看全部 N 个 ›」，给总数而不是「还有几个」——
+            // 用户要的是「一共改了多少」，而 `hidden` 只有列表被截断时才 > 0
+            if (summary.total > visible.size) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 44.dp)
                         .clickable(indication = dshRipple(), interactionSource = null) { onOpen(null) }
-                        .padding(horizontal = 38.dp, vertical = 13.dp),
-                )
+                        .padding(start = 38.dp, end = DshSpace.s12, top = DshSpace.s12, bottom = DshSpace.s12),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        ChangesL.viewAllFiles.format(summary.total),
+                        color = Dsh.labelPrimary,
+                        style = DshType.label,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        ChevronRightOutline14,
+                        contentDescription = null,
+                        tint = Dsh.labelTertiary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
         }
     }
@@ -138,42 +150,6 @@ internal fun ChangedFileRow(
             file.binary -> Text("BIN", color = Dsh.labelTertiary, style = DshType.microMedium)
             file.oversized -> Text("—", color = Dsh.labelTertiary, style = DshType.microMedium)
             else -> DiffStat(file.added, file.deleted)
-        }
-    }
-}
-
-/**
- * 输入框上方的本轮改动：一行 `+n −n`，点开审查面。
- * 只有二进制等没有行数的改动时写「已编辑 …」，不能让本轮改动没有入口。
- */
-@Composable
-internal fun LatestChangesLine(
-    summary: WorkspaceChangesSummary,
-    onOpen: () -> Unit,
-) {
-    val title = ChangesL.cardTitle(summary)
-    Row(
-        modifier = Modifier
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
-            .heightIn(min = 36.dp)
-            .clickable(indication = dshRipple(), interactionSource = null, onClick = onOpen)
-            .semantics {
-                role = Role.Button
-                contentDescription = "${ChangesL.viewChanges}: $title"
-            }
-            .padding(horizontal = DshSpace.s4),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (summary.added > 0 || summary.deleted > 0) {
-            DiffStat(summary.added, summary.deleted)
-        } else {
-            Text(
-                title,
-                color = Dsh.labelSecondary,
-                style = DshType.label,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }

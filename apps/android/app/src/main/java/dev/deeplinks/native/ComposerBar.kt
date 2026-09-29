@@ -71,6 +71,7 @@ import dev.deeplinks.native.util.visibleUserWorkspaces
 
 @Composable
 internal fun InputBar(
+    modifier: Modifier = Modifier,
     inputText: String,
     onInputChange: (String) -> Unit,
     pendingImages: List<Pair<String, String>> = emptyList(),
@@ -96,7 +97,7 @@ internal fun InputBar(
     composerFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(start = COMPOSER_SIDE_CLEARANCE, end = COMPOSER_SIDE_CLEARANCE),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -185,7 +186,7 @@ internal fun InputBar(
             }
             // 原生 EditText：保住中文输入法 composition / 语音转写的 InputConnection。
             // Compose BasicTextField 在 canSend 切换 imeAction 或双状态同步时易断连。
-            val composerHint = if (isListening) L.listening else L.chatPlaceholder
+            val composerHint = composerPlaceholder(isListening, running)
             ComposerEditField(
                 value = inputText,
                 onValueChange = onInputChange,
@@ -318,11 +319,12 @@ internal fun InputBar(
                 val showMic = composerIdle && !running && !isSending && !isListening && voiceAvailable
                 val sendBg by animateColorAsState(
                     targetValue = when {
-                        // 空态语音：与左侧 + / 同一规格的 bgTrack 圆钮（灰阶安静、不占实心 CTA）；
-                        // 实心蓝只留给可执行的主动作，不给这个槽上墨黑/反白实心
+                        // 空态语音：与左侧 + / 同一规格的 bgTrack 圆钮；实心蓝只给「需要你动手」的
+                        // 批准与发送，停止（打断过程）按 2026-09-28 重设计改用墨色实心
                         showMic -> composerRoundButtonBg(sendPressed)
                         actionError != null && (showStopAtSend || canSend) -> Dsh.error
-                        showStopAtSend || isListening -> Dsh.brand500
+                        showStopAtSend -> Dsh.labelPrimary
+                        isListening -> Dsh.brand500
                         !canSend && !isSending -> Dsh.brand500.copy(alpha = 0.55f)
                         sendPressed -> Dsh.brand400
                         else -> Dsh.brand500
@@ -419,7 +421,7 @@ internal fun InputBar(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .clip(RoundedCornerShape(DshRadius.micro))
-                                        .background(Color.White)
+                                        .background(Dsh.bgCard)
                                 )
                             }
                             isListening || isSending -> {
@@ -700,115 +702,7 @@ internal fun RoundIconButton(
 }
 
 @Composable
-internal fun ComposerTopRow(
-    sessions: List<MobileSession>,
-    deletedWorkspaces: Set<String> = emptySet(),
-    registeredPaths: List<String> = emptyList(),
-    registryReady: Boolean = false,
-    currentCwd: String?,
-    lastCwd: String?,
-    harnessLabel: String,
-    showHarness: Boolean = true,
-    workspaceEditable: Boolean = true,
-    harnessEditable: Boolean = true,
-    workspaceCatalogKind: SessionListKind = SessionListKind.Content,
-    workspaceCatalogError: String? = null,
-    onRetryWorkspaces: () -> Unit = {},
-    onOpenHarnessPicker: (() -> Unit)? = null,
-    onStartSession: (String?) -> Unit,
-    /** 新会话起始块的标题与小字（如「新任务」「192.168.10.20」）；为空时不画标题。 */
-    setupTitle: String? = null,
-    setupCaption: String? = null,
-    trailingContent: @Composable RowScope.() -> Unit = {},
-) {
-    val workspaces = remember(sessions, deletedWorkspaces, registeredPaths, registryReady) {
-        visibleUserWorkspaces(
-            sessionCwds = sessions.map { it.cwd },
-            deletedWorkspaces = deletedWorkspaces,
-            registeredPaths = registeredPaths,
-            requireRegistered = registryReady,
-        )
-    }
-    var showPicker by remember { mutableStateOf(false) }
-    var pickedCwd by remember(deletedWorkspaces) {
-        mutableStateOf<String?>(null)
-    }
-    val safePicked = pickedCwd?.takeUnless { it in deletedWorkspaces }?.takeIf { !registryReady || it in workspaces }
-    val displayCwd = safePicked
-        ?: currentCwd?.takeUnless { it in deletedWorkspaces }?.takeIf { !registryReady || it in workspaces }
-        ?: lastCwd?.takeIf { it in workspaces }
-    val showSetup = composerShowsSetupRow(workspaceEditable, showHarness, harnessLabel)
-
-    // 新会话：输入框上方一块起始区——标题 + 工作区 / 智能体预设竖排，整块贴近拇指。
-    // 已有会话：这一行只剩 trailingContent。
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s2),
-    ) {
-        if (showSetup && !setupTitle.isNullOrBlank()) {
-            Column(modifier = Modifier.padding(horizontal = DshSpace.s4)) {
-                Text(
-                    setupTitle,
-                    color = Dsh.labelPrimary,
-                    // 与首页「任务」同一档页面标题
-                    style = DshType.headlineMedium,
-                    modifier = Modifier.semantics { heading() },
-                )
-                if (!setupCaption.isNullOrBlank()) {
-                    Text(
-                        setupCaption,
-                        color = Dsh.labelTertiary,
-                        style = DshType.captionRelaxed,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Spacer(Modifier.height(DshSpace.s12))
-        }
-        if (workspaceEditable) {
-            ComposerSetupRow(
-                icon = FolderOpenOutline16,
-                label = displayCwd?.substringAfterLast('/') ?: L.selectWorkspaceShort,
-                onClick = { showPicker = true },
-            )
-        }
-        if (showHarness && harnessLabel.isNotBlank()) {
-            ComposerSetupRow(
-                icon = AgentPresetOutline16,
-                label = harnessLabel,
-                onClick = if (harnessEditable) onOpenHarnessPicker else null,
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
-            trailingContent()
-        }
-    }
-
-    if (showPicker) {
-        WorkspacePickerSheet(
-            sessions = sessions,
-            deletedWorkspaces = deletedWorkspaces,
-            registeredPaths = registeredPaths,
-            registryReady = registryReady,
-            selectedPath = displayCwd,
-            catalogKind = workspaceCatalogKind,
-            catalogError = workspaceCatalogError,
-            onRetry = onRetryWorkspaces,
-            onDismiss = { showPicker = false },
-            onPick = { cwd ->
-                showPicker = false
-                pickedCwd = cwd
-                onStartSession(cwd)
-            },
-        )
-    }
-}
-
 /** 新会话起始区的一行：图标 + 当前取值 + 下拉箭头；不可改时只显示取值。 */
-@Composable
 private fun ComposerSetupRow(
     icon: ImageVector,
     label: String,

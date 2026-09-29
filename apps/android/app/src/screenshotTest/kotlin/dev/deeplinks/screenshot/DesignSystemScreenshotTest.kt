@@ -3,9 +3,13 @@ package dev.deeplinks.screenshot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import dev.deeplinks.native.util.HomeSection
-import dev.deeplinks.native.HomeNewTaskBar
+import dev.deeplinks.native.HomeApprovalCard
+import dev.deeplinks.native.HomeNewTaskFab
+import androidx.compose.ui.draw.alpha
+import dev.deeplinks.native.HomeEmptyStarters
+import dev.deeplinks.native.HomeOfflineCard
+import dev.deeplinks.native.HomeSummaryRow
 import dev.deeplinks.native.HomeSectionHeader
-import dev.deeplinks.native.WorkspaceChips
 import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.SparkleOutline16
 import dev.deeplinks.native.ArchiveBoxOutline16
@@ -63,6 +67,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -95,6 +101,7 @@ import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.LightDshColors
+import dev.deeplinks.core.pureBlack
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
@@ -114,6 +121,22 @@ import dev.deeplinks.native.SettingsDest
 import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.SettingsPageCanvas
 import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.BranchOutline16
+import dev.deeplinks.native.StopFill16
+import dev.deeplinks.native.CloudOffOutline16
+import dev.deeplinks.native.DocumentCheckOutline16
+import dev.deeplinks.native.ListOutline16
+import dev.deeplinks.native.LockOutline16
+import dev.deeplinks.native.UploadOutline16
+import dev.deeplinks.native.ui.DshCardDivider
+import dev.deeplinks.native.ui.DshChipTone
+import dev.deeplinks.native.ui.DshFloatingPill
+import dev.deeplinks.native.ui.DshGroupCard
+import dev.deeplinks.native.ui.DshPillButton
+import dev.deeplinks.native.ui.DshPillTone
+import dev.deeplinks.native.ui.DshSectionLabel
+import dev.deeplinks.native.ui.DshStatusChip
+import dev.deeplinks.native.ui.DshStatusIcon
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSection
@@ -125,10 +148,14 @@ import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.SessionSnapshot
 import dev.deeplinks.native.ContextMeterRow
 import dev.deeplinks.native.CommandSuggestions
-import dev.deeplinks.native.SessionStatsLine
+import dev.deeplinks.native.ComposerContextStrip
+import dev.deeplinks.native.InputBar
+import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
+import dev.deeplinks.native.MobileSessionActivity
+import dev.deeplinks.native.MobileSessionResult
 import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
 import dev.deeplinks.native.SessionStatsDetailDialog
@@ -197,6 +224,140 @@ private fun SectionTitle(text: String) {
     Text(text, color = Dsh.labelTertiary, style = DshType.label)
 }
 
+/**
+ * 收件箱组件墙（2026-09-28 重设计 · 阶段 1）：
+ * 胶囊按钮三种语义、四种状态胶囊、32dp 状态图标圈、白色分组卡与分隔线、
+ * 分组标签、底部悬浮主按钮。浅色 / 深色各出一张，改色板或改形状时看这两张。
+ */
+@Composable
+private fun InboxWall() {
+    SectionTitle("Pill buttons — Accent / Ink / Tonal")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        DshPillButton(label = "批准", onClick = {}, tone = DshPillTone.Accent)
+        DshPillButton(label = "拒绝", onClick = {}, tone = DshPillTone.Tonal)
+        DshPillButton(label = "停止", onClick = {}, tone = DshPillTone.Ink)
+        DshPillButton(label = "发送", onClick = {}, tone = DshPillTone.Accent, icon = SendOutline16)
+        DshPillButton(label = "置灰", onClick = {}, tone = DshPillTone.Ink, enabled = false)
+    }
+    SectionTitle("Status chips — 等你批准 / 等你回答 / 在电脑上处理 / 完成")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        DshStatusChip("等你批准", DshChipTone.Approval)
+        DshStatusChip("等你回答", DshChipTone.Answer)
+        DshStatusChip("在电脑上处理", DshChipTone.Remote)
+        DshStatusChip("完成", DshChipTone.Done)
+        DshStatusChip("已停止", DshChipTone.Remote)
+    }
+    SectionTitle("Status icons — 完成 / 进行中 / 离线 / 需解锁")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        DshStatusIcon(DocumentCheckOutline16)
+        DshStatusIcon(ClockOutline16, container = Dsh.bgSubtle, content = Dsh.labelSecondary)
+        DshStatusIcon(CloudOffOutline16, container = Dsh.bgSubtle, content = Dsh.labelTertiary)
+        DshStatusIcon(LockOutline16, container = Dsh.warnContainer, content = Dsh.warnLabel)
+        DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
+    }
+    SectionTitle("Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
+    DshGroupCard {
+        DshListRow(
+            title = "完善审批状态同步",
+            subtitle = "正在运行 go test ./... · 第 12 步",
+            value = "3 分钟",
+            iconSlot = 32.dp,
+        )
+        DshCardDivider()
+        DshListRow(
+            title = "2026-09-27_DSH-L",
+            subtitle = "完成 · 改了 79 个文件，门禁全绿",
+            value = "昨天",
+            leading = { DshStatusIcon(DocumentCheckOutline16) },
+            iconSlot = 32.dp,
+        )
+        DshCardDivider()
+        DshListRow(
+            title = "修复手机模型切换",
+            subtitle = "已停止 · 你中断了这一轮",
+            value = "周四",
+            leading = {
+                DshStatusIcon(
+                    StopFill16,
+                    container = Dsh.bgSubtle,
+                    content = Dsh.labelSecondary,
+                    iconSize = 16.dp,
+                )
+            },
+            iconSlot = 32.dp,
+        )
+    }
+    SectionTitle("Section label + floating pill")
+    DshSectionLabel("等你处理")
+    DshFloatingPill(label = "新任务", onClick = {}, icon = PlusOutline16)
+    DshFloatingPill(label = "新任务（离线置灰）", onClick = {}, icon = PlusOutline16, enabled = false)
+    SectionTitle("Icons — 本次新增（文档/云/列表/锁/上传/分支）")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf(
+            DocumentCheckOutline16,
+            CloudOffOutline16,
+            ListOutline16,
+            LockOutline16,
+            UploadOutline16,
+            BranchOutline16,
+        ).forEach { icon ->
+            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "inbox components light zh", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun InboxComponentsLightZh() {
+    Wall(dark = false, english = false) { InboxWall() }
+}
+
+@PreviewTest
+@Preview(name = "inbox components dark en", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun InboxComponentsDarkEn() {
+    Wall(dark = true, english = true) { InboxWall() }
+}
+
+/**
+ * 纯黑（OLED）模式：只压画布 / 侧栏 / 代码底，卡片与气泡保持原色阶。
+ * 色板换值后这一档最容易出现「卡片和底糊在一起」，所以单独留一张基线。
+ */
+@Composable
+private fun PureBlackWall(content: @Composable () -> Unit) {
+    val colors = DarkDshColors.pureBlack()
+    val typography = dshTypography(DshFontFamily)
+    MaterialTheme(typography = typography) {
+        CompositionLocalProvider(
+            LocalDshColors provides colors,
+            LocalDshStrings provides DshStringsZh,
+            LocalDshFontFamily provides DshFontFamily,
+            LocalTextStyle provides typography.bodyMedium,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Dsh.bgBase)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "inbox components pure black zh", showBackground = true, widthDp = 412, heightDp = 720)
+@Composable
+internal fun InboxComponentsPureBlackZh() {
+    PureBlackWall { InboxWall() }
+}
+
 @Composable
 private fun TypeScale() {
     SectionTitle("Type scale")
@@ -246,6 +407,7 @@ private fun TokenWall() {
         "brand400" to Dsh.brand400,
         "success" to Dsh.success,
         "warn" to Dsh.warn,
+        "warnContainer" to Dsh.warnContainer,
         "error" to Dsh.error,
         "traceReasoning" to Dsh.traceReasoning,
         "traceApproval" to Dsh.traceApproval,
@@ -306,8 +468,25 @@ private fun ChromeWall() {
     ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
     ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)
     ContextMeterRow(label = "Messages", value = "18.7K", swatchColor = Dsh.brand400)
-    SectionTitle("Session stats line")
-    SessionStatsLine(MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167))
+    SectionTitle("Composer context strip")
+    ComposerContextStrip(
+        hostName = "dev-macbook",
+        online = true,
+        workspaceName = "dsh-links",
+        changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
+        stats = MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167),
+        onBrowseFiles = {},
+        onOpenChanges = {},
+    )
+    ComposerContextStrip(
+        hostName = "dev-macbook",
+        online = false,
+        workspaceName = "a-very-long-workspace-name-for-truncation",
+        changes = null,
+        stats = MobileSessionStats(turns = 1, steps = 4, outputTokens = 812),
+        onBrowseFiles = {},
+        onOpenChanges = {},
+    )
     SectionTitle("Composer seats")
     ComposerSeatsRow(
         modelName = "DeepSeek V4 Flash",
@@ -343,11 +522,75 @@ internal fun WorkspaceChromeLight() {
     Wall(dark = false, english = false) { ChromeWall() }
 }
 
+/** 对话页底部整体：上下文条 + 输入卡（两层输入区）。 */
+@Composable
+internal fun ChatBottomWall(capWidth: Boolean = false) {
+    val stats = MobileSessionStats(
+        turns = 3, steps = 421, uncachedInputTokens = 2_100_000, cacheReadTokens = 126_000_000, outputTokens = 1_000_000,
+        contextPressureTokens = 60_000, contextWindow = 128_000,
+    )
+    Column(Modifier.fillMaxWidth()) {
+        ComposerContextStrip(
+            modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
+            hostName = "dev-macbook",
+            online = true,
+            workspaceName = "dsh-links",
+            changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
+            stats = stats,
+            onBrowseFiles = {},
+            onOpenChanges = {},
+        )
+        InputBar(
+            modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
+            inputText = "",
+            onInputChange = {},
+            isListening = false,
+            isSending = false,
+            canSend = false,
+            running = false,
+            modelName = "step-5-preview",
+            modelEffort = "high",
+            sessionStats = stats,
+            permissionPreset = "workspace-write",
+            permissionLabel = DshS.permWorkspaceWrite,
+            onOpenModelPicker = {},
+            onOpenPermissionPicker = {},
+            onToggleVoice = {},
+            onStop = {},
+            onSend = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "chat bottom light zh", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun ChatBottomLightZh() {
+    Wall(dark = false, english = false) { ChatBottomWall() }
+}
+
+@PreviewTest
+@Preview(name = "chat bottom wide", showBackground = true, widthDp = 1024, heightDp = 200)
+@Composable
+internal fun ChatBottomWide() {
+    // 方案 9：宽屏下输入区要封顶 760 居中。手机宽度的两张墙看不出这件事，
+    // 所以单独加一张 1024 宽的（上一轮补过程行墙时，正是新墙立刻抓出两个真问题）。
+    Wall(dark = false, english = false) { ChatBottomWall(capWidth = true) }
+}
+
+@PreviewTest
+@Preview(name = "chat bottom dark en", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun ChatBottomDarkEn() {
+    Wall(dark = true, english = true) { ChatBottomWall() }
+}
+
 @Composable
 private fun TopBarWall() {
     WorkspaceTopBar(
         running = true,
         title = "调研 t3code 移动端设计并对比项目",
+        subtitle = "dsh-links · Mac mini",
         showBack = true,
         onNavigate = {},
         viewMode = "chat",
@@ -542,6 +785,13 @@ private val IconWallGlyphs: List<ImageVector> = listOf(
     UnlinkOutline16,
     WalletOutline16,
     WrapOutline16,
+    // 2026-09-28 重设计新增
+    DocumentCheckOutline16,
+    CloudOffOutline16,
+    ListOutline16,
+    LockOutline16,
+    UploadOutline16,
+    BranchOutline16,
 )
 
 @Composable
@@ -674,7 +924,13 @@ internal fun SettingsDarkEnLarge() {
 @Composable
 internal fun SettingsHomePairedLightZh() {
     GroupedWall(dark = false, english = false) {
-        SettingsHome(appSettings = AppSettings(), onOpen = {}, host = PreviewHost)
+        // 带上连通性样例值：电脑卡右侧的「● 在线 · 云端 · 31ms」要有截图证据
+        SettingsHome(
+            appSettings = AppSettings(),
+            onOpen = {},
+            host = PreviewHost,
+            connectivity = dev.deeplinks.native.util.HostConnectivitySnapshot(online = true, viaCloud = true, latencyMs = 31),
+        )
     }
 }
 
@@ -760,7 +1016,7 @@ internal fun SettingsAboutDarkEn() {
     GroupedWall(dark = true, english = true) { AboutSettings(onOpenLegal = { _, _ -> }) }
 }
 
-private val PreviewHost = Host(
+internal val PreviewHost = Host(
     name = "MacBook Pro",
     baseUrl = "https://192.168.1.8:18640",
     token = "preview",
@@ -813,15 +1069,28 @@ internal fun DevicesDarkEn() {
  */
 @Composable
 private fun SidebarWall() {
-    fun session(id: String, title: String, running: Boolean = false, awaiting: Boolean = false) = MobileSession(
+    fun session(
+        id: String,
+        title: String,
+        running: Boolean = false,
+        awaiting: Boolean = false,
+        activity: MobileSessionActivity? = null,
+        lastResult: MobileSessionResult? = null,
+        stoppedReason: String? = null,
+    ) = MobileSession(
         sessionId = id,
         title = title,
-        updatedAt = 0L,
+        // 真实一点的更新时间：进行中的行要有「3 分钟」这类已运行时长（方案 3.5 要求行尾有时长），
+        // 最近的行要有「昨天 / 周五」。全填 0L 会让墙上看不到任何时间，掩盖真实问题。
+        updatedAt = System.currentTimeMillis() - if (running) 3L * 60_000 else 26L * 3_600_000,
+        stoppedReason = stoppedReason,
         running = running,
         blank = false,
         cwd = "/Users/me/dsh-links",
         agentPreset = null,
         awaitingInput = awaiting,
+        activity = activity,
+        lastResult = lastResult,
     )
     Column(
         modifier = Modifier
@@ -830,29 +1099,161 @@ private fun SidebarWall() {
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        HomeHeader(hostName = "MacBook Pro", searchActive = false, onOpenDevice = {}, onToggleSearch = {}, onOpenSettings = {})
-        WorkspaceChips(
+        HomeHeader(
+            hostName = "MacBook Pro",
+            online = true,
+            viaCloud = true,
+            latencyMs = 31L,
+            offlineSinceLabel = null,
+            searchActive = false,
+            onOpenDevice = {},
+            onToggleSearch = {},
+            onOpenSettings = {},
+        )
+        HomeSummaryRow(
+            awaitingCount = 2,
+            runningCount = 1,
             workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
-            // 选中态入基线：浅灰底，不是品牌蓝胶囊
-            selected = "/Users/me/dsh-links",
+            selected = null,
             onSelect = {},
             onAddWorkspace = {},
             onCreateSessionIn = {},
             onDeleteWorkspace = {},
+            onOpenArchived = {},
         )
         HomeSectionHeader(HomeSection.AWAITING)
-        SessionRowItem(session("s1", "任务首页改版", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        // 稿 07：最早一件展开成审批卡（手机已接管），其余收成行
+        HomeApprovalCard(
+            title = "任务首页改版",
+            workspaceLabel = "dsh-links",
+            timeLabel = "2 分钟前",
+            toolName = "./gradlew :app:connectedDebugAndroidTest",
+            chipText = DshS.homeChipWaitingApproval,
+            onReject = {},
+            onApprove = {},
+        )
         SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RUNNING)
-        SessionRowItem(session("s2", "完善审批状态同步", running = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        HomeSectionHeader(HomeSection.TODAY)
-        SessionRowItem(session("s3", "修复手机模型切换"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s4", "整理工作区导航"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        HomeSectionHeader(HomeSection.YESTERDAY)
-        SessionRowItem(session("s6", "补齐移动端测试"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s2", "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        HomeSectionHeader(HomeSection.RECENT)
+        // 「最近」里的两种已结束：有 lastResult（绿底带勾 + 结果一句话）／只有 stoppedReason
+        // （灰底方块 + 它怎么停的）。图标与文案必须同时来自同一个判断。
+        SessionRowItem(session("r0", "跑门禁时被中断", stoppedReason = "interrupted"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s3", "修复手机模型切换", lastResult = MobileSessionResult(text = "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s4", "整理工作区导航", lastResult = MobileSessionResult(text = "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s6", "补齐移动端测试", lastResult = MobileSessionResult(text = "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         Spacer(Modifier.height(24.dp))
-        HomeNewTaskBar(workspaceName = "dsh-links", onClick = {})
+        HomeNewTaskFab(onClick = {})
     }
+}
+
+/**
+ * 离线墙（稿 08）：顶栏空心灰点 + 「离线 · N 分钟前在线」、重连卡顶掉概况行、
+ * 列表 72% 不透明、进行中行换成静止时钟 + 「最后看到：」、新任务置灰。
+ */
+@Composable
+private fun HomeOfflineWall() {
+    val session = MobileSession(
+        sessionId = "s2",
+        title = "完善审批状态同步",
+        updatedAt = 0L,
+        running = true,
+        blank = false,
+        cwd = "/Users/me/dsh-links",
+        agentPreset = null,
+        activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        HomeHeader(
+            hostName = "Mac mini",
+            online = false,
+            viaCloud = true,
+            latencyMs = null,
+            offlineSinceLabel = "10 分钟前",
+            searchActive = false,
+            onOpenDevice = {},
+            onToggleSearch = {},
+            onOpenSettings = {},
+        )
+        HomeOfflineCard(hostName = "Mac mini", sinceLabel = "10 分钟前", onRetry = {}, onOpenConnectionMode = {})
+        HomeSectionHeader(HomeSection.RUNNING)
+        Box(Modifier.alpha(0.72f)) {
+            SessionRowItem(
+                session = session,
+                isSelected = false,
+                onClick = {},
+                onRename = {},
+                onFork = {},
+                containerColor = Dsh.bgBase,
+                offline = true,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(Modifier.alpha(0.72f)) { HomeNewTaskFab(onClick = {}, enabled = false) }
+    }
+}
+
+/** 空态墙（稿 09）：没有要你处理的事 + 三行起手式 + 悬浮新任务。 */
+@Composable
+private fun HomeEmptyWall() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        HomeHeader(
+            hostName = "Mac mini",
+            online = true,
+            viaCloud = true,
+            latencyMs = 31L,
+            offlineSinceLabel = null,
+            searchActive = false,
+            onOpenDevice = {},
+            onToggleSearch = {},
+            onOpenSettings = {},
+        )
+        // 空态不画概况行（稿 09 没有「0 件等你处理」）
+        Spacer(Modifier.height(12.dp))
+        HomeEmptyStarters(onPick = {})
+        Spacer(Modifier.height(12.dp))
+        HomeNewTaskFab(onClick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "home offline light zh", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeOfflineLightZh() {
+    Wall(dark = false, english = false) { HomeOfflineWall() }
+}
+
+@PreviewTest
+@Preview(name = "home offline dark en", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeOfflineDarkEn() {
+    Wall(dark = true, english = true) { HomeOfflineWall() }
+}
+
+@PreviewTest
+@Preview(name = "home empty light zh", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeEmptyLightZh() {
+    Wall(dark = false, english = false) { HomeEmptyWall() }
+}
+
+@PreviewTest
+@Preview(name = "home empty dark en", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeEmptyDarkEn() {
+    Wall(dark = true, english = true) { HomeEmptyWall() }
 }
 
 @PreviewTest

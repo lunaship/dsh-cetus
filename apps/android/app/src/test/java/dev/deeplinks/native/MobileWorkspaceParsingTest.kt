@@ -59,6 +59,104 @@ class MobileWorkspaceParsingTest {
         assertEquals("未命名会话", parsed.title)
     }
 
+    /** 旧插件不下发 activity / lastResult：解析成 null，首页走「运行中 / 已完成」回退。 */
+    @Test
+    fun parseMobileSession_missingActivityAndLastResultFallBackToNull() {
+        val parsed = parseMobileSession(
+            JSONObject().put("sessionId", "s1").put("running", true),
+        )
+        assertNull(parsed.activity)
+        assertNull(parsed.lastResult)
+    }
+
+    @Test
+    fun parseMobileSession_parsesActivity() {
+        val parsed = parseMobileSession(
+            JSONObject()
+                .put("sessionId", "s1")
+                .put("running", true)
+                .put(
+                    "activity",
+                    JSONObject()
+                        .put("kind", "tool")
+                        .put("label", "go test ./...")
+                        .put("step", 12)
+                        .put("startedAt", 1_759_000_000_000L),
+                ),
+        )
+        assertEquals("tool", parsed.activity?.kind)
+        assertEquals("go test ./...", parsed.activity?.label)
+        assertEquals(12L, parsed.activity?.step)
+        assertEquals(1_759_000_000_000L, parsed.activity?.startedAt)
+        assertTrue(parsed.activity?.isTool == true)
+    }
+
+    /** thinking / writing 没有 label 与 step，仍要解析出 kind。 */
+    @Test
+    fun parseMobileSession_parsesActivityWithoutLabel() {
+        val parsed = parseMobileSession(
+            JSONObject()
+                .put("sessionId", "s1")
+                .put("running", true)
+                .put("activity", JSONObject().put("kind", "thinking")),
+        )
+        assertEquals("thinking", parsed.activity?.kind)
+        assertNull(parsed.activity?.label)
+        assertNull(parsed.activity?.step)
+        assertEquals(false, parsed.activity?.isTool)
+    }
+
+    @Test
+    fun parseMobileSession_parsesLastResult() {
+        val parsed = parseMobileSession(
+            JSONObject()
+                .put("sessionId", "s1")
+                .put("running", false)
+                .put(
+                    "lastResult",
+                    JSONObject()
+                        .put("text", "门禁全绿")
+                        .put("files", 79)
+                        .put("added", 1200)
+                        .put("deleted", 300),
+                ),
+        )
+        assertEquals("门禁全绿", parsed.lastResult?.text)
+        assertEquals(79L, parsed.lastResult?.files)
+        assertEquals(1200L, parsed.lastResult?.added)
+        assertEquals(300L, parsed.lastResult?.deleted)
+    }
+
+    /** 只有改动数字、没有文本时也要保留。 */
+    @Test
+    fun parseMobileSession_parsesLastResultWithoutText() {
+        val parsed = parseMobileSession(
+            JSONObject()
+                .put("sessionId", "s1")
+                .put("lastResult", JSONObject().put("files", 6)),
+        )
+        assertNull(parsed.lastResult?.text)
+        assertEquals(6L, parsed.lastResult?.files)
+    }
+
+    /** 插件已经把空字段省掉了；真收到空对象时也不该造出一个全空的结果。 */
+    @Test
+    fun parseMobileSession_emptyLastResultIsNull() {
+        val parsed = parseMobileSession(
+            JSONObject().put("sessionId", "s1").put("lastResult", JSONObject()),
+        )
+        assertNull(parsed.lastResult)
+    }
+
+    /** activity 没有 kind（不该出现，但旧/异常服务端可能有）时视为没有。 */
+    @Test
+    fun parseMobileSession_activityWithoutKindIsNull() {
+        val parsed = parseMobileSession(
+            JSONObject().put("sessionId", "s1").put("activity", JSONObject().put("label", "go test")),
+        )
+        assertNull(parsed.activity)
+    }
+
     @Test
     fun resolveHarnessLabel_fallsBackWhenPresetIsJsonNullLiteral() {
         assertEquals(

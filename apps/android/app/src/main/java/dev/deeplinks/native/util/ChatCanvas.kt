@@ -61,3 +61,44 @@ fun localHideAfterRemote(accepted: Boolean): Boolean = accepted
 
 /** 分叉响应必须带回新会话 id，空 id 视为失败。 */
 fun forkAccepted(newSessionId: String?): Boolean = !newSessionId.isNullOrBlank()
+
+/** 智能体权限预设的展示名（设置首页电脑卡与设置二级页共用，避免两处 when 各写一遍）。 */
+fun permissionPresetLabel(preset: String, strings: dev.deeplinks.core.DshStrings): String = when (preset) {
+    "read-only" -> strings.permReadOnly
+    "danger-full-access" -> strings.permFullAccess
+    else -> strings.permWorkspaceWrite
+}
+
+/**
+ * 电脑显示名：本机别名 > host.name > 地址（2026-09-28 重设计 · 方案 3/7）。
+ *
+ * 「电脑名用用户起的名字」——没起过名才退回配对时的名字，连名字都没有就写地址，
+ * 不留空字符串（顶栏空白比写地址更难懂）。
+ */
+fun hostDisplayLabel(alias: String?, hostName: String?, address: String?): String =
+    listOfNotNull(alias, hostName, address)
+        .map { it.trim() }
+        .firstOrNull { it.isNotEmpty() }
+        .orEmpty()
+
+/**
+ * 电脑卡右侧的连接状态文案（方案 7.2「在线状态与延迟」）。
+ *
+ * [online] 为 null 表示还没探过（刚进设置页），此时不写状态——写「离线」是假消息。
+ * 延迟拿不到时只写「在线 · 云端」，不编一个数字。
+ */
+fun hostStatusText(
+    online: Boolean?,
+    viaCloud: Boolean,
+    latencyMs: Long?,
+    onlineText: String,
+    offlineText: String,
+    viaCloudText: String,
+): String? {
+    if (online == null) return null
+    if (!online) return offlineText
+    val parts = mutableListOf(onlineText)
+    if (viaCloud) parts += viaCloudText
+    if (latencyMs != null && latencyMs > 0) parts += "${latencyMs}ms"
+    return "● " + parts.joinToString(" · ")
+}

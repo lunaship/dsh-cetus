@@ -39,6 +39,12 @@ internal data class DshMenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val label: String,
     val danger: Boolean = false,
+    /**
+     * 行尾动作槽（2026-09-28 重设计新增）：首页工作区筛选菜单要把「在这里新建 / 移除工作区」
+     * 挂在每一项尾部，而菜单本身仍是「点一下选中」。槽内的点击自己消费，不会触发 [onClick]。
+     * 位置在 [onClick] 之前，好让既有的尾随 lambda 写法（`DshMenuItem(i, l) { ... }`）继续绑到 onClick。
+     */
+    val trailingContent: (@Composable () -> Unit)? = null,
     val onClick: () -> Unit,
 )
 
@@ -91,8 +97,15 @@ internal fun DshMenu(
                         item.label,
                         color = if (item.danger) Dsh.error else Dsh.labelPrimary,
                         style = DshType.body,
-                        lineHeight = 20.sp
+                        lineHeight = 20.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
                     )
+                    if (item.trailingContent != null) {
+                        Spacer(Modifier.width(DshSpace.s4))
+                        item.trailingContent()
+                    }
                 }
             }
         }

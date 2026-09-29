@@ -124,6 +124,21 @@ internal fun ApprovalCard(
         )
         return
     }
+    // 方案 D1-A 诚实降级：这版 DSH 上插件接不到审批（approval/request 钩子不触发，实测），
+    // 所以 takenOverByPhone 恒为 false——此时**不给选中/提交按钮**，否则点了必然 409。
+    // 只有真的被手机接管（/requests 快照里有这条 pending）才画可交互的审批卡。
+    if (msg.requestStatus == REQUEST_PENDING && !msg.takenOverByPhone) {
+        Text(
+            L.homeApprovalOnDesktop,
+            color = Dsh.labelSecondary,
+            style = DshType.body,
+            modifier = Modifier
+                .clip(RoundedCornerShape(DshRadius.control))
+                .background(Dsh.bgSubtle)
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        )
+        return
+    }
     if (msg.requestStatus == REQUEST_UNKNOWN) {
         Text(
             L.approvalStatusUnknown,
@@ -143,12 +158,13 @@ internal fun ApprovalCard(
             .fillMaxWidth()
             .heightIn(min = 160.dp),
     ) {
-        // 默认 tonal 容器（bgSubtle + container 圆角）：审批卡是行内卡片，不浮起，去掉阴影
+        // 暖色 tonal 容器（2026-09-28 重设计 · 方案 5.4）：审批是「需要你动手」的状态，
+        // 用 warnContainer + composer 圆角与普通行内卡片分开；仍是行内卡，不浮起、不加阴影。
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(DshRadius.container))
-                .background(Dsh.bgSubtle),
+                .clip(RoundedCornerShape(DshRadius.composer))
+                .background(Dsh.warnContainer),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = DshSpace.s12)) {
                 Row(
