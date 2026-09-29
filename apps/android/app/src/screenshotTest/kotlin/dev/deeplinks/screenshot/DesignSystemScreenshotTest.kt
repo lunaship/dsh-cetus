@@ -1076,12 +1076,14 @@ private fun SidebarWall() {
         awaiting: Boolean = false,
         activity: MobileSessionActivity? = null,
         lastResult: MobileSessionResult? = null,
+        stoppedReason: String? = null,
     ) = MobileSession(
         sessionId = id,
         title = title,
         // 真实一点的更新时间：进行中的行要有「3 分钟」这类已运行时长（方案 3.5 要求行尾有时长），
         // 最近的行要有「昨天 / 周五」。全填 0L 会让墙上看不到任何时间，掩盖真实问题。
         updatedAt = System.currentTimeMillis() - if (running) 3L * 60_000 else 26L * 3_600_000,
+        stoppedReason = stoppedReason,
         running = running,
         blank = false,
         cwd = "/Users/me/dsh-links",
@@ -1134,6 +1136,9 @@ private fun SidebarWall() {
         HomeSectionHeader(HomeSection.RUNNING)
         SessionRowItem(session("s2", "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RECENT)
+        // 「最近」里的两种已结束：有 lastResult（绿底带勾 + 结果一句话）／只有 stoppedReason
+        // （灰底方块 + 它怎么停的）。图标与文案必须同时来自同一个判断。
+        SessionRowItem(session("r0", "跑门禁时被中断", stoppedReason = "interrupted"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s3", "修复手机模型切换", lastResult = MobileSessionResult(text = "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s4", "整理工作区导航", lastResult = MobileSessionResult(text = "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         SessionRowItem(session("s6", "补齐移动端测试", lastResult = MobileSessionResult(text = "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)

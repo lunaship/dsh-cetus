@@ -89,6 +89,8 @@ data class MobileSession(
      * 旧插件不下发，为 null 时首页写「已完成」。
      */
     val lastResult: MobileSessionResult? = null,
+    /** 这一轮怎么结束的（插件阶段 2 起下发）：null = 正常完成或旧插件 → 各处按「已完成」回退。 */
+    val stoppedReason: String? = null,
 )
 
 /** 会话当前步骤：`kind` 决定文案，`tool` 时 [label] 是命令或参数摘要。 */
@@ -275,6 +277,7 @@ internal fun parseMobileSession(json: JSONObject): MobileSession = MobileSession
     awaitingInput = json.optBoolean("awaitingInput"),
     activity = parseMobileSessionActivity(json.optJSONObject("activity")),
     lastResult = parseMobileSessionResult(json.optJSONObject("lastResult")),
+    stoppedReason = json.optNullableString("stoppedReason"),
 )
 
 internal fun resolveHarnessLabel(

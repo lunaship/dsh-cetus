@@ -331,16 +331,18 @@ private fun SessionLeadingIcon(session: MobileSession, offline: Boolean) {
             iconSize = 16.dp,
         )
         session.running -> HomeRunningSpinner()
-        session.lastResult != null -> DshStatusIcon(
-            icon = DocumentCheckOutline16,
-            container = Dsh.successContainer,
-            content = Dsh.successContent,
-        )
-        else -> DshStatusIcon(
+        // 已结束的分两种：插件说了「不是正常结束」就是已停止；没说（含旧插件）按方案回退成完成
+        // ——图标与文案必须同时按这一个判断走，否则会出现「已完成」配灰方块的自相矛盾
+        session.stoppedReason != null -> DshStatusIcon(
             icon = StopFill16,
             container = Dsh.bgSubtle,
             content = Dsh.labelSecondary,
             iconSize = 16.dp,
+        )
+        else -> DshStatusIcon(
+            icon = DocumentCheckOutline16,
+            container = Dsh.successContainer,
+            content = Dsh.successContent,
         )
     }
 }
@@ -398,7 +400,8 @@ internal fun homeRowSubtitle(session: MobileSession, goalSummary: String?, offli
             val result = session.lastResult
             val files = result?.files?.takeIf { it > 0 }?.let { s.homeFilesChanged.format(it) }
             listOfNotNull(files, result?.text?.takeIf { it.isNotBlank() }).joinToString("，")
-                .ifBlank { s.homeDoneFallback }
+                // 没有结果一句话时：已停止的写它是怎么停的，其余按方案回退「已完成」
+                .ifBlank { session.stoppedReason?.let(::stoppedReasonLabel) ?: s.homeDoneFallback }
         }
     }
 }

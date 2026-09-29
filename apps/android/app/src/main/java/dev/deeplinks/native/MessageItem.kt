@@ -854,7 +854,7 @@ internal fun LoadOlderRow(
 }
 
 // 已停止标记（按 turn/end reason 显示具体原因）
-private fun stoppedReasonLabel(reason: String): String = when (reason.lowercase()) {
+internal fun stoppedReasonLabel(reason: String): String = when (reason.lowercase()) {
     "interrupted" -> L.interrupted
     "stopped" -> L.stopped
     "error" -> L.errorStopped
