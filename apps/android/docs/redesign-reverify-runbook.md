@@ -14,8 +14,28 @@
 export PATH="$HOME/.nvm/versions/node/v24.21.0/bin:$PATH"; dsh --version
 ```
 
-- `0.1.5-rc.3`（CLI 自带）→ **04/06 在本机仍验不了**，需要「把手机配到你的桌面 host」（下面 §3）。
-- 若哪天 CLI 也升到 `0.1.7-alpha.1` → 直接走 §1，全程可隔离。
+- `0.1.5-rc.3`（CLI 自带）→ 04/06 验不了（这版不发 `workspace/changes`、审批钩子也不触发）。
+  **但不必卡在这里**：0.1.7-alpha.1 可以从 npm 装上（registry 可达），见 §1b。
+- `0.1.7-alpha.1` → 04 可验（实测 `capabilities.files.changes: true, diff: true`），全程可隔离。
+
+### 1b. 从 npm 装 0.1.7-alpha.1（2026-09-29 实测可行）
+
+```bash
+export PATH="$HOME/.nvm/versions/node/v24.21.0/bin:/tmp/bin:$PATH"
+mkdir -p /tmp/dsh017 && cd /tmp/dsh017 && npm init -y >/dev/null
+npm i --no-audit --no-fund --fetch-timeout=120000 @deepseek-ai/dsh@0.1.7-alpha.1
+mkdir -p /tmp/bin && printf '#!/bin/sh\nexec corepack pnpm "$@"\n' > /tmp/bin/pnpm && chmod +x /tmp/bin/pnpm
+cp -r ~/.dsh/profiles/redesign-smoke ~/.dsh/profiles/redesign017 && rm -rf ~/.dsh/profiles/redesign017/node_modules
+# 改 package.json：dsh-base / dsh-web-app 钉 0.1.7-alpha.1，dsh-links 用 link: 指向工作树
+cd ~/.dsh/profiles/redesign017 && /tmp/dsh017/node_modules/.bin/dsh plugin --profile redesign017 install
+# 起实例（★ DSH_HOME 必须用用户 home：隔离 home 没有模型凭据，任务会 stoppedReason: "error"）
+DSH_HOME="$HOME/.dsh" /tmp/dsh017/node_modules/.bin/dsh --profile redesign017 \
+  --patch /tmp/isolated017.yml --host 127.0.0.1 --port 19410 --no-open
+```
+
+`/tmp/isolated017.yml` = `- id: dsh-links` + `stateDir: /tmp/link-scratch-017` + `port: 19431`（避开 18640）。
+装 profile 时 **npm 会因 `link:` 协议报 EUNSUPPORTEDPROTOCOL，必须走 pnpm shim**。
+用完删掉 `~/.dsh/profiles/redesign017`（它是加在用户 DSH home 里的新增目录）。
 
 ---
 
