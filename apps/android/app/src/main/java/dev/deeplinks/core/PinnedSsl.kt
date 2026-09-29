@@ -5,6 +5,7 @@ import java.io.IOException
 import java.net.URI
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.HostnameVerifier
@@ -128,6 +129,9 @@ object PinnedSsl {
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
             override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
                 if (chain.isEmpty()) throw CertChangedException()
+                // 空链直接拒绝：原来这里 chain[0] 会抛「Empty list doesn't contain element at index 0」
+                // 这种不可读的错，排查时白花时间（2026-09-29 手动配对真机上就是这么卡住的）。
+                if (chain.isEmpty()) throw CertificateException("服务器未提供证书链")
                 if (fingerprintOf(chain[0]) != expectedPin) throw CertChangedException()
             }
         }
@@ -158,8 +162,8 @@ object PinnedSsl {
             .build()
         client.newCall(Request.Builder().url(url).build()).execute().use { response ->
             val certs = response.handshake?.peerCertificates
-                ?: throw IOException("no server certificate")
-            return fingerprintOf(certs[0] as X509Certificate)
+            if (certs.isNullOrEmpty()) throw IOException("服务器没有提供证书，无法确认指纹")
+            return fingerprintOf(certs.first() as X509Certificate)
         }
     }
 
