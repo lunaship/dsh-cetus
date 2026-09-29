@@ -83,7 +83,12 @@ internal class NewTaskSheetActions(
 
 @Composable
 internal fun NewTaskSheetHost(state: NewTaskSheetState, actions: NewTaskSheetActions) {
+    // 方案阶段 9：大屏上新任务面板以居中对话框呈现（底部抽屉在平板上整宽，与稿 11 不符）。
+    val wide = with(androidx.compose.ui.platform.LocalDensity.current) {
+        androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() >= 600.dp
+    }
     NewTaskSheet(
+        wide = wide,
         workspaces = state.workspaces,
         selectedWorkspace = state.selectedWorkspace,
         onSelectWorkspace = actions.onSelectWorkspace,
@@ -113,6 +118,7 @@ internal fun NewTaskSheetHost(state: NewTaskSheetState, actions: NewTaskSheetAct
 
 @Composable
 internal fun NewTaskSheet(
+    wide: Boolean = false,
     workspaces: List<String>,
     selectedWorkspace: String?,
     onSelectWorkspace: (String) -> Unit,
@@ -138,6 +144,7 @@ internal fun NewTaskSheet(
         title = DshS.homeNewTask,
         showClose = true,
         skipPartiallyExpanded = true,
+        wide = wide,
     ) {
         NewTaskSheetContent(
             workspaces = workspaces,

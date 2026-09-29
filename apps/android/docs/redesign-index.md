@@ -7,7 +7,7 @@
 | 提交数（`git rev-list --count a864afd..HEAD`） | **112**（实测） |
 | 改动规模 | 153 个文件，+5797 / −987 |
 | 工作树 | 干净（0 项改动） |
-| Android 门禁 | 五条全绿：`assembleDebug` / `assembleDebugAndroidTest` / `testDebugUnitTest`（**550 例**）/ `lintDebug` / `validateDebugScreenshotTest`（**59 张**基线） |
+| Android 门禁 | 五条全绿：`assembleDebug` / `assembleDebugAndroidTest` / `testDebugUnitTest`（**550 例**）/ `lintDebug` / `validateDebugScreenshotTest`（**59 张**基线）；另在 **Pixel Tablet AVD** 上真跑插桩测试 `connectedDebugAndroidTest` **8/8 全过** |
 | 插件门禁 | `node --test test/*.mjs` **282 例全过**；`npm run prepack` 亦通过 |
 | 空白检查 | `git diff --check` 干净 |
 | Relay | 本次未改动（diff 为 0）；本机无 Go 工具链，未执行 |
@@ -28,7 +28,7 @@
 | 通知频道存在 | ✅ | 用户手机 `dumpsys notification` |
 | 04 看改动 / 14 看改动深色 | 🔶 实现齐全，**真机未验** | 截图墙（list / diff / wide） |
 | 06 通知的锁屏批准与拒绝 | 🔶 频道与动作已实现，**两条路径未验** | 手机确认频道；动作需真实审批 |
-| 11 平板整页 | 🔶 结构与封顶已实现，**平板整页未验** | 宽屏截图墙 |
+| 11 平板横屏 | ✅ | **Pixel Tablet AVD 实拍**：左栏常驻 + 右内容区 + 输入条封顶居中 + 宽屏无返回键 + 新任务居中对话框 |
 | 折叠屏 | N/A | 直板机与模拟器都非折叠形态 |
 | 高对比 | ✅ 不是开关 | `DshContrast.kt` 是对比度校验工具，随门禁运行 |
 
@@ -126,7 +126,7 @@ App 侧两态都按 `takenOverByPhone` 分支，因此**在两种基线上都正
 |---|---|---|
 | 04 / 14 看改动 | **实现齐全，真机未验** | 本机基线 `0.1.5-rc.3` 的 web profile 不宣告 `capabilities.files.changes`；App 按能力位正确隐藏入口 |
 | 06 通知的锁屏批准/拒绝 | **实现齐全，未验** | 依赖「手机接管」成立；该接管在 rc.3 上不可达（探针实测钩子不触发） |
-| 11 平板整页 | **实现齐全，整页未验** | 无平板/折叠形态硬件 |
+| 11 平板横屏 | **已验**（2026-09-29 用 Pixel Tablet AVD 补齐） | — |
 
 **补法已写成一份速查**：[`redesign-reverify-runbook.md`](redesign-reverify-runbook.md)
 （起隔离实例、配对的两个坑、造改动现场、接管探针、`awaitingInput` 自检、收尾命令）。

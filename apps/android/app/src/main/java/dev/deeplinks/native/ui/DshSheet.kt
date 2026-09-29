@@ -2,6 +2,7 @@ package dev.deeplinks.native.ui
 
 import dev.deeplinks.native.CloseOutline16
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -23,8 +25,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +60,36 @@ fun DshSheet(
     subtitle: String? = null,
     showClose: Boolean = false,
     skipPartiallyExpanded: Boolean = false,
+    /** 大屏（Medium/Expanded）改成「遮罩 + 居中承载」，见方案阶段 9：新任务面板居中对话框。 */
+    wide: Boolean = false,
     headerTrailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    if (wide) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Dsh.bgOverlay)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(DshSpace.s24),
+            contentAlignment = Alignment.Center,
+        ) {
+            Surface(
+                shape = DshSheetShape,
+                color = Dsh.bgBase,
+                contentColor = Dsh.labelPrimary,
+                modifier = Modifier
+                    .widthIn(max = 560.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+                    .then(modifier),
+            ) {
+                DshSheetBody(title = title, subtitle = subtitle, showClose = showClose, onDismiss = onDismiss, trailing = headerTrailing, content = content)
+            }
+        }
+        return
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = skipPartiallyExpanded),
@@ -68,25 +100,33 @@ fun DshSheet(
         dragHandle = null,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = DshSpace.s16)
-                .padding(bottom = DshSpace.s20),
-        ) {
-            DshSheetGrabber()
-            if (title != null) {
-                DshSheetHeader(
-                    title = title,
-                    subtitle = subtitle,
-                    onClose = if (showClose) onDismiss else null,
-                    trailing = headerTrailing,
-                )
-            }
-            content()
+        DshSheetBody(title = title, subtitle = subtitle, showClose = showClose, onDismiss = onDismiss, trailing = headerTrailing, content = content)
+    }
+}
+
+/** 面板内容体：把手 + 标题（+ 关闭钮）+ 内容。底部抽屉与宽屏居中承载共用。 */
+@Composable
+private fun DshSheetBody(
+    title: String?,
+    subtitle: String?,
+    showClose: Boolean,
+    onDismiss: () -> Unit,
+    trailing: (@Composable () -> Unit)?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = DshSpace.s16)
+            .padding(bottom = DshSpace.s20),
+    ) {
+        DshSheetGrabber()
+        if (title != null) {
+            DshSheetHeader(title = title, subtitle = subtitle, onClose = if (showClose) onDismiss else null, trailing = trailing)
         }
+        content()
     }
 }
 

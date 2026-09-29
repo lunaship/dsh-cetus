@@ -409,3 +409,20 @@ pending fixture 补上了这个标记（墙画的是接管态）——**59 张�
 `docs/COMPATIBILITY.md` 记的基线是 **`0.1.7-alpha.1`**（且注明 rc.3 相对 rc.2 只改了版本号、
 0.1.7-alpha.1 才有真正的插件面变更）。所以「钩子不触发」**只在 rc.3 上被证实**；在 0.1.7-alpha.1
 上接管分支是否可达**尚未验证**。App 侧的两态都按 `takenOverByPhone` 分支，因此在两种基线上都正确。
+
+### 平板一跑就露出来的偏差：新任务面板在大屏上应是居中对话框（2026-09-29，已修）
+
+用 **Pixel Tablet AVD**（`avdmanager create avd -n dsh-tablet -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_tablet`）
+把平板接到隔离实例后，第一次看到宽屏整页——**顺序暴露两件事**：
+
+1. **稿 11 结构本身是对的**：左收件箱常驻（390）+ 右内容区、输入条封顶居中、宽屏不显示返回键 ✓；
+2. **但新任务面板是整宽底部抽屉** ✗ —— 方案阶段 9 的原话是「新任务面板在大屏上以**居中对话框或右侧面板**呈现」。
+   这是截图墙看不到的（墙上没有大屏的新任务面板）。
+
+修法（按需启用，不动其它面板）：`DshSheet` 加 `wide` 选项 —— 宽屏时改成「遮罩 + 居中承载（封顶 560dp）」，
+内容体抽成 `DshSheetBody` 两处共用；`wide` 在 `NewTaskSheetHost` 内部按容器宽度 ≥600dp 自算
+（这样 `WorkspaceActivity` 一行都不用改，不会撞那 3084/3084 的行数预算）。平板实拍已确认居中对话框 ✓。
+
+**顺带补上一块空白**：插桩测试此前只 `assemble` 过、从未真跑。这轮在平板上跑
+`connectedDebugAndroidTest`：**8 个测试全过** ✓（`AccessibilitySemanticsTest` / `MathRendererInstrumentedTest` /
+`ChatTailPositioningInstrumentedTest`）。门禁证据里从此多一条真机（模拟器）实跑。
