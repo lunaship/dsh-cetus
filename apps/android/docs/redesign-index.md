@@ -118,12 +118,13 @@ App 侧两态都按 `takenOverByPhone` 分支，因此**在两种基线上都正
 - 06 通知的锁屏批准/拒绝：依赖接管成立，且要在 0.1.7-alpha.1 上复验；
 - 11 平板整页：需要平板或大窗口折叠形态。
 
-## 我留在你环境里的东西（都可清）
+## 我留在你环境里的东西（2026-09-29 已清理）
 
-- **5 条演示会话**（标题如「读一下 a.txt，一句话概括」「创建 hello.txt 文件」等，cwd 都在 `/private/tmp/link-demo`）+ `/tmp/link-demo` 里的几个文件；
-- 隔离实例的 state：`/tmp/link-scratch/`（含一台名为 `curl-probe*` 的测试设备记录，与你的 host 无关）；
-- 模拟器 AVD `dsh-test` 与 4.3G 的 android-36 镜像；
-- 演示工作区（`/private/tmp/link-demo`）**已注销**，不在你的工作区列表里。
-
-演示会话我找不到可编程的删除入口（宿主 `/api` 没有 session/delete，移动 API 也没有对应路由），
-你在 App 里长按/⋯ →「删除会话」几下就能清掉；或者你说一声，我用 App 逐个删。
+| 东西 | 状态 |
+|---|---|
+| 6 条演示会话（标题如「读一下 a.txt，一句话概括」，cwd 都在 `/private/tmp/link-demo`） | **已归档**（走 App 同一条 `POST /mobile/sessions/:id/archive`，服务端的删除语义）。归档集 312 → 318，6/6 都能在「设置 → 已归档会话」里恢复或彻底删掉 |
+| 演示工作区 `/private/tmp/link-demo` | **已注销**（不在你的工作区列表里） |
+| 隔离实例的 state `/tmp/link-scratch`、patch `/tmp/isolated.yml`、`/tmp/link-demo` 等 | **已删除** |
+| 隔离实例与无头模拟器 | **已停止**（19441 端口释放、无 qemu 进程、无 adb 设备） |
+| 模拟器 AVD `dsh-test` 与 4.3G 的 android-36 镜像 | **保留**（随时 30 秒可重启；不需要就说一声，我删掉） |
+| 你的 host 与 `~/.dsh/dsh-links/state.json` | **未被写入过**；19387/18640 一直正常应答 |
