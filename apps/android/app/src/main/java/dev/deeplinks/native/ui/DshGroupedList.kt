@@ -405,7 +405,9 @@ private fun DshListRowLayout(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text(title, color = titleColor, style = DshType.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // 标题一行：真机上见过主机名带换行（配对时输入的名字含 \n），两行会把整行撑开、
+            // 把右侧状态挤走。设置页的电脑卡与列表行都靠这一条保持单行。
+            Text(title, color = titleColor, style = DshType.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     subtitle,
