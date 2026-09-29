@@ -84,10 +84,21 @@ git -c user.email=d@l -c user.name=d add -A && git -c user.email=d@l -c user.nam
 `awaitingInput` 自检（不经 App）：`curl -sk -H "x-dsh-link-token: $TOKEN" $B/sessions | grep awaitingInput`
 ——等审批时应为 `true`（走历史 `approval/asked` 无配对 `approval/decided` 推导）。
 
-## 5. 11 平板整页
+## 5. 11 平板整页（已验，2026-09-29 用平板 AVD 补齐）
 
-平板或大窗口折叠形态跑一遍：左栏常驻 390、正文与输入区封顶 760 居中、宽屏隐藏返回键、
-新任务居中弹层。截图墙已有宽屏版（`1024dp`）。
+平板 AVD 现成（`dsh-tablet`，Pixel Tablet，2560×1600）：
+
+```bash
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+emulator -avd dsh-tablet -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+# 未建过时：echo no | avdmanager create avd -n dsh-tablet \
+#   -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_tablet
+cd apps/android && ./gradlew :app:connectedDebugAndroidTest    # 插桩测试，最近一次 8/8
+```
+
+核对：左收件箱常驻（390）+ 右内容区、输入条封顶 760 居中、宽屏不显示返回键、
+**新任务面板是居中对话框**（宽屏 ≤560dp；这条曾错成整宽底部抽屉，2026-09-29 已修）。
+折叠屏用 `-d "6.7in Foldable"` 另建一个 AVD 验展开/收起不丢状态。
 
 ---
 
