@@ -69,3 +69,11 @@ fun contextInjectionLabels(text: String): List<String> {
     }
     return labels.toList().ifEmpty { listOf("workspace") }
 }
+
+/**
+ * DSH 在会话中途换模型时插入的提示（`[model changed: …]`）。它挂在 user/message 里，
+ * 但**不是用户说的话**——按用户气泡渲染，会让人以为用户交代过这件事。
+ * 与插件 `src/context-injection.js` 的 isModelChangedNotice 规则对齐。
+ */
+fun isModelChangedNotice(text: String): Boolean =
+    text.trim().startsWith("[model changed:", ignoreCase = true)

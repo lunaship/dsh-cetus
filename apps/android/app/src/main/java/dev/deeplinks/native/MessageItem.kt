@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,6 +66,7 @@ import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.util.answerMetaSummary
 import dev.deeplinks.native.util.buildAnswerMeta
 import dev.deeplinks.native.util.formatClockTime
+import dev.deeplinks.native.util.isModelChangedNotice
 import dev.deeplinks.native.util.loadOlderKind
 import dev.deeplinks.native.util.LoadOlderKind
 import dev.deeplinks.native.util.contextInjectionLabels
@@ -124,6 +126,8 @@ internal fun MessageItem(
             msg.role == "context_injection" || isContextInjectionText(msg.text) -> {
                 if (isGoalRoundText(msg.text)) GoalRoundRow(msg.text) else ContextInjectionRow(msg.text)
             }
+            // 模型切换提示：安静的居中一行（既不是用户气泡，也不是可展开的上下文注入）
+            msg.role == "system_notice" || isModelChangedNotice(msg.text) -> SystemNoticeRow(msg.text)
             msg.role == "user" -> {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -548,7 +552,23 @@ private fun GoalRoundRow(text: String) {
     }
 }
 
-// 上下文注入行（对标 Web：上下文注入 · skill-catalog，默认折叠）
+/**
+ * 系统提示行（模型切换等）：居中、次要色、不可点——它只是告知，不需要用户回应，
+ * 也不该长得像用户说过的话。文字是 DSH 自己生成的英文标记，原样显示。
+ */
+@Composable
+private fun SystemNoticeRow(text: String) {
+    Text(
+        text = text.trim(),
+        color = Dsh.labelTertiary,
+        style = DshType.supporting,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DshSpace.s24, vertical = DshSpace.s8),
+    )
+}
+
 @Composable
 private fun ContextInjectionRow(text: String) {
     var expanded by remember { mutableStateOf(false) }

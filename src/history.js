@@ -1,4 +1,4 @@
-import { isContextInjectionText } from "./context-injection.js"
+import { isContextInjectionText, isModelChangedNotice } from "./context-injection.js"
 import { mutationPath, toolResultContent, toolResultIsError, toolResultMeta, uniquePaths } from "./produced-files.js"
 import { MAX_EMBEDDED_CHANGED_FILES, projectChangesSummary } from "./workspace-changes.js"
 
@@ -100,7 +100,12 @@ export function projectHistoryPage({ events, reasoningBySeq = new Map(), hasMore
     if (e.type === "user/message") {
       flushReasoning(e.time)
       const text = (e.data?.content ?? []).map((c) => c.text || "").join("")
-      const role = isContextInjectionText(text) ? "context_injection" : "user"
+      // 三种来源分清楚：上下文注入 / 模型切换提示 / 用户本人
+      const role = isContextInjectionText(text)
+        ? "context_injection"
+        : isModelChangedNotice(text)
+          ? "system_notice"
+          : "user"
       push({ id: `msg-${e.seq}`, seq: e.seq, role, text, time: e.time, type: "text" })
     } else if (e.type === "assistant/chunk" || e.type === "assistant/message") {
       const chunk = e.data?.chunk
