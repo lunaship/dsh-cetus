@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,13 +19,18 @@ func main() {
 		log.Fatalf("invalid DLP configuration: %v", err)
 	}
 	hub := dlp.NewHub(cfg, log.New(os.Stderr, "dlp-relay ", log.LstdFlags))
-	server := &http.Server{Addr: cfg.Listen, Handler: hub.Handler(), ReadHeaderTimeout: 5 * time.Second}
-	log.Printf("DLP Relay listening")
+	server := &http.Server{Handler: hub.Handler(), ReadHeaderTimeout: 5 * time.Second}
+	// 先 Listen 再 Serve：DLP_LISTEN 可以写端口 0，由系统分配后把实际地址打出来（本机端到端脚本靠它取端口）
+	listener, err := net.Listen("tcp", cfg.Listen)
+	if err != nil {
+		log.Fatalf("DLP Relay listen failed: %v", err)
+	}
+	log.Printf("DLP Relay listening on %s", listener.Addr())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	serveErr := make(chan error, 1)
-	go func() { serveErr <- server.ListenAndServe() }()
+	go func() { serveErr <- server.Serve(listener) }()
 	select {
 	case <-ctx.Done():
 		hub.Close()
