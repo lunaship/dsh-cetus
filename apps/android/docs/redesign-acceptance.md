@@ -113,3 +113,17 @@ cd apps/android && ./gradlew :app:installDebug
 逐条结果：# → 通过 / 不通过（附截图）
 不通过项的复现步骤与期望：
 ```
+
+## 用 adb 自动走查时的三条纪律（2026-09-29 复盘）
+
+1. **截图前先确认前台是我们的 App**：`adb shell dumpsys activity activities | grep -m1 topResumedActivity`。
+   我这次用 `monkey` 启动后直接截图，结果设备当时停在微信上，**截到了一张用户私人聊天界面**——
+   已立即删除，但这类内容一旦落盘就是事故。`monkey` 不保证把目标 App 带到前台；要用
+   `am start -n dev.deeplinks.debug/dev.deeplinks.devices.SplashActivity` 并核对前台。
+2. **改系统设置必须记原值并还原**：走查中为了看深色与 1.3 倍字号，动过
+   `cmd uimode night` 与 `settings put system font_scale`；两次都已还原（前者 no、后者 1.0）。
+   动之前先在输出里打印原值。
+3. **盲点按不可靠**：坐标靠截图量出来的点击经常打偏（我按「设置齿轮」那一下就没进设置页）。
+   每次点击后先截一张确认落点，再继续；或者改用 `uiautomator dump` 拿控件坐标。
+4. **用户可能在用这台机器**：设备是用户的日常手机（上面有配对数据与个人 App）。操作前确认
+   对方空闲；不要在对方使用中反复启动/按键。
