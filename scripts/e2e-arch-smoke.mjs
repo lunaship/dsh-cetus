@@ -257,8 +257,8 @@ try {
   record("GET /dsh-link/devices 200 (scratch state empty)", devices.code === 200 && Array.isArray(devices.json?.devices) && devices.json.devices.length === 0,
     `devices=${devices.json?.devices?.length}`)
 
-  const relayStatus = httpJson(`http://127.0.0.1:${WEB_PORT}/dsh-link/relay-status`)
-  record("GET /dsh-link/relay-status 200 (no route in scratch)", relayStatus.code === 200, `code=${relayStatus.code}`)
+  const remoteStatus = httpJson(`http://127.0.0.1:${WEB_PORT}/dsh-link/remote-status`)
+  record("GET /dsh-link/remote-status 200 (remote off in scratch)", remoteStatus.code === 200 && remoteStatus.json?.state === "off", `code=${remoteStatus.code}`)
 
   const crossSite = httpJson(`http://127.0.0.1:${WEB_PORT}/dsh-link/devices`, ["-H", "sec-fetch-site: cross-site"])
   record("cross-site request rejected on loopback face", crossSite.code === 403, `code=${crossSite.code}`)

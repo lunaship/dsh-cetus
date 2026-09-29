@@ -180,7 +180,7 @@ dsh-links/
 ├── src/                          # DSH 插件（npm 包唯一发布内容）
 │   ├── index.js                  # 入口：路由注册、配对 / 设备状态机、Runtime 装配
 │   ├── mobile-api.js             # 手机 HTTPS API 唯一实现（/dsh-link/mobile/*）
-│   ├── module2.js                # 「手机连接」面板源码（client.js 由 build-client.mjs 生成）
+│   ├── panel.js                # 「手机连接」面板源码（client.js 由 build-client.mjs 生成）
 │   ├── workspace-*.js            # 工作区注册、改动转发、文件与目录沙箱
 │   └── remote/                   # 远程连接 Agent（DLP/1）
 ├── relay/                        # Relay 服务端（Go），独立部署

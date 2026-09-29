@@ -1,0 +1,12 @@
+# Caddy 负责公网 TLS 与 WebSocket 升级（无默认读超时，长连接无需额外配置）。
+relay.example.com {
+	handle /ws {
+		reverse_proxy 127.0.0.1:8412
+	}
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8412
+	}
+	handle {
+		respond 404
+	}
+}

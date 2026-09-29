@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 /** 一次探测的结果快照：传参比传三个值省地方，也让「哪三个值是一组」显式。 */
 data class HostConnectivitySnapshot(
     val online: Boolean?,
-    val viaCloud: Boolean,
+    val viaRemote: Boolean,
     val latencyMs: Long?,
 )
 
@@ -25,18 +25,18 @@ object HostConnectivity {
     /** null = 还没探过（刚进 App），此时不宣称「离线」——那是假消息。 */
     var online by mutableStateOf<Boolean?>(null)
 
-    /** 最近一次成功的请求是不是走的远程（DLP/1 中继）；字段名沿用旧称。 */
-    var viaCloud by mutableStateOf(false)
+    /** 最近一次成功的请求是不是走的远程（DLP/1 中继）。 */
+    var viaRemote by mutableStateOf(false)
 
     var latencyMs by mutableStateOf<Long?>(null)
 
-    fun update(online: Boolean?, viaCloud: Boolean, latencyMs: Long?) {
+    fun update(online: Boolean?, viaRemote: Boolean, latencyMs: Long?) {
         this.online = online
-        this.viaCloud = viaCloud
+        this.viaRemote = viaRemote
         this.latencyMs = latencyMs
     }
 
     /** 只读快照（读它就会订阅这三个 state，变化时自动重组）。 */
     val snapshot: HostConnectivitySnapshot
-        get() = HostConnectivitySnapshot(online, viaCloud, latencyMs)
+        get() = HostConnectivitySnapshot(online, viaRemote, latencyMs)
 }

@@ -148,7 +148,7 @@ internal fun DeviceCard(
         else -> Dsh.labelTertiary
     }
     // 本次实际走的路（探测后的最近一次成功请求）；没有远程能力的电脑只会是局域网
-    val connection = if (device.viaRemote) s.viaCloud else s.viaLan
+    val connection = if (device.viaRemote) s.viaRemote else s.viaLan
     val stateLabel = statusLabel(state)
     val meta = buildList {
         add(stateLabel)

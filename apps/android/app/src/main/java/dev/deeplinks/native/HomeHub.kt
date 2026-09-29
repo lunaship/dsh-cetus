@@ -88,7 +88,7 @@ private fun StatusDot(online: Boolean) {
 internal fun HomeHeader(
     hostName: String,
     online: Boolean,
-    viaCloud: Boolean,
+    viaRemote: Boolean,
     latencyMs: Long?,
     offlineSinceLabel: String?,
     searchActive: Boolean,
@@ -99,7 +99,7 @@ internal fun HomeHeader(
     val s = DshS
     val deviceLabel = hostName.ifBlank { s.deviceAndPairing }
     val status = if (online) {
-        listOfNotNull(s.statusOnline, if (viaCloud) s.viaCloud else s.viaLan, latencyMs?.let { "${it}ms" })
+        listOfNotNull(s.statusOnline, if (viaRemote) s.viaRemote else s.viaLan, latencyMs?.let { "${it}ms" })
             .joinToString(" · ")
     } else {
         offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline

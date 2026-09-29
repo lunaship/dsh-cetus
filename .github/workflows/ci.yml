@@ -38,9 +38,6 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify DLR/1 vectors
-        run: node scripts/check-dlr1-vectors.mjs testdata/dlr1-vectors.json relay/testdata/dlr1-vectors.json
-
       - name: Generate client and verify clean tree
         run: pnpm build:client && git diff --exit-code -- src/client.js
 
@@ -82,10 +79,10 @@ jobs:
         run: CGO_ENABLED=0 go vet ./...
 
       - name: Build binary
-        run: CGO_ENABLED=0 go build ./cmd/dsh-links-relay
+        run: CGO_ENABLED=0 go build ./cmd/dlp-relay
 
-      - name: Run protocol fuzz smoke gate
-        run: go test ./internal/protocol -run=^$ -fuzz=FuzzFrameReader -fuzztime=10s
+      - name: Run control-frame fuzz smoke gate
+        run: go test ./internal/dlp -run=^$ -fuzz=FuzzParseControl -fuzztime=10s
 
       - name: Check whitespace errors
         run: git diff --check

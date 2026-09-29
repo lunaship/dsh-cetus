@@ -49,13 +49,7 @@ import {
   mapApprovalUiStatus,
   requestBelongsToSession,
 } from "./request-lifecycle.js"
-import { RemoteAgent } from "./remote/agent.js"
-import { BootstrapTable } from "./remote/bootstrap.js"
-import { b64u } from "./remote/crypto.js"
-import {
-  deviceRemote, disableRemote, enableRemote, endpointHost, ensureDeviceHandle, findDeviceByHandle, isOfficialEndpoint,
-  normalizeEndpoint, normalizeOuterPin, OFFICIAL_ENDPOINT, qrRemote, remoteEnabled, remoteKeys, resetRemoteIdentity,
-} from "./remote/state.js"
+import { createRemoteRuntime } from "./remote/runtime.js"
 
 import { handleMobileApi } from "./mobile-api.js"
 
@@ -189,27 +183,6 @@ function normalizeDeviceVia(device) {
 }
 
 const REMOTE_PAIRED_FROM = "远程（经中继）"
-/**
- * ws:// 只给测试用（RFC §5.1：生产配置与 UI 均拒绝）。按调用时读取，测试在 apply 前设置即可。
- */
-function allowInsecureRelayWs() {
-  return process.env.DSH_LINKS_DLP_ALLOW_INSECURE_WS === "1"
-}
-
-/** 面板点「启用 / 更换中继」后最多等首次注册这么久（RFC §6.6），之后交给面板轮询。 */
-const REMOTE_ENABLE_WAIT_MS = 15_000
-
-/** promise 在 ms 内 resolve 返回 true；超时或 reject 返回 false，不抛。 */
-function settleWithin(promise, ms) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), ms)
-    timer.unref?.()
-    Promise.resolve(promise).then(
-      () => { clearTimeout(timer); resolve(true) },
-      () => { clearTimeout(timer); resolve(false) },
-    )
-  })
-}
 
 function displayRemoteAddress(addr) {
   return String(addr ?? "").replace(/^::ffff:/i, "") || ""
@@ -599,7 +572,7 @@ export function qrPayload(info) {
  */
 async function qrPng(res, config, state, certFingerprint, remote) {
   try {
-    // 720px：面板底托 CSS 尺寸见 module2.js 的 .dshlink-qr-plate，点击放大后约 360 CSS px
+    // 720px：面板底托 CSS 尺寸见 src/panel.js 的 .dl-qr，点击放大后约 360 CSS px
     // （Retina 720 物理 px）—— 源码分辨率不低于两者，才不会被浏览器补糊。
     const info = pairInfo(config, state, certFingerprint)
     if (remote) info.remote = remote
@@ -642,7 +615,7 @@ function cachedPairRequest(rt, requestId, fingerprint) {
  * 授权从不依赖「对端是回环」本身，远程来源也要各自再过 token / 路径限制。
  */
 function requestOrigin(rt, req) {
-  const agent = rt.remoteAgent
+  const agent = rt.remote?.agent
   if (!agent) return null
   const socket = req.socket ?? req.connection
   if (!isLoopbackAddress(socket?.remoteAddress)) return null
@@ -741,12 +714,12 @@ async function handlePair(req, res, config, state, stateFile, rt, logger, origin
     if (sameName.length && replace) device.replaces = sameName.map((d) => d.deviceId)
   }
   // pending 设备同样拿 handle：纯远程首配的手机要经 kind=device 等到批准结果（RFC §6.3）
-  if (remoteEnabled(state)) ensureDeviceHandle(device)
+  rt.remote?.issueForNewDevice(device)
   state.devices = state.devices ?? []
   state.devices.push(device)
   consumePairingCode(state) // 配对码一次性：成功后立即失效
   // 与配对码同一临界区消费 bootstrap：同一张码的远程首配也只成功一次
-  if (bootstrapOrigin) rt.bootstrap?.consume(Buffer.from(bootstrapOrigin.bootstrapId, "base64url"))
+  if (bootstrapOrigin) rt.remote?.bootstrap.consume(Buffer.from(bootstrapOrigin.bootstrapId, "base64url"))
   saveState(stateFile, state)
   // 同 revokeDeviceEntry 的线性化边界：被替换设备的在途操作排空后才确认应答。
   for (const old of replacedDevices) await rt.deviceMutations.drain(old.deviceId)
@@ -755,7 +728,7 @@ async function handlePair(req, res, config, state, stateFile, rt, logger, origin
       `dsh-links: device replace device=${replacedIds.map((id) => String(id).slice(0, 8)).join(",")} new=${deviceId.slice(0, 8)}`,
     )
   }
-  const remote = deviceRemote(state, device)
+  const remote = rt.remote?.deviceRemote(device) ?? null
   const result = {
     ok: true,
     token,
@@ -1155,7 +1128,7 @@ function dropDevice(state, rt, device, exceptReq) {
   closeRequestsForDevice(rt, device.deviceId, exceptReq)
   rt.workspaceApprovals.dropDevice(device.deviceId)
   // 远程流一并关掉（RFC §6.5）：设备记录已删，新 client_open 会得到 UNKNOWN_KEY
-  rt.remoteAgent?.dropDevice(device.deviceId)
+  rt.remote?.agent?.dropDevice(device.deviceId)
 }
 
 export async function revokeDeviceEntry(state, stateFile, rt, { name, deviceId }, exceptReq) {
@@ -1350,116 +1323,20 @@ export function apply(ctx, config) {
   const proxyPending = (res) =>
     json(res, 503, { error: "proxy_not_ready", phase: readiness.phase }, { "retry-after": "1" })
   // ---------- 远程连接（DLP/1）：Agent 只向外连中继，验证过手机才接本机端口 ----------
-  rt.bootstrap = new BootstrapTable()
-  rt.remoteAgent = null
-  // qr：当前二维码的 bootstrap 种子，按「配对码 + 过期时刻 + route + 地址」复用。
-  // 面板每 8 秒轮询 pair-info，若每次出图都换种子，手机扫到的码两轮后就失效了。
-  const remoteRuntime = { error: "", lastOnlineAt: 0, replaced: false, qr: null }
-  const stopRemoteAgent = async () => {
-    const agent = rt.remoteAgent
-    rt.remoteAgent = null
-    remoteRuntime.qr = null
-    if (!agent) return
-    agent.removeAllListeners()
-    await agent.stop().catch(() => {})
-  }
-  /** 按 state.remote 重启 Agent；返回的 promise 在首次注册成功时 resolve。 */
-  const startRemoteAgent = async () => {
-    await stopRemoteAgent()
-    remoteRuntime.error = ""
-    remoteRuntime.replaced = false
-    if (!remoteEnabled(state)) return
-    const keys = remoteKeys(state)
-    if (!keys) {
-      remoteRuntime.error = "远程身份不完整，请在远程设置里重置远程身份"
-      return
-    }
-    let agent
-    try {
-      agent = new RemoteAgent({
-        endpoint: state.remote.endpoint,
-        outerPin: state.remote.outerPin ?? "",
-        hostKeySeed: keys.hostKeySeed,
-        keySeed: keys.keySeed,
-        pluginPort: config.port,
-        // 每次 open 现查：吊销、pending 过期都即时生效（RFC §5.5 第 4 步）
-        lookupDevice: (handle) => {
-          const device = findDeviceByHandle(state, handle, { isRevoking: (d) => Boolean(d[DEVICE_REVOKING]) })
-          return device ? { deviceId: device.deviceId } : null
-        },
-        bootstrap: rt.bootstrap,
-        isLocalReady: () => readiness.phase === "ready",
-        logger: ctx.logger,
-        allowInsecureWs: allowInsecureRelayWs(),
-      })
-    } catch (err) {
-      remoteRuntime.error = String(err?.message ?? err)
-      return
-    }
-    agent.on("status", (status) => {
-      if (status !== "ready") return
-      remoteRuntime.lastOnlineAt = Date.now()
-      remoteRuntime.error = ""
-      remoteRuntime.replaced = false
-    })
-    // 常见于两个 DSH profile 共用同一个 stateDir（RFC §6.7）
-    agent.on("replaced", () => { remoteRuntime.replaced = true })
-    rt.remoteAgent = agent
-    const started = agent.start()
-    started.catch((err) => {
-      if (rt.remoteAgent === agent) remoteRuntime.error = String(err?.message ?? err)
-    })
-    return started
-  }
+  const remote = createRemoteRuntime({
+    state,
+    save: () => saveState(stateFile, state),
+    pluginPort: config.port,
+    isLocalReady: () => readiness.phase === "ready",
+    isRevoking: (device) => Boolean(device[DEVICE_REVOKING]),
+    currentPairing: () => ({
+      code: ensurePairingCode(state, config.pairingTtlSeconds),
+      expiresAt: state.pairing?.expiresAt,
+    }),
+    logger: ctx.logger,
+  })
+  rt.remote = remote
 
-  const remoteStatusView = () => {
-    const agent = rt.remoteAgent
-    const enabled = remoteEnabled(state)
-    const endpoint = state.remote?.endpoint || OFFICIAL_ENDPOINT
-    let status = "off"
-    if (enabled) status = agent ? (agent.status === "off" ? "connecting" : agent.status) : "error"
-    const lastError = status === "connecting" ? agent?.lastError ?? "" : ""
-    return {
-      state: status,
-      enabled,
-      endpoint,
-      host: endpointHost(endpoint),
-      official: isOfficialEndpoint(endpoint),
-      outerPin: state.remote?.outerPin ?? "",
-      lastOnlineAt: remoteRuntime.lastOnlineAt || null,
-      error: remoteRuntime.error || lastError,
-      replaced: remoteRuntime.replaced,
-      remoteDevices: (state.devices ?? []).filter((d) => d.remoteHandle && !isDevicePending(d)).length,
-    }
-  }
-
-  /** 二维码里的 remote；远程未就绪时为 null（二维码退化为纯局域网码，RFC §5.2）。 */
-  const currentQrRemote = () => {
-    const agent = rt.remoteAgent
-    if (!agent || agent.status !== "ready" || !remoteEnabled(state)) return null
-    const code = ensurePairingCode(state, config.pairingTtlSeconds)
-    const expiresAt = state.pairing?.expiresAt
-    if (!Number.isSafeInteger(expiresAt)) return null
-    const route = agent.routeId
-    const endpoint = state.remote.endpoint
-    const cur = remoteRuntime.qr
-    if (!cur || cur.code !== code || cur.expiresAt !== expiresAt || !cur.route.equals(route) || cur.endpoint !== endpoint) {
-      const { seed } = rt.bootstrap.issue(route, expiresAt)
-      remoteRuntime.qr = { code, expiresAt, route, endpoint, seed }
-    }
-    return qrRemote(state, remoteRuntime.qr.seed)
-  }
-
-  /** mobile bootstrap 的 remote（RFC §6.4）：已配对手机借此自动补齐远程能力，无需重扫。 */
-  const remoteForDevice = (device) => {
-    if (!remoteEnabled(state)) return null
-    const current = (state.devices ?? []).find((d) => d.deviceId === device?.deviceId)
-    if (!current || current[DEVICE_REVOKING]) return null
-    if (ensureDeviceHandle(current)) saveState(stateFile, state)
-    return deviceRemote(state, current)
-  }
-
-  // ---------- 主 web 服务上的路由（网页界面「手机连接」面板用；回环同源围栏） ----------
   const mobileApiDeps = {
     json,
     requireJsonWrite,
@@ -1473,7 +1350,7 @@ export function apply(ctx, config) {
     revokeDeviceEntry,
     filterSettingsPatch,
     publicDevice,
-    remoteForDevice,
+    remoteForDevice: remote.forDevice,
   }
 
   const disposers = [
@@ -1485,8 +1362,8 @@ export function apply(ctx, config) {
         if (readiness.phase !== "ready") return proxyPending(res)
         sweepExpiredPending(state, stateFile, rt)
         // 面板只需要远程的状态与地址（决定码下方的文案）；bootstrap 种子只随二维码图片出去
-        const remote = remoteStatusView()
-        json(res, 200, { ...pairInfo(config, state, fp()), remoteStatus: { state: remote.state, host: remote.host } })
+        const view = remote.status()
+        json(res, 200, { ...pairInfo(config, state, fp()), remoteStatus: { state: view.state, host: view.host } })
       },
     }),
     web.register({
@@ -1495,7 +1372,7 @@ export function apply(ctx, config) {
       handler: (req, res) => {
         if (!requireLoopbackSameOrigin(req, res)) return
         if (readiness.phase !== "ready") return proxyPending(res)
-        return qrPng(res, config, state, fp(), currentQrRemote())
+        return qrPng(res, config, state, fp(), remote.qrPayload())
       },
     }),
     web.register({
@@ -1621,7 +1498,7 @@ export function apply(ctx, config) {
       path: "/dsh-link/remote-status",
       handler: (req, res) => {
         if (!requireLoopbackSameOrigin(req, res)) return
-        json(res, 200, remoteStatusView())
+        json(res, 200, remote.status())
       },
     }),
     web.register({
@@ -1630,21 +1507,13 @@ export function apply(ctx, config) {
       handler: async (req, res) => {
         const body = await readLoopbackPost(req, res)
         if (!body) return
-        let endpoint
-        let outerPin
+        let view
         try {
-          endpoint = normalizeEndpoint(body.endpoint, { allowInsecureWs: allowInsecureRelayWs() })
-          outerPin = normalizeOuterPin(body.outerPin)
+          view = await remote.enable({ endpoint: body.endpoint, outerPin: body.outerPin })
         } catch (err) {
-          return json(res, 400, { error: err?.message ?? "中继地址无效" })
+          if (err instanceof TypeError) return json(res, 400, { error: err.message })
+          throw err
         }
-        const previous = state.remote?.enabled ? state.remote.endpoint : ""
-        enableRemote(state, { endpoint, outerPin })
-        saveState(stateFile, state)
-        ctx.logger.info(`dsh-links: remote enable host=${endpointHost(endpoint)}${previous && previous !== endpoint ? " (switched)" : ""}`)
-        // 等首次注册最多 15 秒；超时不算失败，Agent 会继续按退避重连，面板轮询状态即可
-        await settleWithin(startRemoteAgent(), REMOTE_ENABLE_WAIT_MS)
-        const view = remoteStatusView()
         json(res, 200, { ok: view.state === "ready", ...view })
       },
     }),
@@ -1654,10 +1523,7 @@ export function apply(ctx, config) {
       handler: async (req, res) => {
         const body = await readLoopbackPost(req, res)
         if (!body) return
-        if (disableRemote(state)) saveState(stateFile, state)
-        await stopRemoteAgent()
-        ctx.logger.info("dsh-links: remote disable")
-        json(res, 200, { ok: true, ...remoteStatusView() })
+        json(res, 200, { ok: true, ...(await remote.disable()) })
       },
     }),
     web.register({
@@ -1666,7 +1532,7 @@ export function apply(ctx, config) {
       handler: async (req, res) => {
         const body = await readLoopbackPost(req, res)
         if (!body) return
-        const agent = rt.remoteAgent
+        const agent = remote.agent
         if (!agent || agent.status !== "ready") return json(res, 409, { error: "远程连接还没就绪" })
         json(res, 200, await agent.selfTest({ certFingerprint: fp() }))
       },
@@ -1679,12 +1545,9 @@ export function apply(ctx, config) {
         if (!body) return
         // 危险操作：所有手机的远程凭据立即作废，需面板二次确认后显式带 confirm
         if (body.confirm !== true) return json(res, 400, { error: "缺少确认" })
-        if (!resetRemoteIdentity(state)) return json(res, 409, { error: "远程连接从未启用" })
-        saveState(stateFile, state)
-        ctx.logger.info("dsh-links: remote identity reset")
-        if (remoteEnabled(state)) await settleWithin(startRemoteAgent(), REMOTE_ENABLE_WAIT_MS)
-        else await stopRemoteAgent()
-        json(res, 200, { ok: true, ...remoteStatusView() })
+        const view = await remote.resetIdentity()
+        if (!view) return json(res, 409, { error: "远程连接从未启用" })
+        json(res, 200, { ok: true, ...view })
       },
     }),
   ]
@@ -1906,7 +1769,7 @@ export function apply(ctx, config) {
       proxy.listen(config.port, "0.0.0.0", () => {
         ctx.logger.info(`dsh-links: 手机接入代理已启动，https 端口 ${config.port}（指纹 ${tls.fingerprint.slice(0, 12)}…）`)
         for (const u of lanUrls(config).urls) ctx.logger.info(`dsh-links: 可访问地址 ${u}`)
-        startRemoteAgent().catch(() => {})
+        remote.start().catch(() => {})
         muxBridge = startMuxQuestionBridge({
           targetPort,
           rt,
@@ -1937,7 +1800,7 @@ export function apply(ctx, config) {
       if (keepAliveTimer) clearInterval(keepAliveTimer)
       try { muxBridge?.stop() } catch {}
       muxBridge = null
-      stopRemoteAgent()
+      remote.stop()
       for (const writers of rt.sessionStreams.values()) {
         for (const conn of writers) {
           try { conn.res.end() } catch {}

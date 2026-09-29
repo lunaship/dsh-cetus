@@ -29,7 +29,7 @@
 │ dsh-links 插件（src/）                                │
 │   mobile-api.js  手机 API（/dsh-link/mobile/*）       │
 │   index.js       路由注册、配对/吊销状态机、回环 RPC   │
-│   module2.js     面板唯一源码（client.js 由它生成）   │
+│   panel.js     面板唯一源码（client.js 由它生成）   │
 │   relay/         Relay 客户端（agent.js / crypto.js） │
 └───────────────▲──────────────────────────────────────┘
                 │ 回环 callLocalRpc（仅本机 127.0.0.1）
@@ -53,7 +53,7 @@
 |---|---|---|
 | `src/mobile-api.js` | 手机端 HTTPS API 唯一实现 | 不放 UI；新增端点必须同步 MOBILE_SYNC_CONTRACT.md |
 | `src/index.js` | 插件入口：路由注册、配对/设备状态机、Runtime 装配 | 单文件偏大，新增逻辑优先抽模块（如 `workspace-approval.js`） |
-| `src/module2.js` → `src/client.js` | 「手机连接」面板唯一源码；client.js 由 `build-client.mjs` 生成 | **勿手改 client.js**；CI 校验生成物与提交一致 |
+| `src/panel.js` → `src/client.js` | 「手机连接」面板唯一源码；client.js 由 `build-client.mjs` 生成 | **勿手改 client.js**；CI 校验生成物与提交一致 |
 | `src/relay/` | Relay 客户端协议（DLR/1） | 不 import Host 能力；向量变更双端同步（`scripts/check-dlr1-vectors.mjs`） |
 | `relay/` | Go 服务端 | 门禁独立（gofmt/vet/build），发布物随插件文档但独立部署 |
 | `apps/android/.../core/` | 跨屏契约：Dsh 主题/排版/颜色 token、AppLocale 目录、DshLayout 布局推导 | 纯函数优先；改 token 先过 DesignTokenUsageTest |

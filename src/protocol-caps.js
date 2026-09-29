@@ -1,4 +1,4 @@
-/** 业务层能力协商。DLR/1 与内层证书固定不因这些字段改变。 */
+/** 业务层能力协商。远程通道（DLP/1）与内层证书钉扎不因这些字段改变。 */
 
 import { MAX_WORKSPACE_DIR_ENTRIES, MAX_WORKSPACE_FILE_BYTES } from "./workspace-file.js"
 import { MAX_DIFF_LINES } from "./workspace-changes.js"
