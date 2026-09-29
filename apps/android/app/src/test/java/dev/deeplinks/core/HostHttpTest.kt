@@ -1,124 +1,112 @@
 package dev.deeplinks.core
 
-import org.junit.Assert.assertThrows
+import dev.deeplinks.core.remote.HostRoute
+import dev.deeplinks.core.remote.RouteOfflineException
+import dev.deeplinks.core.remote.RouteRejectedException
+import dev.deeplinks.core.remote.RouteUnreachableException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 import java.net.ConnectException
+import java.net.ServerSocket
 import java.net.SocketTimeoutException
 
 /**
- * OkHttp 引擎的路由策略单测。传输本身（TLS/DLR 隧道）由设备集成测试覆盖，
- * 这里只验证 [attemptWithFailover] 的候选切换契约——与旧
- * FailoverHttpURLConnection 语义逐条对应。
+ * 换路规则（RFC §7.2 第 7、8 条）。传输本身（TLS / DLP 隧道）由 WebSocketTunnelSocketFactoryTest
+ * 与真实中继联调覆盖，这里只验证 [attemptWithFailover] 与局域网探测的契约。
  */
 class HostHttpTest {
 
     @Test
-    fun `connect failure switches to the next candidate`() {
+    fun `connect failure switches to the next route`() {
         val order = mutableListOf<String>()
-        val result = attemptWithFailover(listOf(FailoverRoute.LAN, FailoverRoute.RELAY), hasBody = false) { route ->
+        val result = attemptWithFailover(listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = false) { route ->
             order += route.name
-            if (route == FailoverRoute.LAN) throw IOException("offline")
-            "relay-response"
+            if (route == HostRoute.LAN) throw ConnectException("refused")
+            "remote-response"
         }
-        assertEquals(listOf("LAN", "RELAY"), order)
-        assertEquals("relay-response", result)
+        assertEquals(listOf("LAN", "REMOTE"), order)
+        assertEquals("remote-response", result)
+    }
+
+    @Test
+    fun `remote rendezvous failure before ready falls back to LAN`() {
+        val order = mutableListOf<String>()
+        val result = attemptWithFailover(listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = true) { route ->
+            order += route.name
+            if (route == HostRoute.REMOTE) throw RouteOfflineException()
+            "lan-response"
+        }
+        assertEquals(listOf("REMOTE", "LAN"), order)
+        assertEquals("lan-response", result)
+    }
+
+    @Test
+    fun `when every route fails the preferred route's error is reported`() {
+        val thrown = assertThrows(IOException::class.java) {
+            attemptWithFailover(listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = false) { route ->
+                if (route == HostRoute.REMOTE) throw RouteRejectedException("UNKNOWN_KEY")
+                throw ConnectException("refused")
+            }
+        }
+        assertTrue(thrown is RouteRejectedException)
     }
 
     @Test
     fun `pin change fails closed and never falls back`() {
         val order = mutableListOf<String>()
         assertThrows(PinnedSsl.CertChangedException::class.java) {
-            attemptWithFailover(listOf(FailoverRoute.LAN, FailoverRoute.RELAY), hasBody = false) { route ->
+            attemptWithFailover(listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = false) { route ->
                 order += route.name
                 throw PinnedSsl.CertChangedException()
             }
         }
-        assertEquals(listOf("LAN"), order)
+        assertEquals(listOf("REMOTE"), order)
     }
 
     @Test
-    fun `bodied request never replays after non-connect failure`() {
-        val order = mutableListOf<String>()
-        assertThrows(IOException::class.java) {
-            attemptWithFailover(listOf(FailoverRoute.LAN, FailoverRoute.RELAY), hasBody = true) { route ->
-                order += route.name
-                // 连接建立后（体可能已写出）失败：不重放到另一条路径
-                if (route == FailoverRoute.LAN) throw IOException("write failed")
-                "ok"
+    fun `failure after the connection is up never switches route`() {
+        for (hasBody in listOf(true, false)) {
+            val order = mutableListOf<String>()
+            assertThrows(IOException::class.java) {
+                attemptWithFailover(listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = hasBody) { route ->
+                    order += route.name
+                    throw SocketTimeoutException("Read timed out")
+                }
             }
+            assertEquals(listOf("LAN"), order)
         }
-        assertEquals(listOf("LAN"), order)
-    }
-
-    @Test
-    fun `bodied request still switches on connect-phase failure`() {
-        val order = mutableListOf<String>()
-        val result = attemptWithFailover(listOf(FailoverRoute.LAN, FailoverRoute.RELAY), hasBody = true) { route ->
-            order += route.name
-            if (route == FailoverRoute.LAN) throw ConnectException("refused")
-            "ok"
-        }
-        assertEquals(listOf("LAN", "RELAY"), order)
-        assertEquals("ok", result)
-    }
-
-    @Test
-    fun `preferRelay controls candidate order`() {
-        assertEquals(listOf(FailoverRoute.RELAY, FailoverRoute.LAN), failoverRouteOrder(true))
-        assertEquals(listOf(FailoverRoute.LAN, FailoverRoute.RELAY), failoverRouteOrder(false))
-    }
-
-    @Test
-    fun `REVOKED still failovers to a working LAN route`() {
-        val order = mutableListOf<String>()
-        val result = attemptWithFailover(failoverRouteOrder(preferRelay = true), hasBody = false) { route ->
-            order += route.name
-            if (route == FailoverRoute.RELAY) throw IOException("REVOKED revoked")
-            "lan-response"
-        }
-        assertEquals(listOf("RELAY", "LAN"), order)
-        assertEquals("lan-response", result)
-    }
-
-    @Test
-    fun `all-candidate failure keeps REVOKED instead of the later transport error`() {
-        val order = mutableListOf<String>()
-        val thrown = assertThrows(IOException::class.java) {
-            attemptWithFailover(failoverRouteOrder(preferRelay = true), hasBody = false) { route ->
-                order += route.name
-                if (route == FailoverRoute.RELAY) throw IOException("REVOKED revoked")
-                throw IOException("connection refused")
-            }
-        }
-        assertTrue(isRelayRouteRevoked(thrown))
-        assertEquals("REVOKED revoked", thrown.message)
-        assertEquals(listOf("RELAY", "LAN"), order)
     }
 
     @Test
     fun `connect phase classification`() {
-        // 连接期：可安全切换
         assertTrue(isConnectPhaseFailure(ConnectException("refused")))
         assertTrue(isConnectPhaseFailure(SocketTimeoutException("connect timed out")))
         assertTrue(isConnectPhaseFailure(java.net.UnknownHostException("unable to resolve host")))
-        // 原因链里出现 SSL 握手失败（连接期）也应判定为连接期
         assertTrue(isConnectPhaseFailure(IOException(javax.net.ssl.SSLException("handshake failed"))))
-        // 读期：体已可能写出，不可重放
+        // 远程会合阶段（ready 之前）的一切失败都是建立期
+        assertTrue(isConnectPhaseFailure(RouteUnreachableException(ConnectException("refused"))))
+        assertTrue(isConnectPhaseFailure(RouteRejectedException("UNKNOWN_KEY")))
         assertFalse(isConnectPhaseFailure(SocketTimeoutException("Read timed out")))
         assertFalse(isConnectPhaseFailure(IOException("write failed")))
-        // 类型不明的 IOException 一律视为连接建立后（体可能已写出）→ 不可重放
-        assertFalse(isConnectPhaseFailure(IOException("unable to resolve host")))
         assertTrue(isConnectPhaseFailure(IOException(SocketTimeoutException("connect timed out"))))
     }
 
     @Test
-    fun `relay revoked detection keeps structured and message paths`() {
-        assertTrue(isRelayRouteRevoked(RelayRouteRevokedException("REVOKED route gone")))
-        assertTrue(isRelayRouteRevoked(IOException("REVOKED route gone")))
-        assertFalse(isRelayRouteRevoked(IOException("offline")))
+    fun `LAN probe needs a pin and a reachable TLS peer`() {
+        val pin = "ab".repeat(32)
+        // 没有指纹：无法确认是这台电脑，不算通
+        assertFalse(HostHttp.probeLanUrl("https://127.0.0.1:9", ""))
+        // 端口没人听：不通
+        val closedPort = ServerSocket(0).use { it.localPort }
+        assertFalse(HostHttp.probeLanUrl("https://127.0.0.1:$closedPort", pin))
+        // 有人听但不是 TLS（或证书不符）：也不通，交给远程
+        ServerSocket(0).use { server ->
+            Thread { runCatching { server.accept().use { it.getOutputStream().write("nope".toByteArray()) } } }.start()
+            assertFalse(HostHttp.probeLanUrl("https://127.0.0.1:${server.localPort}", pin))
+        }
     }
 }

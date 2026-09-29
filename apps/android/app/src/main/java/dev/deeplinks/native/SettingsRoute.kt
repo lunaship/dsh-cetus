@@ -418,11 +418,11 @@ internal fun SettingsHome(
                 subtitleMono = true,
                 value = dev.deeplinks.native.util.hostStatusText(
                     online = connectivity?.online,
-                    viaCloud = connectivity?.viaCloud == true,
+                    viaRemote = connectivity?.viaRemote == true,
                     latencyMs = connectivity?.latencyMs,
                     onlineText = s.statusOnline,
                     offlineText = s.statusOffline,
-                    viaCloudText = s.viaCloudShort,
+                    viaRemoteText = s.viaRemoteShort,
                 ),
                 icon = LaptopOutline16,
                 onClick = onOpenDevices,

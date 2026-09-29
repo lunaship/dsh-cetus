@@ -1,6 +1,8 @@
 package dev.deeplinks.core
 
 import android.content.Context
+import dev.deeplinks.core.remote.DlpCrypto
+import dev.deeplinks.core.remote.RemoteRoute
 import android.content.Intent
 import org.json.JSONArray
 import org.json.JSONObject
@@ -11,64 +13,66 @@ data class Host(
     val token: String,
     val deviceId: String = "",
     val certFingerprint: String = "",
-    val relayClient: String = "",
-    val relayRouteId: String = "",
-    val relayRouteSecret: String = "",
-    val relayTlsFingerprint: String = "",
-    val preferRelay: Boolean = false,
-    val needsCloudRescan: Boolean = false,
+    /** DLP/1 远程能力（RFC §7.1）：插件在配对响应或 bootstrap 里下发，四项齐全才算有。 */
+    val remoteEndpoint: String = "",
+    val remoteRouteId: String = "",
+    val remoteHandle: String = "",
+    val remoteKey: String = "",
+    val remoteOuterPin: String = "",
 ) {
-    val hasRelay: Boolean
-        get() = relayClient.isNotBlank() && relayRouteId.isNotBlank() && relayRouteSecret.isNotBlank()
+    val hasRemote: Boolean
+        get() = remoteEndpoint.isNotBlank() && remoteRouteId.isNotBlank() && remoteHandle.isNotBlank() && remoteKey.isNotBlank()
 
-    /** 局域网与云端可以共用 baseUrl，必须用名称 + 是否走 Relay 区分。 */
+    /** 解析后的远程路由；字段不合法时为 null（按没有远程能力处理）。 */
+    fun remoteRoute(): RemoteRoute? =
+        RemoteRoute.fromStored(remoteEndpoint, remoteRouteId, remoteHandle, remoteKey, remoteOuterPin)
+
+    /**
+     * 本机缓存（会话快照、草稿）的命名空间。远程只是同一台电脑的另一条路，不参与区分；
+     * 前缀保持 `lan|`，已有的局域网缓存不失效。
+     */
     val slotKey: String
-        get() = "${if (hasRelay) "relay" else "lan"}|$name|$baseUrl"
+        get() = "lan|$name|$baseUrl"
 
-    fun withoutRelay(): Host {
-        val lostCloud = hasRelay
-        return copy(
-            relayClient = "",
-            relayRouteId = "",
-            relayRouteSecret = "",
-            relayTlsFingerprint = "",
-            preferRelay = false,
-            needsCloudRescan = needsCloudRescan || lostCloud,
-        )
-    }
+    fun withRemote(route: RemoteRoute): Host = copy(
+        remoteEndpoint = route.endpoint,
+        remoteRouteId = DlpCrypto.base64Url(route.routeId),
+        remoteHandle = DlpCrypto.base64Url(route.keyId),
+        remoteKey = DlpCrypto.base64Url(route.key),
+        remoteOuterPin = route.outerPin,
+    )
+
+    fun withoutRemote(): Host = copy(
+        remoteEndpoint = "",
+        remoteRouteId = "",
+        remoteHandle = "",
+        remoteKey = "",
+        remoteOuterPin = "",
+    )
 
     fun putInto(intent: Intent): Intent {
         intent.putExtra(EXTRA_HOST_NAME, name)
         intent.putExtra(EXTRA_HOST_BASE_URL, baseUrl)
-        intent.putExtra(EXTRA_HOST_RELAY, hasRelay)
         return intent
     }
 }
 
 const val EXTRA_HOST_NAME = "hostName"
 const val EXTRA_HOST_BASE_URL = "hostBaseUrl"
-const val EXTRA_HOST_RELAY = "hostRelay"
 const val EXTRA_AUTH_NOTICE = "authNotice"
 
-fun List<Host>.resolveFromIntent(intent: Intent): Host? {
-    val name = intent.getStringExtra(EXTRA_HOST_NAME)
-    val url = intent.getStringExtra(EXTRA_HOST_BASE_URL)
-    val relay = if (intent.hasExtra(EXTRA_HOST_RELAY)) intent.getBooleanExtra(EXTRA_HOST_RELAY, false) else null
-    return resolveHost(name, url, relay)
-}
+fun List<Host>.resolveFromIntent(intent: Intent): Host? =
+    resolveHost(intent.getStringExtra(EXTRA_HOST_NAME), intent.getStringExtra(EXTRA_HOST_BASE_URL))
 
-internal fun List<Host>.resolveHost(name: String?, baseUrl: String?, hasRelay: Boolean?): Host? {
+internal fun List<Host>.resolveHost(name: String?, baseUrl: String?): Host? {
     if (!name.isNullOrBlank()) {
         val named = filter { it.name == name }
-        if (hasRelay != null) named.firstOrNull { it.hasRelay == hasRelay }?.let { return it }
         if (named.size == 1) return named.first()
         if (!baseUrl.isNullOrBlank()) named.firstOrNull { it.baseUrl == baseUrl }?.let { return it }
         named.firstOrNull()?.let { return it }
     }
     if (!baseUrl.isNullOrBlank()) {
-        val urls = filter { it.baseUrl == baseUrl }
-        if (hasRelay != null) urls.firstOrNull { it.hasRelay == hasRelay }?.let { return it }
-        urls.firstOrNull()?.let { return it }
+        filter { it.baseUrl == baseUrl }.firstOrNull()?.let { return it }
     }
     return firstOrNull()
 }
@@ -170,7 +174,7 @@ object HostStore {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(LOCK, false)
 
     /**
-     * 写入配对设备：同一台的更新（Relay 刷新、连接偏好）与配对新电脑都走这里，
+     * 写入配对设备：同一台的更新（远程能力补齐 / 清除）与配对新电脑都走这里，
      * 后者直接替换旧设备。
      */
     @Synchronized
@@ -180,7 +184,7 @@ object HostStore {
             // 解锁态禁止静默覆盖：调用方须显式 clearLockAndReplace
             return false
         }
-        return save(ctx, if (host.hasRelay) host.copy(needsCloudRescan = false) else host)
+        return save(ctx, host)
     }
 
     /** 密钥不可用后的显式恢复：清掉不可读的旧记录并写入这一台。 */
@@ -204,26 +208,6 @@ object HostStore {
         return ok
     }
 
-    /** 云端路由失效：降级为仅局域网，并标记需要重新扫码恢复云端。 */
-    @Synchronized
-    fun demoteRelay(ctx: Context, host: Host): Boolean {
-        if (!host.hasRelay) return true
-        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(LOCK, false)) return false
-        val current = current(ctx)
-        if (current != null && current.baseUrl != host.baseUrl) return true
-        return save(ctx, (current ?: host).withoutRelay())
-    }
-
-    @Synchronized
-    fun clearCloudRescan(ctx: Context): Boolean {
-        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(LOCK, false)) return false
-        val current = current(ctx) ?: return true
-        if (!current.needsCloudRescan) return true
-        return save(ctx, current.copy(needsCloudRescan = false))
-    }
-
     // ---- 纯函数（单元测试直测，无 Android 依赖） ----
 
     internal fun hostsToJson(hosts: List<Host>): String {
@@ -236,12 +220,11 @@ object HostStore {
                     .put("token", h.token)
                     .put("deviceId", h.deviceId)
                     .put("certFingerprint", h.certFingerprint)
-                    .put("relayClient", h.relayClient)
-                    .put("relayRouteId", h.relayRouteId)
-                    .put("relayRouteSecret", h.relayRouteSecret)
-                    .put("relayTlsFingerprint", h.relayTlsFingerprint)
-                    .put("preferRelay", h.preferRelay)
-                    .put("needsCloudRescan", h.needsCloudRescan),
+                    .put("remoteEndpoint", h.remoteEndpoint)
+                    .put("remoteRouteId", h.remoteRouteId)
+                    .put("remoteHandle", h.remoteHandle)
+                    .put("remoteKey", h.remoteKey)
+                    .put("remoteOuterPin", h.remoteOuterPin),
             )
         }
         return arr.toString()
@@ -254,18 +237,18 @@ object HostStore {
                 val o = arr.getJSONObject(i)
                 val rawUrl = o.getString("baseUrl")
                 val url = if (rawUrl.startsWith("http://")) "https://" + rawUrl.removePrefix("http://") else rawUrl
+                // 旧版 DLR/1 的 relay* 字段：该中继已下线，读到即丢弃，下一次写入时自然消失
                 Host(
-                    o.getString("name"),
-                    url,
-                    o.getString("token"),
-                    o.optString("deviceId"),
-                    o.optString("certFingerprint"),
-                    o.optString("relayClient"),
-                    o.optString("relayRouteId"),
-                    o.optString("relayRouteSecret"),
-                    o.optString("relayTlsFingerprint"),
-                    o.optBoolean("preferRelay", false),
-                    o.optBoolean("needsCloudRescan", false),
+                    name = o.getString("name"),
+                    baseUrl = url,
+                    token = o.getString("token"),
+                    deviceId = o.optString("deviceId"),
+                    certFingerprint = o.optString("certFingerprint"),
+                    remoteEndpoint = o.optString("remoteEndpoint"),
+                    remoteRouteId = o.optString("remoteRouteId"),
+                    remoteHandle = o.optString("remoteHandle"),
+                    remoteKey = o.optString("remoteKey"),
+                    remoteOuterPin = o.optString("remoteOuterPin"),
                 )
             }
         } catch (e: Exception) {
@@ -279,22 +262,13 @@ object HostStore {
 }
 
 /**
- * Plugin bootstrap `relay` field: object updates cloud creds; JSON null clears them;
- * missing key leaves a stored route alone so older plugins do not wipe pairing.
+ * 插件 bootstrap 的 `remote`（RFC §6.4、§10.4）：对象 = 更新远程能力；JSON null = 插件停了远程，
+ * 只清远程字段、保留局域网配对；没有这个键（旧插件）= 不动。解析不了的对象也不动，
+ * 不因为一次坏数据丢掉能用的凭据（RFC §7.4）。
  */
-internal fun applyBootstrapRelay(host: Host, root: JSONObject): Host {
-    if (!root.has("relay")) return host
-    if (root.isNull("relay")) return host.withoutRelay()
-    val obj = root.optJSONObject("relay") ?: return host
-    val client = obj.optString("client").trim()
-    val routeId = obj.optString("routeId").trim()
-    val routeSecret = obj.optString("routeSecret").trim()
-    if (client.isEmpty() || routeId.isEmpty() || routeSecret.isEmpty()) return host
-    return host.copy(
-        relayClient = client,
-        relayRouteId = routeId,
-        relayRouteSecret = routeSecret,
-        relayTlsFingerprint = obj.optString("tlsFingerprint").trim(),
-        needsCloudRescan = false,
-    )
+internal fun applyBootstrapRemote(host: Host, root: JSONObject): Host {
+    val update = runCatching { RemoteRoute.bootstrapUpdate(root) }.getOrNull() ?: return host
+    if (!update.present) return host
+    val route = update.route ?: return host.withoutRemote()
+    return host.withRemote(route)
 }

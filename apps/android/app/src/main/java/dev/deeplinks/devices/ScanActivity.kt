@@ -116,95 +116,51 @@ class ScanActivity : AppCompatActivity() {
                 return
             }
             is PairingQrResult.Ok -> {
-                val code = parsed.qr.code
-                val urls = parsed.qr.urls
-                val fallbackName = parsed.qr.name
-                val qrFp = parsed.qr.certFingerprint
+                val qr = parsed.qr
                 showPairingProgress()
                 executor.execute {
-                    var lastError = L.allAddressesFailed
-                    val qr = parsed.qr
-                    val cloud = qr.relay != null
-                    val effectiveRelay = qr.relay
-                    // One scan is one logical pairing operation. Every URL,
-                    // certificate fallback, and Relay fallback must reuse the
-                    // same idempotency key.
-                    val requestId = UUID.randomUUID().toString()
-                    fun saveAndFinish(r: PairClient.Result, viaRelay: Boolean) {
-                        runOnUiThread {
-                            if (isFinishing) return@runOnUiThread
-                            val host = hostFromPair(fallbackName, r, if (cloud) effectiveRelay else null, viaRelay)
-                            if (!HostStore.upsert(this, host)) {
-                                if (HostStore.isLocked(this)) {
-                                    HostStore.clearLockAndReplace(this, host)
-                                } else {
-                                    scanFailed(L.credentialsSaveFailedToast)
-                                    return@runOnUiThread
-                                }
-                            }
-                            if (r.pending) {
-                                pairingProgress.visibility = View.GONE
-                                pairingStatus.text = L.pairPendingApprovalToast
-                                pairingOverlay.contentDescription = L.pairPendingApprovalToast
-                                pairingOverlay.visibility = View.VISIBLE
-                                pairingOverlay.setOnClickListener {
-                                    startActivity(
-                                        android.content.Intent(this@ScanActivity, DevicesActivity::class.java)
-                                            .putExtra(EXTRA_AUTH_NOTICE, L.pairPendingApprovalToast),
-                                    )
-                                    finish()
-                                }
-                                return@runOnUiThread
-                            }
-                            startActivity(host.putInto(android.content.Intent(this@ScanActivity, WorkspaceActivity::class.java)))
-                            finish()
-                        }
+                    try {
+                        // 一次扫码 = 一次配对：局域网与远程两条路共用同一个幂等键（RFC §7.6）
+                        val r = PairClient.pairWithQr(qr, DeviceName.of(this), UUID.randomUUID().toString())
+                        saveAndFinish(qr.name, r)
+                    } catch (e: Exception) {
+                        val unwrapped = PinnedSsl.unwrap(e)
+                        val msg = unwrapped.message?.takeIf { it.isNotBlank() } ?: L.allAddressesFailed
+                        runOnUiThread { scanFailed(msg) }
                     }
-                    for (u in urls) {
-                        try {
-                            // Honor an advertised QR fingerprint even for public DNS hosts;
-                            // system PKI alone does not bind that connection to the scanned QR.
-                            val pin = qrFp.takeIf { it.isNotBlank() }
-                            val phoneName = DeviceName.of(this, if (cloud) DeviceName.Kind.CLOUD else DeviceName.Kind.LAN)
-                            val r = PairClient.pair(
-                                u,
-                                code,
-                                phoneName,
-                                pin,
-                                if (cloud) effectiveRelay else null,
-                                preferRelay = cloud,
-                                requestId = requestId,
-                            )
-                            saveAndFinish(r, cloud)
-                            return@execute
-                        } catch (e: Exception) {
-                            val unwrapped = PinnedSsl.unwrap(e)
-                            lastError = unwrapped.message?.takeIf { it.isNotBlank() } ?: unwrapped.javaClass.simpleName
-                        }
-                    }
-                    if (cloud) {
-                        try {
-                            val base = urls.firstOrNull() ?: "https://127.0.0.1:18640"
-                            val r = PairClient.pair(
-                                base,
-                                code,
-                                DeviceName.of(this, DeviceName.Kind.CLOUD),
-                                qrFp.takeIf { it.isNotBlank() },
-                                effectiveRelay,
-                                preferRelay = true,
-                                requestId = requestId,
-                            )
-                            saveAndFinish(r, true)
-                            return@execute
-                        } catch (e: Exception) {
-                            val unwrapped = PinnedSsl.unwrap(e)
-                            lastError = unwrapped.message?.takeIf { it.isNotBlank() } ?: unwrapped.javaClass.simpleName
-                        }
-                    }
-                    val msg = lastError
-                    runOnUiThread { scanFailed(msg) }
                 }
             }
+        }
+    }
+
+    private fun saveAndFinish(fallbackName: String, r: PairClient.Result) {
+        runOnUiThread {
+            if (isFinishing) return@runOnUiThread
+            val host = hostFromPair(fallbackName, r)
+            if (!HostStore.upsert(this, host)) {
+                if (HostStore.isLocked(this)) {
+                    HostStore.clearLockAndReplace(this, host)
+                } else {
+                    scanFailed(L.credentialsSaveFailedToast)
+                    return@runOnUiThread
+                }
+            }
+            if (r.pending) {
+                pairingProgress.visibility = View.GONE
+                pairingStatus.text = L.pairPendingApprovalToast
+                pairingOverlay.contentDescription = L.pairPendingApprovalToast
+                pairingOverlay.visibility = View.VISIBLE
+                pairingOverlay.setOnClickListener {
+                    startActivity(
+                        android.content.Intent(this@ScanActivity, DevicesActivity::class.java)
+                            .putExtra(EXTRA_AUTH_NOTICE, L.pairPendingApprovalToast),
+                    )
+                    finish()
+                }
+                return@runOnUiThread
+            }
+            startActivity(host.putInto(android.content.Intent(this@ScanActivity, WorkspaceActivity::class.java)))
+            finish()
         }
     }
 

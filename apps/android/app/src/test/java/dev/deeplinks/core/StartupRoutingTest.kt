@@ -29,10 +29,9 @@ class StartupRoutingTest {
     }
 
     @Test
-    fun `同一地址的局域网与云端不会撞身份`() {
-        val cloud = legacy.copy(relayClient = "r:8443", relayRouteId = "rid", relayRouteSecret = "sec")
-        assertEquals(true, cloud.hasRelay)
-        assertEquals(false, legacy.stableIdentity() == cloud.stableIdentity())
+    fun `远程能力不改变同一台电脑的稳定身份`() {
+        val remote = legacy.copy(remoteEndpoint = "wss://relay.example/ws", remoteRouteId = "r", remoteHandle = "h", remoteKey = "k")
+        assertEquals(legacy.stableIdentity(), remote.stableIdentity())
     }
 
     @Test

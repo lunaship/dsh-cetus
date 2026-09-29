@@ -89,16 +89,16 @@ fun hostDisplayLabel(alias: String?, hostName: String?, address: String?): Strin
  */
 fun hostStatusText(
     online: Boolean?,
-    viaCloud: Boolean,
+    viaRemote: Boolean,
     latencyMs: Long?,
     onlineText: String,
     offlineText: String,
-    viaCloudText: String,
+    viaRemoteText: String,
 ): String? {
     if (online == null) return null
     if (!online) return offlineText
     val parts = mutableListOf(onlineText)
-    if (viaCloud) parts += viaCloudText
+    if (viaRemote) parts += viaRemoteText
     if (latencyMs != null && latencyMs > 0) parts += "${latencyMs}ms"
     return "● " + parts.joinToString(" · ")
 }

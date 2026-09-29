@@ -21,7 +21,6 @@ import dev.deeplinks.core.PairClient
 import dev.deeplinks.core.PinnedSsl
 import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.shouldBlockLocalHostRemoval
-import dev.deeplinks.native.shouldDemoteRelayOnAuth
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshConfirmDialog
 import dev.deeplinks.native.DshDialogButtons
@@ -98,6 +97,8 @@ internal data class DeviceUi(
     val host: Host,
     val state: DeviceState = DeviceState.CHECKING,
     val latencyMs: Long? = null,
+    /** 最近一次成功的请求走的是远程（中继）。 */
+    val viaRemote: Boolean = false,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,17 +138,16 @@ fun DevicesScreen(
         healthJob = scope.launch {
             val health = withContext(Dispatchers.IO) { PairClient.probe(current.host) }
             if (health is HostHealth.AuthFailed) {
-                val demote = shouldDemoteRelayOnAuth(health.error) && current.host.hasRelay
                 withContext(Dispatchers.IO) {
-                    if (demote) HostStore.demoteRelay(context, current.host) else if (dev.deeplinks.native.shouldDropLocalHostOnOpenAuth(health.error)) HostStore.remove(context, current.host)
+                    if (dev.deeplinks.native.shouldDropLocalHostOnOpenAuth(health.error)) HostStore.remove(context, current.host)
                 }
-                onHostNotice(if (demote) L.relayRouteExpired else L.connectionAuthExpired)
+                onHostNotice(L.connectionAuthExpired)
                 onHostChanged()
             }
             val stored = withContext(Dispatchers.IO) { HostStore.current(context) }
             device = stored?.let { h ->
                 when (health) {
-                    is HostHealth.Ok -> DeviceUi(h, DeviceState.ONLINE, health.latencyMs)
+                    is HostHealth.Ok -> DeviceUi(h, DeviceState.ONLINE, health.latencyMs, dev.deeplinks.core.HostHttp.isViaRemote(h))
                     else -> DeviceUi(h, DeviceState.OFFLINE, null)
                 }
             }
@@ -202,13 +202,6 @@ fun DevicesScreen(
         }
     }
 
-    fun togglePreferRelay(host: Host) {
-        val updated = host.copy(preferRelay = !host.preferRelay)
-        if (HostStore.upsert(context, updated)) {
-            Toast.makeText(context, s.preferCloudHint, Toast.LENGTH_SHORT).show()
-        }
-        reload()
-    }
 
     fun requestUnpair(current: DeviceUi) {
         unpairTarget = current.host
@@ -224,8 +217,6 @@ fun DevicesScreen(
             notice = hostNotice ?: offlineError,
             onDismiss = onDismissSheet,
             onRecheck = { refreshHealth() },
-            onTogglePreferRelay = ::togglePreferRelay,
-            onRescan = onScanClick,
             onReplace = { showPairingPanel = true },
             onUnpair = ::requestUnpair,
         )
@@ -236,16 +227,8 @@ fun DevicesScreen(
             notice = hostNotice ?: offlineError,
             onRefresh = { refreshing = true; reload() },
             onOpen = { current -> onOpenHost(current.host) { ok -> if (!ok) reload() } },
-            onTogglePreferRelay = ::togglePreferRelay,
             onUnpair = ::requestUnpair,
             onRecheck = { refreshHealth() },
-            onRescan = onScanClick,
-            onRescanLater = {
-                scope.launch(Dispatchers.IO) {
-                    HostStore.clearCloudRescan(context)
-                    withContext(Dispatchers.Main) { reload() }
-                }
-            },
             onAddDevice = { showPairingPanel = true },
         )
     }
@@ -351,11 +334,8 @@ private fun DevicesPage(
     notice: String?,
     onRefresh: () -> Unit,
     onOpen: (DeviceUi) -> Unit,
-    onTogglePreferRelay: (Host) -> Unit,
     onUnpair: (DeviceUi) -> Unit,
     onRecheck: () -> Unit,
-    onRescan: () -> Unit,
-    onRescanLater: () -> Unit,
     onAddDevice: () -> Unit,
 ) {
     val s = DshS
@@ -393,9 +373,6 @@ private fun DevicesPage(
                         notice = notice,
                         onOpen = { onOpen(current) },
                         onRecheck = onRecheck,
-                        onTogglePreferRelay = onTogglePreferRelay,
-                        onRescan = onRescan,
-                        onRescanLater = onRescanLater,
                         onReplace = onAddDevice,
                         onUnpair = { onUnpair(current) },
                     )

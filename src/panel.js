@@ -1,10 +1,4 @@
 /**
- * dsh-links 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
- * 单模块：createPanelModule —— 「手机连接」面板（src/panel.js）
- * 说明：移动布局适配已由 Android App 注入（assets/mobile-client.js），
- *       本插件不注入任何页面布局，桌面端 DSH Web UI 保持原样。
- */
-/**
  * dsh-links 客户端面 · 面板模块（作为 createPanelModule 工厂被主模块组合调用）
  * 「手机连接」：一张连接码（局域网 + 远程）、远程连接（DLP/1）、已配对手机。
  *
@@ -691,21 +685,3 @@ const createPanelModule = (require) => {
 
   return { apply, inject: ['slots'] }
 }
-
-window.__ModuleLoader__.load({
-  id: 'dsh-links',
-  factory: (require) => {
-    const panel = createPanelModule(require)
-    const module = { exports: {} }
-    const exports = module.exports
-    Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
-
-    function apply(ctx) {
-      panel.apply(ctx)
-    }
-
-    exports.apply = apply
-    exports.inject = panel.inject ?? []
-    return module.exports
-  },
-})

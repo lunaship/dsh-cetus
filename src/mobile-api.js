@@ -9,7 +9,6 @@ import { deriveActivity, deriveAwaitingInput, deriveLastResult, deriveStoppedRea
 import { handleMobileModelsApi } from "./mobile-models.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
-import { relayPairSnapshot } from "./relay/crypto.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
 import { listWorkspaceDir, mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
 import { optionalString, omitNullFields } from "./optional-string.js"
@@ -283,6 +282,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     revokeDeviceEntry,
     filterSettingsPatch,
     publicDevice,
+    remoteForDevice,
   } = deps
   try {
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -300,7 +300,10 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         sessions,
         archivedSessionIds,
         webPath: "/",
-        relay: relayPairSnapshot(state.relay),
+        // DLR/1 中继已下线：固定 null，旧 App 据此清掉失效的云端路由、保留局域网配对
+        relay: null,
+        // DLP/1（RFC §6.4）：对象 = 更新远程能力；null = 远程未启用，App 只清远程字段
+        remote: remoteForDevice?.(device) ?? null,
       })
     }
 

@@ -86,7 +86,7 @@ internal fun WorkspaceSidebar(
     sessionsLoadError: String?,
     hostName: String,
     online: Boolean,
-    viaCloud: Boolean,
+    viaRemote: Boolean,
     latencyMs: Long?,
     offlineSinceLabel: String?,
     selectedWorkspace: String?,
@@ -116,7 +116,7 @@ internal fun WorkspaceSidebar(
         HomeHeader(
             hostName = hostName,
             online = online,
-            viaCloud = viaCloud,
+            viaRemote = viaRemote,
             latencyMs = latencyMs,
             offlineSinceLabel = offlineSinceLabel,
             searchActive = sidebarSearchOpen || searchQuery.isNotBlank(),

@@ -1,0 +1,28 @@
+# systemd 单元：与官方中继 relay.dshlinks.com 的线上配置一致。
+# 安装：useradd --system --no-create-home dlp && install -m 0755 dlp-relay /usr/local/bin/
+[Unit]
+Description=DeepLinks DLP/1 relay (dumb-pipe WebSocket relay)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dlp
+Group=dlp
+ExecStart=/usr/local/bin/dlp-relay
+# 只听回环，由 Caddy 在同机终止 TLS 后反代；DLP_TRUSTED_PROXIES 默认即 127.0.0.1/32,::1/128
+Environment=DLP_LISTEN=127.0.0.1:8412
+# 每 route 每天 5 GiB；自建可删掉这一行（0 = 不限）
+Environment=DLP_ROUTE_DAILY_BYTES=5368709120
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

@@ -135,6 +135,7 @@ internal fun AppNavHost(
                         PairClient.pair(url, code, DeviceName.of(context), fingerprint)
                     }
                     val newHost = Host(name.ifBlank { r.name }, r.baseUrl, r.token, r.deviceId, r.certFingerprint)
+                        .let { h -> r.remote?.let(h::withRemote) ?: h }
                     if (!HostStore.upsert(context, newHost)) {
                         if (HostStore.isLocked(context)) {
                             HostStore.clearLockAndReplace(context, newHost)

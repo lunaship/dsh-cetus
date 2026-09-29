@@ -22,8 +22,8 @@ enum class DshStartSurface { Devices, Workspace }
 fun Host.stableIdentity(): String {
     val id = deviceId.trim()
     if (id.isNotEmpty()) return "device:$id"
-    val mode = if (hasRelay) "relay" else "lan"
-    return "$mode|${baseUrl.trim().lowercase()}"
+    // 旧数据兜底身份；远程只是同一台电脑的另一条路，身份里固定 lan
+    return "lan|${baseUrl.trim().lowercase()}"
 }
 
 /**

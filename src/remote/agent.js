@@ -48,6 +48,8 @@ export class RemoteAgent extends EventEmitter {
   #nonces
 
   #status = "off"
+  /** 控制连接最近一次失败的原因（面板用）；注册成功即清空。只含错误码或简短原因，不含秘密。 */
+  #lastError = ""
   #stopped = true
   #ctrl = null
   #registeredAt = 0
@@ -116,6 +118,10 @@ export class RemoteAgent extends EventEmitter {
     return Buffer.from(this.#routeId)
   }
 
+  get lastError() {
+    return this.#lastError
+  }
+
   /** 来源标签（§6.1）；插件以 req.socket.remotePort 查询。 */
   originOf(localPort) {
     const tag = this.#origins.get(localPort)
@@ -175,6 +181,7 @@ export class RemoteAgent extends EventEmitter {
     this.#selftest = { handle, expiresAtMs: this.#now() + SELFTEST_TTL_MS }
     const started = Date.now()
     let ws
+    let innerSocket
     try {
       ws = this.#newSocket()
       await waitForHello(ws)
@@ -192,22 +199,28 @@ export class RemoteAgent extends EventEmitter {
       const duplex = createWebSocketStream(ws, { highWaterMark: DATA_CHUNK_BYTES })
       duplex.on("error", () => {})
       const inner = tls.connect({ socket: duplex, rejectUnauthorized: false, servername: "" })
+      innerSocket = inner
       await new Promise((resolve, reject) => {
+        // 隧道可能在握手完成前被关掉而不报 error：没有超时与 close 兜底时，面板请求会一直挂着
+        const timer = setTimeout(() => reject(new Error("inner TLS timed out")), ACCEPT_READY_TIMEOUT_MS)
+        timer.unref?.()
         inner.once("secureConnect", () => {
+          clearTimeout(timer)
           const fp = createHash("sha256").update(inner.getPeerCertificate().raw).digest("hex")
           if (fp === pin) resolve()
           else reject(new Error("inner certificate mismatch"))
         })
-        inner.once("error", reject)
+        inner.once("error", (err) => { clearTimeout(timer); reject(err) })
+        inner.once("close", () => { clearTimeout(timer); reject(new Error("tunnel closed during inner TLS")) })
       })
       result.innerTlsMs = Date.now() - innerStarted
       result.ok = true
       result.failedStage = null
-      inner.destroy()
     } catch {
       // 失败阶段已记在 result.failedStage
     } finally {
       this.#selftest = null
+      innerSocket?.destroy()
       ws?.close(CLOSE.NORMAL)
     }
     return result
@@ -245,6 +258,7 @@ export class RemoteAgent extends EventEmitter {
           return
         }
         registered = true
+        this.#lastError = ""
         this.#registeredAt = this.#now()
         this.#startPing(ws, Number.isSafeInteger(msg.ping) && msg.ping > 0 ? msg.ping : 20)
         this.#logger.info("dlp-agent: registered")
@@ -255,12 +269,15 @@ export class RemoteAgent extends EventEmitter {
       } else if (msg.t === "pong" && registered) {
         // 只用于保活
       } else if (msg.t === "error") {
-        this.#logger.warn(`dlp-agent: relay error code=${safeCode(msg.code)}`)
+        this.#lastError = safeCode(msg.code)
+        this.#logger.warn(`dlp-agent: relay error code=${this.#lastError}`)
       } else {
         ws.close(CLOSE.PROTOCOL_ERROR)
       }
     })
-    ws.on("error", () => {})
+    ws.on("error", (err) => {
+      if (this.#ctrl === ws) this.#lastError = describeSocketError(err)
+    })
     ws.on("close", (code) => this.#onControlClose(ws, code, registered))
   }
 
@@ -573,6 +590,21 @@ function decodeField(value, length) {
   } catch {
     return null
   }
+}
+
+/**
+ * 外层连接失败的简短原因。只取 Node 错误码或已知的几类消息：
+ * ws 的 message 可能带完整 URL，虽不含秘密，也没必要原样进面板。
+ */
+function describeSocketError(err) {
+  const code = typeof err?.code === "string" ? err.code : ""
+  if (/^[A-Z0-9_]{2,40}$/.test(code)) return code
+  const message = String(err?.message ?? "")
+  if (/pin mismatch/i.test(message)) return "OUTER_PIN_MISMATCH"
+  const status = /Unexpected server response: (\d{3})/.exec(message)
+  if (status) return `HTTP_${status[1]}`
+  if (/timed out/i.test(message)) return "TIMEOUT"
+  return "CONNECT_FAILED"
 }
 
 function publicTag(tag) {

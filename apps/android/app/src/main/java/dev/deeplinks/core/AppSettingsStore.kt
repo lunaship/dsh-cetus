@@ -76,8 +76,9 @@ internal fun appSettingsHostCacheId(host: Host): String {
         PinnedSsl.normalizeUrl(host.baseUrl).trimEnd('/').lowercase(),
         PinnedSsl.normalizeFingerprint(host.certFingerprint),
         host.deviceId.trim(),
-        host.relayClient.trim().lowercase(),
-        host.relayRouteId.trim(),
+        // 原先的 DLR/1 relayClient / relayRouteId 位：固定留空，局域网电脑的设置命名空间保持不变
+        "",
+        "",
     ).joinToString("\u001f")
     return MessageDigest.getInstance("SHA-256")
         .digest(identity.toByteArray(Charsets.UTF_8))
