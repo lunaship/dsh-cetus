@@ -1,9 +1,9 @@
 /**
  * 二维码可扫性回归。
  *
- * 面板底托是 160px 见方、内边距 9px、边框 1px → 内区 140 CSS px；Retina 上折合
- * 280 物理像素。手机相机要可靠解码需要每模块约 3 个物理像素，所以二维码模块数
- * 必须 ≤ 280/3 ≈ 93。
+ * 面板底托（src/module2.js 的 .dl-qr）是 168px 见方、内边距 9px、边框 0.5px → 内区
+ * 149 CSS px；Retina 上折合 298 物理像素。手机相机要可靠解码需要每模块约 3 个物理像素，
+ * 所以二维码模块数必须 ≤ 298/3 ≈ 99。统一码（局域网 + remote）约 81 模块，带外层指纹约 89。
  *
  * 2026-09-20 的事故：`qrPng` 直接把面板用的 pairInfo 整个塞进二维码，带上
  * `exposure`（网卡告警文案）和 `infos`（地址标签）后载荷 823/1053 字符、模块数
@@ -18,9 +18,9 @@ import test from "node:test"
 import QRCode from "qrcode"
 import { qrPayload } from "../src/index.js"
 
-const PLATE_PX = 160
+const PLATE_PX = 168
 const PLATE_PADDING_PX = 9
-const PLATE_BORDER_PX = 1
+const PLATE_BORDER_PX = 0.5
 const INNER_CSS_PX = PLATE_PX - 2 * PLATE_PADDING_PX - 2 * PLATE_BORDER_PX
 const RETINA = 2
 const MIN_DEVICE_PX_PER_MODULE = 3

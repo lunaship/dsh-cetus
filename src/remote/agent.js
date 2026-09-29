@@ -181,6 +181,7 @@ export class RemoteAgent extends EventEmitter {
     this.#selftest = { handle, expiresAtMs: this.#now() + SELFTEST_TTL_MS }
     const started = Date.now()
     let ws
+    let innerSocket
     try {
       ws = this.#newSocket()
       await waitForHello(ws)
@@ -198,22 +199,28 @@ export class RemoteAgent extends EventEmitter {
       const duplex = createWebSocketStream(ws, { highWaterMark: DATA_CHUNK_BYTES })
       duplex.on("error", () => {})
       const inner = tls.connect({ socket: duplex, rejectUnauthorized: false, servername: "" })
+      innerSocket = inner
       await new Promise((resolve, reject) => {
+        // 隧道可能在握手完成前被关掉而不报 error：没有超时与 close 兜底时，面板请求会一直挂着
+        const timer = setTimeout(() => reject(new Error("inner TLS timed out")), ACCEPT_READY_TIMEOUT_MS)
+        timer.unref?.()
         inner.once("secureConnect", () => {
+          clearTimeout(timer)
           const fp = createHash("sha256").update(inner.getPeerCertificate().raw).digest("hex")
           if (fp === pin) resolve()
           else reject(new Error("inner certificate mismatch"))
         })
-        inner.once("error", reject)
+        inner.once("error", (err) => { clearTimeout(timer); reject(err) })
+        inner.once("close", () => { clearTimeout(timer); reject(new Error("tunnel closed during inner TLS")) })
       })
       result.innerTlsMs = Date.now() - innerStarted
       result.ok = true
       result.failedStage = null
-      inner.destroy()
     } catch {
       // 失败阶段已记在 result.failedStage
     } finally {
       this.#selftest = null
+      innerSocket?.destroy()
       ws?.close(CLOSE.NORMAL)
     }
     return result
