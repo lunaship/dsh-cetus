@@ -24,6 +24,8 @@ object DshNotifier {
     // 方案 8：两个频道（审批要「现在处理」= 高优先级，完成是「有空看」= 默认）
     private const val CHANNEL_ID_APPROVAL = "dsh_approvals"
     private const val CHANNEL_ID_TASK = "dsh_tasks"
+    /** 阶段 8 之前的单频道 id，只用于清理。 */
+    private const val LEGACY_CHANNEL_ID = "dsh_events"
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -34,6 +36,9 @@ object DshNotifier {
         manager.createNotificationChannel(
             channelOf(CHANNEL_ID_TASK, L.notifChannelTasks, L.notifChannelTasksDesc, NotificationManager.IMPORTANCE_DEFAULT),
         )
+        // 升级遗留：阶段 8 之前只有一个 dsh_events 频道，装过旧版的设备上它会一直留着，
+        // 用户在系统通知设置里看到三个频道、其中一个永远不会响。这里一次性清掉。
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
     }
 
     private fun channelOf(id: String, name: String, desc: String, importance: Int): NotificationChannel =
