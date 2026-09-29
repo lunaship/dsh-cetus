@@ -5,6 +5,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
+import dev.deeplinks.core.backgroundTakeover
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.FontScaleManager
 import dev.deeplinks.core.ThemeManager
@@ -398,6 +399,7 @@ internal fun SettingsHome(
     val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
     var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
     var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
+    var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
     var alias by remember { mutableStateOf(notifyPrefs.hostAlias) }
     var renameOpen by remember { mutableStateOf(false) }
     val themeLabel = when (ThemeManager.currentThemeMode) {
@@ -510,6 +512,17 @@ internal fun SettingsHome(
             title = s.notifyOnDone,
             checked = notifyDone,
             onCheckedChange = { notifyDone = it; notifyPrefs.notifyOnDone = it },
+        )
+        // 默认关闭：打开后前台服务在离开 App 时保持订阅，插件就把审批交给手机（见 WorkspacePrefs）。
+        // 关闭时立刻停服务并收回它发出的可操作审批通知，之后的审批回到电脑网页。
+        DshSwitchRow(
+            title = s.backgroundTakeover,
+            checked = backgroundTakeover,
+            onCheckedChange = {
+                backgroundTakeover = it
+                notifyPrefs.backgroundTakeover = it
+                if (!it) SessionBackgroundMonitorService.stopAll(notifyContext)
+            },
         )
     }
     if (renameOpen) {

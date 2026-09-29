@@ -16,6 +16,7 @@ import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
 import dev.deeplinks.core.notifMonitorBody
 import dev.deeplinks.core.notifMonitorTitle
+import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.parseStoppedReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +31,12 @@ import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-/** Keeps the selected, running DSH conversation connected while the user switches apps or locks the phone. */
+/**
+ * 离开 App 或锁屏时，让当前打开、仍在运行的会话保持 SSE 订阅，从而继续收到审批与完成提醒。
+ *
+ * 只在设置「离开 App 后继续接管审批」打开时工作（[WorkspacePrefs.backgroundTakeover]，默认关闭）：
+ * 插件只要看到手机在订阅，就会把该会话的审批交给手机，电脑网页上不再出现；这是用户需要明确选择的行为。
+ */
 class SessionBackgroundMonitorService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var host: Host? = null
@@ -53,6 +59,11 @@ class SessionBackgroundMonitorService : Service() {
             return START_NOT_STICKY
         }
         val isRestore = intent == null
+        // 开关已关：进程被回收后系统按 START_STICKY 重建时不再恢复订阅（恢复走 startService，无需 startForeground）
+        if (isRestore && !WorkspacePrefs(this).backgroundTakeover) {
+            stopMonitoring()
+            return START_NOT_STICKY
+        }
         val nextSessionId = intent?.getStringExtra(EXTRA_SESSION_ID)
             ?: if (isRestore) storedSessionId() else null
         val nextHost = HostStore.current(this)
@@ -403,6 +414,20 @@ class SessionBackgroundMonitorService : Service() {
                     putExtra(EXTRA_BACKGROUND, true)
                 },
             )
+        }
+
+        /** 设置里关掉开关时调用：停止订阅并收回可操作的审批通知，审批回到电脑网页。 */
+        fun stopAll(context: Context) {
+            val service = instance
+            if (service != null) {
+                val h = service.host
+                val sid = service.sessionId
+                if (h != null && sid != null) DshNotifier.cancelApproval(context, h, sid)
+                service.stopMonitoring()
+            } else {
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+            }
+            activeSessionId = null
         }
 
         fun foreground(sid: String): Long = instance?.returnToForeground(sid) ?: SessionMonitorCursors.get(sid)

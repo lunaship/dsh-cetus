@@ -99,6 +99,17 @@ class WorkspacePrefs(context: Context) {
             prefs.edit().putBoolean(KEY_NOTIFY_DONE, value).apply()
         }
 
+    /**
+     * 离开 App 后是否继续接管当前任务（前台服务保持 SSE）。默认关闭：
+     * 插件只在手机订阅会话时接管审批，后台保持订阅就会把审批从电脑网页拿走（方案 D1-B 的代价），
+     * 所以默认回到 D2 v1——离开 App 即断流、审批交给电脑；只有用户明确打开才启用锁屏审批。
+     */
+    var backgroundTakeover: Boolean
+        get() = prefs.getBoolean(KEY_BACKGROUND_TAKEOVER, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_BACKGROUND_TAKEOVER, value).apply()
+        }
+
     var notifPermissionAsked: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ASKED, false)
         set(value) {
@@ -243,6 +254,7 @@ class WorkspacePrefs(context: Context) {
         const val KEY_HOST_ALIAS = "host_alias"
         const val KEY_NOTIFY_APPROVAL = "notify_on_approval"
         const val KEY_NOTIFY_DONE = "notify_on_done"
+        const val KEY_BACKGROUND_TAKEOVER = "background_takeover"
 
         const val KEY_LAST_WORKSPACE = "workspace_last_selected_cwd"
         const val KEY_SESSION_SNAPSHOTS = "workspace_session_snapshots"
