@@ -25,6 +25,14 @@ data class RemoteRoute(
         fun fromPairResponse(payload: JSONObject): RemoteRoute? =
             payload.optJSONObject("remote")?.let { parseDeviceRemote(it) }
 
+        /** Host 里存的是 b64u 文本；字段不全或不合法时视为没有远程能力。 */
+        fun fromStored(endpoint: String, routeId: String, handle: String, key: String, outerPin: String): RemoteRoute? {
+            if (endpoint.isBlank() || routeId.isBlank() || handle.isBlank() || key.isBlank()) return null
+            val remote = JSONObject().put("e", endpoint).put("r", routeId).put("h", handle).put("k", key)
+            if (outerPin.isNotBlank()) remote.put("p", outerPin)
+            return runCatching { parseDeviceRemote(remote) }.getOrNull()
+        }
+
         /** null = 键存在且清除；未提供 = 保留已有远程字段。 */
         fun bootstrapUpdate(payload: JSONObject): BootstrapRemoteUpdate {
             if (!payload.has("remote")) return BootstrapRemoteUpdate(present = false, route = null)

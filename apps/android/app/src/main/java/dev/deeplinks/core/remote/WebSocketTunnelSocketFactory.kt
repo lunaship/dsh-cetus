@@ -32,7 +32,10 @@ class RouteOfflineException : RouteConnectException("remote route offline")
 class RouteOpenTimeoutException : RouteConnectException("remote stream open timed out")
 class RouteRateLimitedException : RouteConnectException("remote route rate limited")
 class RouteServerBusyException : RouteConnectException("remote server busy")
-class RouteRejectedException(val code: String) : RouteConnectException("remote request rejected: $code")
+/** 电脑侧 Agent 或中继拒绝了这次会合；[hostNow] 仅 CLOCK_SKEW 时有（电脑的 Unix 秒）。 */
+class RouteRejectedException(val code: String, val hostNow: Long? = null) : RouteConnectException("remote request rejected: $code")
+/** 外层 WSS 没连上中继（DNS、TCP、TLS、HTTP 升级任一步失败）。 */
+class RouteUnreachableException(cause: Throwable?) : RouteConnectException("relay unreachable", cause)
 class RouteProtocolException : RouteConnectException("remote protocol error")
 
 /** DLP/1 外层 WSS 与插件内层 TLS 之间提供一个真实、可读写的裸 Socket。 */
@@ -221,7 +224,8 @@ class WebSocketTunnelSocketFactory(
                         }
                         "error" -> {
                             val code = message.optString("code")
-                            failure = mapError(code)
+                            val hostNow = if (message.has("hostNow")) message.optLong("hostNow") else null
+                            failure = mapError(code, hostNow)
                             ready.countDown()
                             webSocket.close(1000, "")
                         }
@@ -263,7 +267,8 @@ class WebSocketTunnelSocketFactory(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 if (ready.count != 0L) {
-                    failure = t as? IOException ?: RouteProtocolException()
+                    // 还没收到 hello = 中继本身不可达；之后的失败保留原异常
+                    failure = if (!helloSeen) RouteUnreachableException(t) else t as? IOException ?: RouteProtocolException()
                     ready.countDown()
                 }
                 closeTunnel()
@@ -310,13 +315,13 @@ class WebSocketTunnelSocketFactory(
         bytes
     } catch (_: IllegalArgumentException) { throw RouteProtocolException() }
 
-    private fun mapError(code: String): IOException = when (code) {
+    private fun mapError(code: String, hostNow: Long? = null): IOException = when (code) {
         "ROUTE_OFFLINE" -> RouteOfflineException()
         "OPEN_TIMEOUT" -> RouteOpenTimeoutException()
         "RATE_LIMITED" -> RouteRateLimitedException()
         "SERVER_BUSY" -> RouteServerBusyException()
         "PROTOCOL_ERROR", "UNSUPPORTED_VERSION", "AUTH_FAILED" -> RouteProtocolException()
-        else -> RouteRejectedException(code.ifBlank { "UNKNOWN" })
+        else -> RouteRejectedException(code.ifBlank { "UNKNOWN" }, hostNow)
     }
 
     private fun mapClose(code: Int, reason: String): IOException = when (reason) {

@@ -25,7 +25,7 @@ object HostConnectivity {
     /** null = 还没探过（刚进 App），此时不宣称「离线」——那是假消息。 */
     var online by mutableStateOf<Boolean?>(null)
 
-    /** 是否走云端通道（host.hasRelay）。 */
+    /** 最近一次成功的请求是不是走的远程（DLP/1 中继）；字段名沿用旧称。 */
     var viaCloud by mutableStateOf(false)
 
     var latencyMs by mutableStateOf<Long?>(null)

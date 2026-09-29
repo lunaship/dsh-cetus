@@ -1,6 +1,9 @@
 package dev.deeplinks.core
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
 import androidx.appcompat.app.AppCompatDelegate
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -16,6 +19,23 @@ class DshApplication : Application(), SingletonImageLoader.Factory {
         LocaleManager.init(this)
         ThemeManager.init(this)
         FontScaleManager.init(this)
+        watchNetwork()
+    }
+
+    /**
+     * 网络变化（连上 / 断开 Wi-Fi、换蜂窝、地址变了）让自动选路重新探测局域网（RFC §7.2 第 1 条）。
+     * 首次注册会立刻回调一次 onAvailable，顺带作废进程启动前的一切旧结论，无副作用。
+     */
+    private fun watchNetwork() {
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return
+        runCatching {
+            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = HostHttp.onNetworkChanged()
+                override fun onLost(network: Network) = HostHttp.onNetworkChanged()
+                override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) =
+                    HostHttp.onNetworkChanged()
+            })
+        }
     }
 
     /** Coil3 全局 ImageLoader：Markdown 图片只允许 https 公网（DNS 层 + 拦截器双保险）。 */

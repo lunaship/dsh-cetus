@@ -184,7 +184,8 @@ class SessionStreamClient(
         val response = try {
             val path = "/dsh-link/mobile/sessions/" + URLEncoder.encode(sessionId, "UTF-8") +
                 "/stream?afterSeq=" + lastSeq + "&caps=" + STREAM_CLIENT_CAPS
-            val connectMs = if (host.hasRelay) 20_000 else 8_000
+            // 远程路径的建立超时由 HostHttp 按路由放宽
+            val connectMs = 8_000
             HostHttp.execute(
                 host,
                 HostHttp.DshRequest(

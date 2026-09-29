@@ -33,47 +33,38 @@ class PairingQrTest {
         assertTrue(parsePairingQr("""{"type":"dsh-link","pairingCode":"","urls":["https://x"]}""") is PairingQrResult.Invalid)
     }
 
+    private val remote = """"remote":{"e":"wss://relay.example/ws","r":"AAAAAAAAAAAAAAAAAAAAAA","s":"AQEBAQEBAQEBAQEBAQEBAQ"}"""
+
     @Test
-    fun `legacy payload ignores unknown relay fields`() {
-        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"name":"书房","certFingerprint":"ab","relay":{"v":2,"client":"relay.example:8443","routeId":"rid","routeSecret":"sec","tlsFingerprint":"ff"}}"""
-        val parsed = parsePairingQr(text)
-        assertTrue(parsed is PairingQrResult.Ok)
-        val qr = (parsed as PairingQrResult.Ok).qr
-        assertEquals("123456", qr.code)
-        assertEquals("relay.example:8443", qr.relay?.client)
-        assertEquals("rid", qr.relay?.routeId)
-        assertEquals("sec", qr.relay?.routeSecret)
-        assertEquals("ff", qr.relay?.tlsFingerprint)
+    fun `unified code carries lan urls and a bootstrap remote route`() {
+        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"name":"书房","certFingerprint":"ab",$remote}"""
+        val qr = (parsePairingQr(text) as PairingQrResult.Ok).qr
+        assertEquals(listOf("https://10.0.0.2:18640"), qr.urls)
+        assertEquals("bootstrap", qr.remote?.kind)
+        assertEquals("wss://relay.example/ws", qr.remote?.endpoint)
     }
 
     @Test
-    fun `relay-only qr without inner pin is invalid`() {
-        val text = """{"type":"dsh-link","pairingCode":"123456","relay":{"client":"10.0.0.9:8443","routeId":"rid","routeSecret":"sec"}}"""
-        val parsed = parsePairingQr(text)
-        assertTrue(parsed is PairingQrResult.Invalid)
+    fun `remote-only code needs the inner pin`() {
+        val withPin = """{"type":"dsh-link","pairingCode":"123456","certFingerprint":"ab",$remote}"""
+        assertTrue(parsePairingQr(withPin) is PairingQrResult.Ok)
+        val noPin = """{"type":"dsh-link","pairingCode":"123456",$remote}"""
+        assertTrue(parsePairingQr(noPin) is PairingQrResult.Invalid)
     }
 
     @Test
-    fun `relay-only qr requires inner pin`() {
-        val text = """{"type":"dsh-link","pairingCode":"123456","certFingerprint":"ab","relay":{"client":"10.0.0.9:8443","routeId":"rid","routeSecret":"sec"}}"""
-        val parsed = parsePairingQr(text)
-        assertTrue(parsed is PairingQrResult.Ok)
-        val qr = (parsed as PairingQrResult.Ok).qr
-        assertTrue(qr.urls.isEmpty())
-        assertEquals("10.0.0.9:8443", qr.relay?.client)
+    fun `broken remote only drops remote pairing`() {
+        val text = """{"type":"dsh-link","pairingCode":"1","urls":["https://10.0.0.2:18640"],"certFingerprint":"ab","remote":{"e":"ws://insecure/ws","r":"x","s":"y"}}"""
+        val qr = (parsePairingQr(text) as PairingQrResult.Ok).qr
+        assertEquals(null, qr.remote)
     }
 
     @Test
-    fun `anonymous relay qr is rejected because it has no target route`() {
-        val text = """{"type":"dsh-link","pairingCode":"123456","certFingerprint":"ab","relay":{"client":"10.0.0.9:8443","mode":"anonymous","tlsFingerprint":"ff"}}"""
-        assertTrue(parsePairingQr(text) is PairingQrResult.Invalid)
-    }
-
-    @Test
-    fun `incomplete relay is ignored and urls remain required`() {
-        assertTrue(parsePairingQr("""{"type":"dsh-link","pairingCode":"1","relay":{"client":"x"}}""") is PairingQrResult.Invalid)
-        val parsed = parsePairingQr("""{"type":"dsh-link","pairingCode":"1","urls":["https://10.0.0.2:18640"],"relay":{"client":"x"}}""")
-        assertTrue(parsed is PairingQrResult.Ok)
-        assertEquals(null, (parsed as PairingQrResult.Ok).qr.relay)
+    fun `legacy DLR relay key is ignored`() {
+        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"certFingerprint":"ab","relay":{"v":2,"client":"relay.example:8443","routeId":"rid","routeSecret":"sec"}}"""
+        val qr = (parsePairingQr(text) as PairingQrResult.Ok).qr
+        assertEquals(null, qr.remote)
+        // 只有旧 relay、没有局域网地址的码：旧中继已下线，这张码用不了
+        assertTrue(parsePairingQr("""{"type":"dsh-link","pairingCode":"1","certFingerprint":"ab","relay":{"client":"x","routeId":"r","routeSecret":"s"}}""") is PairingQrResult.Invalid)
     }
 }

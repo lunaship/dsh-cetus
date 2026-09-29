@@ -58,7 +58,8 @@ internal fun DevicesNotice(
 
 /**
  * 已配对电脑的全部分组（整页与工作区面板共用）：
- * 电脑卡 → 待处理说明 → 连接（重新检测 / 连接方式）→ 更换电脑 → 解除配对。
+ * 电脑卡 → 待处理说明 → 连接（重新检测）→ 更换电脑 → 解除配对。
+ * 局域网 / 远程由 App 按网络自动选（RFC §7.2），这里不再让用户挑。
  */
 @Composable
 internal fun DeviceDetailSections(
@@ -66,39 +67,13 @@ internal fun DeviceDetailSections(
     notice: String?,
     onOpen: (() -> Unit)?,
     onRecheck: () -> Unit,
-    onTogglePreferRelay: (Host) -> Unit,
-    onRescan: () -> Unit,
-    onRescanLater: (() -> Unit)?,
     onReplace: () -> Unit,
     onUnpair: () -> Unit,
 ) {
     val s = DshS
     DshListSection { DeviceCard(device = device, onOpen = onOpen) }
-    if (device.host.needsCloudRescan) {
-        DevicesNotice(
-            message = s.relayRouteExpired,
-            actionLabel = s.restoreCloudScan,
-            onAction = onRescan,
-            secondaryLabel = onRescanLater?.let { s.restoreCloudLater },
-            onSecondary = onRescanLater ?: {},
-        )
-    }
     notice?.let { DevicesNotice(message = it, actionLabel = s.resync, onAction = onRecheck) }
-    // 顺序：设备 → 设置 → 操作 → 危险操作。状态已在设备卡里，操作行不再重复显示。
-    if (device.host.hasRelay) {
-        DshListSection {
-            DshSelectRow(
-                title = s.connectionMode,
-                icon = SwapOutline16,
-                value = if (device.host.preferRelay) s.preferCloud else s.lanFirst,
-                options = listOf(s.lanFirst to "lan", s.preferCloud to "cloud"),
-                selectedId = if (device.host.preferRelay) "cloud" else "lan",
-                onSelect = { _, id ->
-                    if ((id == "cloud") != device.host.preferRelay) onTogglePreferRelay(device.host)
-                },
-            )
-        }
-    }
+    // 顺序：设备 → 操作 → 危险操作。状态已在设备卡里，操作行不再重复显示。
     DshListSection(footer = s.replaceDeviceHint) {
         DshListActionRow(label = s.recheckConnection, icon = RefreshOutline16, onClick = onRecheck)
         DshListActionRow(label = s.replaceDevice, icon = ScanOutline16, onClick = onReplace)
@@ -120,8 +95,6 @@ internal fun DeviceSheet(
     notice: String?,
     onDismiss: () -> Unit,
     onRecheck: () -> Unit,
-    onTogglePreferRelay: (Host) -> Unit,
-    onRescan: () -> Unit,
     onReplace: () -> Unit,
     onUnpair: (DeviceUi) -> Unit,
 ) {
@@ -137,9 +110,6 @@ internal fun DeviceSheet(
                 notice = notice,
                 onOpen = null,
                 onRecheck = onRecheck,
-                onTogglePreferRelay = onTogglePreferRelay,
-                onRescan = onRescan,
-                onRescanLater = null,
                 onReplace = onReplace,
                 onUnpair = { onUnpair(device) },
             )
@@ -177,11 +147,8 @@ internal fun DeviceCard(
         DeviceState.CONNECTING -> Dsh.brand400
         else -> Dsh.labelTertiary
     }
-    val connection = when {
-        device.host.hasRelay && device.host.preferRelay -> s.preferCloud
-        device.host.hasRelay -> s.viaCloud
-        else -> s.viaLan
-    }
+    // 本次实际走的路（探测后的最近一次成功请求）；没有远程能力的电脑只会是局域网
+    val connection = if (device.viaRemote) s.viaCloud else s.viaLan
     val stateLabel = statusLabel(state)
     val meta = buildList {
         add(stateLabel)
@@ -242,11 +209,6 @@ internal fun DeviceCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (device.host.needsCloudRescan) {
-                Spacer(Modifier.height(DshSpace.s6))
-                // 线路过期提示：共享状态 pill（颜色 + 文字双通道），不再用页面私有 DeviceTag
-                DshStatusBadge(text = s.restoreCloudTag, tone = DshStatusTone.Error)
-            }
         }
         if (onOpen != null) {
             Spacer(Modifier.width(DshSpace.s8))

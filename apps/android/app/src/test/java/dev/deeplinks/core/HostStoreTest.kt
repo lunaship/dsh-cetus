@@ -18,132 +18,80 @@ class HostStoreTest {
         assertEquals(hosts, parsed)
     }
 
+    private val route16 = "AAAAAAAAAAAAAAAAAAAAAA"
+    private val handle16 = "AQEBAQEBAQEBAQEBAQEBAQ"
+    private val key32 = "A".repeat(43)
+
+    private fun remoteHost() = Host(
+        name = "书房",
+        baseUrl = "https://10.0.0.2:18640",
+        token = "tok-1",
+        deviceId = "dev-abc",
+        certFingerprint = "aabbcc",
+        remoteEndpoint = "wss://relay.example/ws",
+        remoteRouteId = route16,
+        remoteHandle = handle16,
+        remoteKey = key32,
+    )
+
     @Test
-    fun `relay 字段往返一致`() {
-        val host = Host(
-            name = "书房",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok-1",
-            deviceId = "dev-abc",
-            certFingerprint = "aabbcc",
-            relayClient = "relay.example:8443",
-            relayRouteId = "rid",
-            relayRouteSecret = "sec",
-            relayTlsFingerprint = "ff",
-            preferRelay = true,
-        )
+    fun `remote 字段往返一致`() {
+        val host = remoteHost()
         assertEquals(listOf(host), HostStore.hostsFromJson(HostStore.hostsToJson(listOf(host))))
+        assertTrue(host.hasRemote)
+        assertEquals("wss://relay.example/ws", host.remoteRoute()?.endpoint)
+        assertEquals("device", host.remoteRoute()?.kind)
     }
 
     @Test
-    fun `withoutRelay 清掉云端字段`() {
-        val cloud = Host(
-            name = "书房 · 云端",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok",
-            relayClient = "relay.example:8443",
-            relayRouteId = "rid",
-            relayRouteSecret = "sec",
-            preferRelay = true,
-        )
-        val lan = cloud.withoutRelay()
-        assertEquals(false, lan.hasRelay)
-        assertEquals(false, lan.preferRelay)
-        assertEquals(true, lan.needsCloudRescan)
-        assertEquals("lan|书房 · 云端|https://10.0.0.2:18640", lan.slotKey)
+    fun `远程不改本机缓存槽位，withoutRemote 只清远程字段`() {
+        val host = remoteHost()
+        assertEquals("lan|书房|https://10.0.0.2:18640", host.slotKey)
+        val lan = host.withoutRemote()
+        assertEquals(false, lan.hasRemote)
+        assertEquals(host.token, lan.token)
+        assertEquals(host.slotKey, lan.slotKey)
     }
 
     @Test
-    fun `bootstrap relay 缺键保留云端配对`() {
-        val host = Host(
-            name = "书房 · 云端",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok",
-            relayClient = "old.example:8443",
-            relayRouteId = "old-rid",
-            relayRouteSecret = "old-sec",
-            preferRelay = true,
-        )
-        val unchanged = applyBootstrapRelay(host, JSONObject("""{"protocol":2}"""))
-        assertEquals(host, unchanged)
-    }
-
-    @Test
-    fun `bootstrap relay null 清掉云端配对`() {
-        val host = Host(
-            name = "书房 · 云端",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok",
-            relayClient = "old.example:8443",
-            relayRouteId = "old-rid",
-            relayRouteSecret = "old-sec",
-            preferRelay = true,
-        )
-        val cleared = applyBootstrapRelay(host, JSONObject("""{"relay":null}"""))
-        assertEquals(false, cleared.hasRelay)
-        assertEquals(false, cleared.preferRelay)
-        assertEquals(true, cleared.needsCloudRescan)
-    }
-
-    @Test
-    fun `bootstrap relay null 对纯局域网不发明扫码标记`() {
-        val lan = Host("书房", "https://10.0.0.2:18640", "tok")
-        val cleared = applyBootstrapRelay(lan, JSONObject("""{"relay":null}"""))
-        assertEquals(false, cleared.hasRelay)
-        assertEquals(false, cleared.needsCloudRescan)
-        assertEquals(lan, cleared)
-    }
-
-    @Test
-    fun `bootstrap relay 对象更新路由`() {
-        val host = Host(
-            name = "书房 · 云端",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok",
-            relayClient = "old.example:8443",
-            relayRouteId = "old-rid",
-            relayRouteSecret = "old-sec",
-            preferRelay = true,
-            needsCloudRescan = true,
-        )
-        val root = JSONObject(
-            """{"relay":{"v":2,"client":"new.example:8443","routeId":"new-rid","routeSecret":"new-sec","tlsFingerprint":"ff"}}""",
-        )
-        val updated = applyBootstrapRelay(host, root)
-        assertEquals("new.example:8443", updated.relayClient)
-        assertEquals("new-rid", updated.relayRouteId)
-        assertEquals("new-sec", updated.relayRouteSecret)
-        assertEquals("ff", updated.relayTlsFingerprint)
-        assertEquals(true, updated.preferRelay)
-        assertEquals(false, updated.needsCloudRescan)
-    }
-
-    @Test
-    fun `bootstrap 残缺 relay 对象不改配对`() {
-        val host = Host(
-            name = "书房 · 云端",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok",
-            relayClient = "old.example:8443",
-            relayRouteId = "old-rid",
-            relayRouteSecret = "old-sec",
-        )
-        assertEquals(host, applyBootstrapRelay(host, JSONObject("""{"relay":{"client":"x"}}""")))
-    }
-
-    @Test
-    fun `needsCloudRescan json 往返且旧记录默认为 false`() {
-        val flagged = Host(
-            name = "书房",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok",
-            needsCloudRescan = true,
-        )
-        assertEquals(listOf(flagged), HostStore.hostsFromJson(HostStore.hostsToJson(listOf(flagged))))
+    fun `旧版 DLR 1 relay 字段读到即丢弃`() {
         val legacy = HostStore.hostsFromJson(
-            """[{"name":"书房","baseUrl":"https://10.0.0.2:18640","token":"tok"}]""",
+            """[{"name":"书房","baseUrl":"https://10.0.0.2:18640","token":"tok","relayClient":"relay.dshlinks.com:8443","relayRouteId":"rid","relayRouteSecret":"sec","preferRelay":true,"needsCloudRescan":true}]""",
         )
-        assertEquals(false, legacy[0].needsCloudRescan)
+        assertEquals(listOf(Host("书房", "https://10.0.0.2:18640", "tok")), legacy)
+        assertTrue(!HostStore.hostsToJson(legacy).contains("relay"))
+    }
+
+    @Test
+    fun `bootstrap 缺 remote 键时保留已有远程能力`() {
+        val host = remoteHost()
+        assertEquals(host, applyBootstrapRemote(host, JSONObject("""{"protocol":2,"relay":null}""")))
+    }
+
+    @Test
+    fun `bootstrap remote null 只清远程字段`() {
+        val host = remoteHost()
+        val cleared = applyBootstrapRemote(host, JSONObject("""{"remote":null}"""))
+        assertEquals(host.withoutRemote(), cleared)
+    }
+
+    @Test
+    fun `bootstrap remote 对象补齐远程能力`() {
+        val lan = Host("书房", "https://10.0.0.2:18640", "tok")
+        val root = JSONObject("""{"remote":{"e":"wss://relay.example/ws","r":"$route16","h":"$handle16","k":"$key32","p":"${"c".repeat(64)}"}}""")
+        val updated = applyBootstrapRemote(lan, root)
+        assertTrue(updated.hasRemote)
+        assertEquals(handle16, updated.remoteHandle)
+        assertEquals("c".repeat(64), updated.remoteOuterPin)
+    }
+
+    @Test
+    fun `bootstrap 残缺 remote 对象不改配对`() {
+        val host = remoteHost()
+        assertEquals(host, applyBootstrapRemote(host, JSONObject("""{"remote":{"e":"wss://x/ws"}}""")))
+        // 非 wss 端点同样拒绝，不因一次坏数据丢掉能用的凭据
+        val insecure = JSONObject("""{"remote":{"e":"ws://x/ws","r":"$route16","h":"$handle16","k":"$key32"}}""")
+        assertEquals(host, applyBootstrapRemote(host, insecure))
     }
 
     @Test
@@ -164,22 +112,13 @@ class HostStoreTest {
     }
 
     @Test
-    fun `按名称优先解析云端槽位`() {
-        val lan = Host("书房", "https://10.0.0.2:18640", "tok-lan")
-        val cloud = Host(
-            name = "书房 · 云端",
-            baseUrl = "https://10.0.0.2:18640",
-            token = "tok-cloud",
-            relayClient = "relay.example:8443",
-            relayRouteId = "rid",
-            relayRouteSecret = "sec",
-            preferRelay = true,
-        )
-        val hosts = listOf(lan, cloud)
-        assertEquals(cloud, hosts.resolveHost("书房 · 云端", cloud.baseUrl, true))
-        assertEquals(lan, hosts.resolveHost("书房", lan.baseUrl, false))
-        assertEquals(cloud, hosts.resolveHost(null, cloud.baseUrl, true))
-        assertEquals(lan, hosts.resolveHost(null, lan.baseUrl, false))
+    fun `按名称或地址解析设备`() {
+        val mac = Host("书房", "https://10.0.0.2:18640", "tok-a")
+        val mini = Host("客厅", "https://10.0.0.3:18640", "tok-b")
+        val hosts = listOf(mac, mini)
+        assertEquals(mini, hosts.resolveHost("客厅", null))
+        assertEquals(mini, hosts.resolveHost(null, mini.baseUrl))
+        assertEquals(mac, hosts.resolveHost(null, null))
     }
 
     @Test

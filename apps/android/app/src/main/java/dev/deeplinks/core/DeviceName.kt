@@ -7,15 +7,12 @@ import android.provider.Settings
 /**
  * 配对时上报的设备显示名：优先系统「设备名称」，否则品牌/型号，
  * 末尾带 ANDROID_ID 短后缀避免多台同型号互顶（服务端按 name 唯一）。
- * 云端配对另加后缀，与局域网设备分开。
+ * 远程只是同一台电脑的另一条路，不再像旧版云端配对那样另加「·云」后缀。
  */
 object DeviceName {
     private const val MAX_LEN = 32
-    private const val CLOUD_SUFFIX = "·云"
 
-    enum class Kind { LAN, CLOUD }
-
-    fun of(ctx: Context, kind: Kind = Kind.LAN): String {
+    fun of(ctx: Context): String {
         val id = Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID)
             ?.filter { it.isLetterOrDigit() }
             ?.takeLast(4)
@@ -24,8 +21,7 @@ object DeviceName {
             .ifBlank { "0000" }
         val label = sanitize(systemLabel(ctx) ?: hardwareLabel() ?: LocaleManager.strings.phoneFallback)
         val base = if (label.contains(id, ignoreCase = true)) label else "$label · $id"
-        val full = if (kind == Kind.CLOUD) base.take(MAX_LEN - CLOUD_SUFFIX.length) + CLOUD_SUFFIX else base
-        return full.take(MAX_LEN).ifBlank { "${LocaleManager.strings.phoneFallback}-$id" }
+        return base.take(MAX_LEN).ifBlank { "${LocaleManager.strings.phoneFallback}-$id" }
     }
 
     private fun systemLabel(ctx: Context): String? {

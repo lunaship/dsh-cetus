@@ -6,8 +6,14 @@ import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostHttp
 import dev.deeplinks.core.L
 import dev.deeplinks.core.PinnedSsl
-import dev.deeplinks.core.applyBootstrapRelay
-import dev.deeplinks.core.isRelayRouteRevoked
+import dev.deeplinks.core.applyBootstrapRemote
+import dev.deeplinks.core.remote.RouteConnectException
+import dev.deeplinks.core.remote.RouteOfflineException
+import dev.deeplinks.core.remote.RouteOpenTimeoutException
+import dev.deeplinks.core.remote.RouteRateLimitedException
+import dev.deeplinks.core.remote.RouteRejectedException
+import dev.deeplinks.core.remote.RouteServerBusyException
+import dev.deeplinks.core.remote.RouteUnreachableException
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.AppSettings
@@ -122,11 +128,9 @@ data class MobilePairedDevice(
     val name: String,
     val createdAt: Long = 0L,
     val lastSeenAt: Long = 0L,
+    /** `lan` / `remote`（经远程首配）/ `relay`（旧版云端配对，该中继已下线）。 */
     val via: String = "lan",
-) {
-    val isCloud: Boolean
-        get() = via == "relay"
-}
+)
 
 data class MobileSearchResult(val sessionId: String, val snippet: String)
 
@@ -677,7 +681,7 @@ class MobileApiClient(private val host: Host) {
             requestSnapshot = root.optJSONObject("capabilities")?.optJSONObject("requests")?.optBoolean("snapshot") == true,
             filesTree = root.optJSONObject("capabilities")?.optJSONObject("files")?.optBoolean("tree") == true,
         )
-        return info to applyBootstrapRelay(host, root)
+        return info to applyBootstrapRemote(host, root)
     }
 
     fun getSessions(): MobileSessionSnapshot {
@@ -737,8 +741,9 @@ class MobileApiClient(private val host: Host) {
         val encodedSid = java.net.URLEncoder.encode(sessionId, "UTF-8")
         val encodedPath = java.net.URLEncoder.encode(path, "UTF-8").replace("+", "%20")
         val apiPath = "/dsh-link/mobile/sessions/$encodedSid/file?path=$encodedPath"
-        val connectMs = if (host.hasRelay) 20_000 else 8_000
-        val readMs = if (host.hasRelay) 45_000 else 12_000
+        // 远程路径的超时由 HostHttp 按路由放宽；这里只给局域网的值
+        val connectMs = 8_000
+        val readMs = 12_000
         try {
             HostHttp.execute(
                 host,
@@ -944,7 +949,7 @@ class MobileApiClient(private val host: Host) {
             val name = d.optStringOrEmpty("name", "")
             val rawVia = d.optStringOrEmpty("via", "")
             val via = when {
-                rawVia == "relay" || rawVia == "lan" -> rawVia
+                rawVia == "relay" || rawVia == "lan" || rawVia == "remote" -> rawVia
                 name.endsWith("·云") || name.contains(" · 云端") -> "relay"
                 else -> "lan"
             }
@@ -973,8 +978,9 @@ class MobileApiClient(private val host: Host) {
         maxBytes: Int = BoundedIo.MAX_JSON_BODY_BYTES,
     ): JSONObject {
         if (host.token.isBlank()) throw MobileAuthException("缺少或无效的连接 token", 401)
-        val connectMs = if (host.hasRelay) 20_000 else 8_000
-        val readMs = if (host.hasRelay) 45_000 else 12_000
+        // 远程路径的超时由 HostHttp 按路由放宽；这里只给局域网的值
+        val connectMs = 8_000
+        val readMs = 12_000
         try {
             HostHttp.execute(
                 host,
@@ -1000,11 +1006,11 @@ class MobileApiClient(private val host: Host) {
                 return JSONObject(text)
             }
         } catch (e: MobileAuthException) {
-            Log.w("MobileApi", "$method ${redactRequestPath(path)} relay=${host.hasRelay} auth ${e.code}: ${e.message}")
+            Log.w("MobileApi", "$method ${redactRequestPath(path)} remote=${HostHttp.isViaRemote(host)} auth ${e.code}: ${e.message}")
             throw e
         } catch (e: Exception) {
             val friendly = friendlyNetworkError(e)
-            Log.w("MobileApi", "$method ${redactRequestPath(path)} relay=${host.hasRelay} ${e.javaClass.simpleName}: ${e.message}")
+            Log.w("MobileApi", "$method ${redactRequestPath(path)} remote=${HostHttp.isViaRemote(host)} ${e.javaClass.simpleName}: ${e.message}")
             throw IllegalStateException(friendly, e)
         }
     }
@@ -1037,8 +1043,7 @@ internal fun isMobileAuthFailure(error: Throwable): Boolean {
         if (
             msg.contains("缺少或无效的连接 token") ||
             isPendingHostApproval(cur) ||
-            msg.contains("设备已被吊销") ||
-            msg.contains("REVOKED")
+            msg.contains("设备已被吊销")
         ) return true
         cur = cur.cause
     }
@@ -1051,36 +1056,51 @@ internal fun mobileAuthUserMessage(error: Throwable): String {
     if (unwrapped is PinnedSsl.CertChangedException) {
         return L.certificateChanged
     }
-    if (isRelayRouteRevoked(error)) return L.relayRouteExpired
     return L.connectionAuthExpired
 }
 
-/** 打开设备时凭据已死则丢掉本机配对；待主机确认与失效云端路由仍保留局域网记录。 */
+/** 打开设备时凭据已死则丢掉本机配对；待主机确认仍保留。中继转来的拒绝码不算（RFC §7.4）。 */
 internal fun shouldDropLocalHostOnOpenAuth(error: Throwable): Boolean {
-    if (isRelayRouteRevoked(error)) return false
     if (isPendingHostApproval(error)) return false
     val unwrapped = if (error is Exception) PinnedSsl.unwrap(error) else error
     return isMobileAuthFailure(error) || unwrapped is PinnedSsl.CertChangedException
 }
-
-/** 云端路由已更换或吊销：清掉 Relay 字段，保留局域网配对。 */
-internal fun shouldDemoteRelayOnAuth(error: Throwable): Boolean = isRelayRouteRevoked(error)
 
 /** 凭据已失效时本机删除仍应放行；其它错误则保留本地记录以免服务端孤儿配对。 */
 internal fun shouldBlockLocalHostRemoval(revokeError: Throwable?): Boolean =
     revokeError != null && !isMobileAuthFailure(revokeError)
 
 internal fun friendlyNetworkError(error: Throwable): String {
+    remoteErrorText(error)?.let { return it }
     val msg = error.message.orEmpty()
     return when {
-        msg.contains("REVOKED") -> L.relayRouteExpired
-        msg.contains("agent offline") -> L.relayAgentOffline
         msg.contains("rate limited") -> L.requestTooFrequent
-        msg.contains("route busy") -> L.relayRouteBusy
-        msg.contains("bind timeout") -> L.relayBindTimeout
-        msg.contains("truncated HTTP body") -> L.relayTruncatedBody
         msg.contains("revision conflict", ignoreCase = true) -> L.settingsChangedElsewhere
         else -> msg.ifBlank { error.javaClass.simpleName }
+    }
+}
+
+/**
+ * 远程路径的失败（RFC §7.5）翻成人话。中继转来的码可能是伪造的，所以这里只给提示，
+ * 从不据此删除或修改凭据（§7.4）。不是远程错误时返回 null。
+ */
+internal fun remoteErrorText(error: Throwable): String? {
+    val route = generateSequence(error) { it.cause }.filterIsInstance<RouteConnectException>().firstOrNull() ?: return null
+    return when (route) {
+        is RouteUnreachableException -> L.remoteRelayUnreachable
+        is RouteOfflineException -> L.remoteHostOffline
+        is RouteOpenTimeoutException -> L.remoteHostOffline
+        is RouteRateLimitedException -> L.requestTooFrequent
+        is RouteServerBusyException -> L.remoteBusy
+        is RouteRejectedException -> when (route.code) {
+            "BAD_MAC", "UNKNOWN_KEY" -> L.remoteCredentialInvalid
+            "CLOCK_SKEW" -> L.remoteClockSkew
+            "LOCAL_UNAVAILABLE" -> L.remoteLocalUnavailable
+            "BOOTSTRAP_UNKNOWN", "BOOTSTRAP_EXPIRED", "BOOTSTRAP_USED" -> L.remoteQrExpired
+            "DEVICE_LIMIT", "SERVER_BUSY" -> L.remoteBusy
+            else -> L.remoteRelayUnreachable
+        }
+        else -> L.remoteRelayUnreachable
     }
 }
 

@@ -695,16 +695,10 @@ fun WorkspaceScreen(
         if (authExpired) return
         authExpired = true
         val message = error?.let(::mobileAuthUserMessage) ?: L.connectionAuthExpired
-        // 设备 token / 证书失效时丢掉本机配对。云端路由 REVOKED 只降级为局域网，不断整台。
-        when {
-            error != null && shouldDemoteRelayOnAuth(error) && host.hasRelay -> {
-                runCatching { HostStore.demoteRelay(context, host) }
-                    .onFailure { Log.w("WorkspaceActivity", "onAuthExpired: demote relay failed: ${it.message}") }
-            }
-            error != null && shouldDropLocalHostOnOpenAuth(error) -> {
-                runCatching { HostStore.remove(context, host) }
-                    .onFailure { Log.w("WorkspaceActivity", "onAuthExpired: remove revoked host failed: ${it.message}") }
-            }
+        // 设备 token / 证书失效（插件在内层 TLS 上的明确答复）时丢掉本机配对；中继的拒绝码不算
+        if (error != null && shouldDropLocalHostOnOpenAuth(error)) {
+            runCatching { HostStore.remove(context, host) }
+                .onFailure { Log.w("WorkspaceActivity", "onAuthExpired: remove revoked host failed: ${it.message}") }
         }
         onOpenDevice(message)
         // WorkspaceScreen 现宿主于 MainActivity；旧独立 Activity 时代的 finish() 会关掉整个 app
@@ -1511,10 +1505,8 @@ fun WorkspaceScreen(
             bootstrapOk = true
             workspaceViewModel.filesTreeSupported.value = boot.filesTree
             if (refreshed != host) {
-                runCatching {
-                    if (host.hasRelay && !refreshed.hasRelay) HostStore.demoteRelay(context, host)
-                    else HostStore.upsert(context, refreshed)
-                }
+                // 远程能力补齐 / 清除（bootstrap 的 remote，RFC §6.4）
+                runCatching { HostStore.upsert(context, refreshed) }
             }
             // Bootstrap carries the same durable archive set as Web. Apply it
             // before selecting a session, so an archived Web session cannot
@@ -1893,7 +1885,7 @@ fun WorkspaceScreen(
             }
             hostLatencyMs = ms
             hostReachable = ms != null // 同时写进单一来源：设置页读同一份，不为它另起探针
-            dev.deeplinks.native.util.HostConnectivity.update(ms != null, host.hasRelay, ms)
+            dev.deeplinks.native.util.HostConnectivity.update(ms != null, dev.deeplinks.core.HostHttp.isViaRemote(host), ms)
             if (ms != null) LastOnlineStore.record(context)
             delay(30_000)
         }
@@ -2079,7 +2071,7 @@ fun WorkspaceScreen(
                 sessionsLoadError = sessionsLoadError,
                 hostName = hostLabel,
                 online = hostReachable,
-                viaCloud = host.hasRelay,
+                viaCloud = dev.deeplinks.native.util.HostConnectivity.viaCloud,
                 latencyMs = hostLatencyMs,
                 offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
@@ -2141,7 +2133,7 @@ fun WorkspaceScreen(
                     sessionsLoadError = sessionsLoadError,
                     hostName = hostLabel,
                     online = hostReachable,
-                    viaCloud = host.hasRelay,
+                    viaCloud = dev.deeplinks.native.util.HostConnectivity.viaCloud,
                     latencyMs = hostLatencyMs,
                     offlineSinceLabel = offlineSinceLabel,
                     selectedWorkspace = selectedHomeWorkspace,
