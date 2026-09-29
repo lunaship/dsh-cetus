@@ -17,14 +17,14 @@ import z from "@deepseek-ai/schemastery"
 import QRCode from "qrcode"
 
 import { workspaceChangesService } from "./workspace-changes.js"
-import { resolveSessionLogPath } from "./session-log-path.js"
+import { resolveSessionLogPath, sessionDirFor } from "./session-log-path.js"
 
 import {
   consumePairingCode, ensurePairingCode, ensureTokenKey, findDeviceByToken, hmacDeviceToken, hydratePairing,
   persistablePairing, randomToken, readDeviceToken, revokeDevice, verifyPairingCode,
 } from "./auth.js"
 import { loadOrCreateTls } from "./tls.js"
-import { assessForCursor, loadEventsAfter, sseMessageFrame, sseNamedFrame, sseResyncFrame } from "./stream-cursor.js"
+import { assessForCursor, loadEventsAfter, sseBacklogExceeded, writeCatchup } from "./stream-cursor.js"
 import { flushSeedQueue, startMuxQuestionBridge } from "./question-bridge.js"
 import { bindLocalRpcRuntime, callLocalRpc, unbindLocalRpcRuntime } from "./local-rpc.js"
 import { approveQueuedWorkspace, createWorkspaceApprovalQueue, rejectQueuedWorkspace } from "./workspace-approval.js"
@@ -911,8 +911,7 @@ async function sessionFilePath(targetPort, sessionId, rt) {
       rt.sessionFiles.set(sessionId, { missingUntil: Date.now() + 10_000 })
       return null
     }
-    const enc = "--" + cwd.split("/").filter(Boolean).join("-") + "--"
-    const p = resolveSessionLogPath(join(homedir(), ".dsh", "sessions", enc, sessionId))
+    const p = resolveSessionLogPath(sessionDirFor(cwd, sessionId))
     if (!p) {
       rt.sessionFiles.set(sessionId, { missingUntil: Date.now() + 10_000 })
       return null
@@ -939,60 +938,12 @@ function dropSession(rt, sessionId, { immediate = false } = {}) {
   afterWritersChanged(rt, sessionId, { immediate })
 }
 
-function writeCatchup(writers, conn, assessed, sessionId) {
-  try {
-    if (assessed.complete) {
-      for (const e of assessed.events) {
-        if (e.seq <= conn.lastSeq) continue
-        const ok = conn.res.write(sseMessageFrame(e))
-        try { conn.res.flush?.() } catch {}
-        conn.lastSeq = e.seq
-        if (ok === false) {
-          writers.delete(conn)
-          try { conn.res.destroy() } catch {}
-          return
-        }
-      }
-      if (assessed.events.length > 0 && assessed.projections) {
-        try { conn.res.write(sseNamedFrame("stats", assessed.projections)) } catch {}
-      }
-      return
-    }
-    const now = Date.now()
-    if (conn.lastResyncAt && now - conn.lastResyncAt < 2_000) return
-    conn.lastResyncAt = now
-    const frame = conn.caps?.sync2
-      ? sseResyncFrame({
-        sessionId,
-        reason: assessed.reason,
-        afterSeq: conn.lastSeq,
-        oldestAvailableSeq: assessed.oldestAvailableSeq,
-        nextCursor: assessed.nextCursor,
-      })
-      : sseNamedFrame("error", {
-        code: "resync-required",
-        upgradeRequired: true,
-        sessionId,
-        reason: assessed.reason,
-      })
-    const ok = conn.res.write(frame)
-    try { conn.res.flush?.() } catch {}
-    if (ok === false) {
-      writers.delete(conn)
-      try { conn.res.destroy() } catch {}
-    }
-  } catch {
-    writers.delete(conn)
-    try { conn.res.destroy() } catch {}
-  }
-}
-
 function writeSse(writers, frame) {
   for (const conn of [...writers]) {
     try {
       const ok = conn.res.write(frame)
       try { conn.res.flush?.() } catch {}
-      if (ok === false) {
+      if (ok === false && sseBacklogExceeded(conn.res)) {
         writers.delete(conn)
         try { conn.res.destroy() } catch {}
       }
@@ -1057,7 +1008,7 @@ async function pollSession(sessionId, targetPort, rt, force = false) {
       callLocalRpc(targetPort, "session.history", { sessionId, ...payload }),
     )
     for (const conn of [...writers]) {
-      writeCatchup(writers, conn, assessForCursor(conn.lastSeq, batch), sessionId)
+      writeCatchup(writers, conn, assessForCursor(conn.lastSeq, batch), sessionId, (id) => requestGapPoll(id, targetPort, rt))
     }
     if (info && st) {
       info.lastSize = st.size
@@ -1131,7 +1082,7 @@ async function handleStreamRoute(sessionId, res, targetPort, config, req, rt, de
           maxMessages: payload.maxMessages ?? config.reconnectHistoryLimit,
         }),
       )
-      writeCatchup(writers, conn, assessForCursor(conn.lastSeq, batch), sessionId)
+      writeCatchup(writers, conn, assessForCursor(conn.lastSeq, batch), sessionId, (id) => requestGapPoll(id, targetPort, rt))
     } catch {} finally {
       conn.seeded = true
       flushSeedQueue(conn, sessionId, (id) => requestGapPoll(id, targetPort, rt))
@@ -1826,6 +1777,11 @@ export function apply(ctx, config) {
    * 接管 approval/request waterfall（dsh 内部 API：事件名是「approval/request」，
    * 签名是 (req, next)，不是元事件 "waterfall"）。无手机 SSE 时必须 next()，
    * 否则会把桌面审批一并挂死。
+   *
+   * 必须 prepend 注册：DSH 的 api-remotes 也监听这个 waterfall，把审批转给电脑网页，
+   * 且只有网页回答「交给下一个」才会 next()。它先于插件注册，排在前面时插件永远轮不到
+   * （0.1.5-rc.3 / 0.1.7-alpha.1 上「钩子不触发」的真因）。排到最前后：手机正在订阅该会话
+   * 就由手机接管，否则 next() 原样交回网页。user-questions/request 同理。
    */
   ctx.on("approval/request", (req, next) => rt.awaiting.track(req?.agent?.session?.id, () => {
     if (req?.signal?.aborted === true) return Promise.resolve("cancelled")
@@ -1861,7 +1817,7 @@ export function apply(ctx, config) {
       rt.requests.addApproval(rec)
       req.signal?.addEventListener("abort", rec.onAbort, { once: true })
     })
-  }))
+  }), { prepend: true })
 
   /**
    * 0.1.2 起澄清卡走 `user-questions/request` waterfall，不再经 /api/events.mux。
@@ -1903,7 +1859,7 @@ export function apply(ctx, config) {
       writeSse(new Set(targets), `event: question\ndata: ${body}\n\n`)
       ctx.logger.info(`dsh-links: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${rpcId.slice(0, 8)}`)
     })
-  }))
+  }), { prepend: true })
 
   // ---------- 手机接入代理（0.0.0.0:<port> HTTPS）：仅 health / pair / mobile/* ----------
   const requestHandler = async (req, res) => {

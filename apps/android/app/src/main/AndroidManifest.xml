@@ -115,7 +115,7 @@
             android:name="dev.deeplinks.core.ApprovalActionReceiver"
             android:exported="false" />
 
-        <!-- Active DSH conversation monitoring stays visible while the user switches apps. -->
+        <!-- 离开 App 后继续接管审批（设置开关，默认关闭）：保持当前任务的订阅并常驻一条低优先级通知 -->
         <service
             android:name=".native.SessionBackgroundMonitorService"
             android:exported="false"

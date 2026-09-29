@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import dev.deeplinks.native.SessionBackgroundMonitorService
+import dev.deeplinks.native.util.WorkspacePrefs
 
 /**
  * 审批通知上「允许一次 / 拒绝」两个动作的处理者（2026-09-28 重设计 · 方案 8）。
@@ -20,6 +21,11 @@ class ApprovalActionReceiver : BroadcastReceiver() {
         val approvalId = intent.getStringExtra(EXTRA_APPROVAL_ID) ?: return
         val approve = intent.getBooleanExtra(EXTRA_APPROVE, false)
         val host = HostStore.load(context).resolveFromIntent(intent) ?: return
+        // 开关已被关闭：订阅已停，插件不再认这台手机能处理该审批；收回通知，交给电脑网页
+        if (!WorkspacePrefs(context).backgroundTakeover) {
+            DshNotifier.cancelApproval(context, host, sessionId)
+            return
+        }
         SessionBackgroundMonitorService.answerApproval(context, host, sessionId, approvalId, approve)
     }
 

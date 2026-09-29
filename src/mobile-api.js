@@ -1,8 +1,8 @@
 import { readFileSync, statSync } from "node:fs"
 import { readFile as readFileAsync } from "node:fs/promises"
-import { isAbsolute, join } from "node:path"
+import { isAbsolute } from "node:path"
 import { randomBytes } from "node:crypto"
-import { homedir, hostname } from "node:os"
+import { hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
 import { mobileSessionSummary } from "./mobile-session-summary.js"
 import { deriveActivity, deriveAwaitingInput, deriveLastResult, deriveStoppedReason } from "./mobile-session-activity.js"
@@ -16,7 +16,7 @@ import { optionalString, omitNullFields } from "./optional-string.js"
 import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory, resolveAbsoluteWorkspaceDirectory } from "./workspace-create.js"
 import { normalizeQuestions, validateAnswers } from "./question-answers.js"
 import { canDeviceHandle, requestBelongsToSession, mapApprovalUiStatus } from "./request-lifecycle.js"
-import { resolveSessionLogPath } from "./session-log-path.js"
+import { resolveSessionLogPath, sessionDirFor } from "./session-log-path.js"
 import { reasoningBlocksFromSessionLog } from "./session-log-reasoning.js"
 import { decompressZstdFrames } from "./zstd-frames.js"
 
@@ -38,8 +38,7 @@ async function readSessionReasoning(targetPort, sessionId, rt) {
     const row = (list.items ?? []).find((s) => s.sessionId === sessionId)
     const cwd = row?.cwd
     if (!cwd) return new Map()
-    const enc = "--" + cwd.split("/").filter(Boolean).join("-") + "--"
-    const p = resolveSessionLogPath(join(homedir(), ".dsh", "sessions", enc, sessionId))
+    const p = resolveSessionLogPath(sessionDirFor(cwd, sessionId))
     if (!p) return new Map()
     let st
     try { st = statSync(p) } catch { return new Map() }

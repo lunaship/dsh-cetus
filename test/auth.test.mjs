@@ -28,6 +28,7 @@ function startUpstream() {
 function makeCtx(upstreamPort) {
   const registered = []
   const effects = []
+  const listeners = []
   const ctx = {
     logger: { info() {}, warn() {} },
     get(name) {
@@ -40,11 +41,11 @@ function makeCtx(upstreamPort) {
       }
       return null
     },
-    on() {},
+    on(name, _listener, options) { listeners.push({ name, options }) },
     // cordis 语义：立即执行 setup，收集它返回的 disposer。
     effect(fn) { effects.push(fn()) },
   }
-  return { ctx, registered, effects }
+  return { ctx, registered, effects, listeners }
 }
 
 function loopbackHost() {
@@ -92,12 +93,13 @@ test("拒绝无效的代理端口与过短 SSE 轮询间隔", () => {
   assert.equal(Config({ port: 1, eventPollIntervalMs: 100 }).eventPollIntervalMs, 100)
 })
 
-let proxyPort, upstream, dispose, registered
+let proxyPort, upstream, dispose, registered, hostListeners
 
 test.before(async () => {
   upstream = await startUpstream()
-  const { ctx, registered: r, effects: e } = makeCtx(upstream.address().port)
+  const { ctx, registered: r, effects: e, listeners } = makeCtx(upstream.address().port)
   registered = r
+  hostListeners = listeners
   proxyPort = 21000 + Math.floor(Math.random() * 1000)
   await apply(ctx, {
     port: proxyPort,
@@ -115,6 +117,16 @@ test.after(() => {
   dispose()
   upstream.close()
   rmSync(TMP, { recursive: true, force: true })
+})
+
+test("审批与澄清 waterfall 以 prepend 注册，排在 DSH 转发网页的监听之前", () => {
+  // DSH api-remotes 也监听这两个 waterfall 并转给电脑网页；排在后面时插件永远轮不到，
+  // 手机即使正在订阅也接不到审批（无订阅时插件自己 next() 交回网页）。
+  for (const name of ["approval/request", "user-questions/request"]) {
+    const hit = hostListeners.find((l) => l.name === name)
+    assert.ok(hit, `${name} 未注册`)
+    assert.equal(hit.options?.prepend, true, `${name} 必须 prepend`)
+  }
 })
 
 function tlsCreds() {
