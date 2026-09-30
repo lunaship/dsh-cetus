@@ -2,7 +2,7 @@
 
 DeepLinks connects a phone to [DeepSeek Harness (dsh)](https://github.com/deepseek-ai) instances that can run tools and execute code on the host machine. Treat a paired device as a privileged remote console.
 
-This public Beta supports **trusted LAN** as the documented product path. Remote access over the DLP/1 relay is **experimental and off by default**: both the plugin and the app only dial out to the relay, the plugin verifies the phone's rendezvous key before it connects its local port, the inner TLS is still pinned to the plugin certificate, and business authorization is still the device token. The relay holds no accounts or secrets. `state.json` (it contains the plugin's remote host key) must never appear in this repository, GitHub Releases, or the npm package.
+This public Beta supports **trusted LAN** as the documented product path. Remote access over the DLP/1 relay is **experimental and off by default**: both the plugin and the app only dial out to the relay, the plugin verifies the phone's rendezvous key before it connects its local port, the inner TLS is still pinned to the plugin certificate, and business authorization is still the device token. The relay holds no accounts or secrets. `state.json` (it contains the plugin's remote host key) must never appear in this repository or GitHub Releases.
 
 If you use an intranet-tunnelling product yourself, treat it as an **experimental personal deployment**: it is not a supported Beta configuration and receives no compatibility or security guarantee. Do not expose port `18640` directly to the public Internet.
 
@@ -54,7 +54,7 @@ On the host, enable「配对需本机确认」so an unexpected device still need
 
 ## Source and APK trust
 
-- The public repository opens the `dsh-links` plugin, the DLP/1 relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The npm package still ships the plugin only; it does not include `relay/` or `apps/android/`.
+- The public repository opens the `dsh-links` plugin, the DLP/1 relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The plugin is distributed from this repository (installed as a git source); installing it pulls only the plugin's declared package files, not `relay/` or `apps/android/`.
 - Do not trust third-party rebuilds or sideloaded APKs that claim to be DeepLinks.
 
 ## Reporting

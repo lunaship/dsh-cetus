@@ -55,7 +55,7 @@
 | `src/index.js` | 插件入口：路由注册、配对/设备状态机、Runtime 装配 | 单文件偏大，新增逻辑优先抽模块（如 `workspace-approval.js`） |
 | `src/panel.js` → `src/client.js` | 「手机连接」面板唯一源码；client.js 由 `build-client.mjs` 生成 | **勿手改 client.js**；CI 校验生成物与提交一致 |
 | `src/remote/` | DLP/1：`agent.js`（控制连接、会合验证、接本机端口）、`runtime.js`（启停、面板状态、二维码种子、设备远程能力）、`state.js`（state.remote 纯函数）、`crypto.js` / `wire.js` / `bootstrap.js` | 不 import Host 能力；密码学常量由 `testdata/dlp1/vectors.json` 三端锁定 |
-| `relay/` | 中继服务端（`cmd/dlp-relay` + `internal/dlp`），`deploy/` 为 systemd + Caddy | 门禁独立（gofmt/vet/build/race），不随 npm 包发布 |
+| `relay/` | 中继服务端（`cmd/dlp-relay` + `internal/dlp`），`deploy/` 为 systemd + Caddy | 门禁独立（gofmt/vet/build/race），不随插件包发布 |
 | `apps/android/.../core/` | 跨屏契约：Dsh 主题/排版/颜色 token、AppLocale 目录、DshLayout 布局推导 | 纯函数优先；改 token 先过 DesignTokenUsageTest |
 | `apps/android/.../native/` | 工作台屏幕与 Compose 组件 | 巨型文件受 code-hygiene-baseline.txt 预算约束 |
 | `apps/android/.../core/remote/` | DLP/1 客户端：`RouteSelector`（自动选路）、`WebSocketTunnelSocketFactory`（隧道裸 socket）、`RemoteRoute`、`DlpCrypto` | 选路是纯逻辑，时钟与探测注入；中继的拒绝码只做提示，不改凭据 |

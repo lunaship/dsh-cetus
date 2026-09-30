@@ -4,7 +4,7 @@ DeepLinks Android 客户端。
 
 - 工程根：本目录（Android Studio 打开这里）
 - 应用模块：`app/`
-- 配对的电脑插件：同级目录 [`../docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)（npm 包 `dsh-links`）
+- 配对的电脑插件：同级目录 [`../docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)（插件源码 `dsh-links`）
 - 远程中继：公开仓 [`../relay/`](../relay/)
 
 版本基线、发布状态和已验证组合统一维护在

@@ -1,6 +1,6 @@
 # dsh-links — AI 协作规则
 
-DSH 手机插件（npm 包）：局域网配对 + 设备管理 + 18640 接入代理 + 手机 API + 远程连接（DLP/1 Agent，`src/remote/`）。中继服务端（`dlp-relay`）在 `relay/`；Android 源码在 `apps/android/`，随本仓一起发版。旧版 DLR/1（接入码 / Control / 云端二维码）已整体删除，不要恢复。
+DSH 手机插件（本仓插件源码）：局域网配对 + 设备管理 + 18640 接入代理 + 手机 API + 远程连接（DLP/1 Agent，`src/remote/`）。中继服务端（`dlp-relay`）在 `relay/`；Android 源码在 `apps/android/`，随本仓一起发版。旧版 DLR/1（接入码 / Control / 云端二维码）已整体删除，不要恢复。
 
 ## 红线
 
@@ -24,7 +24,7 @@ DSH 手机插件（npm 包）：局域网配对 + 设备管理 + 18640 接入代
 | 兼容矩阵 / DSH 基线 / 冒烟隔离警告 | `docs/COMPATIBILITY.md` |
 | 远程连接协议（DLP/1，逐字节合同） | `docs/rfc/0001-dlp1-remote-pipe.md` |
 | 中继自建与配置 | `relay/README.md` |
-| 发布流程与 dist-tag 策略 | `RELEASING.md` |
+| 发布核对清单（App APK / 仓库分发） | `RELEASING.md` |
 | Android 协作规则 | `apps/android/CLAUDE.md` |
 | Android 视觉规则（间距、形状、排版、尺寸、强调色） | `apps/android/docs/visual-rules.md` |
 | RC1 内测计划与证据模板 | `docs/RC1_CLOSED_BETA_TEST_PLAN.md` |

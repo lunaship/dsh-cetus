@@ -15,7 +15,6 @@
   <p>
     <a href="https://github.com/lunaship/dsh-links/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-links/ci.yml?style=flat-square&label=plugin%20CI" alt="Plugin CI" /></a>
     <a href="https://github.com/lunaship/dsh-links/actions/workflows/ci-android.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-links/ci-android.yml?style=flat-square&label=android%20CI" alt="Android CI" /></a>
-    <a href="https://www.npmjs.com/package/dsh-links"><img src="https://img.shields.io/npm/v/dsh-links/beta?style=flat-square&logo=npm&label=npm%20beta" alt="npm beta" /></a>
     <a href="https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true"><img src="https://img.shields.io/badge/APK-GitHub%20Releases-0D96F6?style=flat-square&logo=github" alt="下载 APK" /></a>
   </p>
 </div>
@@ -86,7 +85,7 @@
 
 | 发布物 | 位置 | 作用 | 分发 |
 |---|---|---|---|
-| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | npm（`beta` dist-tag） |
+| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-links`） |
 | **Android App** | [`apps/android/`](apps/android/) | 扫码配对、原生会话工作台、实时流、审批与提问 | 签名 APK，见 [Releases](https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true)（`app-v*`） |
 | **Relay** | [`relay/`](relay/) | 远程连接的哑管道中继（DLP/1，`cmd/dlp-relay`），只拼接两条 WSS | 源码公开；可用官方中继或自建，无需接入码 |
 
@@ -177,7 +176,7 @@ flowchart LR
 
 ```text
 dsh-links/
-├── src/                          # DSH 插件（npm 包唯一发布内容）
+├── src/                          # DSH 插件
 │   ├── index.js                  # 入口：路由注册、配对 / 设备状态机、Runtime 装配
 │   ├── mobile-api.js             # 手机 HTTPS API 唯一实现（/dsh-link/mobile/*）
 │   ├── panel.js                  # 「手机连接」面板源码（client.js 由 build-client.mjs 生成）
@@ -206,7 +205,7 @@ dsh-links/
 1. **在运行 DSH 的电脑上安装插件**，并启动 DSH Web：
 
    ```bash
-   dsh plugin --profile web add dsh-links@<version>   # 当前 beta 版本见上方 npm 徽章
+   dsh plugin --profile web add github:lunaship/dsh-links   # 以本仓 git 源安装
    dsh web
    ```
 
@@ -277,7 +276,7 @@ CI 分三路：插件跑面板生成物一致性、`node:test`、打包清单与
 
 ### 发布
 
-插件在发布 GitHub Release（`v<version>`）时由 [`publish-npm.yml`](.github/workflows/publish-npm.yml) 经 npm Trusted Publishing 发布，预发布版本进入对应 dist-tag。App 只发本机签名的 APK，附在 `app-v*` Release 上。完整核对清单见 [`RELEASING.md`](RELEASING.md)。
+插件不发布到 npm registry：直接以本仓 git 源安装/更新。App 只发本机签名的 APK，附在 `app-v*` Release 上。完整核对清单见 [`RELEASING.md`](RELEASING.md)。
 
 ---
 
