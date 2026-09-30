@@ -13,9 +13,7 @@
 -keepattributes SourceFile,LineNumberTable
 
 # Relay 走自定义 SSLSocketFactory / HttpURLConnection；R8 裁掉重载会直接闪退（AbstractMethodError）
--keep class dev.dsh.mobile.core.RelaySslSocketFactory { *; }
--keep class dev.dsh.mobile.core.RelayHttpURLConnection { *; }
--keep class dev.dsh.mobile.core.FailoverHttpURLConnection { *; }
+# 上面旧的精确类名已移除（包名与类名均已变更）；保留通配规则兜底。
 -keepclassmembers class * extends javax.net.ssl.SSLSocketFactory { *; }
 -keepclassmembers class * extends java.net.HttpURLConnection { *; }
 

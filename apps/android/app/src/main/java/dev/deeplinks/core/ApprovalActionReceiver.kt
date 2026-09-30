@@ -1,5 +1,6 @@
 package dev.deeplinks.core
 
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -21,6 +22,14 @@ class ApprovalActionReceiver : BroadcastReceiver() {
         val approvalId = intent.getStringExtra(EXTRA_APPROVAL_ID) ?: return
         val approve = intent.getBooleanExtra(EXTRA_APPROVE, false)
         val host = HostStore.load(context).resolveFromIntent(intent) ?: return
+        // 兜底：锁屏状态下不直接批准，改走 App 内审批卡。
+        if (approve) {
+            val km = context.getSystemService(KeyguardManager::class.java)
+            if (km != null && km.isDeviceLocked) {
+                DshNotifier.openSession(context, host, sessionId)
+                return
+            }
+        }
         // 开关已被关闭：订阅已停，插件不再认这台手机能处理该审批；收回通知，交给电脑网页
         if (!WorkspacePrefs(context).backgroundTakeover) {
             DshNotifier.cancelApproval(context, host, sessionId)

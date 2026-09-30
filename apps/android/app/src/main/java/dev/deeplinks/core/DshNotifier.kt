@@ -83,10 +83,21 @@ object DshNotifier {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
         if (!approvalId.isNullOrBlank()) {
-            // 「允许一次」要求先解锁（Android 12+）；「拒绝」是安全的默认方向，不必解锁
-            builder.addAction(approvalAction(context, host, sessionId, approvalId, true, L.allowOnce, 11))
+            // 「拒绝」对所有版本都保留；「允许一次」只在 Android 12+ 上显示，
+            // 因为 setAuthenticationRequired 在更低版本不生效，锁屏下可能直接批准。
             builder.addAction(approvalAction(context, host, sessionId, approvalId, false, L.reject, 12))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                builder.addAction(approvalAction(context, host, sessionId, approvalId, true, L.allowOnce, 11))
+            }
         }
+        // 锁屏只显示「有一项操作等待确认」，不暴露工具名。
+        val publicNotification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+            .setContentTitle(L.notifNeedApproval)
+            .setContentText(L.notifNeedApprovalPublicBody)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        builder.setPublicVersion(publicNotification)
         postNotification(context, notificationId(host, sessionId, 1), builder.build())
     }
 

@@ -5,8 +5,8 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.util.Log
 import java.security.KeyStore
-import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -25,6 +25,7 @@ object TokenCrypto {
     private const val PREFIX = "enc1:"
     private const val GCM_TAG_BITS = 128
     private const val IV_BYTES = 12
+    private const val TAG = "TokenCrypto"
 
     fun encrypt(context: Context, plaintext: String): String {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
@@ -49,15 +50,15 @@ object TokenCrypto {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(context), GCMParameterSpec(GCM_TAG_BITS, iv))
             String(cipher.doFinal(ct), Charsets.UTF_8)
-        } catch (e: AEADBadTagException) {
-            null
         } catch (e: Exception) {
+            Log.w(TAG, "decrypt failed", e)
             null
         }
     }
 
     fun isEncrypted(blob: String): Boolean = blob.startsWith(PREFIX)
 
+    @Synchronized
     private fun getOrCreateKey(context: Context): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
         (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }

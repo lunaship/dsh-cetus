@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Build
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import org.json.JSONObject
@@ -17,6 +19,11 @@ import kotlinx.coroutines.delay
  *
  * 只保留 JS 执行能力（本地 bundle 渲染所需），其余文件、跨源、ContentProvider
  * 访问全部关闭，并开启 Safe Browsing。不得在此开启任何新能力。
+ *
+ * 安全边界：
+ * - 禁止一切网络加载（`blockNetworkLoads`），本地 bundle 无需联网。
+ * - 禁止弹窗与多窗口，避免恶意内容跳出。
+ * - 关闭数据库与 DOM 存储；Mermaid / KaTeX 不依赖它们。
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Suppress(
@@ -29,6 +36,11 @@ internal fun WebView.hardenUntrustedSettings() {
     settings.allowContentAccess = false
     settings.allowFileAccessFromFileURLs = false
     settings.allowUniversalAccessFromFileURLs = false
+    settings.blockNetworkLoads = true
+    settings.javaScriptCanOpenWindowsAutomatically = false
+    settings.setSupportMultipleWindows(false)
+    settings.databaseEnabled = false
+    settings.domStorageEnabled = false
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         settings.safeBrowsingEnabled = true
     }
@@ -60,6 +72,18 @@ internal fun createOffscreenWebView(
     wv.layout(0, 0, width, height)
     wv.webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) = onPageFinished()
+
+        // 兜底拦截：此 WebView 不得联网，只允许加载本地 asset bundle。
+        override fun shouldInterceptRequest(
+            view: WebView?,
+            request: WebResourceRequest?,
+        ): WebResourceResponse? {
+            val url = request?.url?.toString() ?: return null
+            return if (url.startsWith("file:///android_asset/")) null
+            else WebResourceResponse("text/plain", "utf-8", 403, "blocked", emptyMap(), null)
+        }
+
+        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?) = true
     }
     wv.loadDataWithBaseURL(assetBaseUrl, html, "text/html", "utf-8", null)
     return wv

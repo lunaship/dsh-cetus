@@ -285,6 +285,8 @@ object MathRenderer {
 
     private const val PAGE_HTML = """
         <!DOCTYPE html><html><head><meta charset="utf-8">
+        <meta http-equiv="Content-Security-Policy"
+              content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;">
         <link rel="stylesheet" href="katex.min.css">
         <style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}</style>
         </head><body><span id="m"></span>

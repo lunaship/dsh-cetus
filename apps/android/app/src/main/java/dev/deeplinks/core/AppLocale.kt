@@ -147,6 +147,7 @@ class DshStrings(private val values: Map<String, String>) {
     val notifChannelTasks: String get() = t("notifChannelTasks")
     val notifNeedApproval: String get() = t("notifNeedApproval")
     val notifNeedApprovalBody: String get() = t("notifNeedApprovalBody")
+    val notifNeedApprovalPublicBody: String get() = t("notifNeedApprovalPublicBody")
     val notifTaskDone: String get() = t("notifTaskDone")
     val notifTaskDoneBody: String get() = t("notifTaskDoneBody")
     val notifTaskStopped: String get() = t("notifTaskStopped")
