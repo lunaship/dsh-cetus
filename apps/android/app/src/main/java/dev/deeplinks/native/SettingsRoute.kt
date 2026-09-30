@@ -29,7 +29,6 @@ import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.catalogKind
 import dev.deeplinks.core.AppSettingsStore
-import dev.deeplinks.core.HostStore
 import dev.deeplinks.devices.DevicesActivity
 import dev.deeplinks.devices.hostDisplayName
 import dev.deeplinks.BuildConfig

@@ -6,14 +6,12 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.CrashRecorder
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
-import dev.deeplinks.core.deriveDshLayout
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.LastOnlineStore
-import dev.deeplinks.core.PairClient
 import dev.deeplinks.core.stableIdentity
 import androidx.activity.ComponentActivity
 import android.Manifest
@@ -66,7 +64,6 @@ import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.WorkspaceAccount
 import dev.deeplinks.native.util.runReachabilityLoop
 import dev.deeplinks.native.util.chatTopSubtitle
-import dev.deeplinks.native.util.relativeTime
 import dev.deeplinks.native.util.sessionMillis
 import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
@@ -75,7 +72,6 @@ import dev.deeplinks.native.util.chatCanvasKind
 import dev.deeplinks.native.util.ChatCanvasKind
 import dev.deeplinks.native.util.localHideAfterRemote
 import dev.deeplinks.native.util.forkAccepted
-import dev.deeplinks.native.util.catalogKind
 import dev.deeplinks.native.util.streamBannerKind
 import dev.deeplinks.native.util.ParkedRestoreKind
 import dev.deeplinks.native.util.ParkedSend
@@ -351,7 +347,7 @@ fun WorkspaceScreen(
     // 新任务改为对话页草稿态（N1）：工作区选择器仍由状态驱动，「+ 新任务」不再开面板。
     var showDraftWorkspacePicker by remember { mutableStateOf(false) }
     var showArchivedSheet by remember { mutableStateOf(false) }
-    val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
+    val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host.name, host.baseUrl)
     // K3 聚焦令牌：需要聚焦时只自增；真正的 requestFocus 在 InputBar 内部、下一帧执行。
     var composerFocusToken by remember { mutableStateOf(0) }
     // S2 冷启动去重：记录 bootstrap+getWorkspaces 成功的时间与进行中标志，回前台 10 秒内不重复下载。
