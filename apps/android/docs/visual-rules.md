@@ -48,13 +48,13 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 
 | 语义 | 使用场景 | Token | 浅色 | 深色 |
 |---|---|---|---|---|
-| Canvas | 页面默认背景 | `bgBase` | `#F5F5F2` | `#121214` |
-| Navigation | 侧栏、常驻导航 | `bgSidePanel` / `bgDrawer` | `#F5F5F2` | `#121214` |
+| Canvas | 页面默认背景 | `bgBase` | `#F3F4F7` | `#121214` |
+| Navigation | 侧栏、常驻导航 | `bgSidePanel` / `bgDrawer` | `#F3F4F7` | `#121214` |
 | Card | 卡片、面板、分组卡（首页/设置唯一的「白面」） | `bgCard` / `bgSurface` | `#FFFFFF` | `#1C1D21` |
-| Tonal container | 用户气泡、胶囊底、选中态 | `bgSubtle` / `bgSelected` / `bgNavSelected` | `#EAEAE5` / `#E7E7E1` | `#2A2B30` / `#26272C` |
-| Input | 输入框、搜索框、Composer | `bgInput` | `#F5F5F2` | `#121214` |
-| Recessed | 思考轨迹、代码或深层数据区 | `bgRecessed` / `bgCode` | `#F3F3EF` | `#17181B` / `#26272C` |
-| Divider | **只用于分隔线**，不做容器描边 | `borderSubtle` | `#EEEEE9` | `#2A2B30` |
+| Tonal container | 用户气泡、胶囊底、选中态 | `bgSubtle` / `bgSelected` / `bgNavSelected` | `#EBEDF1` / `#E5E7EC` | `#2A2B30` / `#26272C` |
+| Input | 输入框、搜索框、Composer | `bgInput` | `#F3F4F7` | `#121214` |
+| Recessed | 思考轨迹、代码或深层数据区 | `bgRecessed` / `bgCode` | `#F2F3F6` | `#17181B` / `#26272C` |
+| Divider | **只用于分隔线**，不做容器描边 | `borderSubtle` | `#ECEEF2` | `#2A2B30` |
 
 对话页整页白（`bgCard` + `bgBase` 同白），首页整页灰（`bgBase` 灰 + `bgCard` 白）。
 
@@ -64,9 +64,10 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 - `bgCard` 只表示浮层或需要独立承载的卡片，不再是普通列表行背景。
 - `bgSelected` 与 `bgNavSelected` 合并为一个 selection container 角色，token 仍然成对。
   筛选、会话行、分页下划线、菜单勾选和用户气泡都用中性灰：底是 `bgSubtle`，字和图标是 `labelPrimary`。
-  进行中写在灰字和图标上。**实心 `brand500` 只留给「需要你动手」的动作**：批准、发送。
-  新任务、停止、开关开启态改用**墨色实心**（底 `labelPrimary`、内容 `bgCard`）——
-  这是 2026-09-28 重设计相对 2026-09-27 合同的唯一反转，见第六节第 3 条。
+  进行中写在灰字和图标上。**实心品牌蓝只留给「需要你动手」的动作**：批准、发送。
+  新任务、停止、开关开启态改用 **ink 实心**（底 `inkFill`、内容 `onInk`），见第六节第 3 条。
+  禁用一律 `bgSubtle` + `labelDimmed`，不再用品牌色降透明度。
+  语义色（警告 / 成功 / 错误）只做 6dp 圆点和文字；容器底保持中性灰或卡片白。不用色条。
   思考轨迹左侧蓝轨保持不变。
 - 旧属性在迁移期保留为兼容别名，调用点清零后才删除；由 `DshSurfaceRoleTest` 保证只降不升。
 
@@ -152,18 +153,20 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 
 1. **色源唯一**：运行时颜色只走 Compose `DshTheme` / `DshColors`（及代理 `Dsh.*`）。XML `values/colors.xml` 与 `values-night/colors.xml` 必须与同一套 DSH 色对齐。**XML 运行时色名一律 `dsh_*`；禁止再引入 `ink_*` 作为第二套色系统。**
 2. **DSH 色主轴**：默认取 DSH neutral-bluish 色阶（深色画布 `#151517`）。
-   **2026-09-28 重设计起，本端改用自有中性色板**（浅色画布 `#F5F5F2`、深色画布 `#121214`，
-   见第二节），`DshTheme.kt` 里对应行逐行标注「偏离 DSH」和原因，由 `DshPaletteProvenanceTest` 守住。
-   全 App 唯一高饱和强调色仍是 deepseek 蓝族（`brand500`：`#3F5BD6` / `#7C93FF`）；批准、发送、链接用这一族。
+   **2026-09-30 第四轮起，浅色灰阶跟品牌蓝同一色相**（画布 `#F3F4F7`、深色画布仍 `#121214`，
+   见第二节）。冷暖统一：灰阶不得偏暖。`DshTheme.kt` 里对应行逐行标注「偏离 DSH」和原因，由 `DshPaletteProvenanceTest` 守住。
+   全 App 唯一高饱和强调色仍是品牌蓝（浅 `#3F5BD6` / 深 `#8B9DFF`）；批准、发送、链接用这一族。
    选中态、用户气泡和进行中状态用浅灰与正文色，不把品牌蓝铺进列表和消息流。
    Material You 动态取色只动表面 / 灰阶文字，**不得**用壁纸色替换品牌 token。
    **发送槽规格（Mic / Send / Stop 同一槽）**：空态语音 = `bgTrack` 圆钮；可发送 / 运行 / 录音 = `brand500` 实心；
-   停止 = `labelPrimary` 墨色实心（重设计稿）；禁用 = `brand500` 55%；出错 = `error`。状态只换图标。
-3. **墨色只用于「过程控制」，不用于「需要你动手」**：这条取代 2026-09-27 的「禁墨色主轴」。
+   停止 = `inkFill` 实心、内部方块 `onInk`；禁用 = `bgSubtle` + `labelDimmed`；出错 = `error`。状态只换图标。
+3. **过程按钮用 ink，不用于「需要你动手」**：这条取代 2026-09-27 的「禁墨色主轴」，并在 2026-09-30 把深色 ink 从白实心改成深灰。
    - **品牌蓝实心**只给需要用户决策的动作：批准、发送、确认。
-   - **墨色实心**（底 `labelPrimary`、内容 `bgCard`）给过程控制：新任务悬浮按钮、停止、开关开启态。
+   - **ink 实心**（底 `inkFill`、内容 `onInk`）给过程控制：新任务悬浮按钮、停止、开关开启态。浅色 `#15171C` / 白字；深色 `#3A3C43` / `#ECEDF0`。
+   - 禁用一律 `bgSubtle` + `labelDimmed`，不用品牌色降透明度。
    - 其余动作一律 tonal（底 `bgSubtle`）或文字按钮。
-   理由是手机上要一眼分开「主操作」与「打断操作」；深色主题下墨色自动变成浅底深字，对比度由角色保证。
+   - **语义色只做 6dp 圆点和文字**（警告 / 成功 / 错误）。容器底保持 `bgSubtle` 或 `bgCard`。不用侧边色条，也不再用 `warnContainer` / `successContainer`。
+   理由是手机上要一眼分开「主操作」与「打断操作」；深色里批准蓝应是最亮的实心色。
    Splash / Devices / Settings / 聊天必须像同一产品。
 4. **文字灰阶**：高对比正文（`labelPrimary`）+ muted 次要（`labelSecondary` / `labelTertiary`）；层级靠灰阶与字重，不靠第二套高饱和色。
 5. **ThinkingTrace 规格**：面板背景比画布更深一档（`bgRecessed`）；左侧约 2dp 品牌蓝竖条；CoT 正文 dimmed + italic；折叠标题清晰；最终回答 upright 高对比；助手消息无气泡全宽。
@@ -209,11 +212,13 @@ DSH 没有把间距做成 token；刻度取自 DSH Web 实际写下的 padding /
 
 | 角色 | 原因 |
 |---|---|
-| **2026-09-28 重设计稿的整套表面 / 文字 / 强调角色** | 见第二节与第六节第 2 条：设计稿用的是本端自有中性色板，与 DSH neutral-bluish 不同族 |
-| 浅色 `bgSubtle`（稿 `#F1F1ED` → 本端 `#EAEAE5`） | 稿值与页面底 `#F5F5F2` 只差 1.04:1，过不了 `DshContrastTest` 的 1.05 分层下限，下压一档 |
-| `warnContainer` / `warnLabel` | DSH 没有 warning 容器档（只有 `state-success-tertiary` 这类）；「等你批准」胶囊需要暖色容器 + 内容配对 |
-| 深色 `onBrand` | 稿子深色强调底 `#7C93FF` 上白字只有 2.8:1，`DshPaletteProvenanceTest` 要求 ≥3:1，改为深色 `#121214` |
-| `systemAccent` / `toolsAccent` / `trace*` | DSH 没有对应角色（Android 专有的轨迹语义色） |
+| **2026-09-30 第四轮的整套表面 / 文字 / 强调角色** | 见第二节与第六节第 2 条：浅色灰阶跟品牌蓝同色相（冷灰），深色中性灰不动 |
+| 浅色 `bgSubtle` `#EBEDF1` | 对画布 `#F3F4F7` 约 1.07，过 `DshContrastTest` 的 1.05 分层下限 |
+| `warn` / `warnLabel` | DSH 没有 warning 容器档。语义色只做点和字，不再有 `warnContainer` |
+| `inkFill` / `onInk` | 过程按钮。深色不用白实心，避免抢过卡片 |
+| 深色 `onBrand` | 白字在深色品牌蓝上对比不足，`DshPaletteProvenanceTest` 要求 ≥3:1，改为 `#121214` |
+| 深色 `brand400` / `brand500` `#8B9DFF` | 与浅色品牌蓝同一色相；推理轨 `traceReasoning` 与之同值 |
+| `systemAccent` / `toolsAccent` / `trace*` | DSH 没有对应角色（Android 专有的轨迹语义色）；上下文与工具条改中性灰 |
 | `pureBlack()` 几档 | OLED 纯黑模式是本端独有 |
 
 > 2026-09-27 那批「浅色 tertiary/secondary 下压、brand400 取 deepseek-600、error/warn/success 白底不达 AA」的偏离，
@@ -241,28 +246,30 @@ DSH 没有把间距做成 token；刻度取自 DSH Web 实际写下的 padding /
 
 ## 快速对照
 
-2026-09-28 重设计稿落地后的角色取值（改色只看这张表 + `DshTheme.kt`）：
+2026-09-30 第四轮落地后的角色取值（改色只看这张表 + `DshTheme.kt`）：
 
 | 角色 | 浅色 | 深色 | 说明 |
 | --- | --- | --- | --- |
-| `bgBase` 画布 | `#F5F5F2` | `#121214` | 首页 / 设置页面底 |
+| `bgBase` 画布 | `#F3F4F7` | `#121214` | 首页 / 设置页面底（浅色冷灰） |
 | `bgCard` 卡片 | `#FFFFFF` | `#1C1D21` | 卡片、面板；对话页整页白 |
-| `bgSubtle` tonal | `#EAEAE5` | `#2A2B30` | 用户气泡、胶囊底、tonal 按钮 |
-| `bgSelected` / `bgNavSelected` | `#E7E7E1` | `#26272C` | 选中态（中性灰，非品牌蓝） |
-| `bgInput` 输入 | `#F5F5F2` | `#121214` | 输入条、搜索框 |
-| `bgCode` / `bgRecessed` | `#F3F3EF` | `#26272C` / `#17181B` | 代码块、思考轨迹 |
-| `borderSubtle` | `#EEEEE9` | `#2A2B30` | **只用于分隔线** |
-| `labelPrimary` | `#16171A` | `#EDEDEF` | 主文字；也是墨色按钮的底 |
-| `labelSecondary` | `#5B5F66` | `#A3A7AE` | 次要文字（浅色 5.9:1） |
-| `labelTertiary` | `#6E7278` | `#8B8F96` | 箭头、占位、第三级 |
-| `brand500` 强调 | `#3F5BD6` | `#7C93FF` | 只给批准 / 发送；`onBrand` 分别取白 / `#121214` |
+| `bgSubtle` tonal | `#EBEDF1` | `#2A2B30` | 用户气泡、胶囊底、tonal 按钮、禁用底 |
+| `bgSelected` / `bgNavSelected` | `#E5E7EC` | `#26272C` | 选中态（中性灰，非品牌蓝） |
+| `bgInput` 输入 | `#F3F4F7` | `#121214` | 输入条、搜索框 |
+| `bgCode` / `bgRecessed` | `#F2F3F6` | `#26272C` / `#17181B` | 代码块、思考轨迹 |
+| `borderSubtle` | `#ECEEF2` | `#2A2B30` | **只用于分隔线** |
+| `labelPrimary` | `#15171C` | `#EDEDEF` | 主文字 |
+| `labelSecondary` | `#5A5F69` | `#A3A7AE` | 次要文字 |
+| `labelTertiary` | `#686D77` | `#8B8F96` | 箭头、占位、第三级 |
+| `labelDimmed` | `#B3B7BF` | `#4A4D53` | 禁用文字 |
+| `inkFill` / `onInk` | `#15171C` / `#FFFFFF` | `#3A3C43` / `#ECEDF0` | 新任务、停止 |
+| `brand500` 强调 | `#3F5BD6` | `#8B9DFF` | 只给批准 / 发送；`onBrand` 分别取白 / `#121214` |
 | `success` 在线点 | `#1F9D55` | `#3BC476` | 在线状态点 |
-| `successContainer` / `successContent` | `#E6F4EC` / `#17753F` | `#16301F` / `#5CC38A` | 完成图标圈 |
-| `warnContainer` / `warnLabel` | `#FFF1DE` / `#8A4B00` | `#3A2A12` / `#F0B86A` | 等你批准 / 等你回答胶囊 |
+| `successContent` | `#17753F` | `#5CC38A` | 完成图标与文字（无色底容器） |
+| `warn` / `warnLabel` | `#C4801A` / `#8A4B00` | amber500 / `#F0B86A` | 6dp 点与文字，容器底中性 |
 | `error` | `#B42318` | `#FF8A7E` | 危险文字（解除配对） |
-| `bgOverlay` | `rgba(22,23,26,.25)` | `rgba(0,0,0,.45)` | 底部面板遮罩（2026-09-30 调轻） |
+| `bgOverlay` | `rgba(21,23,28,.25)` | `rgba(0,0,0,.45)` | 底部面板遮罩 |
 | 按压反馈 | 单层中性 6% | 单层中性 8% | 水波纹 / 按压底色都用 `labelPrimary`，不用品牌蓝 |
-| `bgTrack` | `#E6E6E1` | `#3A3B41` | 进行中转圈轨道 |
+| `bgTrack` | `#E4E6EB` | `#2E3036` | 进行中转圈轨道 |
 
 `Dsw` 镜像（`core/DswPalette.kt`）继续按 DSH 原样保留：偏离只发生在 `DshTheme.kt` 的角色映射层，
 DSH 升级后重新生成镜像的流程不变。
@@ -274,16 +281,17 @@ DSH 升级后重新生成镜像的流程不变。
 
 | 角色 | 浅色 | 深色 | 定的理由 |
 | --- | --- | --- | --- |
-| `brand400` 链接 / 次强调 | `#3F5BD6` | `#7C93FF` | 设计源只有一族强调蓝，链接与主强调同族，不引入第二个蓝 |
-| `bgSelected` / `bgNavSelected` | `#E7E7E1` | `#26272C` | 方案 2.1「选中态用墨色/中性色」；设计源没有选中行底色，取比 `bgSubtle` 深一档的中性灰 |
-| `bgRecessed` 深色 | — | `#17181B` | 设计源只有浅色凹进面（`#F3F3EF`）；深色取比卡片（`#1C1D21`）暗、比画布（`#121214`）亮的一档 |
+| `brand400` 链接 / 次强调 | `#3F5BD6` | `#8B9DFF` | 设计源只有一族强调蓝，链接与主强调同族，不引入第二个蓝 |
+| `bgSelected` / `bgNavSelected` | `#E5E7EC` | `#26272C` | 方案 2.1「选中态用墨色/中性色」；取比 `bgSubtle` 深一档的中性灰 |
+| `bgRecessed` 深色 | — | `#17181B` | 深色取比卡片（`#1C1D21`）暗、比画布（`#121214`）亮的一档 |
 | `errorBg` 浅色 | `error` 同色相 10% 叠加 | — | 沿用改造前的既有写法（`error` 已按设计稿换值） |
 
 另外两处**有意偏离设计稿**（都在 `DshTheme.kt` 行尾写了原因）：
 
 | 角色 | 稿值 | 实际 | 原因 |
 | --- | --- | --- | --- |
-| 浅色 `bgSubtle` | `#F1F1ED` | `#EAEAE5` | 稿值与页面底 `#F5F5F2` 只差 1.04:1，过不了 `DshContrastTest` 的 1.05 分层下限；不放宽门禁的前提下下压一档 |
-| 深色 `onBrand` | `#FFFFFF` | `#121214` | 白字在 `#7C93FF` 上只有 2.8:1，低于 `DshPaletteProvenanceTest` 的 3:1 |
+| 浅色 `bgSubtle` | 稿 `#F1F1ED` | `#EBEDF1` | 冷灰画布上仍要过 `DshContrastTest` 的 1.05 分层下限 |
+| 深色 `onBrand` | `#FFFFFF` | `#121214` | 白字在深色品牌蓝上低于 `DshPaletteProvenanceTest` 的 3:1 |
+| 深色过程按钮 | 白实心 | `inkFill` `#3A3C43` | 2026-09-30：深色最亮实心留给批准蓝 |
 
 配套阅读：[`contributing-ui.md`](contributing-ui.md)（工程门禁与截图基线工作流）。

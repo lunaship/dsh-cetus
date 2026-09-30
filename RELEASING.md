@@ -12,7 +12,7 @@ GitHub `lunaship/dsh-links` = **插件源码、DLP/1 中继源码（`relay/`）�
 
 ## App 发版流程
 
-- [ ] 确认 `apps/android/` 版本号已更新，CI 全绿（`CI - Android`：「单测 + lint + 截图校验 + assembleDebug + whitespace」）。
+- [ ] 确认 `apps/android/` 版本号已更新，CI 全绿（`CI - Android`：「单测 + lint + 截图校验 + assembleDebug + whitespace」）。色板或组件改过时，先在 Linux 上跑 `regen-screenshots`（`workflow_dispatch`）更新 `screenshotTestDebug/reference/`，再让截图校验变绿。
 - [ ] 在 `apps/android/` 执行 `./gradlew :app:assembleRelease`，使用维护者本机密钥签名（签名环境自动读取）。
 - [ ] 运行 `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk`，指纹与根 `README.md` / `SECURITY.md` 记录一致。
 - [ ] Android 正式包：`assembleRelease` 后**务必保存混淆映射表** `app/build/outputs/mapping/release/mapping.txt`（按版本命名，例如 `DeepLinks-<versionName>-mapping.txt`）；用户报崩溃时用它 `retrace` 还原堆栈。映射表不进仓库、不发 Release 附件，只存档。

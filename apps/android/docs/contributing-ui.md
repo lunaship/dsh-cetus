@@ -63,7 +63,8 @@ CI（`.github/workflows/ci.yml`）按顺序跑：DLR 向量检查 → JVM 测试
   `ChatFeedScreenshotTest.kt`（一轮回复、流式中、审批卡、提问卡）。
 - 数学公式 / Mermaid 走 WebView 异步渲染，不进截图；`L.*`（AppLocale 全局）不跟 `LocalDshStrings` 切换，
   英文预览里个别标签仍是中文属正常。
-- **改动 UI 后**：`./gradlew updateDebugScreenshotTest` 更新基准图，随 PR 一起提交。
+- **改动 UI 后**：基准图必须在 Linux 上生成，字体才和 CI 一致。不要提交 macOS 上 `updateDebugScreenshotTest` 写出的 PNG。
+  流程：把分支推到 GitHub → 手动跑 `Regenerate screenshot baselines`（`.github/workflows/regen-screenshots.yml`，只响应 `workflow_dispatch`）→ 下载 `screenshot-references` 产物 → 覆盖 `app/src/screenshotTestDebug/reference/` → 审图后随 PR 提交。
 - 基准图目录：`app/src/screenshotTestDebug/reference/**`（务必提交，否则 CI 会失败）。
 - 覆盖矩阵：亮/暗 × 中/英 × 1.0/1.3 字号、412dp 宽。新增屏幕时补一个 `@PreviewTest`。
 - 预览刻意不经 `DshTheme`（避开 SharedPreferences 初始化），直接提供
