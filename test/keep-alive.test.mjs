@@ -21,12 +21,17 @@ import { createWebSocketStream } from "ws"
 import { apply } from "../src/index.js"
 import { bindLocalRpcRuntime, unbindLocalRpcRuntime } from "../src/local-rpc.js"
 import {
-  b64u, clientMac, clientTranscript, routeId as deriveRouteId, deviceRelayKey,
+  b64u, clientMac, clientTranscript, routeId as deriveRouteId, deviceRelayKey, hostPublicKey,
 } from "../src/remote/crypto.js"
 import { startFakeRelay } from "./helpers/fake-dlp-relay.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TMP = mkdtempSync(join(tmpdir(), "dsh-keepalive-"))
+
+/** 固定的远程身份，测试据此派生路由与设备 MAC；state 写在 TMP，不碰 ~/.dsh。 */
+const HOST_KEY = Buffer.alloc(32, 1)
+const KEY_SEED = Buffer.alloc(32, 2)
+const DEVICE_HANDLE = Buffer.alloc(16, 3)
 
 let dispose, proxyPort, relay, upstream, registered
 
@@ -35,7 +40,7 @@ function route(path) {
 }
 
 function routeIdOf() {
-  return deriveRouteId(route("/dsh-link")?.routeId ?? Buffer.alloc(16))
+  return deriveRouteId(hostPublicKey(HOST_KEY))
 }
 
 function certFingerprint() {
@@ -44,13 +49,29 @@ function certFingerprint() {
 
 test.before(async () => {
   process.env.DSH_LINKS_DLP_ALLOW_INSECURE_WS = "1"
-  writeFileSync(join(TMP, "state.json"), JSON.stringify({
-    devices: [{ deviceId: "dev-keepalive", name: "keepalive phone", tokenHash: "unused", createdAt: 1, lastSeenAt: 1 }],
-  }))
   upstream = createUpstream((req, res) => res.end("ok"))
   upstream.listen(0, "127.0.0.1")
   await once(upstream, "listening")
   relay = await startFakeRelay()
+  writeFileSync(join(TMP, "state.json"), JSON.stringify({
+    remote: {
+      enabled: true,
+      endpoint: relay.url,
+      outerPin: "",
+      hostKey: b64u(HOST_KEY),
+      keySeed: b64u(KEY_SEED),
+      createdAt: 1,
+    },
+    devices: [{
+      deviceId: "dev-keepalive",
+      name: "keepalive phone",
+      tokenHash: "unused",
+      remoteHandle: b64u(DEVICE_HANDLE),
+      remoteIssuedAt: 1,
+      createdAt: 1,
+      lastSeenAt: 1,
+    }],
+  }))
   registered = []
   const effects = []
   const ctx = {
@@ -108,23 +129,23 @@ test("LAN：同一条 TLS socket 连发 2 次 health 不被服务端关闭，且
 
   const first = await send("/dsh-link/health")
   assert.ok(first.statusLine.startsWith("HTTP/1.1 200"), `first: ${first.statusLine}`)
-  assert.equal(first.headers.connection, undefined, "first 不能有 connection: close")
+  assert.notEqual(first.headers.connection, "close", "first 不能强关连接")
 
   const second = await send("/dsh-link/health")
   assert.ok(second.statusLine.startsWith("HTTP/1.1 200"), `second: ${second.statusLine}`)
-  assert.equal(second.headers.connection, undefined, "second 不能有 connection: close")
+  assert.notEqual(second.headers.connection, "close", "second 不能强关连接")
 
   socket.end()
 })
 
 test("远程：同一条 tunnel.inner 连发 2 次请求，不被服务端关闭，且响应头不含 connection: close", async (t) => {
-  // 通过假 relay 开一条远程隧道
-  const macKey = deviceRelayKey(Buffer.from("keepalive-seed-xxxxxxxxxxxxxxxx"), Buffer.from("dev-keepalive-handle-"))
+  // 通过假 relay 开一条远程隧道（用 before() 里固定的远程身份）
+  const macKey = deviceRelayKey(KEY_SEED, DEVICE_HANDLE)
   const ts = Math.floor(Date.now() / 1000)
   const nonce = randomBytes(16)
   const route = routeIdOf()
-  const mac = clientMac(macKey, clientTranscript({ route, kind: "device", key: Buffer.from("dev-keepalive-handle-"), ts, nonce }))
-  const req = { t: "client_open", v: 1, route: b64u(route), kind: "device", key: b64u(Buffer.from("dev-keepalive-handle-")), ts, nonce: b64u(nonce), mac: b64u(mac) }
+  const mac = clientMac(macKey, clientTranscript({ route, kind: "device", key: DEVICE_HANDLE, ts, nonce }))
+  const req = { t: "client_open", v: 1, route: b64u(route), kind: "device", key: b64u(DEVICE_HANDLE), ts, nonce: b64u(nonce), mac: b64u(mac) }
 
   const accepted = relay.nextAccept()
   relay.sendOpen(req)
@@ -137,7 +158,7 @@ test("远程：同一条 tunnel.inner 连发 2 次请求，不被服务端关闭
   await once(inner, "secureConnect")
 
   const send = (path) => new Promise((resolve, reject) => {
-    const req = https.request({ createConnection: () => inner, path, method: "GET", headers: { host: "dsh-link" } }, (res) => {
+    const req = https.request({ createConnection: () => inner, path, method: "GET", headers: { host: "dsh-link", connection: "keep-alive" } }, (res) => {
       const chunks = []
       res.on("data", (c) => chunks.push(c))
       res.on("end", () => {
@@ -150,11 +171,11 @@ test("远程：同一条 tunnel.inner 连发 2 次请求，不被服务端关闭
 
   const first = await send("/dsh-link/health")
   assert.equal(first.status, 200, "first 远程 health 应 200")
-  assert.equal(first.headers.connection, undefined, "first 远程不能有 connection: close")
+  assert.notEqual(first.headers.connection, "close", "first 远程不能强关连接")
 
   const second = await send("/dsh-link/health")
   assert.equal(second.status, 200, "second 远程 health 应 200")
-  assert.equal(second.headers.connection, undefined, "second 远程不能有 connection: close")
+  assert.notEqual(second.headers.connection, "close", "second 远程不能强关连接")
 
   inner.end()
 })

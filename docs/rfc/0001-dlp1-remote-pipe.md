@@ -124,6 +124,8 @@ LAN 配对码、设备确认、Token、TLS 指纹与 `18640` 的暴露规则均�
 
 **为什么不多路复用**：多条流共用一条 socket 必须自己实现按流的额度窗口，否则慢消费者会阻塞整条 socket 上的所有流（队头阻塞）。一流一 socket 时，Relay 的 `Read → Write` 循环写不进去就不再读，背压沿 TCP 自然传回发送端，不需要任何流控帧。代价是每条新连接在 Agent 侧多一次 WSS 建连；OkHttp 连接池会复用已建连接，所以开销按连接计，不按请求计。v1 不预热（§10.3 第 5 条）：预热连接会被 Relay 的首条消息超时关闭。
 
+**keep-alive 合同**：插件 HTTP 必须保持 keep-alive（JSON / SSE 响应都不得带 `connection: close`），服务端空闲上限 65 秒、`headersTimeout` 66 秒，长于 App 远程连接池的 50 秒（由客户端先放手，避免复用竞态）。空闲连接同样占用 §5.8 的每设备并发流额度。
+
 ### 4.3 信任与可见性
 
 | 值 | 生成方 / 长度 | Relay 可见 | 是否秘密 | 用途 |
@@ -351,7 +353,7 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
 | WS 协议层 ping | 25 秒 | Relay | 否 |
 | 控制连接应用层 ping | 20 秒（`registered.ping`） | Agent | Relay 下发 |
 | 每 route 并发流（含待接受） | 64 | Relay | 可下调，下限 16 |
-| 每设备并发流 | 6 | Agent | 否 |
+| 每设备并发流 | 12 | Agent | 否 |
 | 每个 bootstrapId 并发流 | 4 | Agent | 否 |
 | 每台电脑并发流 | 32 | Agent | 否 |
 | Relay 全局并发流 | 2,000 | Relay | 可调 |

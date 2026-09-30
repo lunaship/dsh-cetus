@@ -328,7 +328,8 @@ export function json(res, code, obj, extraHeaders) {
   res.writeHead(code, {
     "content-type": "application/json; charset=utf-8",
     "content-length": String(body.length),
-    connection: "close",
+    // 不再发 connection: close：远程每条连接都是一次 WSS + 会合 + 内层 TLS，
+    // 必须让 App 的连接池复用（RFC §4.2）。空闲上限见 createHttpsServer 之后的 keepAliveTimeout。
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "no-referrer",
