@@ -13,6 +13,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, sta
 import { dirname, join } from "node:path"
 import { homedir, hostname, networkInterfaces } from "node:os"
 import { randomBytes } from "node:crypto"
+import { gzipSync } from "node:zlib"
 import z from "@deepseek-ai/schemastery"
 import QRCode from "qrcode"
 
@@ -325,17 +326,26 @@ function pairInfo(config, state, certFingerprint) {
 
 export function json(res, code, obj, extraHeaders) {
   const body = Buffer.from(JSON.stringify(obj), "utf8")
-  res.writeHead(code, {
+  // S3：大于 1KB 的 JSON 响应在请求方接受 gzip 时压缩（会话列表约 113KB → 约 15KB）。
+  // SSE 与文件下载不走这里（见下方注释与 mobile-api 的文件流），保持不动。
+  // 安全：这些响应里没有「攻击者可控输入 + 密钥」同时出现的情况，BREACH 类攻击不适用；
+  // 含 token 的配对响应小于 1KB，不会被压缩。
+  const acceptEncoding = headerVal(res.req?.headers, "accept-encoding") ?? ""
+  const gzip = body.length > 1024 && /\bgzip\b/.test(acceptEncoding)
+  const encoded = gzip ? gzipSync(body, { level: 6 }) : body
+  const headers = {
     "content-type": "application/json; charset=utf-8",
-    "content-length": String(body.length),
+    "content-length": String(encoded.length),
     // 不再发 connection: close：远程每条连接都是一次 WSS + 会合 + 内层 TLS，
     // 必须让 App 的连接池复用（RFC §4.2）。空闲上限见 createHttpsServer 之后的 keepAliveTimeout。
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "no-referrer",
+    ...(gzip ? { "content-encoding": "gzip", vary: "accept-encoding" } : {}),
     ...extraHeaders,
-  })
-  res.end(body)
+  }
+  res.writeHead(code, headers)
+  res.end(encoded)
 }
 
 function headerVal(headers, name) {
