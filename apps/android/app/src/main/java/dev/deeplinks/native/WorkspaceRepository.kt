@@ -49,6 +49,13 @@ internal class WorkspaceRepository(
         LocalCacheCrypto,
     )
 
+    /** 首页会话列表 + 工作区目录的本地缓存（S1，按主机隔离、加密落盘）。 */
+    val sessionListCache = dev.deeplinks.native.util.SessionListCache(
+        dev.deeplinks.native.util.SessionListCache.rootDir(context.cacheDir),
+        host.slotKey,
+        LocalCacheCrypto,
+    )
+
     /** 尾页（无分页参数）成功后顺手刷新本地快照。 */
     suspend fun history(
         sessionId: String,

@@ -366,8 +366,7 @@ fun WorkspaceScreen(
         workspaceCatalogItems.map { WorkspaceAccount(it.path, it.sessionIds) }
     }
     /** 是否已成功拉取过工作区注册表；未就绪前侧栏可临时回退到会话 cwd。 */
-    var workspaceRegistryReady by remember { mutableStateOf(false) }
-    // 本地已删除工作区（本机乐观隐藏；服务端重新注册后会自动解除）
+    var workspaceRegistryReady by remember { mutableStateOf(false) }    // 本地已删除工作区（本机乐观隐藏；服务端重新注册后会自动解除）
     var deletedWorkspaces by localStore.deletedWorkspacePaths
     fun persistDeletedWorkspaces(next: Set<String>) = localStore.setDeletedWorkspaces(next)
     fun setDeletedWorkspace(path: String) {
@@ -707,6 +706,8 @@ fun WorkspaceScreen(
     fun onAuthExpired(error: Throwable? = null) {
         if (authExpired) return
         authExpired = true
+        // S1：凭据失效即清掉本主机的列表缓存，避免下次冷启动铺出已经不能用的数据。
+        workspaceViewModel.clearSessionListCache()
         val message = error?.let(::mobileAuthUserMessage) ?: L.connectionAuthExpired
         // 设备 token / 证书失效（插件在内层 TLS 上的明确答复）时丢掉本机配对；中继的拒绝码不算
         if (error != null && shouldDropLocalHostOnOpenAuth(error)) {
@@ -1523,6 +1524,17 @@ fun WorkspaceScreen(
         }
     }
 
+    // S1：冷启动先铺本地缓存的会话列表与工作区目录，网络数据回来再整体替换（不闪、不白屏）。
+    LaunchedEffect(host) {
+        val cached = workspaceViewModel.hydrateFromSessionListCache() ?: return@LaunchedEffect
+        if (workspaceViewModel.sessions.value.isNotEmpty() && workspaceCatalogItems.isEmpty()) {
+            applyWorkspaceCatalog(MobileWorkspaceCatalog(cached.workspaces))
+        }
+        if (cached.archivedSessionIds.isNotEmpty() && archivedIds.isEmpty()) {
+            localStore.setArchivedSessionIds(cached.archivedSessionIds)
+        }
+    }
+
     LaunchedEffect(host) {
         // 冷启动：bootstrap 一次拉主机信息 + 会话，再补工作区归档同步
         // 必须在 effect 协程内执行，host 切换时自动取消，避免旧主机结果写回
@@ -1601,6 +1613,11 @@ fun WorkspaceScreen(
         if (!bootstrapOk) refreshSessions(selectLatest = true)
         refreshAppSettings()
         coldStartSyncing.value = false
+    }
+
+    // S1：会话列表 / 工作区目录 / 归档集合变化后写回本地缓存（VM 内 2 秒防抖）。
+    LaunchedEffect(sessions, workspaceCatalogItems, archivedIds) {
+        workspaceViewModel.scheduleSessionListCacheWrite(sessions, archivedIds, workspaceCatalogItems)
     }
 
     LaunchedEffect(currentSessionId) {

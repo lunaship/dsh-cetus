@@ -290,6 +290,44 @@ internal class WorkspaceViewModel(
         }
     }
 
+    // ===== S1 会话列表缓存 =====
+
+    private var sessionListWriteJob: Job? = null
+    private var pendingSessionList: dev.deeplinks.native.util.SessionListSnapshot? = null
+
+    /** S1：冷启动先把缓存的会话列表铺出来（网络数据回来再整体替换）。返回缓存供屏幕补工作区目录。 */
+    fun hydrateFromSessionListCache(): dev.deeplinks.native.util.SessionListSnapshot? {
+        val snapshot = runCatching { repo.sessionListCache.read() }.getOrNull() ?: return null
+        if (sessions.value.isEmpty() && snapshot.sessions.isNotEmpty()) sessions.value = snapshot.sessions
+        if (snapshot.sessions.isNotEmpty()) sessionsInitialLoad.value = false
+        return snapshot
+    }
+
+    /** S1：会话/工作区数据变化后写回本地缓存，2 秒防抖。 */
+    fun scheduleSessionListCacheWrite(
+        sessions: List<MobileSession>,
+        archivedSessionIds: Set<String>,
+        workspaces: List<MobileWorkspace>,
+    ) {
+        if (sessions.isEmpty() && workspaces.isEmpty()) return
+        pendingSessionList = dev.deeplinks.native.util.SessionListSnapshot(
+            sessions = sessions,
+            archivedSessionIds = archivedSessionIds,
+            workspaces = workspaces,
+        )
+        sessionListWriteJob?.cancel()
+        sessionListWriteJob = viewModelScope.launch {
+            delay(2_000)
+            val snapshot = pendingSessionList ?: return@launch
+            withContext(Dispatchers.IO) { runCatching { repo.sessionListCache.write(snapshot) } }
+        }
+    }
+
+    /** 配对解除 / token 失效时删掉该主机的列表缓存。 */
+    fun clearSessionListCache() {
+        runCatching { repo.sessionListCache.clear() }
+    }
+
     // ===== 会话历史编排 =====
 
     private var historyJob: Job? = null
