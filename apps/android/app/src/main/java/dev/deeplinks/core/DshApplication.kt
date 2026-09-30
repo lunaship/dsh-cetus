@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
+import android.os.StrictMode
 import androidx.appcompat.app.AppCompatDelegate
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -15,6 +16,15 @@ import okhttp3.OkHttpClient
 class DshApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
+        if (dev.deeplinks.BuildConfig.DEBUG) {
+            // 只在 debug：主线程网络 I/O 直接崩，避免再出现冷启动闪退却没有现场。
+            StrictMode.setThreadPolicy(
+                StrictMode.ThreadPolicy.Builder()
+                    .detectNetwork()
+                    .penaltyDeath()
+                    .build(),
+            )
+        }
         // K0：最先装崩溃记录，越早越好（后面的初始化万一崩了也要留证据）。
         CrashRecorder.install(this)
         val app = this
