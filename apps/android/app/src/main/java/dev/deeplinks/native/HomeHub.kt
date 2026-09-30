@@ -184,8 +184,11 @@ internal fun HomeHeader(
  * 其余等你处理的会话一律走 [HomeAwaitingRow] 的「在电脑上处理」样式。批准按钮是页面上
  * 唯一的实心强调色——它确实是「需要你动手」的动作。
  *
- * 命令文本：DSH 的审批请求不带工具参数（dsh-user-approval 明确不重复 presented tool call 的
+ * 工具名：DSH 的审批请求不带工具参数（dsh-user-approval 明确不重复 presented tool call 的
  * arguments），所以这里按用户确认的「诚实降级」只写工具名。
+ *
+ * 信息边界：卡上紧贴工具名写明「手机不含完整参数」，并把「想运行一条命令」改成不预设请求
+ * 类型的引导语；判断不了时引导回电脑处理，不在 App 侧拼造参数，也不放无效的跨端跳转按钮。
  */
 @Composable
 internal fun HomeApprovalCard(
@@ -235,6 +238,13 @@ internal fun HomeApprovalCard(
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCode)
                 .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        )
+        Spacer(Modifier.size(DshSpace.s6))
+        // 数据边界（DSH 审批请求不带工具参数）：安静说明，不用警告容器制造恐慌
+        Text(
+            s.homeApprovalArgsMissing,
+            color = Dsh.labelSecondary,
+            style = DshType.supporting,
         )
         Spacer(Modifier.size(DshSpace.s12))
         Row {

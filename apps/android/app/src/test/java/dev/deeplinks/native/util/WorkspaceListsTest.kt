@@ -163,6 +163,41 @@ class WorkspaceListsTest {
         assertEquals("/", workspaceDisplayName("/"))
     }
 
+    // ----- draftWorkspaceChipLabels（草稿画布胶囊撞名） -----
+
+    @Test
+    fun draftWorkspaceChipLabels_uniqueLastSegmentsStayShort() {
+        assertEquals(
+            listOf("dsh-links", "Hermes-perch"),
+            draftWorkspaceChipLabels(listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch")),
+        )
+    }
+
+    @Test
+    fun draftWorkspaceChipLabels_sameNameGetsParentSegment() {
+        assertEquals(
+            listOf("a/app", "b/app", "c/app"),
+            draftWorkspaceChipLabels(listOf("/a/app", "/b/app", "/c/app")),
+        )
+        // 与更深一层撞名时一并补父级：短名 app 在整批里不唯一
+        assertEquals(
+            listOf("a/app", "b/app"),
+            draftWorkspaceChipLabels(listOf("/a/app", "/a/b/app")),
+        )
+        // 父级也同名时继续向上，直到整批唯一
+        assertEquals(
+            listOf("a/x/app", "b/x/app"),
+            draftWorkspaceChipLabels(listOf("/a/x/app", "/b/x/app")),
+        )
+    }
+
+    @Test
+    fun draftWorkspaceChipLabels_trailingSlashAndBlankPaths() {
+        assertEquals(listOf("perch"), draftWorkspaceChipLabels(listOf("/Volumes/Space/Dev/perch/")))
+        assertEquals(listOf(""), draftWorkspaceChipLabels(listOf("")))
+        assertEquals(emptyList<String>(), draftWorkspaceChipLabels(emptyList()))
+    }
+
     // ----- sessionsInWorkspace（W3） -----
 
     private fun session(id: String, cwd: String?): dev.deeplinks.native.MobileSession =

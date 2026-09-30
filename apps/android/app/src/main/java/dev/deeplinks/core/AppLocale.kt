@@ -527,9 +527,13 @@ class DshStrings(private val values: Map<String, String>) {
     val newTaskContinueLast: String get() = t("newTaskContinueLast")
     val newTaskWorkspace: String get() = t("newTaskWorkspace")
     val newTaskMode: String get() = t("newTaskMode")
+    /** 「智能体预设，当前：%s」；草稿态预设行的 TalkBack 描述。 */
+    val agentPresetSeatAria: String get() = t("agentPresetSeatAria")
     val moreWorkspaces: String get() = t("moreWorkspaces")
     val shareConversation: String get() = t("shareConversation")
     val homeWantsCommand: String get() = t("homeWantsCommand")
+    /** 首页审批卡：手机侧看不到工具参数的诚实说明。 */
+    val homeApprovalArgsMissing: String get() = t("homeApprovalArgsMissing")
     val homeRunningInline: String get() = t("homeRunningInline")
     /** 「第 %d 步」；`%d` 是步号。 */
     val homeStepLabel: String get() = t("homeStepLabel")

@@ -52,6 +52,28 @@ fun workspaceDisplayName(path: String): String {
 }
 
 /**
+ * 草稿画布工作区胶囊的显示名（与 [workspaceDisplayName] 同一口径，但按整批去重）：
+ * 默认末级目录名；同一屏里末级同名时（/a/app 与 /b/app）逐级带上父级目录，直到在这批胶囊里唯一。
+ * 选择器（[dev.deeplinks.native.WorkspacePickerSheet]）仍显示完整路径尾段，这里只解决胶囊撞名。
+ */
+fun draftWorkspaceChipLabels(paths: List<String>): List<String> {
+    val segmentLists = paths.map { path ->
+        path.trimEnd('/').split('/').filter { it.isNotBlank() }
+    }
+    return segmentLists.map { segments ->
+        if (segments.isEmpty()) return@map ""
+        var depth = 1
+        while (depth <= segments.size) {
+            val candidate = segments.takeLast(depth).joinToString("/")
+            val duplicated = segmentLists.count { it.takeLast(depth).joinToString("/") == candidate } > 1
+            if (!duplicated) return@map candidate
+            depth++
+        }
+        segments.joinToString("/")
+    }
+}
+
+/**
  * 首页工作区筛选：会话属于该工作区 = 在它的 sessionIds 里，或者 cwd 规范化后等于该路径、
  * 且没有被别的工作区的 sessionIds 认领。与 Web 分组的差别：Web 只认 sessionIds（侧栏树形分组），
  * 首页筛选是「这个文件夹里的任务」，按 cwd 兜底更符合用户预期。
