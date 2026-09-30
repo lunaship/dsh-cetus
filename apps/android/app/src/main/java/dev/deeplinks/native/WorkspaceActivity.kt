@@ -339,6 +339,9 @@ fun WorkspaceScreen(
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
     // K3 聚焦令牌：需要聚焦时只自增；真正的 requestFocus 在 InputBar 内部、下一帧执行。
     var composerFocusToken by remember { mutableStateOf(0) }
+    // S2 冷启动去重：记录 bootstrap+getWorkspaces 成功的时间与进行中标志，回前台 10 秒内不重复下载。
+    val coldStartSync = remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val coldStartSyncing = remember { mutableStateOf(false) }
 
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
@@ -1074,9 +1077,17 @@ fun WorkspaceScreen(
                     // 设置页可能改动了归档/删除集合，回前台重新水合（唯一所有者）
                     localStore.reload()
                     applySessionList(sessions)
-                    refreshSessions()
-                    refreshWorkspaces()
-                    refreshAppSettings() // 设置可能在其他端修改，回前台重新读取
+                    // S2：冷启动刚同步过（或同步还在跑）就跳过重复下载会话/工作区/设置
+                    if (!dev.deeplinks.native.util.shouldSkipResumeRefresh(
+                            System.currentTimeMillis(),
+                            coldStartSync.longValue,
+                            coldStartSyncing.value,
+                        )
+                    ) {
+                        refreshSessions()
+                        refreshWorkspaces()
+                        refreshAppSettings() // 设置可能在其他端修改，回前台重新读取
+                    }
                 }
                 else -> {}
             }
@@ -1515,6 +1526,8 @@ fun WorkspaceScreen(
     LaunchedEffect(host) {
         // 冷启动：bootstrap 一次拉主机信息 + 会话，再补工作区归档同步
         // 必须在 effect 协程内执行，host 切换时自动取消，避免旧主机结果写回
+        // S2：整个冷启动同步期间立标志，完成的瞬间记时间，供 ON_RESUME 去重。
+        coldStartSyncing.value = true
         var bootstrapOk = false
         try {
             CrashRecorder.breadcrumb("bootstrap", "start")
@@ -1562,6 +1575,7 @@ fun WorkspaceScreen(
         } catch (e: Exception) {
             if (isMobileAuthFailure(e)) {
                 onAuthExpired(e)
+                coldStartSyncing.value = false
                 return@LaunchedEffect
             }
             // bootstrap 失败时回退 refreshSessions
@@ -1571,9 +1585,12 @@ fun WorkspaceScreen(
             applyWorkspaceCatalog(catalog)
             workspacesLoadError = null
             workspacesInitialLoad = false
+            // bootstrap + 工作区目录都拿到了：记下时间，回前台 10 秒内不再重复刷新。
+            coldStartSync.longValue = System.currentTimeMillis()
         } catch (e: Exception) {
             if (isMobileAuthFailure(e)) {
                 onAuthExpired(e)
+                coldStartSyncing.value = false
                 return@LaunchedEffect
             }
             workspacesInitialLoad = false
@@ -1583,6 +1600,7 @@ fun WorkspaceScreen(
         }
         if (!bootstrapOk) refreshSessions(selectLatest = true)
         refreshAppSettings()
+        coldStartSyncing.value = false
     }
 
     LaunchedEffect(currentSessionId) {

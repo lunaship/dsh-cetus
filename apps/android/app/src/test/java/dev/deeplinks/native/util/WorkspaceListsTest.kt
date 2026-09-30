@@ -224,3 +224,27 @@ class WorkspaceListsTest {
         assertEquals(emptyList<dev.deeplinks.native.MobileSession>(), out)
     }
 }
+
+/** S2：冷启动去重的判定。 */
+class ColdStartRefreshTest {
+
+    @Test
+    fun `同步进行中时跳过`() {
+        assertTrue(shouldSkipResumeRefresh(now = 1_000, coldStartSyncAt = 0, syncInFlight = true))
+    }
+
+    @Test
+    fun `刚同步完成 10 秒内跳过`() {
+        assertTrue(shouldSkipResumeRefresh(now = 5_000, coldStartSyncAt = 4_000, syncInFlight = false))
+    }
+
+    @Test
+    fun `超过 10 秒不再跳过`() {
+        assertFalse(shouldSkipResumeRefresh(now = 20_000, coldStartSyncAt = 4_000, syncInFlight = false))
+    }
+
+    @Test
+    fun `从未冷启动同步过就不跳过`() {
+        assertFalse(shouldSkipResumeRefresh(now = 1_000, coldStartSyncAt = 0, syncInFlight = false))
+    }
+}
