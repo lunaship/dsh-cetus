@@ -580,5 +580,10 @@ val DshStringsZh = DshStrings(
         put("crashLast", "上次崩溃")
         put("crashShare", "分享")
         put("crashClear", "清除")
+        put("crashPrompt", "上次异常退出了。可以把脱敏报告发给开发者")
+        put("crashPromptView", "查看")
+        put("crashPromptIgnore", "忽略")
+        put("updateAvailable", "有新版本 %s")
+        put("checkUpdates", "检查新版本")
     }
 )

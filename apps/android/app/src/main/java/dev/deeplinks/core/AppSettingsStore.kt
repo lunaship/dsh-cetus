@@ -68,6 +68,19 @@ object AppSettingsStore {
 
     private fun hostPrefs(context: Context, host: Host): android.content.SharedPreferences =
         context.getSharedPreferences(appSettingsHostPrefsName(host), Context.MODE_PRIVATE)
+
+    /** 已经提示过的崩溃文本指纹。只存在这台手机上，不进服务端设置。 */
+    fun crashPromptFingerprint(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CRASH_PROMPT_KEY, null)
+
+    fun setCrashPromptFingerprint(context: Context, fingerprint: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(CRASH_PROMPT_KEY, fingerprint)
+            .apply()
+    }
+
+    private const val CRASH_PROMPT_KEY = "crash_prompt_fingerprint"
 }
 
 /** Stable cache identity: renaming a host must not select a new settings namespace. */

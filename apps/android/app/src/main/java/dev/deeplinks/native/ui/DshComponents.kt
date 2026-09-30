@@ -356,6 +356,8 @@ fun DshBanner(
     tone: DshBannerTone = DshBannerTone.Info,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    secondaryActionLabel: String? = null,
+    onSecondaryAction: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
     contentDescription: String? = null,
 ) {
@@ -398,32 +400,41 @@ fun DshBanner(
         )
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.width(DshSpace.s8))
-            val interaction = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(DshRadius.control))
-                    .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onAction)
-                    .heightIn(min = 48.dp)
-                    .widthIn(min = 48.dp)
-                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
-                    .semantics {
-                        role = Role.Button
-                        this.contentDescription = actionLabel
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = actionLabel,
-                    color = accent,
-                    style = DshType.body,
-                    fontWeight = FontWeight(500),
-                )
-            }
+            BannerTextButton(actionLabel, accent, onAction)
+        }
+        if (secondaryActionLabel != null && onSecondaryAction != null) {
+            Spacer(Modifier.width(DshSpace.s8))
+            BannerTextButton(secondaryActionLabel, accent, onSecondaryAction)
         }
     }
 }
 
 enum class DshBannerTone { Info, Warn, Error, Success }
+
+@Composable
+private fun BannerTextButton(label: String, color: Color, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(DshRadius.control))
+            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick)
+            .heightIn(min = 48.dp)
+            .widthIn(min = 48.dp)
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
+            .semantics {
+                role = Role.Button
+                this.contentDescription = label
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = color,
+            style = DshType.body,
+            fontWeight = FontWeight(500),
+        )
+    }
+}
 
 // ============================================================
 // DshBanner —— 横条提示（断线横幅、审批等待、状态广播）

@@ -123,7 +123,7 @@ internal fun WorkspaceSidebar(
             onToggleSearch = { actions.onToggleSearch() },
             onOpenSettings = { actions.onOpenSettings() },
         )
-
+        HomeCrashBanner()
         AnimatedVisibility(
             visible = sidebarSearchOpen,
             enter = fadeIn(tween(motionDuration(150))) + expandVertically(tween(motionDuration(180), easing = FastOutSlowInEasing)),

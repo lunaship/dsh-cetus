@@ -201,6 +201,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.mockwebserver3)
     // 本地 JVM 单测：org.json 在 android.jar stub 里不可用，需真实实现
     testImplementation(libs.org.json)
 }

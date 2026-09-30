@@ -640,6 +640,11 @@ class DshStrings(private val values: Map<String, String>) {
     val crashLast: String get() = t("crashLast")
     val crashShare: String get() = t("crashShare")
     val crashClear: String get() = t("crashClear")
+    val crashPrompt: String get() = t("crashPrompt")
+    val crashPromptView: String get() = t("crashPromptView")
+    val crashPromptIgnore: String get() = t("crashPromptIgnore")
+    val updateAvailable: String get() = t("updateAvailable")
+    val checkUpdates: String get() = t("checkUpdates")
 }
 
 /** Non-composable access; reading this observes LocaleManager.language. */

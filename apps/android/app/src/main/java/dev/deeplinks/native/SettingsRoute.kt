@@ -728,17 +728,47 @@ internal fun ConversationSettings(
     }
 }
 
+private fun openReleasePage(context: android.content.Context, url: String) {
+    if (!url.startsWith("https://")) return
+    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+    context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
 // ---------- 关于 ----------
 
 @Composable
 internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Unit) {
     val s = DshS
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var checkUpdates by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(dev.deeplinks.core.UpdateCheckPrefs.enabled(context))
+    }
+    var newer by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(dev.deeplinks.core.UpdateCheckPrefs.cachedNewer(context))
+    }
     DshListSection(footer = s.unofficialNotice) {
         DshListRow(
             title = "DeepLinks",
             subtitle = s.aboutVersion.replace("%s", BuildConfig.VERSION_NAME),
             icon = InfoOutline16,
         )
+        DshSwitchRow(
+            title = s.checkUpdates,
+            checked = checkUpdates,
+            onCheckedChange = {
+                checkUpdates = it
+                dev.deeplinks.core.UpdateCheckPrefs.setEnabled(context, it)
+                if (!it) newer = null
+            },
+        )
+        val release = newer
+        if (checkUpdates && release != null) {
+            DshListRow(
+                title = s.updateAvailable.format(dev.deeplinks.core.displayVersion(release.tagName)),
+                icon = InfoOutline16,
+                onClick = { openReleasePage(context, release.htmlUrl) },
+            )
+        }
     }
     DshListSection(header = s.sectionLegal) {
         DshListRow(

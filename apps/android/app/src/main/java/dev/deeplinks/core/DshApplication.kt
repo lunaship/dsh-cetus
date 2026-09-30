@@ -17,6 +17,10 @@ class DshApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         // K0：最先装崩溃记录，越早越好（后面的初始化万一崩了也要留证据）。
         CrashRecorder.install(this)
+        val app = this
+        Thread({
+            dev.deeplinks.core.UpdateChecker.checkBlocking(app, dev.deeplinks.BuildConfig.VERSION_NAME)
+        }, "update-check").apply { isDaemon = true }.start()
         // S7：启动打点从进程最早期开始。
         StartupTrace.markStart()
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)

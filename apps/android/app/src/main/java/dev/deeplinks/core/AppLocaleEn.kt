@@ -581,5 +581,10 @@ val DshStringsEn = DshStrings(
         put("crashLast", "Last crash")
         put("crashShare", "Share")
         put("crashClear", "Clear")
+        put("crashPrompt", "The app closed unexpectedly. You can send a redacted report to the developer")
+        put("crashPromptView", "View")
+        put("crashPromptIgnore", "Dismiss")
+        put("updateAvailable", "New version %s")
+        put("checkUpdates", "Check for updates")
     }
 )
