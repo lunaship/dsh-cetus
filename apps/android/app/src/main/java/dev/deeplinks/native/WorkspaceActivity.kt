@@ -143,6 +143,11 @@ fun WorkspaceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    // S7：首页第一帧。
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.withFrameNanos { }
+        dev.deeplinks.core.StartupTrace.mark("home_first_frame")
+    }
     val launchIntoChat = !initialSessionId.isNullOrBlank() ||
         !initialShareText.isNullOrBlank() ||
         initialShareImages.isNotEmpty() ||
@@ -1562,6 +1567,7 @@ fun WorkspaceScreen(
         if (cached.archivedSessionIds.isNotEmpty() && archivedIds.isEmpty()) {
             localStore.setArchivedSessionIds(cached.archivedSessionIds)
         }
+        dev.deeplinks.core.StartupTrace.mark("cache_list", "${cached.sessions.size}")
     }
 
     LaunchedEffect(host) {
@@ -1575,6 +1581,7 @@ fun WorkspaceScreen(
             val (boot, refreshed) = workspaceViewModel.repo.bootstrap()
             bootstrapOk = true
             CrashRecorder.breadcrumb("bootstrap", "done ${boot.sessions.size}")
+            dev.deeplinks.core.StartupTrace.mark("bootstrap_done", "${boot.sessions.size}")
             workspaceViewModel.filesTreeSupported.value = boot.filesTree
             if (refreshed != host) {
                 // 远程能力补齐 / 清除（bootstrap 的 remote，RFC §6.4）
@@ -1600,6 +1607,7 @@ fun WorkspaceScreen(
             sessions = boot.sessions
             sessionsLoadError = null
             sessionsInitialLoad = false
+            dev.deeplinks.core.StartupTrace.mark("home_network_data", "${boot.sessions.size}")
             if (currentSessionId == null && !composeNewSession && boot.sessions.isNotEmpty()) {
                 currentSessionId = reconciledSessionId(
                     currentSessionId = null,

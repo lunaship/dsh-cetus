@@ -150,6 +150,9 @@ object HostHttp {
 
     private val selector get() = RouteSelector.shared
 
+    /** S7：第一次选路只打一次点。 */
+    private val firstRouteLogged = java.util.concurrent.atomic.AtomicBoolean(false)
+
     /** 路由缓存、时钟偏移、「最近走哪条路」的键：同一台电脑（地址 + 指纹 + 设备）。 */
     internal fun routeKey(host: Host): String = lanKey(host) + "\u001f" + host.deviceId
 
@@ -177,6 +180,10 @@ object HostHttp {
         val remote = remoteOverride ?: host.remoteRoute()
         val routes = forceRoute?.let { listOf(it) }
             ?: selector.order(key, remote != null, { NetworkTransport.lanCapable }, { probeLan(host) })
+        // S7：第一次选路完成，记下走的是局域网还是远程。
+        if (firstRouteLogged.compareAndSet(false, true)) {
+            StartupTrace.mark("first_route", routes.first().name)
+        }
         return attemptWithFailover(key, routes, request.body != null) { route ->
             try {
                 val response = if (route == HostRoute.REMOTE) {
