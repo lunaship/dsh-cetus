@@ -281,7 +281,7 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
    - `bootstrap`：在内存种子表中查找 `bootstrapId == key`；不存在 → `BOOTSTRAP_UNKNOWN`；已过期 → `BOOTSTRAP_EXPIRED`；已消费 → `BOOTSTRAP_USED`。
 5. `mac` 用常量时间比较；不符 → `BAD_MAC`。
 6. 重放：`(kind, key, nonce)` 已在缓存中 → `REPLAY`。否则写入缓存，保留到 `ts + 60` 秒；缓存上限 10,000 条，满了 → `SERVER_BUSY`（不淘汰未过期条目）。
-7. 容量：该设备活跃流 ≥ 6（bootstrap 每个 id ≥ 4）→ `DEVICE_LIMIT`；本机活跃流 ≥ 32 → `SERVER_BUSY`。
+7. 容量：该设备活跃流 ≥ 12（bootstrap 每个 id ≥ 4）→ `DEVICE_LIMIT`；本机活跃流 ≥ 32 → `SERVER_BUSY`。
 8. 插件本地服务未就绪（readiness ≠ ready）→ `LOCAL_UNAVAILABLE`。
 9. 打开数据 WSS，发送 `host_accept`，等待 `ready`（10 秒）。
 10. 收到 `ready` 后才连接 `127.0.0.1:<pluginPort>`；在本地 socket 的 `connect` 事件里、**转发任何字节之前**登记来源标签（§6.1）。本地连接失败 → 以 `1011` 关闭数据 WSS。
@@ -849,6 +849,12 @@ Caddy 会自动处理 WebSocket 升级且没有默认读超时，无需额外配
 - 手机时间偏差超过 60 秒且 `hostNow` 偏移重试仍失败时，无法远程连接。
 - 全局共享 state 下，多个 DSH profile 会以同一身份抢占 route（有 `REPLACED` 提示与退避，但根治靠 `stateDir` 隔离）。
 - 官方 Relay 无账号，只能依靠限额防滥用。
+
+## 17. 变更记录
+
+| 日期 | 原因 | 改动 |
+|---|---|---|
+| 2026-09-30 | keep-alive 后空闲连接也占流，6 条太紧 | §5.5 第 7 步、§5.8：每设备并发流 6 → 12；`DEVICE_MAX_STREAMS = 12` |
 
 ## 16. 后续动作
 
