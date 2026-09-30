@@ -44,6 +44,9 @@ import dev.deeplinks.native.ui.DshPillButton
 import dev.deeplinks.native.ui.DshPillTone
 import dev.deeplinks.native.ui.DshSectionLabel
 import dev.deeplinks.native.util.HomeSection
+import dev.deeplinks.native.DshSpace
+import dev.deeplinks.native.DshIconSize
+import dev.deeplinks.native.DshTouch
 
 /*
  * 首页（抽屉 / 平板侧栏）的积木（2026-09-28 重设计）：顶栏、概况行+工作区筛选、
@@ -58,12 +61,12 @@ import dev.deeplinks.native.util.HomeSection
 private fun HostBadge(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .size(40.dp)
+            .size(DshTouch.compact)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCard),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+        Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(DshIconSize.md))
     }
 }
 
@@ -99,7 +102,7 @@ internal fun HomeHeader(
     val s = DshS
     val deviceLabel = hostName.ifBlank { s.deviceAndPairing }
     val status = if (online) {
-        listOfNotNull(s.statusOnline, if (viaRemote) s.viaRemote else s.viaLan, latencyMs?.let { "${it}ms" })
+        listOfNotNull(s.statusOnline, if (viaRemote) s.viaRemote else s.viaLan)
             .joinToString(" · ")
     } else {
         offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
@@ -271,11 +274,20 @@ internal fun HomeSummaryRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = DrawerTextStart, end = DrawerEdgePadding),
+            .padding(start = DrawerTextStart, end = DrawerEdgePadding)
+            .clickable(role = Role.Button, onClick = { menuOpen = true }),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier
+                .width(DshSpace.s3)
+                .height(32.dp)
+                .background(Dsh.brand500),
+        )
         Row(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = DshSpace.s8),
             verticalAlignment = Alignment.Bottom,
         ) {
             Text(
