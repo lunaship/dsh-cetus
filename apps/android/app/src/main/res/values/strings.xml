@@ -5,7 +5,10 @@
     <!-- 扫码页关闭按钮（activity_scan.xml） -->
     <string name="pair_close">关闭</string>
 
+    <!-- 扫码页「相册」按钮（activity_scan.xml，M1） -->
+    <string name="pair_album">从相册识别</string>
+
     <!-- 保留（旧空状态文案，新布局暂未使用） -->
     <string name="empty_title">还没有连接任何 dsh</string>
-    <string name="empty_hint">扫码连接电脑上的 dsh\n或点右上角菜单手动添加</string>
+    <string name="empty_hint">扫描电脑上的 dsh 二维码，或从相册选择一张含连接二维码的截图</string>
 </resources>

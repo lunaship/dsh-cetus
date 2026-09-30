@@ -4,7 +4,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.ui.DshEmptyState
-import dev.deeplinks.native.KeyboardOutline16
+import dev.deeplinks.native.ImageOutline16
 import dev.deeplinks.native.ScanOutline16
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.AppRoute
@@ -18,38 +18,26 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.L
 import dev.deeplinks.core.HostHealth
 import dev.deeplinks.core.PairClient
-import dev.deeplinks.core.PinnedSsl
 import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.shouldBlockLocalHostRemoval
-import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshConfirmDialog
-import dev.deeplinks.native.DshDialogButtons
-import dev.deeplinks.native.DshDialogFrame
-import dev.deeplinks.native.DshDialogMessage
-import dev.deeplinks.native.DshDialogTitle
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSheet
-import dev.deeplinks.native.ui.DshSheetPrimaryButton
-import dev.deeplinks.native.ui.DshTextField
 
 import androidx.activity.ComponentActivity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +55,7 @@ private sealed class HostOpenResult {
 /**
  * 设备管理 Hub —— 对齐全 App 主设计语言（DeepSeek 风生产力工具）：
  * 单列紧凑列表 + 描边设备图标 + 成功色状态点 / 虚线添加卡片 /
- * 底部滑出配对面板（扫码添加 + 手动添加表单）+ 与 Workspace 一致的确认弹窗。
+ * 底部滑出配对面板（扫描二维码 / 从相册识别）+ 与 Workspace 一致的确认弹窗。
  */
 class DevicesActivity : ComponentActivity() {
 
@@ -106,7 +94,8 @@ internal data class DeviceUi(
 fun DevicesScreen(
     onOpenHost: (Host, (Boolean) -> Unit) -> Unit,
     onScanClick: () -> Unit,
-    onManualPair: (name: String, url: String, code: String, fingerprint: String?, onSuccess: (Host) -> Unit, onError: (String) -> Unit) -> Unit,
+    /** M1：二维码文本走与扫码完全相同的配对路径（远程首配 / pending 批准 / 错误提示一致）。 */
+    onPairQrText: (text: String, onSuccess: (Host) -> Unit, onError: (String) -> Unit) -> Unit,
     hostNotice: String? = null,
     onHostNotice: (String?) -> Unit = {},
     /** 本机存储的设备变了（过期移除 / 解除配对 / 连接偏好），宿主据此刷新当前设备。 */
@@ -234,6 +223,23 @@ fun DevicesScreen(
     }
 
     // ---------- 配对面板（底部滑出） ----------
+    // M1：从相册识别——Photo Picker 选图，IO 线程解码二维码，再走共用配对流程。
+    val albumPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) { QrImageDecoder.decodeUri(context, uri) }
+            if (text.isNullOrBlank()) {
+                onHostNotice(L.qrImageNotFound)
+                return@launch
+            }
+            onPairQrText(text, {
+                reload()
+                if (sheet) onDismissSheet()
+            }, { message -> onHostNotice(message) })
+        }
+    }
     if (showPairingPanel) {
         PairingPanel(
             replacing = device != null,
@@ -243,13 +249,13 @@ fun DevicesScreen(
                 if (sheet) onDismissSheet()
                 onScanClick()
             },
-            onManualPair = { name, url, code, fingerprint, onSuccess, onError ->
-                onManualPair(name, url, code, fingerprint, { host ->
-                    // 新设备落库（替换旧设备）后立即刷新
-                    reload()
-                    onSuccess(host)
-                    if (sheet) onDismissSheet()
-                }, onError)
+            onAlbum = {
+                showPairingPanel = false
+                albumPicker.launch(
+                    androidx.activity.result.PickVisualMediaRequest(
+                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly,
+                    ),
+                )
             },
         )
     }
@@ -407,207 +413,30 @@ private fun PairingPanel(
     replacing: Boolean,
     onDismiss: () -> Unit,
     onScan: () -> Unit,
-    onManualPair: (name: String, url: String, code: String, fingerprint: String?, onSuccess: (Host) -> Unit, onError: (String) -> Unit) -> Unit,
+    onAlbum: () -> Unit,
 ) {
     val s = DshS
-    var mode by remember { mutableStateOf<PairingMode>(PairingMode.CHOOSE) }
-
     DshSheet(
         onDismiss = onDismiss,
-        title = when {
-            mode != PairingMode.CHOOSE -> s.methodManual
-            replacing -> s.replaceDevice
-            else -> s.addDevice
-        },
-        subtitle = when {
-            mode != PairingMode.CHOOSE -> s.manualPairSheetHint
-            replacing -> s.replaceDeviceHint
-            else -> s.pairChooseHint
-        },
+        title = if (replacing) s.replaceDevice else s.addDevice,
+        subtitle = if (replacing) s.replaceDeviceHint else s.pairChooseHint,
         showClose = true,
         skipPartiallyExpanded = true,
     ) {
-        when (mode) {
-            PairingMode.CHOOSE -> DshListSection {
-                DshListRow(
-                    title = s.methodScan,
-                    subtitle = s.methodScanDesc,
-                    icon = ScanOutline16,
-                    onClick = onScan,
-                )
-                DshListRow(
-                    title = s.methodManual,
-                    subtitle = s.methodManualDesc,
-                    icon = KeyboardOutline16,
-                    onClick = { mode = PairingMode.MANUAL },
-                )
-            }
-
-            PairingMode.MANUAL -> ManualPairForm(
-                onPair = { name, url, code, fingerprint, onSuccess, onError ->
-                    onManualPair(name, url, code, fingerprint, { host ->
-                        onSuccess(host)
-                        onDismiss()
-                    }, onError)
-                },
-                onBack = { mode = PairingMode.CHOOSE },
+        DshListSection {
+            DshListRow(
+                title = s.methodScan,
+                subtitle = s.methodScanDesc,
+                icon = ScanOutline16,
+                onClick = onScan,
+            )
+            DshListRow(
+                title = s.methodAlbum,
+                subtitle = s.methodAlbumDesc,
+                icon = ImageOutline16,
+                onClick = onAlbum,
             )
         }
-    }
-}
-
-private enum class PairingMode { CHOOSE, MANUAL }
-
-@Composable
-private fun ColumnScope.ManualPairForm(
-    onPair: (name: String, url: String, code: String, fingerprint: String?, onSuccess: (Host) -> Unit, onError: (String) -> Unit) -> Unit,
-    onBack: () -> Unit,
-) {
-    val s = DshS
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    var loading by remember { mutableStateOf(false) }
-    var tofuFingerprint by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-
-    fun submit(fingerprint: String?) {
-        loading = true
-        error = null
-        onPair(name.trim(), url.trim(), code.trim(), fingerprint, { _ ->
-            loading = false
-        }) { msg ->
-            loading = false
-            error = msg
-        }
-    }
-
-    tofuFingerprint?.let { fingerprint ->
-        CertificateCheckDialog(
-            url = url.trim(),
-            fingerprint = fingerprint,
-            dismissible = !loading,
-            onDismiss = { tofuFingerprint = null },
-            onConfirm = {
-                tofuFingerprint = null
-                submit(fingerprint)
-            },
-        )
-    }
-
-    fun connect() {
-        val cleanUrl = url.trim()
-        val cleanCode = code.trim()
-        if (cleanUrl.isEmpty() || cleanCode.isEmpty()) {
-            error = s.pairAddressIncomplete
-            return
-        }
-        loading = true
-        error = null
-        if (!PinnedSsl.shouldPin(cleanUrl)) {
-            submit(null)
-            return
-        }
-        scope.launch {
-            try {
-                val fp = withContext(Dispatchers.IO) { PinnedSsl.peekFingerprint(cleanUrl) }
-                loading = false
-                tofuFingerprint = fp
-            } catch (e: Exception) {
-                loading = false
-                error = PinnedSsl.unwrap(e).message ?: s.cannotReadCertificate
-            }
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(top = DshSpace.s12),
-        verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
-    ) {
-        DshTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = s.pairFieldName,
-            placeholder = s.pairFieldNamePlaceholder,
-            contentDescription = "${s.pairFieldName}，${s.pairFieldNamePlaceholder}",
-        )
-        DshTextField(
-            value = url,
-            onValueChange = { url = it },
-            label = s.pairFieldAddress,
-            placeholder = s.pairFieldAddressPlaceholder,
-            contentDescription = "${s.pairFieldAddress}，${s.pairFieldAddressPlaceholder}",
-        )
-        DshTextField(
-            value = code,
-            onValueChange = { if (it.length <= 8) code = it.trim() },
-            label = s.pairCodeLabel,
-            placeholder = s.pairFieldCodePlaceholder,
-            contentDescription = "${s.pairCodeLabel}，${s.pairFieldCodePlaceholder}",
-        )
-        error?.let { msg ->
-            Text(msg, color = Dsh.error, style = DshType.captionRelaxed, modifier = Modifier.padding(horizontal = DshSpace.s4))
-        }
-    }
-    DshSheetPrimaryButton(
-        label = if (loading) s.statusConnecting else s.connectDevice,
-        enabled = !loading,
-        onClick = ::connect,
-    )
-    TextButton(
-        onClick = onBack,
-        colors = ButtonDefaults.textButtonColors(contentColor = Dsh.labelSecondary),
-        modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .padding(top = DshSpace.s4),
-    ) {
-        Text(s.back, style = DshType.labelLarge)
-    }
-}
-
-/** 首次连接 HTTPS 地址时核对证书指纹（TOFU）：指纹等宽排版放在底色块里，方便逐段对照。 */
-@Composable
-private fun CertificateCheckDialog(
-    url: String,
-    fingerprint: String,
-    dismissible: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val s = DshS
-    DshDialogFrame(onDismiss = onDismiss, dismissible = dismissible, maxWidth = 360.dp) { requestDismiss ->
-        DshDialogTitle(s.verifyCertificateTitle)
-        Text(
-            url,
-            color = Dsh.labelSecondary,
-            style = DshType.captionRelaxed,
-            fontFamily = FontFamily.Monospace,
-            maxLines = 2,
-            modifier = Modifier.padding(top = DshSpace.s6),
-        )
-        DshDialogMessage(s.verifyCertificateDesc)
-        Text(
-            PinnedSsl.formatFingerprint(fingerprint),
-            color = Dsh.labelPrimary,
-            style = DshType.captionRelaxed,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier
-                .padding(top = DshSpace.s12)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(DshRadius.container))
-                .background(Dsh.bgSubtle)
-                .padding(DshSpace.s12),
-        )
-        DshDialogButtons(
-            dismissLabel = s.cancel,
-            onDismiss = requestDismiss,
-            confirmLabel = s.fingerprintMatches,
-            onConfirm = onConfirm,
-        )
     }
 }
 

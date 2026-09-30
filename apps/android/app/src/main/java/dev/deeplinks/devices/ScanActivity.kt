@@ -6,8 +6,6 @@ import dev.deeplinks.core.EXTRA_AUTH_NOTICE
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
 import dev.deeplinks.core.LocaleManager
-import dev.deeplinks.core.PairClient
-import dev.deeplinks.core.PinnedSsl
 import dev.deeplinks.core.applyDshSecureWindow
 
 import android.Manifest
@@ -32,7 +30,6 @@ import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import java.util.concurrent.Executors
-import java.util.UUID
 
 class ScanActivity : AppCompatActivity() {
 
@@ -54,6 +51,15 @@ class ScanActivity : AppCompatActivity() {
         }
     }
 
+    /** 从相册识别（M1）：Photo Picker 选图，无需存储权限。 */
+    private val albumPicker = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        if (handled) return@registerForActivityResult
+        handled = true
+        barcodeView.pause()
+        pairAlbum(uri)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 扫码页展示一次性配对码与相机画面。
@@ -72,6 +78,13 @@ class ScanActivity : AppCompatActivity() {
         val scanClose = findViewById<ImageButton>(R.id.scan_close)
         scanClose.contentDescription = L.close
         scanClose.setOnClickListener { finish() }
+        val scanAlbum = findViewById<ImageButton>(R.id.scan_album)
+        scanAlbum.contentDescription = L.methodAlbum
+        scanAlbum.setOnClickListener {
+            albumPicker.launch(
+                androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
+        }
         ViewCompat.setOnApplyWindowInsetsListener(scanClose) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val pad = (8 * resources.displayMetrics.density).toInt()
@@ -104,39 +117,40 @@ class ScanActivity : AppCompatActivity() {
         if (handled) return
         handled = true
         barcodeView.pause()
+        pairScanned(result.text ?: "")
+    }
 
-        val text = result.text ?: ""
-        when (val parsed = parsePairingQr(text)) {
-            PairingQrResult.NotDsh -> {
-                scanFailed(L.notDshQr)
-                return
+    /** 扫码配对：识别到的文本走共用配对流程（M1）。 */
+    private fun pairScanned(text: String) {
+        showPairingProgress()
+        executor.execute { pairAndFinish(text) }
+    }
+
+    /** 相册配对：先在 IO 线程解码图片，识别不到二维码就提示。 */
+    private fun pairAlbum(uri: android.net.Uri) {
+        showPairingProgress()
+        executor.execute {
+            val text = QrImageDecoder.decodeUri(this, uri)
+            if (text.isNullOrBlank()) {
+                scanFailed(L.qrImageNotFound)
+                return@execute
             }
-            PairingQrResult.Invalid -> {
-                scanFailed(L.qrIncomplete)
-                return
-            }
-            is PairingQrResult.Ok -> {
-                val qr = parsed.qr
-                showPairingProgress()
-                executor.execute {
-                    try {
-                        // 一次扫码 = 一次配对：局域网与远程两条路共用同一个幂等键（RFC §7.6）
-                        val r = PairClient.pairWithQr(qr, DeviceName.of(this), UUID.randomUUID().toString())
-                        saveAndFinish(qr.name, r)
-                    } catch (e: Exception) {
-                        val unwrapped = PinnedSsl.unwrap(e)
-                        val msg = unwrapped.message?.takeIf { it.isNotBlank() } ?: L.allAddressesFailed
-                        runOnUiThread { scanFailed(msg) }
-                    }
-                }
-            }
+            pairAndFinish(text)
         }
     }
 
-    private fun saveAndFinish(fallbackName: String, r: PairClient.Result) {
+    /** 扫码与相册共用的落点：解析 + 配对 + 保存/导航。运行在 [executor] 线程上。 */
+    private fun pairAndFinish(text: String) {
+        when (val outcome = pairFromQrText(text, DeviceName.of(this))) {
+            is PairQrOutcome.Failed -> scanFailed(outcome.message)
+            is PairQrOutcome.Paired -> saveAndFinish(outcome.host)
+            is PairQrOutcome.Pending -> saveAndFinish(outcome.host, pending = true)
+        }
+    }
+
+    private fun saveAndFinish(host: dev.deeplinks.core.Host, pending: Boolean = false) {
         runOnUiThread {
             if (isFinishing) return@runOnUiThread
-            val host = hostFromPair(fallbackName, r)
             if (!HostStore.upsert(this, host)) {
                 if (HostStore.isLocked(this)) {
                     HostStore.clearLockAndReplace(this, host)
@@ -145,7 +159,7 @@ class ScanActivity : AppCompatActivity() {
                     return@runOnUiThread
                 }
             }
-            if (r.pending) {
+            if (pending) {
                 pairingProgress.visibility = View.GONE
                 pairingStatus.text = L.pairPendingApprovalToast
                 pairingOverlay.contentDescription = L.pairPendingApprovalToast

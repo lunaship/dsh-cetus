@@ -55,4 +55,18 @@
         android:padding="12dp"
         android:src="@drawable/ic_close"
         app:tint="#FFFFFFFF" />
+
+    <!-- M1：取景界面也提供「相册」入口，从截图里识别连接二维码 -->
+    <ImageButton
+        android:id="@+id/scan_album"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/pair_album"
+        android:padding="12dp"
+        android:src="@drawable/ic_gallery"
+        app:tint="#FFFFFFFF" />
 </FrameLayout>
