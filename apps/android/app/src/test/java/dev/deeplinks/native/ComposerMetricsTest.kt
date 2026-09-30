@@ -129,6 +129,28 @@ class ComposerMetricsTest {
         assertTrue(completableCanSubmit(hasSession = true))
     }
 
+    @Test
+    fun modelSeatFallsBackToDefaultWhileDraftCatalogLoads() {
+        // 目录还没回来（null）：兜底显示全局默认模型，而不是空白 / 上个会话的模型（N2）
+        val fallback = composerModelSeatOrDefault(
+            catalog = null,
+            pending = null,
+            defaultModel = "deepseek-v4-flash",
+            defaultEffort = "high",
+        )
+        assertEquals("deepseek-v4-flash", fallback.name)
+        assertEquals("high", fallback.effort)
+        // 目录回来后有真实选中值就用目录
+        val catalog = MobileModelCatalog(
+            currentProvider = "p",
+            currentModel = "m1",
+            groups = listOf(
+                MobileModelGroup(provider = "p", models = listOf(MobileModelOption(id = "m1", name = "M1", contextWindow = null, maxTokens = null))),
+            ),
+        )
+        assertEquals("M1", composerModelSeatOrDefault(catalog, null, "fallback", null).name)
+    }
+
     /** 执行中不能说空闲文案，否则用户不知道消息是插话还是排队（方案 5.5）。 */
     @Test
     fun placeholderFollowsListeningAndRunning() {

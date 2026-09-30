@@ -1754,15 +1754,12 @@ fun WorkspaceScreen(
         appSettings.defaultModel,
         appSettings.defaultReasoningEffort,
     ) {
-        val seat = composerModelSeat(modelCatalog, pendingModel.takeIf { currentSessionId == null })
-        if (seat.name.isNullOrBlank()) {
-            ComposerModelSeat(
-                name = appSettings.defaultModel,
-                effort = appSettings.defaultReasoningEffort?.takeUnless { it.isBlank() || it == "null" },
-            )
-        } else {
-            seat
-        }
+        composerModelSeatOrDefault(
+            catalog = modelCatalog,
+            pending = pendingModel.takeIf { currentSessionId == null },
+            defaultModel = appSettings.defaultModel,
+            defaultEffort = appSettings.defaultReasoningEffort,
+        )
     }
     // 草稿画布的「继续上次」：最近更新的一条会话（不含草稿本身）。
     val draftLastTask = remember(sessions, composeNewSession) {

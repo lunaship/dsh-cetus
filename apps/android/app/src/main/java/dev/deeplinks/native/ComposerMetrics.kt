@@ -48,6 +48,24 @@ internal fun composerModelSeat(
 }
 
 /**
+ * 草稿态模型座兜底（N2）：目录还没回来（座位为空名）时显示全局默认模型，
+ * 避免座位短暂显示「选择模型」或上个会话的模型。纯函数，可单测。
+ */
+internal fun composerModelSeatOrDefault(
+    catalog: MobileModelCatalog?,
+    pending: Triple<String, String, String?>?,
+    defaultModel: String?,
+    defaultEffort: String?,
+): ComposerModelSeat {
+    val seat = composerModelSeat(catalog, pending)
+    if (!seat.name.isNullOrBlank()) return seat
+    return ComposerModelSeat(
+        name = defaultModel,
+        effort = defaultEffort?.takeUnless { it.isBlank() || it == "null" },
+    )
+}
+
+/**
  * 手机端只认 DSH 三个权限预设；表外值（含旧值、自定义）按默认的
  * `workspace-write` 显示，避免座位显示成空白或服务端拒绝的名字。
  */
