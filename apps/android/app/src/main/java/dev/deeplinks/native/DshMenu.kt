@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +40,9 @@ internal data class DshMenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val label: String,
     val danger: Boolean = false,
+    val selected: Boolean = false,
+    /** 在这一项之前画一条分隔线（首页筛选菜单里分组：工作区 / 添加 / 已归档 / 删除）。 */
+    val dividerBefore: Boolean = false,
     /**
      * 行尾动作槽（2026-09-28 重设计新增）：首页工作区筛选菜单要把「在这里新建 / 移除工作区」
      * 挂在每一项尾部，而菜单本身仍是「点一下选中」。槽内的点击自己消费，不会触发 [onClick]。
@@ -70,6 +74,12 @@ internal fun DshMenu(
                 .padding(vertical = DshSpace.s4)
         ) {
             items.forEach { item ->
+                if (item.dividerBefore) {
+                    HorizontalDivider(
+                        color = Dsh.borderSubtle,
+                        modifier = Modifier.padding(vertical = DshSpace.s4),
+                    )
+                }
                 val interaction = remember { MutableInteractionSource() }
                 val pressed by interaction.collectIsPressedAsState()
                 Row(
@@ -77,7 +87,13 @@ internal fun DshMenu(
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(DshRadius.control))
-                        .background(if (pressed) Dsh.pressed else Color.Transparent)
+                        .background(
+                            when {
+                                item.selected -> Dsh.bgSubtle
+                                pressed -> Dsh.pressed
+                                else -> Color.Transparent
+                            }
+                        )
                         .semantics {
                             role = Role.Button
                             contentDescription = item.label
@@ -102,6 +118,14 @@ internal fun DshMenu(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
+                    if (item.selected) {
+                        Icon(
+                            CheckOutline16,
+                            contentDescription = null,
+                            tint = Dsh.labelPrimary,
+                            modifier = Modifier.size(DshIconSize.sm),
+                        )
+                    }
                     if (item.trailingContent != null) {
                         Spacer(Modifier.width(DshSpace.s4))
                         item.trailingContent()

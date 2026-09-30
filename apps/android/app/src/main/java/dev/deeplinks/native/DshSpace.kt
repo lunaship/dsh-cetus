@@ -14,9 +14,11 @@ import androidx.compose.ui.unit.dp
  */
 object DshSpace {
     val s2 = 2.dp
+    val s3 = 3.dp
     val s4 = 4.dp
     val s6 = 6.dp
     val s8 = 8.dp
+    val s10 = 10.dp
     val s12 = 12.dp
     val s16 = 16.dp
     val s20 = 20.dp

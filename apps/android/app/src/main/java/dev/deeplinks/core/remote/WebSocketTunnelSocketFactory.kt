@@ -30,8 +30,13 @@ import org.json.JSONObject
 open class RouteConnectException(message: String, cause: Throwable? = null) : IOException(message, cause)
 class RouteOfflineException : RouteConnectException("remote route offline")
 class RouteOpenTimeoutException : RouteConnectException("remote stream open timed out")
-class RouteRateLimitedException : RouteConnectException("remote route rate limited")
-class RouteServerBusyException : RouteConnectException("remote server busy")
+/**
+ * 电脑或中继暂时满了（`DEVICE_LIMIT` / `SERVER_BUSY` / `RATE_LIMITED`）：在同一条路上退避重试，
+ * 不换路、不清选路缓存（RFC §5.7 错误码表）。
+ */
+open class RouteBusyException(val code: String) : RouteConnectException("remote busy: $code")
+class RouteRateLimitedException : RouteBusyException("RATE_LIMITED")
+class RouteServerBusyException : RouteBusyException("SERVER_BUSY")
 /** 电脑侧 Agent 或中继拒绝了这次会合；[hostNow] 仅 CLOCK_SKEW 时有（电脑的 Unix 秒）。 */
 class RouteRejectedException(val code: String, val hostNow: Long? = null) : RouteConnectException("remote request rejected: $code")
 /** 外层 WSS 没连上中继（DNS、TCP、TLS、HTTP 升级任一步失败）。 */
@@ -315,20 +320,22 @@ class WebSocketTunnelSocketFactory(
         bytes
     } catch (_: IllegalArgumentException) { throw RouteProtocolException() }
 
-    private fun mapError(code: String, hostNow: Long? = null): IOException = when (code) {
+    internal fun mapError(code: String, hostNow: Long? = null): IOException = when (code) {
         "ROUTE_OFFLINE" -> RouteOfflineException()
         "OPEN_TIMEOUT" -> RouteOpenTimeoutException()
         "RATE_LIMITED" -> RouteRateLimitedException()
         "SERVER_BUSY" -> RouteServerBusyException()
+        "DEVICE_LIMIT" -> RouteBusyException("DEVICE_LIMIT")
         "PROTOCOL_ERROR", "UNSUPPORTED_VERSION", "AUTH_FAILED" -> RouteProtocolException()
         else -> RouteRejectedException(code.ifBlank { "UNKNOWN" }, hostNow)
     }
 
-    private fun mapClose(code: Int, reason: String): IOException = when (reason) {
+    internal fun mapClose(code: Int, reason: String): IOException = when (reason) {
         "ROUTE_OFFLINE" -> RouteOfflineException()
         "OPEN_TIMEOUT" -> RouteOpenTimeoutException()
         "RATE_LIMITED" -> RouteRateLimitedException()
         "SERVER_BUSY" -> RouteServerBusyException()
+        "DEVICE_LIMIT" -> RouteBusyException("DEVICE_LIMIT")
         else -> when (code) {
             4003 -> RouteOfflineException()
             4006 -> RouteOpenTimeoutException()

@@ -83,7 +83,7 @@ internal fun WorkspaceChangesCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = DshTouch.min)
                         .clickable(indication = dshRipple(), interactionSource = null) { onOpen(null) }
                         .padding(start = 38.dp, end = DshSpace.s12, top = DshSpace.s12, bottom = DshSpace.s12),
                     verticalAlignment = Alignment.CenterVertically,
@@ -117,7 +117,7 @@ internal fun ChangedFileRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 44.dp)
+            .heightIn(min = DshTouch.min)
             .clickable(indication = dshRipple(), interactionSource = null, onClick = onClick)
             .semantics {
                 role = Role.Button

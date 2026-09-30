@@ -167,25 +167,25 @@ test("§5.5 第 6 步：重放缓存满时回 SERVER_BUSY，且不 dial", async 
   assert.equal(env.plugin.connections, 0)
 })
 
-test("§5.5 第 7 步：每设备 6 条、每个 bootstrapId 4 条、本机 32 条上限；超限的那一次不 dial", async (t) => {
-  const handles = Array.from({ length: 6 }, () => randomBytes(16))
+test("§5.5 第 7 步：每设备 12 条、每个 bootstrapId 4 条、本机 32 条上限；超限的那一次不 dial", async (t) => {
+  const handles = Array.from({ length: 12 }, () => randomBytes(16))
   const devices = new Map(handles.map((h, i) => [b64u(h), { deviceId: `dev-${i}` }]))
   const env = await setup(t, { devices })
   await env.agent.start()
   const { relay, plugin, bootstrap } = env
 
-  for (let i = 0; i < 6; i++) await openStream(relay, deviceOpen({ handle: handles[0] }))
-  await until(() => plugin.connections === 6)
+  for (let i = 0; i < 12; i++) await openStream(relay, deviceOpen({ handle: handles[0] }))
+  await until(() => plugin.connections === 12)
   assert.equal((await expectReject(relay, deviceOpen({ handle: handles[0] }))).code, REJECT.DEVICE_LIMIT)
 
   const seed = bootstrap.issue(ROUTE, Date.now() + 300_000)
   const keys = bootstrapKeys(seed.seed, ROUTE)
   for (let i = 0; i < 4; i++) await openStream(relay, bootstrapOpen(keys))
-  await until(() => plugin.connections === 10)
+  await until(() => plugin.connections === 16)
   assert.equal((await expectReject(relay, bootstrapOpen(keys))).code, REJECT.DEVICE_LIMIT)
 
-  // 再补到 32 条（其余 5 台设备各 ≤ 6 条）
-  let opened = 10
+  // 再补到 32 条（其余设备每台各 ≤ 12 条）
+  let opened = 16
   for (let d = 1; opened < HOST_MAX_STREAMS; d = d % 5 + 1) {
     await openStream(relay, deviceOpen({ handle: handles[d] }))
     opened++

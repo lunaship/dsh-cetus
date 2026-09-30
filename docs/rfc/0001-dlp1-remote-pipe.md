@@ -124,6 +124,8 @@ LAN 配对码、设备确认、Token、TLS 指纹与 `18640` 的暴露规则均�
 
 **为什么不多路复用**：多条流共用一条 socket 必须自己实现按流的额度窗口，否则慢消费者会阻塞整条 socket 上的所有流（队头阻塞）。一流一 socket 时，Relay 的 `Read → Write` 循环写不进去就不再读，背压沿 TCP 自然传回发送端，不需要任何流控帧。代价是每条新连接在 Agent 侧多一次 WSS 建连；OkHttp 连接池会复用已建连接，所以开销按连接计，不按请求计。v1 不预热（§10.3 第 5 条）：预热连接会被 Relay 的首条消息超时关闭。
 
+**keep-alive 合同**：插件 HTTP 必须保持 keep-alive（JSON / SSE 响应都不得带 `connection: close`），服务端空闲上限 65 秒、`headersTimeout` 66 秒，长于 App 远程连接池的 50 秒（由客户端先放手，避免复用竞态）。空闲连接同样占用 §5.8 的每设备并发流额度。
+
 ### 4.3 信任与可见性
 
 | 值 | 生成方 / 长度 | Relay 可见 | 是否秘密 | 用途 |
@@ -281,7 +283,7 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
    - `bootstrap`：在内存种子表中查找 `bootstrapId == key`；不存在 → `BOOTSTRAP_UNKNOWN`；已过期 → `BOOTSTRAP_EXPIRED`；已消费 → `BOOTSTRAP_USED`。
 5. `mac` 用常量时间比较；不符 → `BAD_MAC`。
 6. 重放：`(kind, key, nonce)` 已在缓存中 → `REPLAY`。否则写入缓存，保留到 `ts + 60` 秒；缓存上限 10,000 条，满了 → `SERVER_BUSY`（不淘汰未过期条目）。
-7. 容量：该设备活跃流 ≥ 6（bootstrap 每个 id ≥ 4）→ `DEVICE_LIMIT`；本机活跃流 ≥ 32 → `SERVER_BUSY`。
+7. 容量：该设备活跃流 ≥ 12（bootstrap 每个 id ≥ 4）→ `DEVICE_LIMIT`；本机活跃流 ≥ 32 → `SERVER_BUSY`。
 8. 插件本地服务未就绪（readiness ≠ ready）→ `LOCAL_UNAVAILABLE`。
 9. 打开数据 WSS，发送 `host_accept`，等待 `ready`（10 秒）。
 10. 收到 `ready` 后才连接 `127.0.0.1:<pluginPort>`；在本地 socket 的 `connect` 事件里、**转发任何字节之前**登记来源标签（§6.1）。本地连接失败 → 以 `1011` 关闭数据 WSS。
@@ -351,7 +353,7 @@ Agent 收到 `open` 后，按以下顺序处理，**任一步失败即回 `rejec
 | WS 协议层 ping | 25 秒 | Relay | 否 |
 | 控制连接应用层 ping | 20 秒（`registered.ping`） | Agent | Relay 下发 |
 | 每 route 并发流（含待接受） | 64 | Relay | 可下调，下限 16 |
-| 每设备并发流 | 6 | Agent | 否 |
+| 每设备并发流 | 12 | Agent | 否 |
 | 每个 bootstrapId 并发流 | 4 | Agent | 否 |
 | 每台电脑并发流 | 32 | Agent | 否 |
 | Relay 全局并发流 | 2,000 | Relay | 可调 |
@@ -849,6 +851,12 @@ Caddy 会自动处理 WebSocket 升级且没有默认读超时，无需额外配
 - 手机时间偏差超过 60 秒且 `hostNow` 偏移重试仍失败时，无法远程连接。
 - 全局共享 state 下，多个 DSH profile 会以同一身份抢占 route（有 `REPLACED` 提示与退避，但根治靠 `stateDir` 隔离）。
 - 官方 Relay 无账号，只能依靠限额防滥用。
+
+## 17. 变更记录
+
+| 日期 | 原因 | 改动 |
+|---|---|---|
+| 2026-09-30 | keep-alive 后空闲连接也占流，6 条太紧 | §5.5 第 7 步、§5.8：每设备并发流 6 → 12；`DEVICE_MAX_STREAMS = 12` |
 
 ## 16. 后续动作
 

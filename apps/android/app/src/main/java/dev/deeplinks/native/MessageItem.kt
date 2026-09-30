@@ -966,7 +966,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .heightIn(min = 36.dp)
+                .heightIn(min = DshTouch.min)
                 .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
                 .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)

@@ -93,7 +93,7 @@
 | `awaitingInput` 分区与「在电脑上处理」行 | 插件钩子计数（`src/awaiting-input.js`），随会话摘要下发 | 不分区 |
 | 进行中行的「正在运行 `命令` · 第 N 步」 | **插件新增 `activity`**：`src/mobile-session-activity.js` 从 `session.history` 推导最近一次未结束的工具调用（只对最近 20 个会话算，按 `sessionId+updatedAt` 缓存，并发 4） | 写「运行中」，副标题退回目标摘要 |
 | 最近行的「改了 N 个文件，<一句话>」 | **插件新增 `lastResult`**：同上文件，取最后一条助手回复去 Markdown 的首段（≤60 字）+ 本轮 `workspace/changes` 的统计 | 写「已完成」 |
-| 顶栏「● 在线 · 远程 · 31ms」 | App 侧每 30s 一次 `PairClient.probe`；通道取最近一次成功请求实际走的路（`HostHttp.isViaRemote`） | 探不到即离线 |
+| 顶栏「● 在线 · 远程」 | App 侧探测循环 `native/util/HostReachability.runReachabilityLoop`（成功 30s 后复查；失败按 3/5/10/30s 退避）；通道取最近一次成功请求实际走的路（`HostHttp.isViaRemote`）。回前台 / 网络变化 / 「重试」经 `core/ConnectivitySignals` 立刻唤醒 | 连续 2 次失败才判离线（从未在线过则第一次即离线） |
 | 顶栏「离线 · N 分钟前在线」 | **App 本地记录** `core/LastOnlineStore`（Host 里只有设备级 `lastSeenAt`，没有电脑级） | 只写「离线」 |
 | 首页内联审批卡 | 仅当前打开会话的 `/requests` 快照（`WorkspaceViewModel.answerApproval` 提交） | 该行降级为「在电脑上处理」 |
 

@@ -328,7 +328,8 @@ export function json(res, code, obj, extraHeaders) {
   res.writeHead(code, {
     "content-type": "application/json; charset=utf-8",
     "content-length": String(body.length),
-    connection: "close",
+    // 不再发 connection: close：远程每条连接都是一次 WSS + 会合 + 内层 TLS，
+    // 必须让 App 的连接池复用（RFC §4.2）。空闲上限见 createHttpsServer 之后的 keepAliveTimeout。
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "no-referrer",
@@ -1751,6 +1752,10 @@ export function apply(ctx, config) {
     proxy.on("error", (err) => {
       ctx.logger.warn(`dsh-links: proxy error: ${err?.message ?? err}`)
     })
+    // 远程每条连接都是一次 WSS + 会合 + 内层 TLS，必须让 App 的连接池复用（RFC §4.2）。
+    // 服务端空闲上限要长于 App 远程连接池的 keepAlive（50 秒），由客户端先放手，避免竞态。
+    proxy.keepAliveTimeout = 65_000
+    proxy.headersTimeout = 66_000
     pollTimer = setInterval(() => {
       for (const sessionId of rt.sessionStreams.keys()) {
         if ((rt.sessionStreams.get(sessionId)?.size ?? 0) > 0) {

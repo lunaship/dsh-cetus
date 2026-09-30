@@ -9,10 +9,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import dev.deeplinks.native.ui.DshChipTone
-import dev.deeplinks.native.ui.DshStatusChip
 import dev.deeplinks.native.ui.DshStatusIcon
 import dev.deeplinks.native.util.homeTimeLabel
+import dev.deeplinks.native.DshIconSize
+import dev.deeplinks.native.DshTouch
+import dev.deeplinks.native.DshRowHeight
+import dev.deeplinks.native.DshSpace
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
@@ -84,15 +86,15 @@ import dev.deeplinks.native.util.relativeTime
  * 点击涟漪、搜索防抖、分组折叠。行为逻辑仍在 WorkspaceSidebar / WorkspaceActivity。
  */
 // 抽屉行规格（internal：WorkspaceSidebar 的分组行也按同一套边距对齐）
-internal val DrawerItemHeight = 48.dp
-internal val DrawerIconSize = 16.dp
-internal val DrawerEdgePadding = 6.dp
+internal val DrawerItemHeight = DshRowHeight.default
+internal val DrawerIconSize = DshIconSize.sm
+internal val DrawerEdgePadding = DshSpace.s6
 /** 行内水平内边距（原 14dp）。 */
-internal val DrawerInnerPadding = 12.dp
+internal val DrawerInnerPadding = DshSpace.s12
 /** 首页所有文字的左边线：标题、筛选文字、分区标题、会话标题都落在这里。 */
 internal val DrawerTextStart = DrawerEdgePadding + DrawerInnerPadding
 /** 图标与文字的间距（原 12dp）。 */
-internal val DrawerLeadingGap = 10.dp
+internal val DrawerLeadingGap = DshSpace.s10
 /** 抽屉所有行共用同一圆角（选中/按压/滑动垫底同形），不混两种弧度。 */
 internal val DrawerRowShape = RoundedCornerShape(DshRadius.container)
 
@@ -147,7 +149,8 @@ internal fun SessionRowItem(
             // 与圆角后面透出来，看起来像「归档会话」和标题重叠、行用阴影。
             val revealing = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
             val revealBg by animateColorAsState(
-                targetValue = if (revealing) Dsh.brand500 else Color.Transparent,
+                // 中性反色底（不用强调色，强调色只给批准 / 发送，V3）。
+                targetValue = if (revealing) Dsh.labelPrimary else Color.Transparent,
                 animationSpec = tween(motionDuration(DshDuration.normal)),
                 label = "sessionArchiveRevealBg",
             )
@@ -173,13 +176,13 @@ internal fun SessionRowItem(
                     Icon(
                         ArchiveOutline20,
                         contentDescription = null,
-                        tint = Dsh.onBrand,
-                        modifier = Modifier.size(20.dp),
+                        tint = Dsh.bgBase,
+                        modifier = Modifier.size(DshIconSize.md),
                     )
                     Spacer(Modifier.width(DshSpace.s8))
                     Text(
                         archiveLabel,
-                        color = Dsh.onBrand,
+                        color = Dsh.bgBase,
                         style = DshType.body,
                         fontWeight = FontWeight.Medium,
                     )
@@ -195,7 +198,7 @@ internal fun SessionRowItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 56.dp)
+                    .heightIn(min = DshRowHeight.expanded)
                     .clip(rowShape)
                     // 先铺不透明行底，再叠选中/按压色。选中是浅灰，
                     // 不垫底就会透出下层的滑动归档层。
@@ -238,14 +241,6 @@ internal fun SessionRowItem(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     val relTime = if (session.updatedAt > 0) homeTimeLabel(session.updatedAt) else ""
-                    // 等你处理的行先给状态胶囊（稿 07）；其余行标题直接起
-                    if (session.awaitingInput) {
-                        DshStatusChip(
-                            text = s.homeChipOnDesktop,
-                            tone = DshChipTone.Remote,
-                        )
-                        Spacer(Modifier.height(DshSpace.s6))
-                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             displaySessionTitle(session.title),
@@ -357,7 +352,7 @@ private fun HomeRunningSpinner() {
     val spin = rememberMotionSpin(1100, label = "homeRunningSpin")
     val track = Dsh.bgTrack
     val arc = Dsh.labelPrimary
-    Canvas(modifier = Modifier.size(22.dp)) {
+    Canvas(modifier = Modifier.size(DshIconSize.md)) {
         val stroke = 2.5.dp.toPx()
         drawCircle(color = track, style = Stroke(width = stroke))
         drawArc(
@@ -417,7 +412,7 @@ internal fun SidebarSearchField(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = DrawerEdgePadding)
-            .heightIn(min = 40.dp)
+            .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
             .padding(horizontal = DrawerInnerPadding),
@@ -427,7 +422,7 @@ internal fun SidebarSearchField(
             SearchOutline16,
             contentDescription = null,
             tint = Dsh.labelTertiary,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(DshIconSize.sm),
         )
         Spacer(Modifier.width(DshSpace.s8))
         BasicTextField(
@@ -466,9 +461,9 @@ internal fun SidebarSearchField(
                 icon = CloseOutline16,
                 contentDescription = L.clearSearch,
                 onClick = onClear,
-                // 撑满搜索框高度当热区（32dp 不达触控下限）
-                size = 40.dp,
-                iconSize = 14.dp,
+                // 撑满搜索框高度当热区（不达触控下限的 32/40 已收敛到 48）
+                size = DshTouch.min,
+                iconSize = DshIconSize.sm,
             )
         }
     }
@@ -485,8 +480,8 @@ internal fun SidebarIconAction(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    size: Dp = 48.dp,
-    iconSize: Dp = 16.dp,
+    size: Dp = DshTouch.min,
+    iconSize: Dp = DshIconSize.sm,
     active: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -512,7 +507,8 @@ internal fun SidebarIconAction(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (active) Dsh.brand500 else Dsh.labelSecondary,
+            // 激活态靠 bgNavSelected 底色表达，不用强调色（V3）。
+            tint = if (active) Dsh.labelPrimary else Dsh.labelSecondary,
             modifier = Modifier.size(iconSize),
         )
     }

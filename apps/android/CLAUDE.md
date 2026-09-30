@@ -13,6 +13,7 @@ DeepLinks Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版�
 ## 门禁命令
 
 - 完整门禁：`./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`
+- 尺寸裸 dp 只降不升：`size-baseline.txt` 由 `DshSizeUsageTest` 守护（含零容忍项 `__touch_below_48__`）；新增裸 dp 必须同步基线，不许上调。
 - 单元测试：`./gradlew testDebugUnitTest`
 - 构建：`./gradlew :app:assembleDebug :app:assembleDebugAndroidTest` / `:app:assembleRelease`（自动签名）
 - 真机测试完整命令见 `README.md`「真机设备测试」一节。

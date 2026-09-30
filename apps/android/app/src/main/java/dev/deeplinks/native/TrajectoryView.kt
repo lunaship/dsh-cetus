@@ -387,7 +387,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .heightIn(min = 44.dp)
+            .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
             .padding(horizontal = 10.dp),

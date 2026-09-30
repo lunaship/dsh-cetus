@@ -276,7 +276,7 @@ internal fun SheetSearchField(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 44.dp)
+            .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
             .padding(start = DshSpace.s12),
@@ -367,7 +367,7 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
                     cursorBrush = SolidColor(Dsh.brand400),
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = DshTouch.min)
                         .clip(RoundedCornerShape(DshRadius.control))
                         .background(Dsh.bgSubtle)
                         .padding(horizontal = DshSpace.s12, vertical = DshSpace.s12),

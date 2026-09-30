@@ -64,6 +64,7 @@ import dev.deeplinks.native.ChevronDownOutline14
 import dev.deeplinks.native.ChevronRightOutline14
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
+import dev.deeplinks.native.DshTouch
 
 /**
  * Section 与行骨架（docs/visual-rules.md 第五节：设置、设备、Sheet 复用同一行结构）。
@@ -202,7 +203,7 @@ fun DshSectionHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 32.dp)
+            .heightIn(min = DshTouch.min)
             .padding(start = contentStart),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -475,7 +476,7 @@ private fun DshListRowError(error: String, onRetry: (() -> Unit)?, modifier: Mod
         if (onRetry != null) {
             Box(
                 modifier = Modifier
-                    .heightIn(min = 32.dp)
+                    .heightIn(min = DshTouch.min)
                     .clip(RoundedCornerShape(DshRadius.control))
                     .clickable(role = Role.Button, onClick = onRetry)
                     .padding(horizontal = DshSpace.s8),

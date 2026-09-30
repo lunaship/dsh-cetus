@@ -15,6 +15,9 @@ enum class HostRoute { LAN, REMOTE }
  *   同一台电脑同时只探一次，其他请求等结果；
  * - 没有远程能力的电脑只有局域网一条路，不探测。
  *
+ * 在线 / 离线的判定不在这里（R4 放在 `HostConnectivity` 的探测循环里）：选路只决定「这条路通不通」，
+ * 不因临时失败把整台电脑标成离线。
+ *
  * 纯逻辑，不碰 Android：时钟与探测都由调用方注入，JVM 单测可直接覆盖。
  */
 class RouteSelector(

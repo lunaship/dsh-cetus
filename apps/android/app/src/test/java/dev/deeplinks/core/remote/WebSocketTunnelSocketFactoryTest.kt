@@ -212,6 +212,39 @@ class WebSocketTunnelSocketFactoryTest {
         }
     }
 
+    private fun mappingFactory() = WebSocketTunnelSocketFactory(
+        endpoint = "wss://relay.invalid/ws",
+        routeId = ByteArray(16),
+        kind = "device",
+        keyId = ByteArray(16),
+        key = ByteArray(32),
+    )
+
+    @Test
+    fun `busy reject codes map to RouteBusyException with the code`() {
+        val factory = mappingFactory()
+        for (code in listOf("DEVICE_LIMIT", "SERVER_BUSY", "RATE_LIMITED")) {
+            val error = factory.mapError(code)
+            assertTrue("$code should be busy, was $error", error is RouteBusyException)
+            assertEquals(code, (error as RouteBusyException).code)
+        }
+        // close reason 也按同一套映射
+        val closed = factory.mapClose(4005, "SERVER_BUSY")
+        assertTrue(closed is RouteBusyException)
+        assertEquals("SERVER_BUSY", (closed as RouteBusyException).code)
+    }
+
+    @Test
+    fun `other reject codes stay RouteRejectedException`() {
+        val factory = mappingFactory()
+        val rejected = factory.mapError("BAD_MAC")
+        assertTrue(rejected is RouteRejectedException)
+        assertEquals("BAD_MAC", (rejected as RouteRejectedException).code)
+        val unknown = factory.mapClose(4007, "UNKNOWN_KEY")
+        assertTrue(unknown is RouteRejectedException)
+        assertEquals("UNKNOWN_KEY", (unknown as RouteRejectedException).code)
+    }
+
     private fun factory(server: MockWebServer) = WebSocketTunnelSocketFactory(
         endpoint = server.url("/ws").toString().replaceFirst("http", "ws"),
         routeId = route,

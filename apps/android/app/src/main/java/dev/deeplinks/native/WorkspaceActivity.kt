@@ -65,6 +65,7 @@ import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.selectShareTurns
 import dev.deeplinks.native.util.WorkspaceAccount
+import dev.deeplinks.native.util.runReachabilityLoop
 import dev.deeplinks.native.util.chatTopSubtitle
 import dev.deeplinks.native.util.relativeTime
 import dev.deeplinks.native.util.sessionMillis
@@ -120,7 +121,6 @@ class WorkspaceActivity : ComponentActivity() {
     }
 }
 
-// ---------- 工作台主界面 ----------
 
 /** 手机 / Medium 上的目的地。宽屏常驻侧栏时忽略，列表和聊天同时在。 */
 private enum class PhoneDest { Sessions, Chat }
@@ -746,6 +746,8 @@ fun WorkspaceScreen(
         // WI-R2：单飞/代际去重/取消都在 VM（viewModelScope），屏幕只做调和
         workspaceViewModel.refreshSessions(selectLatest, reportFailure) { snapshot ->
             applySessionSnapshot(snapshot, selectLatest)
+            // 被动信号（R4）：列表刷新成功但界面还认为离线时，让探测循环立刻复核（不直接置在线）。
+            if (dev.deeplinks.native.util.HostConnectivity.online == false) dev.deeplinks.native.util.HostConnectivity.requestProbe()
         }
     }
 
@@ -1047,13 +1049,15 @@ fun WorkspaceScreen(
                 androidx.lifecycle.Lifecycle.Event.ON_START -> {
                     isForeground = true
                     SessionMonitorLifecycle.onForeground(currentSessionId, streamClient)
+                    dev.deeplinks.core.HostHttp.evictIdleRemote() // R5：回前台清掉空闲的远程连接（可能已被远端关掉）
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
                     isForeground = false
                     SessionMonitorLifecycle.onBackground(context, host, currentSessionId, sessions, streamClient)
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                    // 回前台：SSE 断线时立即补全消息，并刷新会话列表（移动网络切换场景）
+                    dev.deeplinks.native.util.HostConnectivity.requestProbe() // R4：回前台立即重新探测
+                    // SSE 断线时立即补全消息，并刷新会话列表（移动网络切换场景）
                     if (streamClient?.isConnected != true) refreshMessages(autoScroll = true)
                     // 设置页可能改动了归档/删除集合，回前台重新水合（唯一所有者）
                     localStore.reload()
@@ -1877,17 +1881,12 @@ fun WorkspaceScreen(
     // 首页顶栏连接状态（稿 01/08）：首页没有会话 SSE，在线与延迟只能来自 30s 一次的健康探测；
     // 探测不到就按离线显示，并用 LastOnlineStore 的时间戳写「离线 · N 分钟前在线」。
     var hostReachable by remember(host) { mutableStateOf(true) }
-    var hostLatencyMs by remember(host) { mutableStateOf<Long?>(null) }
     LaunchedEffect(host) {
-        while (true) {
-            val ms = withContext(Dispatchers.IO) {
-                runCatching { PairClient.health(host) }.getOrNull()
-            }
-            hostLatencyMs = ms
-            hostReachable = ms != null // 同时写进单一来源：设置页读同一份，不为它另起探针
-            dev.deeplinks.native.util.HostConnectivity.update(ms != null, dev.deeplinks.core.HostHttp.isViaRemote(host), ms)
-            if (ms != null) LastOnlineStore.record(context)
-            delay(30_000)
+        // R4：连续 2 次失败才判离线、失败后快速重探；回前台 / 网络变化 / 「重试」会唤醒它立即探测。
+        runReachabilityLoop(host) { online, ms ->
+            hostReachable = online
+            dev.deeplinks.native.util.HostConnectivity.update(online, dev.deeplinks.core.HostHttp.isViaRemote(host), ms)
+            if (online) LastOnlineStore.record(context)
         }
     }
     val offlineSinceLabel = if (hostReachable) null else dev.deeplinks.native.util.lastOnlineLabel(LastOnlineStore.read(context))
@@ -2044,6 +2043,9 @@ fun WorkspaceScreen(
                     }
                 }
 
+    // 空态起手式（W4）：带着那句话去开新任务，而不是丢掉参数只开面板。
+    val onPickStarter: (String) -> Unit = { text -> startComposeSession(); inputText = text; showNewTaskSheet = true }
+
     // 根容器：承载抽屉框架与置顶 Snackbar
     Box(
         modifier = Modifier
@@ -2072,12 +2074,11 @@ fun WorkspaceScreen(
                 hostName = hostLabel,
                 online = hostReachable,
                 viaRemote = dev.deeplinks.native.util.HostConnectivity.viaRemote,
-                latencyMs = hostLatencyMs,
                 offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
                 onSelectWorkspace = { selectedHomeWorkspace = it },
                 onOpenArchived = { showArchivedSheet = true },
-                onPickStarter = { sidebarActions.onNewSession() },
+                onPickStarter = onPickStarter,
                 activeApproval = homePendingApproval,
                 onAnswerApproval = { approvalId, outcome, onDone ->
                     val sid = currentSessionId
@@ -2134,12 +2135,11 @@ fun WorkspaceScreen(
                     hostName = hostLabel,
                     online = hostReachable,
                     viaRemote = dev.deeplinks.native.util.HostConnectivity.viaRemote,
-                    latencyMs = hostLatencyMs,
                     offlineSinceLabel = offlineSinceLabel,
                     selectedWorkspace = selectedHomeWorkspace,
                     onSelectWorkspace = { selectedHomeWorkspace = it },
-                    onOpenArchived = onOpenSettings,
-                    onPickStarter = { sidebarActions.onNewSession() },
+                    onOpenArchived = { showArchivedSheet = true },
+                    onPickStarter = onPickStarter,
                     activeApproval = homePendingApproval,
                     onAnswerApproval = { approvalId, outcome, onDone ->
                         val sid = currentSessionId

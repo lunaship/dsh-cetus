@@ -61,8 +61,10 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.native.DshDuration
 import dev.deeplinks.native.DshEasing
 import dev.deeplinks.native.DshHaptic
+import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
+import dev.deeplinks.native.DshTouch
 import dev.deeplinks.native.motionDuration
 import dev.deeplinks.native.rememberDshHaptic
 
@@ -518,8 +520,14 @@ fun DshIconAction(
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp,
-    iconSize: Dp = 20.dp,
+    /** 触控热区：不低于 [DshTouch.min]（48dp）。 */
+    size: Dp = DshTouch.min,
+    iconSize: Dp = DshIconSize.md,
+    /**
+     * 视觉圆底直径，默认与热区相同。要「视觉更小、热区仍 48」时只传它
+     * （例如顶栏 40dp 圆底、48dp 热区），不要缩小 [size]。
+     */
+    visualSize: Dp = size,
     active: Boolean = false,
     tint: Color = Dsh.labelSecondary,
     /** 实心模式（如任务入口的 + 钮）：容器用品牌色，图标用 onBrand。 */
@@ -530,15 +538,6 @@ fun DshIconAction(
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
-            .background(
-                when {
-                    containerColor != null -> containerColor
-                    active -> Dsh.bgNavSelected
-                    pressed -> Dsh.bgPressed
-                    else -> Color.Transparent
-                },
-            )
             .semantics {
                 role = Role.Button
                 if (contentDescription != null) this.contentDescription = contentDescription
@@ -546,12 +545,28 @@ fun DshIconAction(
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (containerColor != null) Dsh.onBrand else if (active) Dsh.brand500 else tint,
-            modifier = Modifier.size(iconSize),
-        )
+        Box(
+            modifier = Modifier
+                .size(visualSize)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        containerColor != null -> containerColor
+                        // 激活态靠底色表达，强调色只给批准 / 发送（V3）
+                        active -> Dsh.bgNavSelected
+                        pressed -> Dsh.bgPressed
+                        else -> Color.Transparent
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (containerColor != null) Dsh.onBrand else if (active) Dsh.labelPrimary else tint,
+                modifier = Modifier.size(iconSize),
+            )
+        }
     }
 }
 
