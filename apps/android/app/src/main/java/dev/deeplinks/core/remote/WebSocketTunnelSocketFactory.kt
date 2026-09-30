@@ -34,6 +34,7 @@ class RouteRateLimitedException : RouteConnectException("remote route rate limit
 class RouteServerBusyException : RouteConnectException("remote server busy")
 /** 电脑侧 Agent 或中继拒绝了这次会合；[hostNow] 仅 CLOCK_SKEW 时有（电脑的 Unix 秒）。 */
 class RouteRejectedException(val code: String, val hostNow: Long? = null) : RouteConnectException("remote request rejected: $code")
+class RouteBusyException : RouteConnectException("remote busy")
 /** 外层 WSS 没连上中继（DNS、TCP、TLS、HTTP 升级任一步失败）。 */
 class RouteUnreachableException(cause: Throwable?) : RouteConnectException("relay unreachable", cause)
 class RouteProtocolException : RouteConnectException("remote protocol error")

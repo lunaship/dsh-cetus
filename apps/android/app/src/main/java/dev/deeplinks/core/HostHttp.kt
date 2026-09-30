@@ -2,9 +2,11 @@ package dev.deeplinks.core
 
 import dev.deeplinks.core.remote.HostRoute
 import dev.deeplinks.core.remote.RemoteRoute
+import dev.deeplinks.core.remote.RouteBusyException
 import dev.deeplinks.core.remote.RouteConnectException
 import dev.deeplinks.core.remote.RouteRejectedException
 import dev.deeplinks.core.remote.RouteSelector
+import dev.deeplinks.core.remote.RouteServerBusyException
 import dev.deeplinks.core.remote.WebSocketTunnelSocketFactory
 import okhttp3.Call
 import okhttp3.ConnectionPool
@@ -172,6 +174,9 @@ object HostHttp {
     /**
      * 远程一次尝试：CLOCK_SKEW 按电脑给的 hostNow 记偏移后重试一次，REPLAY 换 nonce 重试一次
      * （RFC §5.7）。其余拒绝码只抛给上层做提示，绝不据此删除凭据（§7.4）。
+     *
+     * R2: 请求前 RemoteGate.enter()；limit=1 时直接 SERVER_BUSY；超出 limit 抛 RouteBusyException
+     * 并在原地退避重试，不触发换路（已经是建立期之后了）。
      */
     private fun executeRemote(
         host: Host,
@@ -182,10 +187,28 @@ object HostHttp {
         onCall: ((Call) -> Unit)?,
     ): Response {
         var retried = false
+        var busyRetried = false
+        var entered = false
         while (true) {
             try {
-                return newCall(remoteClient(host, remote, key, request), url, request, onCall).execute()
+                RemoteGate.enter()
+                entered = true
+                try {
+                    return newCall(remoteClient(host, remote, key, request), url, request, onCall).execute()
+                } finally {
+                    if (entered) RemoteGate.exit()
+                }
+            } catch (e: RouteBusyException) {
+                if (entered) RemoteGate.exit()
+                if (busyRetried) throw e
+                busyRetried = true
+                val backoff = (300L + (kotlin.random.Random.nextLong(200L)))
+                Thread.sleep(backoff)
+            } catch (e: RouteServerBusyException) {
+                if (entered) RemoteGate.exit()
+                throw e
             } catch (e: IOException) {
+                if (entered) RemoteGate.exit()
                 val rejected = generateSequence<Throwable>(e) { it.cause }.filterIsInstance<RouteRejectedException>().firstOrNull()
                 if (retried || rejected == null) throw e
                 when (rejected.code) {
@@ -329,6 +352,40 @@ object HostHttp {
 
     private fun pinnedContext(trustManager: X509TrustManager): SSLContext =
         SSLContext.getInstance("TLS").apply { init(null, arrayOf(trustManager), SecureRandom()) }
+
+    // ===== 远程请求限流门（R2） =====
+
+    /**
+     * 远程请求限流门。
+     *
+     * 对 [sharedRemoteClient] 的同一份 [ConnectionPool] 计数，用 dispatcher 的 running calls 代替额外 Map；
+     * [limit=1] 时直接抛 [RouteServerBusyException]（不重试）；
+     * 超出 [limit] 抛 [RouteBusyException]（调用方退避重试）。
+     */
+    object RemoteGate {
+        private val sharedRemoteClient = OkHttpClient.Builder()
+            .connectionPool(ConnectionPool(4, 60, TimeUnit.SECONDS))
+            .build()
+
+        @Volatile
+        private var maxConcurrent = 1
+
+        fun limit(value: Int) {
+            maxConcurrent = value
+        }
+
+        fun enter() {
+            val running = sharedRemoteClient.dispatcher.runningCallsCount()
+            if (running >= maxConcurrent) {
+                if (maxConcurrent <= 1) throw RouteServerBusyException()
+                throw RouteBusyException()
+            }
+        }
+
+        fun exit() {
+            // dispatcher 计数由 OkHttp 自动维护；此处保留接口，为后续接 Call.Factory 做准备。
+        }
+    }
 
     private const val LAN_PROBE_CONNECT_MS = 800
     private const val LAN_PROBE_BUDGET_MS = 1_200
