@@ -143,11 +143,7 @@ fun WorkspaceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    // S7：首页第一帧。
-    LaunchedEffect(Unit) {
-        androidx.compose.runtime.withFrameNanos { }
-        dev.deeplinks.core.StartupTrace.mark("home_first_frame")
-    }
+    StartupFirstFrameMark()
     val launchIntoChat = !initialSessionId.isNullOrBlank() ||
         !initialShareText.isNullOrBlank() ||
         initialShareImages.isNotEmpty() ||
@@ -284,34 +280,20 @@ fun WorkspaceScreen(
         inputText = draft.text
         pendingImages = draft.images
     }
-    // S6：布局与目标推导上移到最前——对话页是否可见决定要不要预加载历史 / 模型 / 推送流。
-    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
-    val windowDensity = androidx.compose.ui.platform.LocalDensity.current
-    val containerWidthDp = with(windowDensity) { windowInfo.containerSize.width.toDp() }
-    val containerHeightDp = with(windowDensity) { windowInfo.containerSize.height.toDp() }
-    val dshLayout = remember(containerWidthDp, containerHeightDp) {
-        deriveDshLayout(containerWidthDp.value.toInt(), containerHeightDp.value.toInt())
-    }
-    var prevPersistent by remember { mutableStateOf(dshLayout.persistentSidebar) }
-    val collapsingToPhone = prevPersistent && !dshLayout.persistentSidebar
-    val displayDest = when {
-        dshLayout.persistentSidebar -> PhoneDest.Chat.name
-        collapsingToPhone && (currentSessionId != null || composeNewSession) -> PhoneDest.Chat.name
-        else -> phoneDest
-    }
-    SideEffect {
-        if (collapsingToPhone && (currentSessionId != null || composeNewSession)) {
-            phoneDest = PhoneDest.Chat.name
-        }
-        prevPersistent = dshLayout.persistentSidebar
-    }
-    val showSessionHome = !dshLayout.persistentSidebar && displayDest == PhoneDest.Sessions.name
-    /** S6：对话页当前是否可见（常驻侧栏布局视为始终可见）。首页阶段不为当前会话预加载。 */
-    val chatVisible = dev.deeplinks.native.util.isChatVisible(
-        persistentSidebar = dshLayout.persistentSidebar,
-        displayDest = displayDest,
+    // S6：布局与目标推导（chatVisible 决定首页阶段是否预加载）。
+    val chrome = rememberWorkspaceChrome(
+        phoneDest = phoneDest,
+        currentSessionId = currentSessionId,
+        composeNewSession = composeNewSession,
         chatDest = PhoneDest.Chat.name,
+        sessionsDest = PhoneDest.Sessions.name,
+        onCollapseToChat = { phoneDest = PhoneDest.Chat.name },
     )
+    val dshLayout = chrome.layout
+    val containerWidthDp = chrome.containerWidthDp
+    val displayDest = chrome.displayDest
+    val showSessionHome = chrome.showSessionHome
+    val chatVisible = chrome.chatVisible
     PersistComposerDrafts(
         prefs = workspacePrefs,
         slotKey = host.slotKey,
@@ -1558,83 +1540,37 @@ fun WorkspaceScreen(
         }
     }
 
-    // S1：冷启动先铺本地缓存的会话列表与工作区目录，网络数据回来再整体替换（不闪、不白屏）。
-    LaunchedEffect(host) {
-        val cached = workspaceViewModel.hydrateFromSessionListCache() ?: return@LaunchedEffect
-        if (workspaceViewModel.sessions.value.isNotEmpty() && workspaceCatalogItems.isEmpty()) {
-            applyWorkspaceCatalog(MobileWorkspaceCatalog(cached.workspaces))
-        }
-        if (cached.archivedSessionIds.isNotEmpty() && archivedIds.isEmpty()) {
-            localStore.setArchivedSessionIds(cached.archivedSessionIds)
-        }
-        dev.deeplinks.core.StartupTrace.mark("cache_list", "${cached.sessions.size}")
-    }
+    // S1：冷启动先铺本地缓存；变化后写回（VM 内 2 秒防抖）。
+    SessionListCacheEffects(
+        host = host,
+        viewModel = workspaceViewModel,
+        sessions = sessions,
+        workspaceCatalogItems = workspaceCatalogItems,
+        archivedIds = archivedIds,
+        applyWorkspaceCatalog = ::applyWorkspaceCatalog,
+        setArchivedIds = { localStore.setArchivedSessionIds(it) },
+    )
 
     LaunchedEffect(host) {
-        // 冷启动：bootstrap 一次拉主机信息 + 会话，再补工作区归档同步
-        // 必须在 effect 协程内执行，host 切换时自动取消，避免旧主机结果写回
-        // S2：整个冷启动同步期间立标志，完成的瞬间记时间，供 ON_RESUME 去重。
+        // 冷启动：bootstrap（会话/归档）+ 工作区目录；S2 全程立标志供 ON_RESUME 去重。
         coldStartSyncing.value = true
-        var bootstrapOk = false
-        try {
-            CrashRecorder.breadcrumb("bootstrap", "start")
-            val (boot, refreshed) = workspaceViewModel.repo.bootstrap()
-            bootstrapOk = true
-            CrashRecorder.breadcrumb("bootstrap", "done ${boot.sessions.size}")
-            dev.deeplinks.core.StartupTrace.mark("bootstrap_done", "${boot.sessions.size}")
-            workspaceViewModel.filesTreeSupported.value = boot.filesTree
-            if (refreshed != host) {
-                // 远程能力补齐 / 清除（bootstrap 的 remote，RFC §6.4）
-                runCatching { HostStore.upsert(context, refreshed) }
-            }
-            // Bootstrap carries the same durable archive set as Web. Apply it
-            // before selecting a session, so an archived Web session cannot
-            // flash back into the App during cold start.
-            val nextArchivedIds = if (boot.archiveSnapshotAvailable) {
-                val restored = workspacePrefs.restoredSessionIds
-                val nextRestored = restored intersect boot.archivedSessionIds
-                if (nextRestored != restored) {
-                    workspacePrefs.restoredSessionIds = nextRestored
-                }
-                val synced = reconcileArchivedSessionIds(boot.archivedSessionIds, nextRestored)
-                if (synced != archivedIds) {
-                    localStore.setArchivedSessionIds(synced)
-                }
-                synced
-            } else {
-                archivedIds
-            }
-            sessions = boot.sessions
-            sessionsLoadError = null
-            sessionsInitialLoad = false
-            dev.deeplinks.core.StartupTrace.mark("home_network_data", "${boot.sessions.size}")
-            if (currentSessionId == null && !composeNewSession && boot.sessions.isNotEmpty()) {
-                currentSessionId = reconciledSessionId(
-                    currentSessionId = null,
-                    preferredSessionId = restoreSessionId,
-                    sessions = boot.sessions,
-                    hiddenSessionIds = nextArchivedIds + deletedIds,
-                    preserveEmptySelection = false,
-                    selectLatest = true,
-                )
-                if (boot.sessions.any { it.sessionId == currentSessionId && it.running }) {
-                    liveRunning = true
-                }
-            }
-        } catch (e: Exception) {
-            if (isMobileAuthFailure(e)) {
-                onAuthExpired(e)
-                coldStartSyncing.value = false
-                return@LaunchedEffect
-            }
-            // bootstrap 失败时回退 refreshSessions
+        val outcome = workspaceViewModel.runColdStartBootstrap(
+            host = host,
+            context = context,
+            restoreSessionId = restoreSessionId,
+            composeNewSession = composeNewSession,
+            onAuthExpired = { onAuthExpired(it) },
+        )
+        if (outcome == ColdStartOutcome.AuthExpired) {
+            coldStartSyncing.value = false
+            return@LaunchedEffect
         }
         try {
             val catalog = withContext(Dispatchers.IO) { client.getWorkspaces() }
             applyWorkspaceCatalog(catalog)
             workspacesLoadError = null
             workspacesInitialLoad = false
-            // bootstrap + 工作区目录都拿到了：记下时间，回前台 10 秒内不再重复刷新。
+            // bootstrap + 工作区目录都拿到了：回前台 10 秒内不再重复刷新。
             coldStartSync.longValue = System.currentTimeMillis()
         } catch (e: Exception) {
             if (isMobileAuthFailure(e)) {
@@ -1647,14 +1583,9 @@ fun WorkspaceScreen(
                 workspacesLoadError = e.message?.takeIf { it.isNotBlank() } ?: L.loadWorkspaceListFailed
             }
         }
-        if (!bootstrapOk) refreshSessions(selectLatest = true)
+        if (outcome == ColdStartOutcome.BootstrapFailed) refreshSessions(selectLatest = true)
         refreshAppSettings()
         coldStartSyncing.value = false
-    }
-
-    // S1：会话列表 / 工作区目录 / 归档集合变化后写回本地缓存（VM 内 2 秒防抖）。
-    LaunchedEffect(sessions, workspaceCatalogItems, archivedIds) {
-        workspaceViewModel.scheduleSessionListCacheWrite(sessions, archivedIds, workspaceCatalogItems)
     }
 
     LaunchedEffect(currentSessionId, chatVisible) {

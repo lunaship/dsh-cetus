@@ -22,7 +22,8 @@ object StartupTrace {
 
     fun mark(name: String, detail: String? = null) {
         val line = formatStartupMark(name, elapsedMs(), detail)
-        Log.i(TAG, line)
+        // 单测（JVM）里 android.util.Log 未 mock，打点不能把主流程带崩。
+        runCatching { Log.i(TAG, line) }
         CrashRecorder.breadcrumb("startup", line)
     }
 
