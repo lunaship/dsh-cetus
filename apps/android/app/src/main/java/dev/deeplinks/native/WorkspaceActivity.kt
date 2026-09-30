@@ -337,7 +337,8 @@ fun WorkspaceScreen(
     var showDraftWorkspacePicker by remember { mutableStateOf(false) }
     var showArchivedSheet by remember { mutableStateOf(false) }
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
-    DraftComposerAutoFocus(composeNewSession && currentSessionId == null, composerFocusRequester, composerKeyboardController)
+    // K3 聚焦令牌：需要聚焦时只自增；真正的 requestFocus 在 InputBar 内部、下一帧执行。
+    var composerFocusToken by remember { mutableStateOf(0) }
 
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
@@ -600,7 +601,9 @@ fun WorkspaceScreen(
         if (!initialSessionId.isNullOrBlank() && currentSessionId != initialSessionId) return@LaunchedEffect
         when (initialIntentAction) {
             dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES -> changesPanel.open()
-            dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> { composerFocusRequester.requestFocus(); composerKeyboardController?.show() }
+            dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> {
+                if (composerFocusShouldEmit(ComposerFocusSource.NotificationReply)) composerFocusToken++
+            }
         }
     }
     fun startComposeSession(cwd: String? = null) {
@@ -631,6 +634,8 @@ fun WorkspaceScreen(
         workspaceViewModel.resetModelCatalog()
         workspaceViewModel.loadModelCatalog(null, null)
         showPhoneChat()
+        // N1/K3：进入草稿态且对话页可见时才请求聚焦（经 InputBar 内部的令牌处理）。
+        if (composerFocusShouldEmit(ComposerFocusSource.NewTaskDraft)) composerFocusToken++
     }
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
@@ -822,6 +827,8 @@ fun WorkspaceScreen(
             localStore.setArchivedSessionIds(archivedIds + session.sessionId)
         }
         if (currentSessionId == session.sessionId) {
+            // K3：归档/删除当前会话会进入草稿态，但可能在首页（对话页不可见）——
+            // 这里**不**发聚焦令牌，避免历史上直接 requestFocus 的闪退。
             startComposeSession(pendingSessionCwd)
         }
         refreshSessions()
@@ -2551,10 +2558,9 @@ fun WorkspaceScreen(
                                 dispatchLocalPaletteAction(picked.kind)
                             }
                             is PaletteCommand.Insertable -> {
-                                // 把 trigger + 空格 放进 composer，并请求焦点 + 弹起 IME
+                                // 把 trigger + 空格 放进 composer，并请求焦点 + 弹起 IME（K3：走聚焦令牌）
                                 inputText = picked.trigger + " "
-                                composerKeyboardController?.show()
-                                composerFocusRequester.requestFocus()
+                                if (composerFocusShouldEmit(ComposerFocusSource.CommandInsert)) composerFocusToken++
                             }
                             is PaletteCommand.Completable -> {
                                 val sid = currentSessionId
@@ -2702,6 +2708,7 @@ fun WorkspaceScreen(
                 },
                 actionError = composerActionError,
                 composerFocusRequester = composerFocusRequester,
+                focusToken = composerFocusToken,
                 onSend = {
                     // 不可逆权限升级：无论从哪个入口触发，都不直发，先走二次确认。
                     if (isDangerPermissionCommand(inputText)) {

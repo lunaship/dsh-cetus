@@ -95,7 +95,22 @@ internal fun InputBar(
     onSend: () -> Unit,
     actionError: String? = null,
     composerFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    /**
+     * K3 聚焦令牌：调用方只 +1，真正的 `requestFocus()` 只在输入框所在的这里、下一帧执行。
+     * 输入框没显示时本组件根本不在组合里，令牌也就无从触发——从结构上消除
+     * 「FocusRequester is not initialized」崩溃。
+     */
+    focusToken: Int = 0,
 ) {
+    // 焦点令牌：awaitFrame → requestFocus；失败（节点未挂上）就静默放过，不抛异常。
+    if (composerFocusRequester != null) {
+        val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+        androidx.compose.runtime.LaunchedEffect(focusToken) {
+            if (focusToken == 0) return@LaunchedEffect
+            androidx.compose.runtime.withFrameNanos { }
+            if (runCatching { composerFocusRequester.requestFocus() }.isSuccess) keyboard?.show()
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
