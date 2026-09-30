@@ -217,6 +217,26 @@ DSH 没有把间距做成 token；刻度取自 DSH Web 实际写下的 padding /
 > 2026-09-27 那批「浅色 tertiary/secondary 下压、brand400 取 deepseek-600、error/warn/success 白底不达 AA」的偏离，
 > 已被 2026-09-28 重设计稿的整套取值取代（见上表第一行）。
 
+## 八、尺寸 token
+
+视觉尺寸统一走共享 token，不得在页面文件里新造裸 dp。
+
+| 类别 | Token | 值 | 用途 |
+|---|---:|---|
+| 图标 | `DshIconSize.xs` | 12dp | 辅助说明、徽标、紧凑行 |
+| 图标 | `DshIconSize.sm` | 16dp | 标准图标（列表、菜单、按钮） |
+| 图标 | `DshIconSize.md` | 20dp | 中等图标（概览卡片、状态标识） |
+| 图标 | `DshIconSize.lg` | 24dp | 大图标（顶栏、空态、Featured 区块） |
+| 热区 | `DshTouch.min` | 48dp | 按钮、FAB、Chip、菜单项 |
+| 热区 | `DshTouch.compact` | 40dp | 紧凑列表里可接受的下限（必须配合 `minInteractiveTouchTargetSize` 或 padding 补足） |
+| 行高 | `DshRowHeight.compact` | 40dp | 侧栏筛选、上下文菜单 |
+| 行高 | `DshRowHeight.default` | 48dp | 会话列表、工作区列表 |
+| 行高 | `DshRowHeight.expanded` | 56dp | 带操作按钮的列表项 |
+
+- 行高只控制内容区高度；触控热区另由 [DshTouch] 控制。
+- 裸 dp 数量记录在 `size-baseline.txt`，由 `DshSizeUsageTest` 监控只降不升；存量历史债务留在 baseline 里，新增必须同步更新。
+- `0.dp` 可裸用。
+
 ## 快速对照
 
 2026-09-28 重设计稿落地后的角色取值（改色只看这张表 + `DshTheme.kt`）：

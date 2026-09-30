@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -198,6 +199,8 @@ fun DshStatusIcon(
 @Composable
 fun DshGroupCard(
     modifier: Modifier = Modifier,
+    /** 内容内边距。首页卡片传 [DshSpace.s12]，让卡内文字与会话行标题落在同一条左边线（V2）。 */
+    contentPadding: PaddingValues = PaddingValues(DshSpace.s16),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -205,7 +208,7 @@ fun DshGroupCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.composer))
             .background(Dsh.bgCard)
-            .padding(DshSpace.s16),
+            .padding(contentPadding),
         content = content,
     )
 }

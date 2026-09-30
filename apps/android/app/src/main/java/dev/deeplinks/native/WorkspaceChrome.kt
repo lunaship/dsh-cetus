@@ -646,7 +646,7 @@ internal fun ToolGroupHeader(
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .heightIn(min = 36.dp)
+                .heightIn(min = DshTouch.min)
                 // 稿 03：过程折叠行是一颗灰底胶囊（tonal 填充，不加描边）
                 .clip(RoundedCornerShape(DshRadius.full))
                 .background(Dsh.bgSubtle)
@@ -1084,7 +1084,7 @@ private fun ContextStripSegment(
 ) {
     Row(
         modifier = modifier
-            .heightIn(min = 36.dp)
+            .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.control))
             .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = description }

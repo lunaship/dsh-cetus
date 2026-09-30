@@ -261,7 +261,7 @@ internal fun InputBar(
                         val modelPillPressed by modelPillInteraction.collectIsPressedAsState()
                         Row(
                             modifier = Modifier
-                                .heightIn(min = 32.dp)
+                                .heightIn(min = DshTouch.min)
                                 .clip(RoundedCornerShape(DshRadius.control))
                                 .background(if (modelPillPressed) Dsh.pressed else Color.Transparent)
                                 .clickable(
@@ -712,7 +712,7 @@ private fun ComposerSetupRow(
     val pressed by interaction.collectIsPressedAsState()
     Row(
         modifier = Modifier
-            .heightIn(min = 44.dp)
+            .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(if (pressed) Dsh.pressed else Color.Transparent)
             .then(

@@ -26,4 +26,5 @@ DSH 手机插件（npm 包）：局域网配对 + 设备管理 + 18640 接入代
 | 中继自建与配置 | `relay/README.md` |
 | 发布流程与 dist-tag 策略 | `RELEASING.md` |
 | Android 协作规则 | `apps/android/CLAUDE.md` |
+| Android 视觉规则（间距、形状、排版、尺寸、强调色） | `apps/android/docs/visual-rules.md` |
 | RC1 内测计划与证据模板 | `docs/RC1_CLOSED_BETA_TEST_PLAN.md` |

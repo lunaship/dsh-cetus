@@ -45,3 +45,6 @@ dev/deeplinks/native/WorkspaceDialogs.kt 2
 dev/deeplinks/native/PermissionSheets.kt 1
 dev/deeplinks/native/MessageSelectText.kt 1
 dev/deeplinks/devices/DevicesActivity.kt 1
+
+# 零容忍：heightIn(min=X.dp) / DshIconAction(size=X.dp) 中 X<48 的处数（S3 收敛后应为 0，只降不升）。
+__touch_below_48__ 0

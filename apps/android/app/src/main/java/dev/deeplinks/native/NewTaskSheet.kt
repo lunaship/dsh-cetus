@@ -343,8 +343,6 @@ private fun InputCard(
                 icon = PlusOutline16,
                 contentDescription = s.newTaskAttach,
                 onClick = onAttach,
-                size = 44.dp,
-                iconSize = 18.dp,
             )
             Spacer(Modifier.width(DshSpace.s4))
             ComposerSeatsRow(
@@ -364,8 +362,6 @@ private fun InputCard(
                     icon = SendOutline16,
                     contentDescription = s.sendMessage,
                     onClick = { if (!sending) onSend() },
-                    size = 44.dp,
-                    iconSize = 18.dp,
                     containerColor = Dsh.brand500,
                 )
             }

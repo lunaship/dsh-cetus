@@ -592,7 +592,7 @@ private fun FileDiffBody(
                 style = DshType.title,
                 modifier = Modifier
                     .padding(top = DshSpace.s12)
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = DshTouch.min)
                     .clip(RoundedCornerShape(DshRadius.full))
                     .clickable(interactionSource = null, indication = dshRipple()) { attempt++ }
                     .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
@@ -816,7 +816,7 @@ private fun AskAboutFileBar(file: ChangedFile, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 44.dp)
+                .heightIn(min = DshTouch.min)
                 .clip(RoundedCornerShape(DshRadius.composer))
                 .background(Dsh.bgInput)
                 .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)

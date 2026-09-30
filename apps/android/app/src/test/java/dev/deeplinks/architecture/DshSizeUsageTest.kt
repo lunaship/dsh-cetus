@@ -66,4 +66,37 @@ class DshSizeUsageTest {
             violations.isEmpty(),
         )
     }
+
+    /**
+     * 零容忍项：热区不得低于 48dp（S2/S3）。
+     *
+     * 统计 `heightIn(min = X.dp)`（X < 48）与 `DshIconAction(... size = X.dp)`（X < 48）。
+     * 多行文本框（`heightIn(min = 40.dp, max = 200.dp)`）不是按钮热区，按行内出现 `max =` 豁免。
+     * 预算是 size-baseline.txt 里的 `__touch_below_48__ N`，只降不升；S3 收敛完后应为 0。
+     */
+    @Test
+    fun touchTargetsAreAtLeast48() {
+        val root = mainSourceRoot()
+        val budget = baselineLimits()["__touch_below_48__"] ?: 0
+        val heightMin = Regex("""heightIn\(\s*min\s*=\s*(\d+(?:\.\d+)?)\.dp""")
+        val sizeArg = Regex("""size\s*=\s*(\d+(?:\.\d+)?)\.dp""")
+        var below = 0
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            for (line in file.readLines()) {
+                if ("max =" in line) continue
+                heightMin.findAll(line).forEach { if (it.groupValues[1].toDouble() < 48.0) below++ }
+            }
+            val text = file.readText()
+            var idx = text.indexOf("DshIconAction(")
+            while (idx >= 0) {
+                val window = text.substring(idx, minOf(idx + 500, text.length))
+                sizeArg.find(window)?.let { m -> if (m.groupValues[1].toDouble() < 48.0) below++ }
+                idx = text.indexOf("DshIconAction(", idx + 1)
+            }
+        }
+        assertTrue(
+            "热区低于 48dp 的地方 $below 处，超过预算 $budget（S2/S3；只降不升，收敛后应为 0）",
+            below <= budget,
+        )
+    }
 }
