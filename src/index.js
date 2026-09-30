@@ -52,7 +52,7 @@ import {
 } from "./request-lifecycle.js"
 import { createRemoteRuntime } from "./remote/runtime.js"
 
-import { handleMobileApi } from "./mobile-api.js"
+import { applyMobileSessionSafety, handleMobileApi } from "./mobile-api.js"
 
 export const name = "dsh-links"
 export const inject = ["webServer", "typertGateway"]
@@ -1362,6 +1362,11 @@ export function apply(ctx, config) {
     filterSettingsPatch,
     publicDevice,
     remoteForDevice: remote.forDevice,
+    applyNewSessionSafety: async (sessionId) => {
+      const sessions = ctx.get("sessions")
+      const session = typeof sessions?.get === "function" ? await sessions.get(sessionId) : undefined
+      applyMobileSessionSafety(session)
+    },
   }
 
   const disposers = [

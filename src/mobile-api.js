@@ -24,6 +24,22 @@ const PROMPT_BODY_LIMIT = 16 * 1024 * 1024
 const PROMPT_IMAGE_DATA_LIMIT = 4 * 1024 * 1024
 const PROMPT_IMAGE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"])
 
+/** 手机新建会话的固定安全起点；不能继承桌面端可能更宽的默认权限。 */
+export const MOBILE_SESSION_SAFE_PRESET = "workspace-write"
+
+/**
+ * 在把新会话 ID 交还给手机前，写入可验证的会话级安全策略。
+ * 这三条事件须一起写：仅写 preset 不会改变 DSH 的有效 sandbox / approval。
+ */
+export function applyMobileSessionSafety(session) {
+  if (!session || typeof session.append !== "function") {
+    throw new Error("新建会话未能取得可写入的会话实例")
+  }
+  session.append("permission/preset", { preset: MOBILE_SESSION_SAFE_PRESET })
+  session.append("approval/policy", { policy: "ask" })
+  session.append("sandbox/mode", { mode: "workspace-write" })
+}
+
 function pageNeedsReasoningFile(events) {
   return (events ?? []).some((item) => {
     const c = item?.event?.data?.chunk
@@ -283,6 +299,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     filterSettingsPatch,
     publicDevice,
     remoteForDevice,
+    applyNewSessionSafety,
   } = deps
   try {
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -367,8 +384,13 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         else payload.cwd = checked.cwd
       }
       if (typeof body.agentPreset === "string" && body.agentPreset.trim()) payload.agentPreset = body.agentPreset.trim()
-      const value = await runMobileDeviceMutation(rt, state, device, () =>
-        callLocalRpc(targetPort, "session.create", payload))
+      const value = await runMobileDeviceMutation(rt, state, device, async () => {
+        const created = await callLocalRpc(targetPort, "session.create", payload)
+        // session.create 没有权限参数；必须在同一受撤销保护的 mutation 中落盘安全策略，
+        // 且失败时不把 sessionId 交给手机，避免继承桌面端的危险默认值。
+        await applyNewSessionSafety(created.sessionId)
+        return created
+      })
       if (mobileMutationWasRevoked(value)) return respondDeviceRevoked(res)
       return json(res, 201, omitNullFields({
         version: 1,
