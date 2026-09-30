@@ -153,4 +153,74 @@ class WorkspaceListsTest {
         )
         assertEquals(setOf("/a/gone"), out)
     }
+
+    // ----- workspaceDisplayName（W1） -----
+
+    @Test
+    fun workspaceDisplayName_usesLastSegmentAndFallsBackToFullPath() {
+        assertEquals("perch", workspaceDisplayName("/Volumes/Space/Dev/perch"))
+        assertEquals("perch", workspaceDisplayName("/Volumes/Space/Dev/perch/"))
+        assertEquals("/", workspaceDisplayName("/"))
+    }
+
+    // ----- sessionsInWorkspace（W3） -----
+
+    private fun session(id: String, cwd: String?): dev.deeplinks.native.MobileSession =
+        dev.deeplinks.native.MobileSession(
+            sessionId = id,
+            title = id,
+            updatedAt = 0,
+            running = false,
+            blank = false,
+            cwd = cwd,
+            agentPreset = null,
+        )
+
+    @Test
+    fun sessionsInWorkspace_matchesSessionIds() {
+        val accounts = listOf(WorkspaceAccount("/a/perch", listOf("s1")))
+        val out = sessionsInWorkspace(listOf(session("s1", null), session("s2", "/a/other")), "/a/perch", accounts, emptySet())
+        assertEquals(listOf("s1"), out.map { it.sessionId })
+    }
+
+    @Test
+    fun sessionsInWorkspace_fallsBackToCwdIncludingTrailingSlash() {
+        val out = sessionsInWorkspace(
+            listOf(session("s1", "/a/perch/"), session("s2", "/a/other")),
+            "/a/perch",
+            emptyList(),
+            emptySet(),
+        )
+        assertEquals(listOf("s1"), out.map { it.sessionId })
+    }
+
+    @Test
+    fun sessionsInWorkspace_cwdClaimedByAnotherWorkspaceBelongsToThatOneOnly() {
+        val accounts = listOf(WorkspaceAccount("/b/other", listOf("s1")))
+        val sessions = listOf(session("s1", "/a/perch"))
+        assertEquals(emptyList<dev.deeplinks.native.MobileSession>(), sessionsInWorkspace(sessions, "/a/perch", accounts, emptySet()))
+        assertEquals(listOf("s1"), sessionsInWorkspace(sessions, "/b/other", accounts, emptySet()).map { it.sessionId })
+    }
+
+    @Test
+    fun sessionsInWorkspace_deletedWorkspaceHasNoSessions() {
+        val out = sessionsInWorkspace(
+            listOf(session("s1", "/a/perch")),
+            "/a/perch",
+            emptyList(),
+            deletedWorkspaces = setOf("/a/perch"),
+        )
+        assertEquals(emptyList<dev.deeplinks.native.MobileSession>(), out)
+    }
+
+    @Test
+    fun sessionsInWorkspace_ignoresNonUserDirectory() {
+        val out = sessionsInWorkspace(
+            listOf(session("s1", "/tmp/foo")),
+            "/tmp/foo",
+            emptyList(),
+            emptySet(),
+        )
+        assertEquals(emptyList<dev.deeplinks.native.MobileSession>(), out)
+    }
 }

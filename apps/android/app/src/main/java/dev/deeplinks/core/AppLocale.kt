@@ -513,12 +513,16 @@ class DshStrings(private val values: Map<String, String>) {
     val homeSummaryAwaiting: String get() = t("homeSummaryAwaiting")
     /** 「· M 个在跑」；`%d` 是运行中条数。 */
     val homeSummaryRunning: String get() = t("homeSummaryRunning")
+    /** 没有等你处理的、也没有在跑的。 */
+    val homeAllDone: String get() = t("homeAllDone")
     val homeArchivedSessions: String get() = t("homeArchivedSessions")
+    // 筛选到某个工作区但那里没有任务 / 回全部；「删除「%s」」。
+    val homeWorkspaceEmptyTitle: String get() = t("homeWorkspaceEmptyTitle"); val homeWorkspaceEmptyHint: String get() = t("homeWorkspaceEmptyHint")
+    val homeShowAll: String get() = t("homeShowAll"); val homeDeleteWorkspaceNamed: String get() = t("homeDeleteWorkspaceNamed")
 
     // 首页状态胶囊（2026-09-28 重设计「等你处理」分组）
     val homeChipWaitingApproval: String get() = t("homeChipWaitingApproval")
     val homeChipWaitingAnswer: String get() = t("homeChipWaitingAnswer")
-    val homeChipOnDesktop: String get() = t("homeChipOnDesktop")
     val homeChipDone: String get() = t("homeChipDone")
 
     /** 「问：%s」；`%s` 是问题正文。 */

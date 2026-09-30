@@ -45,7 +45,8 @@ import dev.deeplinks.native.util.sessionListKind
 import dev.deeplinks.native.util.sessionShowsRefreshBanner
 import dev.deeplinks.native.util.visibleSidebarWorkspaces
 import dev.deeplinks.native.util.visibleUserWorkspaces
-import dev.deeplinks.native.util.workspaceGroupKey
+import dev.deeplinks.native.util.sessionsInWorkspace
+import dev.deeplinks.native.util.HostConnectivity
 import dev.deeplinks.core.DshType
 
 /** 侧栏回调集合（对齐 [ChatFeedActions] 模式：状态由参数注入，动作由此承载）。 */
@@ -87,7 +88,6 @@ internal fun WorkspaceSidebar(
     hostName: String,
     online: Boolean,
     viaRemote: Boolean,
-    latencyMs: Long?,
     offlineSinceLabel: String?,
     selectedWorkspace: String?,
     onSelectWorkspace: (String?) -> Unit,
@@ -117,7 +117,6 @@ internal fun WorkspaceSidebar(
             hostName = hostName,
             online = online,
             viaRemote = viaRemote,
-            latencyMs = latencyMs,
             offlineSinceLabel = offlineSinceLabel,
             searchActive = sidebarSearchOpen || searchQuery.isNotBlank(),
             onOpenDevice = { actions.onOpenDevice() },
@@ -165,12 +164,11 @@ internal fun WorkspaceSidebar(
             if (activeWorkspace == null) {
                 visibleCandidates
             } else {
-                visibleCandidates.filter { workspaceGroupKey(it.sessionId, workspaceAccounts, deletedWorkspaces) == activeWorkspace }
+                sessionsInWorkspace(visibleCandidates, activeWorkspace, workspaceAccounts, deletedWorkspaces)
             }
         }
-        // 概况行：等你处理 / 在跑 的条数（筛选后）；离线时整行换成重连卡。
-        // 一条会话都没有（空态，稿 09）时不画概况行——空态自己就是一句话结论。
-        if (online && scoped.isNotEmpty()) {
+        // 概况行：等你处理 / 在跑。筛选到某个工作区时结果为空也保留（W2），否则回不到全部工作区。
+        if (online && (scoped.isNotEmpty() || activeWorkspace != null)) {
             HomeSummaryRow(
                 awaitingCount = scoped.count { it.awaitingInput },
                 runningCount = scoped.count { it.running && !it.awaitingInput },
@@ -178,7 +176,6 @@ internal fun WorkspaceSidebar(
                 selected = activeWorkspace,
                 onSelect = onSelectWorkspace,
                 onAddWorkspace = { actions.onAddWorkspace() },
-                onCreateSessionIn = { actions.onCreateSessionIn(it) },
                 onDeleteWorkspace = { actions.onDeleteWorkspace(it) },
                 onOpenArchived = onOpenArchived,
             )
@@ -186,7 +183,8 @@ internal fun WorkspaceSidebar(
             HomeOfflineCard(
                 hostName = hostName,
                 sinceLabel = offlineSinceLabel,
-                onRetry = { actions.onRetrySessions() },
+                // R4：点「重试」先让探测循环立刻重探，否则顶栏会继续显示离线。
+                onRetry = { HostConnectivity.requestProbe(); actions.onRetrySessions() },
                 onOpenConnectionMode = { actions.onOpenDevice() },
             )
         }
@@ -260,10 +258,12 @@ internal fun WorkspaceSidebar(
                         )
                     }
                 }
-                if (sections.isEmpty()) {
-                    item(key = "home-empty") {
-                        HomeEmptyStarters(onPick = onPickStarter)
+                if (activeWorkspace != null && scoped.isEmpty()) {
+                    item(key = "home-workspace-empty") {
+                        HomeWorkspaceEmpty({ actions.onCreateSessionIn(activeWorkspace) }, { onSelectWorkspace(null) })
                     }
+                } else if (sections.isEmpty()) {
+                    item(key = "home-empty") { HomeEmptyStarters(onPick = onPickStarter) }
                 }
                 sections.forEach { (section, rows) ->
                     item(key = "home-section-${section.name}") {

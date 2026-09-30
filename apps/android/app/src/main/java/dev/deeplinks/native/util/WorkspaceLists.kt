@@ -1,5 +1,7 @@
 package dev.deeplinks.native.util
 
+import dev.deeplinks.native.MobileSession
+
 /**
  * 用户工作区过滤：排除隐藏目录与系统/依赖目录（DSH 只显示用户项目工作区）。
  */
@@ -41,6 +43,35 @@ fun workspaceGroupKey(
     val path = normalizeWorkspacePath(owned.path)
     if (path.isBlank() || path in deleted || !isUserWorkspace(path)) return null
     return path
+}
+
+/** 胶囊 / 菜单上显示的工作区名：末段目录名，空则回退完整路径（去尾斜杠）。 */
+fun workspaceDisplayName(path: String): String {
+    val trimmed = path.trimEnd('/')
+    return trimmed.substringAfterLast('/').ifBlank { path }
+}
+
+/**
+ * 首页工作区筛选：会话属于该工作区 = 在它的 sessionIds 里，或者 cwd 规范化后等于该路径、
+ * 且没有被别的工作区的 sessionIds 认领。与 Web 分组的差别：Web 只认 sessionIds（侧栏树形分组），
+ * 首页筛选是「这个文件夹里的任务」，按 cwd 兜底更符合用户预期。
+ */
+fun sessionsInWorkspace(
+    sessions: List<MobileSession>,
+    workspace: String,
+    accounts: Collection<WorkspaceAccount>,
+    deletedWorkspaces: Set<String>,
+): List<MobileSession> {
+    val target = normalizeWorkspacePath(workspace)
+    val deleted = deletedWorkspaces.map(::normalizeWorkspacePath).toSet()
+    if (target.isBlank() || target in deleted || !isUserWorkspace(target)) return emptyList()
+    return sessions.filter { session ->
+        val owner = accounts.firstOrNull { session.sessionId in it.sessionIds }
+            ?.let { normalizeWorkspacePath(it.path) }
+            ?.takeIf { it.isNotBlank() && it !in deleted && isUserWorkspace(it) }
+        if (owner != null) owner == target
+        else session.cwd?.let(::normalizeWorkspacePath) == target
+    }
 }
 
 /**
