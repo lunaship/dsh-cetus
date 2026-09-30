@@ -103,6 +103,7 @@ val DshStringsZh = DshStrings(
         put("notifMonitorBody", "持续连接会话「%s」，接收审批和完成提醒。")
         put("notifNeedApproval", "需要审批")
         put("notifNeedApprovalBody", "「%s」请求执行，点击查看")
+        put("notifNeedApprovalPublicBody", "有一项操作等待确认")
         put("notifTaskDone", "任务完成")
         put("notifTaskDoneBody", "会话「%s」已完成")
         put("notifTaskStopped", "会话已停止")
