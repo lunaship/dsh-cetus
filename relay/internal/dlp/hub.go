@@ -65,6 +65,14 @@ type Hub struct {
 	logKey          [32]byte
 	done            chan struct{}
 	closed          bool
+	version         string
+	statsMu         sync.Mutex
+	statsAt         time.Time
+	statHosts       int64
+	statStreams     int64
+	statOpen        int64
+	statBytes       int64
+	statReject      map[string]int64
 }
 
 func NewHub(cfg Config, logger *log.Logger) *Hub {
@@ -74,14 +82,20 @@ func NewHub(cfg Config, logger *log.Logger) *Hub {
 	if logger == nil {
 		logger = log.New(io.Discard, "", 0)
 	}
-	return &Hub{cfg: cfg, routes: map[[16]byte]*route{}, pending: map[[16]byte]*pendingStream{}, clients: map[string]int{}, hosts: map[string]int{}, unknowns: map[string]int{}, connections: map[*websocket.Conn]struct{}{}, openLimiter: newLimiter(), registerLimiter: newLimiter(), logger: logger, done: make(chan struct{})}
+	h := &Hub{cfg: cfg, routes: map[[16]byte]*route{}, pending: map[[16]byte]*pendingStream{}, clients: map[string]int{}, hosts: map[string]int{}, unknowns: map[string]int{}, connections: map[*websocket.Conn]struct{}{}, openLimiter: newLimiter(), registerLimiter: newLimiter(), logger: logger, done: make(chan struct{}), version: "dev", statsAt: cfg.Now(), statReject: map[string]int64{}}
+	go h.statsLoop()
+	return h
 }
 
 func (h *Hub) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, "ok")
+		version := h.version
+		if version == "" {
+			version = "dev"
+		}
+		_, _ = io.WriteString(w, "ok "+version)
 	})
 	mux.HandleFunc("/ws", h.serveHTTP)
 	return mux
@@ -351,6 +365,7 @@ func (h *Hub) serveRegister(ctx context.Context, c *websocket.Conn, ip string, c
 		h.mu.Unlock()
 	}()
 	h.logEvent("host_register", "ok", routeID[:], 0)
+	h.noteHostRegister()
 	if err := h.writeJSON(c, message("registered", map[string]any{"route": encodeB64(routeID[:]), "ping": 20})); err != nil {
 		return
 	}
@@ -487,6 +502,7 @@ func (h *Hub) serveClient(ctx context.Context, c *websocket.Conn, ip string, fra
 	ctrl := r.ctrl
 	h.mu.Unlock()
 	h.logEvent("client_open", "pending", routeID[:], 0)
+	h.noteClientOpen()
 	defer h.removePending(sid)
 	req := map[string]any{"v": version, "route": routeText, "kind": kind, "key": keyText, "ts": ts, "nonce": nonceText, "mac": macText}
 	if err := h.writeJSON(ctrl, message("open", map[string]any{"sid": encodeB64(sid[:]), "req": req})); err != nil {
@@ -667,6 +683,7 @@ func (h *Hub) removePending(sid [16]byte) {
 }
 
 func (h *Hub) bridge(ctx context.Context, sid, routeID [16]byte, client, host *websocket.Conn, done chan struct{}) {
+	h.noteStream()
 	host.SetReadLimit(MaxDataMessage + 1)
 	client.SetReadLimit(MaxDataMessage + 1)
 	bridgeCtx, cancel := context.WithCancel(ctx)
@@ -741,6 +758,7 @@ func (h *Hub) bridge(ctx context.Context, sid, routeID [16]byte, client, host *w
 						}
 						frameBytes += int64(written)
 						bytesForwarded.Add(int64(written))
+						h.noteBytes(int64(written))
 						if writeErr != nil {
 							err = writeErr
 							break
@@ -849,6 +867,7 @@ func (h *Hub) fail(c *websocket.Conn, code string, closeCode int) {
 }
 
 func (h *Hub) failFields(c *websocket.Conn, fields map[string]any, reason string, closeCode int) {
+	h.noteReject(reason)
 	_ = h.writeJSON(c, message("error", fields))
 	_ = c.Close(websocket.StatusCode(closeCode), reason)
 }

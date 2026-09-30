@@ -23,7 +23,15 @@ DeepLinks 远程连接的「哑管道」：电脑插件与手机 App 都只向�
 
 ```bash
 cd relay
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dlp-relay ./cmd/dlp-relay
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.version=$(git describe --tags --always)" -o dlp-relay ./cmd/dlp-relay
+```
+
+`-X main.version=…` 会写进启动日志，并出现在 `GET /healthz` 的正文里（`ok <version>`，仍是 200 纯文本，不含连接数或 route）。不传时版本是 `dev`。
+
+建议用外部监控每分钟探测一次 `https://<域名>/healthz`。进程内统计在日志里，每 5 分钟一行后清零：
+
+```bash
+journalctl -u dlp-relay | grep stats
 ```
 
 把二进制放到 `/usr/local/bin/`，按 [`deploy/dlp-relay.service`](deploy/dlp-relay.service) 装成 systemd 服务，

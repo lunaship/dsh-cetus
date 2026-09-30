@@ -13,12 +13,17 @@ import (
 	"github.com/lunaship/dsh-links/relay/internal/dlp"
 )
 
+// 构建时注入：go build -ldflags "-X main.version=2026-09-30"
+var version = "dev"
+
 func main() {
 	cfg, err := dlp.LoadConfig()
 	if err != nil {
 		log.Fatalf("invalid DLP configuration: %v", err)
 	}
 	hub := dlp.NewHub(cfg, log.New(os.Stderr, "dlp-relay ", log.LstdFlags))
+	hub.SetVersion(version)
+	log.Printf("DLP Relay version %s", version)
 	server := &http.Server{Handler: hub.Handler(), ReadHeaderTimeout: 5 * time.Second}
 	// 先 Listen 再 Serve：DLP_LISTEN 可以写端口 0，由系统分配后把实际地址打出来（本机端到端脚本靠它取端口）
 	listener, err := net.Listen("tcp", cfg.Listen)
