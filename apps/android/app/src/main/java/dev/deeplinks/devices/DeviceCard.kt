@@ -152,7 +152,6 @@ internal fun DeviceCard(
     val stateLabel = statusLabel(state)
     val meta = buildList {
         add(stateLabel)
-        if (device.latencyMs != null && state == DeviceState.ONLINE) add("${device.latencyMs}ms")
         add(connection)
     }.joinToString(" · ")
 

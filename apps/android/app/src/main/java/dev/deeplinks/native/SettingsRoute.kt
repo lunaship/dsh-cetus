@@ -419,7 +419,6 @@ internal fun SettingsHome(
                 value = dev.deeplinks.native.util.hostStatusText(
                     online = connectivity?.online,
                     viaRemote = connectivity?.viaRemote == true,
-                    latencyMs = connectivity?.latencyMs,
                     onlineText = s.statusOnline,
                     offlineText = s.statusOffline,
                     viaRemoteText = s.viaRemoteShort,
