@@ -399,6 +399,7 @@ internal fun SettingsHome(
     var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
     var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
     var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
+    var autoLoadRemoteImages by remember { mutableStateOf(notifyPrefs.autoLoadRemoteImages) }
     var alias by remember { mutableStateOf(notifyPrefs.hostAlias) }
     var renameOpen by remember { mutableStateOf(false) }
     val themeLabel = when (ThemeManager.currentThemeMode) {
@@ -520,6 +521,15 @@ internal fun SettingsHome(
                 backgroundTakeover = it
                 notifyPrefs.backgroundTakeover = it
                 if (!it) SessionBackgroundMonitorService.stopAll(notifyContext)
+            },
+        )
+        DshSwitchRow(
+            title = s.autoLoadRemoteImages,
+            subtitle = s.autoLoadRemoteImagesDesc,
+            checked = autoLoadRemoteImages,
+            onCheckedChange = {
+                autoLoadRemoteImages = it
+                notifyPrefs.autoLoadRemoteImages = it
             },
         )
     }

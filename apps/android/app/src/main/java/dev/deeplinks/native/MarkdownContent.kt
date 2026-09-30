@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -35,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,11 +73,14 @@ import dev.deeplinks.core.MarkdownMedia
 import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.tableToCsv
 import dev.deeplinks.native.util.tableToTsv
+import dev.deeplinks.native.util.WorkspacePrefs
 
 @Composable
 internal fun MarkdownContent(text: String, streaming: Boolean = false) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val blocks = remember(text) { splitMarkdownBlocks(text) }
+    // 会话级已允许加载的远程图片 URL（仅在内存中，不落盘）。
+    val allowedRemoteImageUrls = remember { mutableStateSetOf<String>() }
     blocks.forEachIndexed { index, block ->
         val isLastBlock = index == blocks.lastIndex
         val streamTail = streaming && isLastBlock
@@ -144,24 +149,65 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
             MarkdownBlockType.IMAGE -> {
                 val imageUrl = MarkdownMedia.takeIfSafe(block.content)
                 if (imageUrl != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(DshRadius.container))
-                            .background(Dsh.bgCard)
-                            .clickable {
-                                val uri = android.net.Uri.parse(imageUrl)
-                                runCatching {
-                                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
-                                }
+                    val prefs = remember(context) { WorkspacePrefs(context) }
+                    val autoLoad = prefs.autoLoadRemoteImages
+                    val uri = android.net.Uri.parse(imageUrl)
+                    val domain = uri.host ?: ""
+                    val loaded = autoLoad || imageUrl in allowedRemoteImageUrls
+                    if (!loaded) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(DshRadius.container))
+                                .background(Dsh.bgCard)
+                                .combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = dshRipple(),
+                                    onClick = { allowedRemoteImageUrls.add(imageUrl) },
+                                    onLongClick = {
+                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("image url", imageUrl))
+                                    }
+                                )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    ImageOutline16,
+                                    contentDescription = null,
+                                    tint = Dsh.labelTertiary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(DshSpace.s4))
+                                Text(
+                                    text = if (domain.isNotBlank()) L.clickToLoadImageDomain.format(domain) else L.clickToLoadImage,
+                                    color = Dsh.labelTertiary,
+                                    style = DshType.microRelaxed
+                                )
                             }
-                    ) {
-                        coil3.compose.AsyncImage(
-                            model = imageUrl,
-                            contentDescription = null,
-                            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(DshRadius.container))
+                                .background(Dsh.bgCard)
+                                .clickable {
+                                    val uri = android.net.Uri.parse(imageUrl)
+                                    runCatching {
+                                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                                    }
+                                }
+                        ) {
+                            coil3.compose.AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
                 if (streamTail) StreamCaret()
