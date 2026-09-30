@@ -10,6 +10,7 @@ DeepLinks Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版�
 - HyperOS/MIUI 真机跑 Compose UI 测试前，需给 debug 包授「后台弹出界面 → 始终允许」（安全中心 → 应用详情 → 权限管理 → 其他权限），否则测试 Activity 被拦、uid 被冻结、进程被 OneKeyClean 强杀，表象是 "Process crashed"。
 - 正式包只发签名 APK（签名环境自动读取 `~/Library/Application Support/DSH Links Signing/env`）。
 - 联调/复现用 `node scripts/dev-isolated-host.mjs`（临时 `stateDir` + 避开 18640 端口）；它读取用户真实的 `~/.dsh` 会话数据，**只许读**——不得发送 prompt、新建/归档/删除/重命名会话、注册/删除工作区或改设置。
+- **连接池驱逐（`connectionPool.evictAll()`）会写 TLS 关闭帧，是真网络 I/O**：绝不能在主线程直接调用（2026-09-30 真机闪退即此）。统一经 `HostHttp.evictPools`（主线程自动转后台）；`MainThreadNetworkTest` 保证只有 `HostHttp.kt` 能碰连接池。
 
 ## 门禁命令
 

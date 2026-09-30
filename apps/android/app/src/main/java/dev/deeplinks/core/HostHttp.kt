@@ -312,11 +312,40 @@ object HostHttp {
         return client.newCall(builder.build()).also { onCall?.invoke(it) }
     }
 
+    /**
+     * 连接池驱逐要写 TLS 关闭帧，是**真正的网络 I/O**。在主线程调用会抛
+     * `NetworkOnMainThreadException`（2026-09-30 真机复现：远程配对下冷启动直接闪退）。
+     * 因此统一丢到后台单线程执行；非主线程调用保持同步（原有语义不变，JVM 单测也不受影响）。
+     */
+    private val poolMaintenance: java.util.concurrent.ExecutorService =
+        java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "dsh-http-pool").apply { isDaemon = true }
+        }
+
+    private fun isMainThread(): Boolean = runCatching {
+        val my = android.os.Looper.myLooper()
+        my != null && my == android.os.Looper.getMainLooper()
+    }.getOrDefault(false)
+
+    private fun evictPools(includeLan: Boolean) {
+        val evict = {
+            runCatching {
+                if (includeLan) lanClients.values.forEach { it.connectionPool.evictAll() }
+                remoteClients.values.forEach { it.connectionPool.evictAll() }
+            }
+            Unit
+        }
+        if (isMainThread()) {
+            runCatching { poolMaintenance.execute(evict) }
+        } else {
+            evict()
+        }
+    }
+
     /** 网络变化：丢掉空闲连接，下一次请求按新网络重新选路（RFC §7.2 第 1 条）。 */
     fun onNetworkChanged() {
         selector.onNetworkChanged()
-        lanClients.values.forEach { it.connectionPool.evictAll() }
-        remoteClients.values.forEach { it.connectionPool.evictAll() }
+        evictPools(includeLan = true)
     }
 
     /** 只有 IP 变了（还是同一张默认网）：只作废选路缓存，不动连接池（S5）。 */
@@ -326,7 +355,7 @@ object HostHttp {
 
     /** 回到前台：清掉空闲的远程连接，避免继续使用可能已被远端关掉的隧道（R5）。 */
     fun evictIdleRemote() {
-        remoteClients.values.forEach { it.connectionPool.evictAll() }
+        evictPools(includeLan = false)
     }
 
     // ===== 局域网 =====
