@@ -385,7 +385,8 @@ object HostHttp {
             .build()
     }
 
-    private fun buildRemoteClient(host: Host, remote: RemoteRoute, offset: Long): OkHttpClient {
+    /** 生产配置的远程客户端；抽成 internal 让复用测试直接测这一份配置（R6）。 */
+    internal fun buildRemoteClient(host: Host, remote: RemoteRoute, offset: Long): OkHttpClient {
         val innerPin = PinnedSsl.normalizeFingerprint(host.certFingerprint)
         if (innerPin.isBlank()) throw IOException("missing inner TLS pin")
         PinnedSsl.requireValidPin(innerPin)
