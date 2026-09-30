@@ -44,6 +44,7 @@ const evidence = {
     plugin: "pnpm install --frozen-lockfile && pnpm build:client && pnpm test && pnpm audit --prod",
     app: "cd apps/android && ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug",
     relay: "go test ./... -race -count=1 -timeout 120s && CGO_ENABLED=0 go vet ./...",
+    dlp1: "npm run test:dlp1-e2e",
   },
   boundaries: {
     verified: ["source-level tests and local build gates only"],
