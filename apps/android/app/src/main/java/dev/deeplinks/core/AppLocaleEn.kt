@@ -537,6 +537,7 @@ val DshStringsEn = DshStrings(
         put("allowApproveFromNotification", "Approve from notifications")
         put("allowApproveFromNotificationDesc", "Not recommended. The phone doesn't receive full arguments; unlocking is required.")
         put("notifApprovalNeedsUnlock", "Unlock and confirm in the app")
+        put("notifApprovalConfirmInApp", "Confirm in the app")
         put("autoLoadRemoteImages", "Auto-load images in conversations")
         put("autoLoadRemoteImagesDesc", "This may leak content and IP to third parties; off by default.")
         put("renameComputerDesc", "Give this computer a name you will recognise. It only applies on this phone.")

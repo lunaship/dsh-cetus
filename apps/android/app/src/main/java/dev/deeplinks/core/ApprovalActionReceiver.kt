@@ -22,20 +22,25 @@ class ApprovalActionReceiver : BroadcastReceiver() {
         val approvalId = intent.getStringExtra(EXTRA_APPROVAL_ID) ?: return
         val approve = intent.getBooleanExtra(EXTRA_APPROVE, false)
         val host = HostStore.load(context).resolveFromIntent(intent) ?: return
-        // 兜底：锁屏状态下不直接批准，改走 App 内审批卡。
-        if (approve) {
-            val km = context.getSystemService(KeyguardManager::class.java)
-            if (km != null && km.isDeviceLocked) {
-                DshNotifier.notifyApprovalNeedsUnlock(context, host, sessionId)
-                return
-            }
+        val prefs = WorkspacePrefs(context)
+        // 兜底顺序：先看接管是否还开着，再看通知栏直批开关，最后才是锁屏。
+        // 接管关闭时审批已交回电脑网页，旧通知上的「允许」不许再生效。
+        val km = context.getSystemService(KeyguardManager::class.java)
+        val locked = km != null && km.isDeviceLocked
+        when (
+            approvalReceiverDecision(
+                approve = approve,
+                backgroundTakeover = prefs.backgroundTakeover,
+                quickApprove = prefs.allowApproveFromNotification,
+                locked = locked,
+            )
+        ) {
+            ApprovalReceiverDecision.Cancel -> DshNotifier.cancelApproval(context, host, sessionId)
+            ApprovalReceiverDecision.ConfirmInApp -> DshNotifier.notifyApprovalConfirmInApp(context, host, sessionId)
+            ApprovalReceiverDecision.NeedsUnlock -> DshNotifier.notifyApprovalNeedsUnlock(context, host, sessionId)
+            ApprovalReceiverDecision.Answer ->
+                SessionBackgroundMonitorService.answerApproval(context, host, sessionId, approvalId, approve)
         }
-        // 开关已被关闭：订阅已停，插件不再认这台手机能处理该审批；收回通知，交给电脑网页
-        if (!WorkspacePrefs(context).backgroundTakeover) {
-            DshNotifier.cancelApproval(context, host, sessionId)
-            return
-        }
-        SessionBackgroundMonitorService.answerApproval(context, host, sessionId, approvalId, approve)
     }
 
     companion object {
@@ -47,4 +52,28 @@ class ApprovalActionReceiver : BroadcastReceiver() {
         const val OUTCOME_ALLOW = "allowed-once"
         const val OUTCOME_REJECT = "rejected"
     }
+}
+
+/** 通知栏审批动作的决策结果。 */
+internal enum class ApprovalReceiverDecision { Cancel, ConfirmInApp, NeedsUnlock, Answer }
+
+/**
+ * 通知栏点了「允许 / 拒绝」之后怎么走，纯函数抽出来供单测（项目未引入 Robolectric）。
+ *
+ * 顺序即优先级：
+ * 1. 接管已关闭：审批已交回电脑网页，旧通知直接收回；
+ * 2. 通知栏直批已被关闭（例如关开关前弹出的旧通知）：不批准，提示去 App 内确认；
+ * 3. 锁屏：不批准，提示解锁后在 App 内确认；
+ * 4. 其余（拒绝、或允许且条件都满足）交给后台监控服务答复。
+ */
+internal fun approvalReceiverDecision(
+    approve: Boolean,
+    backgroundTakeover: Boolean,
+    quickApprove: Boolean,
+    locked: Boolean,
+): ApprovalReceiverDecision = when {
+    !backgroundTakeover -> ApprovalReceiverDecision.Cancel
+    approve && !quickApprove -> ApprovalReceiverDecision.ConfirmInApp
+    approve && locked -> ApprovalReceiverDecision.NeedsUnlock
+    else -> ApprovalReceiverDecision.Answer
 }

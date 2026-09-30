@@ -536,6 +536,7 @@ val DshStringsZh = DshStrings(
         put("allowApproveFromNotification", "允许在通知栏直接批准")
         put("allowApproveFromNotificationDesc", "不推荐。手机收不到完整参数，需要解锁后才能批准。")
         put("notifApprovalNeedsUnlock", "请解锁后在 App 内确认")
+        put("notifApprovalConfirmInApp", "请在 App 内确认")
         put("autoLoadRemoteImages", "自动加载对话中的网络图片")
         put("autoLoadRemoteImagesDesc", "可能向第三方泄露内容与 IP；默认关闭。")
         put("renameComputerDesc", "给这台电脑起一个方便识别的名字，只在这台手机上生效。")

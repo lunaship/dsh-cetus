@@ -201,6 +201,20 @@ object DshNotifier {
         postNotification(context, notificationId(host, sessionId, 1), builder.build())
     }
 
+    /**
+     * 通知栏直批开关已关闭（多见于关开关前弹出的旧通知）时点了「允许」：不批准，
+     * 把原通知替换成「请在 App 内确认」，点正文进入会话审批卡。
+     */
+    fun notifyApprovalConfirmInApp(context: Context, host: Host, sessionId: String) {
+        val builder = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+            .setContentTitle(L.notifNeedApproval)
+            .setContentText(L.notifApprovalConfirmInApp)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+        postNotification(context, notificationId(host, sessionId, 1), builder.build())
+    }
+
     /** 打开该会话（动作失败时的兜底，与点通知同一条路）。 */
     fun openSession(context: Context, host: Host, sessionId: String) {
         context.startActivity(

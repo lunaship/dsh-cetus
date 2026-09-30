@@ -599,6 +599,7 @@ class DshStrings(private val values: Map<String, String>) {
     val allowApproveFromNotification: String get() = t("allowApproveFromNotification")
     val allowApproveFromNotificationDesc: String get() = t("allowApproveFromNotificationDesc")
     val notifApprovalNeedsUnlock: String get() = t("notifApprovalNeedsUnlock")
+    val notifApprovalConfirmInApp: String get() = t("notifApprovalConfirmInApp")
     val autoLoadRemoteImages: String get() = t("autoLoadRemoteImages")
     val autoLoadRemoteImagesDesc: String get() = t("autoLoadRemoteImagesDesc")
     val sectionNotifications: String get() = t("sectionNotifications")

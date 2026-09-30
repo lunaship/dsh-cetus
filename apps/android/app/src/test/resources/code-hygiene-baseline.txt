@@ -10,5 +10,5 @@ dev/deeplinks/devices/DevicesActivity.kt 622
 # 2026-09-27 设置 UI 拆到 SettingsRoute.kt（批次 2），本文件只剩外部入口兼容壳。
 dev/deeplinks/native/SettingsActivity.kt 34
 # 文案表在 AppLocaleZh / AppLocaleEn；本文件只留取值。分组列表文案并入后仍远低于旧预算。
-dev/deeplinks/core/AppLocale.kt 663
+dev/deeplinks/core/AppLocale.kt 664
 dev/deeplinks/native/WorkspaceSidebar.kt 320
