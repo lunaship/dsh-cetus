@@ -172,3 +172,10 @@ fun shouldSkipResumeRefresh(
 
 /** 冷启动同步完成后，多久内回前台不再重复刷新。 */
 const val COLD_START_REFRESH_WINDOW_MS = 10_000L
+
+/**
+ * S6：对话页当前是否可见。常驻侧栏（平板 / 宽屏）布局下对话页始终在场；
+ * 手机布局下只有 `displayDest == chatDest` 时才算可见。首页阶段据此决定是否预加载。
+ */
+fun isChatVisible(persistentSidebar: Boolean, displayDest: String, chatDest: String): Boolean =
+    persistentSidebar || displayDest == chatDest

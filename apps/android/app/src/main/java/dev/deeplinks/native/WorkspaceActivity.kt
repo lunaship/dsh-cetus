@@ -279,6 +279,34 @@ fun WorkspaceScreen(
         inputText = draft.text
         pendingImages = draft.images
     }
+    // S6：布局与目标推导上移到最前——对话页是否可见决定要不要预加载历史 / 模型 / 推送流。
+    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val windowDensity = androidx.compose.ui.platform.LocalDensity.current
+    val containerWidthDp = with(windowDensity) { windowInfo.containerSize.width.toDp() }
+    val containerHeightDp = with(windowDensity) { windowInfo.containerSize.height.toDp() }
+    val dshLayout = remember(containerWidthDp, containerHeightDp) {
+        deriveDshLayout(containerWidthDp.value.toInt(), containerHeightDp.value.toInt())
+    }
+    var prevPersistent by remember { mutableStateOf(dshLayout.persistentSidebar) }
+    val collapsingToPhone = prevPersistent && !dshLayout.persistentSidebar
+    val displayDest = when {
+        dshLayout.persistentSidebar -> PhoneDest.Chat.name
+        collapsingToPhone && (currentSessionId != null || composeNewSession) -> PhoneDest.Chat.name
+        else -> phoneDest
+    }
+    SideEffect {
+        if (collapsingToPhone && (currentSessionId != null || composeNewSession)) {
+            phoneDest = PhoneDest.Chat.name
+        }
+        prevPersistent = dshLayout.persistentSidebar
+    }
+    val showSessionHome = !dshLayout.persistentSidebar && displayDest == PhoneDest.Sessions.name
+    /** S6：对话页当前是否可见（常驻侧栏布局视为始终可见）。首页阶段不为当前会话预加载。 */
+    val chatVisible = dev.deeplinks.native.util.isChatVisible(
+        persistentSidebar = dshLayout.persistentSidebar,
+        displayDest = displayDest,
+        chatDest = PhoneDest.Chat.name,
+    )
     PersistComposerDrafts(
         prefs = workspacePrefs,
         slotKey = host.slotKey,
@@ -530,7 +558,8 @@ fun WorkspaceScreen(
     fun refreshAppSettings() = workspaceViewModel.refreshAppSettings()
 
     // ===== SSE 实时流（当前会话；VM 持有，Activity 重建不断流） =====
-    val streamClient = currentSessionId?.let { workspaceViewModel.acquireStream(it) }
+    // S6：停在首页（对话页不可见）时不为当前会话建立推送流；进入对话页再建。
+    val streamClient = currentSessionId?.takeIf { chatVisible }?.let { workspaceViewModel.acquireStream(it) }
     var streamEverConnected by remember(currentSessionId) { mutableStateOf(false) }
     var streamQuietElapsed by remember(currentSessionId) { mutableStateOf(false) }
     // 最近一次 SSE 活动（任意事件帧）；看门狗用它识别「连接看似健康但事件停流」的半开状态。
@@ -1620,11 +1649,16 @@ fun WorkspaceScreen(
         workspaceViewModel.scheduleSessionListCacheWrite(sessions, archivedIds, workspaceCatalogItems)
     }
 
-    LaunchedEffect(currentSessionId) {
+    LaunchedEffect(currentSessionId, chatVisible) {
         // WI-R2：代际去重与 history 任务归 VM；旧流由 acquireStream 切换时停止，
         // 这里不再对新流做 stop（避免把新会话的连接打断再重连）
         workspaceViewModel.bumpHistoryGeneration()
         currentSessionId?.let { DshNotifier.cancelForSession(context, host, it) }
+        // S6：停在首页（对话页不可见）时不加载历史 / 模型、不建推送流；进入对话页再开始。
+        if (!chatVisible) {
+            workspaceViewModel.releaseStream()
+            return@LaunchedEffect
+        }
         if (currentSessionId == null) {
             // 切到「无会话」：显式释放 VM 持有的旧流，避免为过期会话维持连接
             workspaceViewModel.releaseStream()
@@ -1860,29 +1894,7 @@ fun WorkspaceScreen(
     }
 
     // ===== 整体框架：宽屏常驻侧栏；手机/Medium 是会话列表 → 聊天的返回栈 =====
-    // 用实际窗口容器宽度（LocalWindowInfo）而不是设备屏幕宽度：
-    // 分屏、自由窗口和折叠屏下 screenWidthDp 会失真。
-    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
-    val windowDensity = androidx.compose.ui.platform.LocalDensity.current
-    val containerWidthDp = with(windowDensity) { windowInfo.containerSize.width.toDp() }
-    val containerHeightDp = with(windowDensity) { windowInfo.containerSize.height.toDp() }
-    val dshLayout = remember(containerWidthDp, containerHeightDp) {
-        deriveDshLayout(containerWidthDp.value.toInt(), containerHeightDp.value.toInt())
-    }
-    var prevPersistent by remember { mutableStateOf(dshLayout.persistentSidebar) }
-    val collapsingToPhone = prevPersistent && !dshLayout.persistentSidebar
-    val displayDest = when {
-        dshLayout.persistentSidebar -> PhoneDest.Chat.name
-        collapsingToPhone && (currentSessionId != null || composeNewSession) -> PhoneDest.Chat.name
-        else -> phoneDest
-    }
-    SideEffect {
-        if (collapsingToPhone && (currentSessionId != null || composeNewSession)) {
-            phoneDest = PhoneDest.Chat.name
-        }
-        prevPersistent = dshLayout.persistentSidebar
-    }
-    val showSessionHome = !dshLayout.persistentSidebar && displayDest == PhoneDest.Sessions.name
+    // （布局 / displayDest / showSessionHome 已在文件前部推导，S6 起 chatVisible 供预加载判断。）
     val changesProgress by changesPanel.progress.asState()
     val navMotionMs = motionDuration(DshDuration.slow)
     var sidebarCollapsed by remember { mutableStateOf(false) }
