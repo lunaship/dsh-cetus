@@ -8,7 +8,7 @@ import dev.deeplinks.native.HomeNewTaskFab
 import androidx.compose.ui.draw.alpha
 import dev.deeplinks.native.HomeEmptyStarters
 import dev.deeplinks.native.HomeOfflineCard
-import dev.deeplinks.native.HomeSummaryRow
+import dev.deeplinks.native.HomeWorkspaceFilterRow
 import dev.deeplinks.native.HomeSectionHeader
 import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.SparkleOutline16
@@ -925,7 +925,7 @@ internal fun SettingsHomePairedLightZh() {
             appSettings = AppSettings(),
             onOpen = {},
             host = PreviewHost,
-            connectivity = dev.deeplinks.native.util.HostConnectivitySnapshot(online = true, viaCloud = true, latencyMs = 31),
+            connectivity = dev.deeplinks.native.util.HostConnectivitySnapshot(online = true, viaRemote = true, latencyMs = 31),
         )
     }
 }
@@ -1016,9 +1016,6 @@ internal val PreviewHost = Host(
     name = "MacBook Pro",
     baseUrl = "https://192.168.1.8:18640",
     token = "preview",
-    relayClient = "preview",
-    relayRouteId = "route",
-    relayRouteSecret = "secret",
 )
 
 @Composable
@@ -1036,9 +1033,6 @@ private fun DevicesWall() {
             notice = null,
             onOpen = {},
             onRecheck = {},
-            onTogglePreferRelay = {},
-            onRescan = {},
-            onRescanLater = {},
             onReplace = {},
             onUnpair = {},
         )
@@ -1098,22 +1092,18 @@ private fun SidebarWall() {
         HomeHeader(
             hostName = "MacBook Pro",
             online = true,
-            viaCloud = true,
-            latencyMs = 31L,
+            viaRemote = true,
             offlineSinceLabel = null,
             searchActive = false,
             onOpenDevice = {},
             onToggleSearch = {},
             onOpenSettings = {},
         )
-        HomeSummaryRow(
-            awaitingCount = 2,
-            runningCount = 1,
+        HomeWorkspaceFilterRow(
             workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
             selected = null,
             onSelect = {},
             onAddWorkspace = {},
-            onCreateSessionIn = {},
             onDeleteWorkspace = {},
             onOpenArchived = {},
         )
@@ -1169,8 +1159,7 @@ private fun HomeOfflineWall() {
         HomeHeader(
             hostName = "Mac mini",
             online = false,
-            viaCloud = true,
-            latencyMs = null,
+            viaRemote = true,
             offlineSinceLabel = "10 分钟前",
             searchActive = false,
             onOpenDevice = {},
@@ -1208,8 +1197,7 @@ private fun HomeEmptyWall() {
         HomeHeader(
             hostName = "Mac mini",
             online = true,
-            viaCloud = true,
-            latencyMs = 31L,
+            viaRemote = true,
             offlineSinceLabel = null,
             searchActive = false,
             onOpenDevice = {},
