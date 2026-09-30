@@ -87,6 +87,7 @@ internal fun validateLanIdentity(baseUrl: String, normalizedPin: String) {
  *   `hasBody` 保留在签名里记录调用意图，规则对两类请求一致。
  */
 internal fun <R> attemptWithFailover(
+    key: String,
     routes: List<HostRoute>,
     @Suppress("UNUSED_PARAMETER") hasBody: Boolean,
     attempt: (HostRoute) -> R,
@@ -154,18 +155,24 @@ object HostHttp {
         val key = routeKey(host)
         val remote = remoteOverride ?: host.remoteRoute()
         val routes = forceRoute?.let { listOf(it) }
-            ?: selector.order(key, remote != null) { probeLan(host) }
-        return attemptWithFailover(routes, request.body != null) { route ->
+            ?: if (selector.isOffline(key)) listOf() else selector.order(key, remote != null) { probeLan(host) }
+        return attemptWithFailover(key, routes, request.body != null) { route ->
             try {
                 val response = if (route == HostRoute.REMOTE) {
                     executeRemote(host, remote ?: throw IOException("no remote route"), request, url, key, onCall)
                 } else {
                     newCall(clientFor(host, request), url, request, onCall).execute()
                 }
-                if (forceRoute == null) selector.noteSuccess(key, route)
+                if (forceRoute == null) {
+                    selector.noteSuccess(key, route)
+                    selector.clearFailure(key)
+                }
                 response
             } catch (e: IOException) {
-                if (forceRoute == null && isConnectPhaseFailure(e)) selector.forget(key)
+                if (forceRoute == null && isConnectPhaseFailure(e)) {
+                    selector.forget(key)
+                    selector.markFailure(key)
+                }
                 throw e
             }
         }

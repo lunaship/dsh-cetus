@@ -14,6 +14,7 @@ enum class HostRoute { LAN, REMOTE }
  * - 没有有效缓存时探测一次局域网（调用方给的 probe：TCP + 钉扎 TLS 握手，不发任何 HTTP 与凭据），
  *   同一台电脑同时只探一次，其他请求等结果；
  * - 没有远程能力的电脑只有局域网一条路，不探测。
+ * - 连续 2 次建立期失败才标 offline，15 分钟后自动恢复（R4）。
  *
  * 纯逻辑，不碰 Android：时钟与探测都由调用方注入，JVM 单测可直接覆盖。
  */
@@ -27,6 +28,8 @@ class RouteSelector(
     private val locks = ConcurrentHashMap<String, Any>()
     private val lastRoutes = ConcurrentHashMap<String, HostRoute>()
     private val clockOffsets = ConcurrentHashMap<String, Long>()
+    private val failCounts = ConcurrentHashMap<String, Int>()
+    private val offlineSince = ConcurrentHashMap<String, Long>()
 
     val currentGeneration: Long get() = generation.get()
 
@@ -34,6 +37,8 @@ class RouteSelector(
     fun onNetworkChanged() {
         generation.incrementAndGet()
         cache.clear()
+        failCounts.clear()
+        offlineSince.clear()
     }
 
     /**
@@ -56,11 +61,37 @@ class RouteSelector(
     fun noteSuccess(key: String, route: HostRoute) {
         lastRoutes[key] = route
         remember(key, route)
+        clearFailure(key)
     }
 
     /** 选中的路在建立阶段失败：作废缓存，下一次请求重新探测。 */
     fun forget(key: String) {
         cache.remove(key)
+        failCounts.remove(key)
+        offlineSince.remove(key)
+    }
+
+    /** 连续 2 次失败才标离线（R4）。 */
+    fun markFailure(key: String) {
+        val count = failCounts.compute(key) { _, v -> (v ?: 0) + 1 } ?: 1
+        if (count >= 2) {
+            offlineSince[key] = clock()
+        }
+    }
+
+    fun clearFailure(key: String) {
+        failCounts.remove(key)
+        offlineSince.remove(key)
+    }
+
+    fun isOffline(key: String): Boolean {
+        val since = offlineSince[key] ?: return false
+        if (clock() - since > OFFLINE_TTL_MS) {
+            offlineSince.remove(key)
+            failCounts.remove(key)
+            return false
+        }
+        return true
     }
 
     fun lastRoute(key: String): HostRoute? = lastRoutes[key]
@@ -89,6 +120,7 @@ class RouteSelector(
     companion object {
         const val LAN_TTL_MS = 30_000L
         const val REMOTE_TTL_MS = 15_000L
+        const val OFFLINE_TTL_MS = 15 * 60_000L
 
         /** 进程内唯一实例：HostHttp 与网络回调共用。 */
         val shared = RouteSelector()
