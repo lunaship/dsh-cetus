@@ -336,6 +336,7 @@ fun WorkspaceScreen(
     var showDraftWorkspacePicker by remember { mutableStateOf(false) }
     var showArchivedSheet by remember { mutableStateOf(false) }
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
+    DraftComposerAutoFocus(composeNewSession && currentSessionId == null, composerFocusRequester, composerKeyboardController)
 
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
