@@ -1,21 +1,12 @@
 package dev.deeplinks.core
 
 import android.annotation.SuppressLint
-import java.io.IOException
 import java.net.URI
 import java.security.MessageDigest
-import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
-import java.util.concurrent.TimeUnit
-import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.X509TrustManager
-import okhttp3.ConnectionSpec
-import okhttp3.OkHttpClient
-import okhttp3.TlsVersion
-import okhttp3.Request
 
 /**
  * 局域网自签证书按 SHA-256 指纹钉死，跳过主机名校验。
@@ -24,7 +15,6 @@ import okhttp3.Request
  * 安全不变量：
  * - 正式请求必须有 64 位 SHA-256 指纹才会安装自定义 TrustManager。
  * - 私网 / 回环空指纹 fail-closed，不得静默回退到系统 PKI。
- * - [peekFingerprint] 的 TOFU 结果只能展示给用户确认，不能直接写入 HostStore。
  */
 object PinnedSsl {
     class CertChangedException : SSLHandshakeException("主机证书已变更，请重新配对")
@@ -138,55 +128,7 @@ object PinnedSsl {
             }
         }
 
-    /**
-     * TOFU 读取：在用户确认前临时接受当前叶证书，只为展示指纹。
-     * 返回值不得在未经用户确认时写入 HostStore。
-     */
-    @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
-    /**
-     * TOFU 阶段的信任管理器：**同时把服务端证书链记下来**。
-     *
-     * 为什么不从 `response.handshake.peerCertificates` 取：在真机上（Android 16 / Conscrypt）
-     * 它对这套自定义 socketFactory 返回的是**空链**，即使握手成功、TLS 1.2/1.3 都一样
-     * （2026-09-29 手动配对卡死就是这么来的）。而 `checkServerTrusted` 的参数恰恰就是服务端
-     * 递过来的那条链，拿它最稳。
-     */
-    internal class TofuReadTrustManager : X509TrustManager {
-        @Volatile
-        var lastChain: List<X509Certificate> = emptyList()
-
-        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
-            lastChain = chain.toList()
-        }
-    }
-
-    /** TOFU：先看清服务器证书指纹（仅用于展示确认，随后按该指纹钉死）。 */
-    fun peekFingerprint(baseUrl: String): String {
-        val url = "${normalizeUrl(baseUrl).trimEnd('/')}/dsh-link/health"
-        val trustManager = TofuReadTrustManager()
-        val ctx = SSLContext.getInstance("TLS")
-        ctx.init(null, arrayOf(trustManager), SecureRandom())
-        val client = OkHttpClient.Builder()
-            .sslSocketFactory(ctx.socketFactory, trustManager)
-            // 只走 TLS 1.2：TLS 1.3 的**会话恢复**握手不带证书（服务端用 PSK 直接完成），
-            // 于是 response.handshake.peerCertificates 会是空链——真机上表现为「取不到指纹、
-            // 手动配对卡死」。同一张证书在 1.2 下必定随握手发过来，指纹不变。
-            .connectionSpecs(
-                listOf(ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS).tlsVersions(TlsVersion.TLS_1_2).build()),
-            )
-            .hostnameVerifier(HostnameVerifier { _, _ -> true })
-            .connectTimeout(6, TimeUnit.SECONDS)
-            .readTimeout(6, TimeUnit.SECONDS)
-            .build()
-        client.newCall(Request.Builder().url(url).build()).execute().use { response ->
-            val certs = trustManager.lastChain
-            if (certs.isEmpty()) throw IOException("服务器没有提供证书，无法确认指纹")
-            return fingerprintOf(certs.first())
-        }
-    }
-
+    /** 沿因果链找到 [CertChangedException]，没有就原样返回。 */
     fun unwrap(error: Throwable): Throwable {
         var cur: Throwable? = error
         while (cur != null) {

@@ -18,9 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import dev.deeplinks.core.Dsh
@@ -35,21 +32,6 @@ internal data class DraftLastTask(
     val title: String,
     val workspaceLabel: String?,
 )
-
-/** 进入草稿态自动聚焦输入框并弹起键盘（N1），沿用对话页的 FocusRequester / 键盘控制器。 */
-@Composable
-internal fun DraftComposerAutoFocus(
-    active: Boolean,
-    focusRequester: FocusRequester,
-    keyboardController: SoftwareKeyboardController?,
-) {
-    LaunchedEffect(active) {
-        if (active) {
-            focusRequester.requestFocus()
-            keyboardController?.show()
-        }
-    }
-}
 
 /**
  * 新任务草稿画布（N1）——对话页 `messages.isEmpty()` 的草稿态。

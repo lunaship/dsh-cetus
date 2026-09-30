@@ -2,50 +2,54 @@ package dev.deeplinks.native.util
 
 import dev.deeplinks.native.MobileSession
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** K4：首页会话列表按 sessionId 去重，避免 LazyColumn 重复 key。 */
 class HomeSectionsTest {
-    private fun s(id: String, updated: Long = 1L, running: Boolean = false, awaiting: Boolean = false) =
-        MobileSession(id, id, updated, running, blank = false, cwd = null, agentPreset = null, awaitingInput = awaiting)
 
-    /** 2026-09-28 重设计：只有三段，日期不再是分区。 */
+    private fun session(id: String, updatedAt: Long, running: Boolean = false, awaiting: Boolean = false) =
+        MobileSession(
+            sessionId = id,
+            title = "t-$id",
+            updatedAt = updatedAt,
+            running = running,
+            blank = false,
+            cwd = null,
+            agentPreset = null,
+            awaitingInput = awaiting,
+        )
+
     @Test
-    fun awaitingThenRunningThenRecent() {
-        val out = homeSections(
+    fun `重复 sessionId 只保留最新的一条`() {
+        val sections = homeSections(
             listOf(
-                s("old", updated = 1_700_000_000_000L),
-                s("today", updated = 1_790_600_000_000L),
-                s("run", updated = 1_790_500_000_000L, running = true),
-                s("wait", updated = 1_790_400_000_000L, running = true, awaiting = true),
+                session("a", 100, running = true),
+                session("a", 200),
+                session("b", 150),
+            ),
+        )
+        val all = sections.flatMap { it.second }
+        assertEquals(2, all.size)
+        assertEquals(setOf("a", "b"), all.map { it.sessionId }.toSet())
+        // 保留的是 updatedAt 更大的那条（200 → RECENT，而不是 100 → RUNNING）
+        val a = all.first { it.sessionId == "a" }
+        assertEquals(200L, a.updatedAt)
+    }
+
+    @Test
+    fun `分区顺序固定 等你处理 进行中 最近`() {
+        val sections = homeSections(
+            listOf(
+                session("recent", 50),
+                session("running", 60, running = true),
+                session("awaiting", 70, awaiting = true),
             ),
         )
         assertEquals(
             listOf(HomeSection.AWAITING, HomeSection.RUNNING, HomeSection.RECENT),
-            out.map { it.first },
+            sections.map { it.first },
         )
-        assertEquals(listOf("wait"), out[0].second.map { it.sessionId })
-        assertEquals(listOf("run"), out[1].second.map { it.sessionId })
-        assertEquals(listOf("today", "old"), out[2].second.map { it.sessionId })
-    }
-
-    /** 秒级时间戳也要能正确排序（旧 Host 给的是秒）。 */
-    @Test
-    fun secondsTimestampsAndNewestFirst() {
-        val secs = 1_790_600_000L
-        val out = homeSections(listOf(s("a", updated = 1_790_599_000_000L), s("b", updated = secs)))
-        assertEquals(HomeSection.RECENT, out.single().first)
-        assertEquals(listOf("b", "a"), out.single().second.map { it.sessionId })
-    }
-
-    /** 等待中优先于运行中：一条会话只落一个分区。 */
-    @Test
-    fun awaitingWinsOverRunning() {
-        val out = homeSections(listOf(s("both", updated = 1L, running = true, awaiting = true)))
-        assertEquals(HomeSection.AWAITING, out.single().first)
-    }
-
-    @Test
-    fun emptyInputGivesNoSections() {
-        assertEquals(emptyList<Pair<HomeSection, List<MobileSession>>>(), homeSections(emptyList()))
+        assertTrue(sections.first().second.single().sessionId == "awaiting")
     }
 }

@@ -210,7 +210,7 @@ dsh-links/
    dsh web
    ```
 
-2. **配对**：打开 DSH Web 设置 →「手机连接」，用 App 扫描二维码，或手动输入配对码。
+2. **配对**：打开 DSH Web 设置 →「手机连接」，用 App「扫描二维码」或「从相册识别」（选择一张含连接二维码的截图）完成配对。
 
    <img src="docs/images/phone-connection-latest-sanitized.png" width="720" alt="电脑端「手机连接」面板" />
 

@@ -9,6 +9,7 @@ GitHub `lunaship/dsh-links` = **插件源码、DLP/1 中继源码（`relay/`）�
 - [ ] npm 已登录，包名与版本正确；发布后在干净 profile 以 `dsh plugin --profile web add dsh-links@<version>` 成功安装。
 - [ ] 用真实 Android 设备完成扫码配对、会话/SSE、审批、吊销、重启后重连验收；远程改动还要在蜂窝网络下跑一遍远程首配与 Wi‑Fi / 蜂窝切换。
 - [ ] APK 是正式签名产物；在 GitHub Release（`app-v*` tag）附版本号、SHA-256、最低 Android 版本和安装说明。
+- [ ] Android 正式包：`./gradlew :app:assembleRelease` 后**务必保存混淆映射表** `app/build/outputs/mapping/release/mapping.txt`（按版本命名，例如 `DeepLinks-<versionName>-mapping.txt`）；用户报崩溃时用它 `retrace` 还原堆栈。映射表不进仓库、不发 Release 附件，只存档。
 - [ ] `apps/android/scripts/release-apk.sh` 输出校验和与当前 tag 一致。
 
 ## npm 自动发布

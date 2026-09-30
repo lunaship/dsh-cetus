@@ -69,6 +69,25 @@ import dev.deeplinks.native.util.visibleUserWorkspaces
 
 // ---------- 输入卡（InputBar 1:1） ----------
 
+/**
+ * K3 聚焦令牌：只有输入框所在的 [InputBar] 在组合里时才会执行——从结构上消除
+ * 「FocusRequester is not initialized」崩溃。`awaitFrame` 等这一帧布局完成、`FocusRequester`
+ * 已挂上；没挂上就静默放过，不抛异常。
+ */
+@Composable
+private fun ComposerFocusEffect(
+    focusToken: Int,
+    focusRequester: androidx.compose.ui.focus.FocusRequester?,
+) {
+    if (focusRequester == null) return
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    androidx.compose.runtime.LaunchedEffect(focusToken) {
+        if (focusToken == 0) return@LaunchedEffect
+        androidx.compose.runtime.withFrameNanos { }
+        if (runCatching { focusRequester.requestFocus() }.isSuccess) keyboard?.show()
+    }
+}
+
 @Composable
 internal fun InputBar(
     modifier: Modifier = Modifier,
@@ -95,7 +114,9 @@ internal fun InputBar(
     onSend: () -> Unit,
     actionError: String? = null,
     composerFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    focusToken: Int = 0,
 ) {
+    ComposerFocusEffect(focusToken, composerFocusRequester)
     Column(
         modifier = modifier
             .fillMaxWidth()

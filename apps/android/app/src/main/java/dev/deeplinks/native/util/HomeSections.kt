@@ -16,13 +16,17 @@ fun sessionMillis(ts: Long): Long = if (ts in 1 until 1_000_000_000_000L) ts * 1
 
 fun homeSections(sessions: List<MobileSession>): List<Pair<HomeSection, List<MobileSession>>> {
     val buckets = LinkedHashMap<HomeSection, MutableList<MobileSession>>()
-    sessions.sortedByDescending { sessionMillis(it.updatedAt) }.forEach { s ->
-        val section = when {
-            s.awaitingInput -> HomeSection.AWAITING
-            s.running -> HomeSection.RUNNING
-            else -> HomeSection.RECENT
+    // K4：服务端偶尔会返回重复 sessionId；先按更新时间倒序再 distinctBy，保留最新的那条，
+    // 否则同一 key 会在 LazyColumn 里重复，抛「Key was already used」闪退。
+    sessions.sortedByDescending { sessionMillis(it.updatedAt) }
+        .distinctBy { it.sessionId }
+        .forEach { s ->
+            val section = when {
+                s.awaitingInput -> HomeSection.AWAITING
+                s.running -> HomeSection.RUNNING
+                else -> HomeSection.RECENT
+            }
+            buckets.getOrPut(section) { mutableListOf() }.add(s)
         }
-        buckets.getOrPut(section) { mutableListOf() }.add(s)
-    }
     return HomeSection.values().mapNotNull { key -> buckets[key]?.let { key to it.toList() } }
 }

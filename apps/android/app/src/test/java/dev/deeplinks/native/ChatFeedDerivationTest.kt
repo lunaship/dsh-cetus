@@ -116,4 +116,30 @@ class ChatFeedDerivationTest {
         )
         assertEquals(1, feed.visibleGroups.size)
     }
+
+    @Test
+    fun duplicateMessageIdsCollapseToUniqueKeys() {
+        val feed = deriveChatFeed(
+            emptyList(),
+            listOf(
+                msg("dup", "assistant", text = "first"),
+                msg("dup", "assistant", text = "second"),
+                msg("b", "assistant", text = "other"),
+            ),
+        )
+        val keys = feed.visibleGroups.map { it.groupKey }
+        assertEquals(keys.size, keys.toSet().size)
+        assertEquals(2, keys.size)
+    }
+
+    @Test
+    fun dedupeByIdKeepsBlankIdsSeparate() {
+        val list = listOf(
+            msg("", "assistant", text = "a"),
+            msg("", "assistant", text = "b"),
+            msg("x", "assistant", text = "c"),
+            msg("x", "assistant", text = "d"),
+        )
+        assertEquals(3, dedupeById(list).size)
+    }
 }

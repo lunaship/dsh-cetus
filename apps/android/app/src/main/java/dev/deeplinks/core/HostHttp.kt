@@ -150,6 +150,9 @@ object HostHttp {
 
     private val selector get() = RouteSelector.shared
 
+    /** S7：第一次选路只打一次点。 */
+    private val firstRouteLogged = java.util.concurrent.atomic.AtomicBoolean(false)
+
     /** 路由缓存、时钟偏移、「最近走哪条路」的键：同一台电脑（地址 + 指纹 + 设备）。 */
     internal fun routeKey(host: Host): String = lanKey(host) + "\u001f" + host.deviceId
 
@@ -175,7 +178,12 @@ object HostHttp {
         require(url.startsWith("https://")) { "拒绝明文 HTTP，仅支持 HTTPS" }
         val key = routeKey(host)
         val remote = remoteOverride ?: host.remoteRoute()
-        val routes = forceRoute?.let { listOf(it) } ?: selector.order(key, remote != null) { probeLan(host) }
+        val routes = forceRoute?.let { listOf(it) }
+            ?: selector.order(key, remote != null, { NetworkTransport.lanCapable }, { probeLan(host) })
+        // S7：第一次选路完成，记下走的是局域网还是远程。
+        if (firstRouteLogged.compareAndSet(false, true)) {
+            StartupTrace.mark("first_route", routes.first().name)
+        }
         return attemptWithFailover(key, routes, request.body != null) { route ->
             try {
                 val response = if (route == HostRoute.REMOTE) {
@@ -222,7 +230,13 @@ object HostHttp {
         }
         try {
             val response = executeRemoteCall(host, remote, request, url, key, onCall)
-            return response.newBuilder().body(ReleasingBody(response.body, release)).build()
+            // K4：只有真正过闸门的短请求才包 ReleasingBody；SSE 不包，
+            // 免得 ReleasingBody 构造时提前 original.source() 介入流式响应。
+            return if (gated) {
+                response.newBuilder().body(ReleasingBody(response.body, release)).build()
+            } else {
+                response
+            }
         } catch (e: Throwable) {
             release()
             throw e
@@ -303,6 +317,11 @@ object HostHttp {
         selector.onNetworkChanged()
         lanClients.values.forEach { it.connectionPool.evictAll() }
         remoteClients.values.forEach { it.connectionPool.evictAll() }
+    }
+
+    /** 只有 IP 变了（还是同一张默认网）：只作废选路缓存，不动连接池（S5）。 */
+    fun onRoutesChanged() {
+        selector.onNetworkChanged()
     }
 
     /** 回到前台：清掉空闲的远程连接，避免继续使用可能已被远端关掉的隧道（R5）。 */

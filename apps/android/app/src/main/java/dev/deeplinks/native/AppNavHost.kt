@@ -28,10 +28,10 @@ import dev.deeplinks.core.DeviceName
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
-import dev.deeplinks.core.PairClient
-import dev.deeplinks.core.PinnedSsl
 import dev.deeplinks.core.stableIdentity
 import dev.deeplinks.devices.DevicesScreen
+import dev.deeplinks.devices.PairQrOutcome
+import dev.deeplinks.devices.pairFromQrText
 import dev.deeplinks.native.util.EXTRA_SHARE_IMAGE
 import dev.deeplinks.native.util.EXTRA_SHARE_IMAGES
 import dev.deeplinks.native.util.EXTRA_SHARE_NOTICE
@@ -127,30 +127,37 @@ internal fun AppNavHost(
     // 站内转场时长：在可组合作用域捕获（enter/pop 各 lambda 非 @Composable，不能现调 motionDuration）
     val navMotionMs = motionDuration(DshDuration.slow)
 
-    val manualPair: (String, String, String, String?, (Host) -> Unit, (String) -> Unit) -> Unit =
-        { name, url, code, fingerprint, onSuccess, onError ->
+    /** 配对结果落库；锁定（旧记录不可读）时清锁重写。返回是否成功。 */
+    fun persistPairHost(host: Host, onError: (String) -> Unit): Boolean {
+        if (HostStore.upsert(context, host)) return true
+        if (HostStore.isLocked(context)) {
+            HostStore.clearLockAndReplace(context, host)
+            onHostNotice(L.credentialsResetToast)
+            return true
+        }
+        onError(L.credentialsSaveFailedToast)
+        return false
+    }
+
+    /**
+     * M1：二维码文本 → 与扫码完全相同的配对路径（[pairFromQrText]），成功后落库、进 Workspace。
+     * 从相册识别与扫码都汇到这里。
+     */
+    val pairQrText: (String, (Host) -> Unit, (String) -> Unit) -> Unit =
+        { text, onSuccess, onError ->
             scope.launch {
-                try {
-                    val r = withContext(Dispatchers.IO) {
-                        PairClient.pair(url, code, DeviceName.of(context), fingerprint)
+                val outcome = withContext(Dispatchers.IO) { pairFromQrText(text, DeviceName.of(context)) }
+                when (outcome) {
+                    is PairQrOutcome.Failed -> onError(outcome.message)
+                    is PairQrOutcome.Paired -> if (persistPairHost(outcome.host, onError)) {
+                        onSuccess(outcome.host)
+                        openWorkspace()
                     }
-                    val newHost = Host(name.ifBlank { r.name }, r.baseUrl, r.token, r.deviceId, r.certFingerprint)
-                        .let { h -> r.remote?.let(h::withRemote) ?: h }
-                    if (!HostStore.upsert(context, newHost)) {
-                        if (HostStore.isLocked(context)) {
-                            HostStore.clearLockAndReplace(context, newHost)
-                            onHostNotice(L.credentialsResetToast)
-                        } else {
-                            onError(L.credentialsSaveFailedToast)
-                            return@launch
-                        }
+                    is PairQrOutcome.Pending -> if (persistPairHost(outcome.host, onError)) {
+                        onSuccess(outcome.host)
+                        onHostNotice(L.pairPendingApprovalToast)
+                        openWorkspace()
                     }
-                    onSuccess(newHost)
-                    if (r.pending) onHostNotice(L.pairPendingApprovalToast)
-                    // 配对成功（含替换旧设备）后直接进 Workspace。
-                    openWorkspace()
-                } catch (e: Exception) {
-                    onError(PinnedSsl.unwrap(e).message ?: L.pairFailedCheckAddress)
                 }
             }
         }
@@ -203,7 +210,7 @@ internal fun AppNavHost(
                 },
                 onHostChanged = { reloadHost() },
                 onScanClick = onScan,
-                onManualPair = manualPair,
+                onPairQrText = pairQrText,
             )
         }
 
@@ -285,7 +292,7 @@ internal fun AppNavHost(
                         onOpenHost = { _, onDone -> onDone(true) },
                         onHostChanged = { reloadHost() },
                         onScanClick = onScan,
-                        onManualPair = manualPair,
+                        onPairQrText = pairQrText,
                         sheet = true,
                         onDismissSheet = { deviceSheetOpen = false },
                     )

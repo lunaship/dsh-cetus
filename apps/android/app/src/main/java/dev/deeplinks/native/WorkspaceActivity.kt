@@ -3,6 +3,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.core.CrashRecorder
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.core.deriveDshLayout
@@ -142,6 +143,7 @@ fun WorkspaceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    StartupFirstFrameMark()
     val launchIntoChat = !initialSessionId.isNullOrBlank() ||
         !initialShareText.isNullOrBlank() ||
         initialShareImages.isNotEmpty() ||
@@ -278,6 +280,20 @@ fun WorkspaceScreen(
         inputText = draft.text
         pendingImages = draft.images
     }
+    // S6：布局与目标推导（chatVisible 决定首页阶段是否预加载）。
+    val chrome = rememberWorkspaceChrome(
+        phoneDest = phoneDest,
+        currentSessionId = currentSessionId,
+        composeNewSession = composeNewSession,
+        chatDest = PhoneDest.Chat.name,
+        sessionsDest = PhoneDest.Sessions.name,
+        onCollapseToChat = { phoneDest = PhoneDest.Chat.name },
+    )
+    val dshLayout = chrome.layout
+    val containerWidthDp = chrome.containerWidthDp
+    val displayDest = chrome.displayDest
+    val showSessionHome = chrome.showSessionHome
+    val chatVisible = chrome.chatVisible
     PersistComposerDrafts(
         prefs = workspacePrefs,
         slotKey = host.slotKey,
@@ -336,7 +352,11 @@ fun WorkspaceScreen(
     var showDraftWorkspacePicker by remember { mutableStateOf(false) }
     var showArchivedSheet by remember { mutableStateOf(false) }
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
-    DraftComposerAutoFocus(composeNewSession && currentSessionId == null, composerFocusRequester, composerKeyboardController)
+    // K3 聚焦令牌：需要聚焦时只自增；真正的 requestFocus 在 InputBar 内部、下一帧执行。
+    var composerFocusToken by remember { mutableStateOf(0) }
+    // S2 冷启动去重：记录 bootstrap+getWorkspaces 成功的时间与进行中标志，回前台 10 秒内不重复下载。
+    val coldStartSync = remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val coldStartSyncing = remember { mutableStateOf(false) }
 
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
@@ -361,8 +381,7 @@ fun WorkspaceScreen(
         workspaceCatalogItems.map { WorkspaceAccount(it.path, it.sessionIds) }
     }
     /** 是否已成功拉取过工作区注册表；未就绪前侧栏可临时回退到会话 cwd。 */
-    var workspaceRegistryReady by remember { mutableStateOf(false) }
-    // 本地已删除工作区（本机乐观隐藏；服务端重新注册后会自动解除）
+    var workspaceRegistryReady by remember { mutableStateOf(false) }    // 本地已删除工作区（本机乐观隐藏；服务端重新注册后会自动解除）
     var deletedWorkspaces by localStore.deletedWorkspacePaths
     fun persistDeletedWorkspaces(next: Set<String>) = localStore.setDeletedWorkspaces(next)
     fun setDeletedWorkspace(path: String) {
@@ -526,7 +545,8 @@ fun WorkspaceScreen(
     fun refreshAppSettings() = workspaceViewModel.refreshAppSettings()
 
     // ===== SSE 实时流（当前会话；VM 持有，Activity 重建不断流） =====
-    val streamClient = currentSessionId?.let { workspaceViewModel.acquireStream(it) }
+    // S6：停在首页（对话页不可见）时不为当前会话建立推送流；进入对话页再建。
+    val streamClient = currentSessionId?.takeIf { chatVisible }?.let { workspaceViewModel.acquireStream(it) }
     var streamEverConnected by remember(currentSessionId) { mutableStateOf(false) }
     var streamQuietElapsed by remember(currentSessionId) { mutableStateOf(false) }
     // 最近一次 SSE 活动（任意事件帧）；看门狗用它识别「连接看似健康但事件停流」的半开状态。
@@ -537,7 +557,9 @@ fun WorkspaceScreen(
         streamQuietElapsed = true
     }
     LaunchedEffect(streamClient?.connectionState) {
-        if (streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED) {
+        val streamState = streamClient?.connectionState
+        CrashRecorder.breadcrumb("stream", streamState?.name ?: "none")
+        if (streamState == SessionStreamClient.ConnectionState.CONNECTED) {
             streamEverConnected = true
         }
     }
@@ -573,6 +595,7 @@ fun WorkspaceScreen(
     }
 
     fun selectSession(sessionId: String) {
+        CrashRecorder.breadcrumb("session", "select ${sessionId.take(8)}")
         switchComposer(sessionId, composingNew = false)
     }
 
@@ -596,10 +619,13 @@ fun WorkspaceScreen(
         if (!initialSessionId.isNullOrBlank() && currentSessionId != initialSessionId) return@LaunchedEffect
         when (initialIntentAction) {
             dev.deeplinks.core.DshNotifier.INTENT_ACTION_CHANGES -> changesPanel.open()
-            dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> { composerFocusRequester.requestFocus(); composerKeyboardController?.show() }
+            dev.deeplinks.core.DshNotifier.INTENT_ACTION_REPLY -> {
+                if (composerFocusShouldEmit(ComposerFocusSource.NotificationReply)) composerFocusToken++
+            }
         }
     }
     fun startComposeSession(cwd: String? = null) {
+        CrashRecorder.breadcrumb("draft", "enter")
         switchComposer(null, composingNew = true)
         pendingSessionCwd = cwd
         pendingAgentPreset = appSettings.agentPreset
@@ -626,6 +652,8 @@ fun WorkspaceScreen(
         workspaceViewModel.resetModelCatalog()
         workspaceViewModel.loadModelCatalog(null, null)
         showPhoneChat()
+        // N1/K3：进入草稿态且对话页可见时才请求聚焦（经 InputBar 内部的令牌处理）。
+        if (composerFocusShouldEmit(ComposerFocusSource.NewTaskDraft)) composerFocusToken++
     }
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
@@ -694,6 +722,8 @@ fun WorkspaceScreen(
     fun onAuthExpired(error: Throwable? = null) {
         if (authExpired) return
         authExpired = true
+        // S1：凭据失效即清掉本主机的列表缓存，避免下次冷启动铺出已经不能用的数据。
+        workspaceViewModel.clearSessionListCache()
         val message = error?.let(::mobileAuthUserMessage) ?: L.connectionAuthExpired
         // 设备 token / 证书失效（插件在内层 TLS 上的明确答复）时丢掉本机配对；中继的拒绝码不算
         if (error != null && shouldDropLocalHostOnOpenAuth(error)) {
@@ -817,6 +847,8 @@ fun WorkspaceScreen(
             localStore.setArchivedSessionIds(archivedIds + session.sessionId)
         }
         if (currentSessionId == session.sessionId) {
+            // K3：归档/删除当前会话会进入草稿态，但可能在首页（对话页不可见）——
+            // 这里**不**发聚焦令牌，避免历史上直接 requestFocus 的闪退。
             startComposeSession(pendingSessionCwd)
         }
         refreshSessions()
@@ -1062,9 +1094,17 @@ fun WorkspaceScreen(
                     // 设置页可能改动了归档/删除集合，回前台重新水合（唯一所有者）
                     localStore.reload()
                     applySessionList(sessions)
-                    refreshSessions()
-                    refreshWorkspaces()
-                    refreshAppSettings() // 设置可能在其他端修改，回前台重新读取
+                    // S2：冷启动刚同步过（或同步还在跑）就跳过重复下载会话/工作区/设置
+                    if (!dev.deeplinks.native.util.shouldSkipResumeRefresh(
+                            System.currentTimeMillis(),
+                            coldStartSync.longValue,
+                            coldStartSyncing.value,
+                        )
+                    ) {
+                        refreshSessions()
+                        refreshWorkspaces()
+                        refreshAppSettings() // 设置可能在其他端修改，回前台重新读取
+                    }
                 }
                 else -> {}
             }
@@ -1500,66 +1540,42 @@ fun WorkspaceScreen(
         }
     }
 
+    // S1：冷启动先铺本地缓存；变化后写回（VM 内 2 秒防抖）。
+    SessionListCacheEffects(
+        host = host,
+        viewModel = workspaceViewModel,
+        sessions = sessions,
+        workspaceCatalogItems = workspaceCatalogItems,
+        archivedIds = archivedIds,
+        applyWorkspaceCatalog = ::applyWorkspaceCatalog,
+        setArchivedIds = { localStore.setArchivedSessionIds(it) },
+    )
+
     LaunchedEffect(host) {
-        // 冷启动：bootstrap 一次拉主机信息 + 会话，再补工作区归档同步
-        // 必须在 effect 协程内执行，host 切换时自动取消，避免旧主机结果写回
-        var bootstrapOk = false
-        try {
-            val (boot, refreshed) = workspaceViewModel.repo.bootstrap()
-            bootstrapOk = true
-            workspaceViewModel.filesTreeSupported.value = boot.filesTree
-            if (refreshed != host) {
-                // 远程能力补齐 / 清除（bootstrap 的 remote，RFC §6.4）
-                runCatching { HostStore.upsert(context, refreshed) }
-            }
-            // Bootstrap carries the same durable archive set as Web. Apply it
-            // before selecting a session, so an archived Web session cannot
-            // flash back into the App during cold start.
-            val nextArchivedIds = if (boot.archiveSnapshotAvailable) {
-                val restored = workspacePrefs.restoredSessionIds
-                val nextRestored = restored intersect boot.archivedSessionIds
-                if (nextRestored != restored) {
-                    workspacePrefs.restoredSessionIds = nextRestored
-                }
-                val synced = reconcileArchivedSessionIds(boot.archivedSessionIds, nextRestored)
-                if (synced != archivedIds) {
-                    localStore.setArchivedSessionIds(synced)
-                }
-                synced
-            } else {
-                archivedIds
-            }
-            sessions = boot.sessions
-            sessionsLoadError = null
-            sessionsInitialLoad = false
-            if (currentSessionId == null && !composeNewSession && boot.sessions.isNotEmpty()) {
-                currentSessionId = reconciledSessionId(
-                    currentSessionId = null,
-                    preferredSessionId = restoreSessionId,
-                    sessions = boot.sessions,
-                    hiddenSessionIds = nextArchivedIds + deletedIds,
-                    preserveEmptySelection = false,
-                    selectLatest = true,
-                )
-                if (boot.sessions.any { it.sessionId == currentSessionId && it.running }) {
-                    liveRunning = true
-                }
-            }
-        } catch (e: Exception) {
-            if (isMobileAuthFailure(e)) {
-                onAuthExpired(e)
-                return@LaunchedEffect
-            }
-            // bootstrap 失败时回退 refreshSessions
+        // 冷启动：bootstrap（会话/归档）+ 工作区目录；S2 全程立标志供 ON_RESUME 去重。
+        coldStartSyncing.value = true
+        val outcome = workspaceViewModel.runColdStartBootstrap(
+            host = host,
+            context = context,
+            restoreSessionId = restoreSessionId,
+            composeNewSession = composeNewSession,
+            onAuthExpired = { onAuthExpired(it) },
+        )
+        if (outcome == ColdStartOutcome.AuthExpired) {
+            coldStartSyncing.value = false
+            return@LaunchedEffect
         }
         try {
             val catalog = withContext(Dispatchers.IO) { client.getWorkspaces() }
             applyWorkspaceCatalog(catalog)
             workspacesLoadError = null
             workspacesInitialLoad = false
+            // bootstrap + 工作区目录都拿到了：回前台 10 秒内不再重复刷新。
+            coldStartSync.longValue = System.currentTimeMillis()
         } catch (e: Exception) {
             if (isMobileAuthFailure(e)) {
                 onAuthExpired(e)
+                coldStartSyncing.value = false
                 return@LaunchedEffect
             }
             workspacesInitialLoad = false
@@ -1567,15 +1583,21 @@ fun WorkspaceScreen(
                 workspacesLoadError = e.message?.takeIf { it.isNotBlank() } ?: L.loadWorkspaceListFailed
             }
         }
-        if (!bootstrapOk) refreshSessions(selectLatest = true)
+        if (outcome == ColdStartOutcome.BootstrapFailed) refreshSessions(selectLatest = true)
         refreshAppSettings()
+        coldStartSyncing.value = false
     }
 
-    LaunchedEffect(currentSessionId) {
+    LaunchedEffect(currentSessionId, chatVisible) {
         // WI-R2：代际去重与 history 任务归 VM；旧流由 acquireStream 切换时停止，
         // 这里不再对新流做 stop（避免把新会话的连接打断再重连）
         workspaceViewModel.bumpHistoryGeneration()
         currentSessionId?.let { DshNotifier.cancelForSession(context, host, it) }
+        // S6：停在首页（对话页不可见）时不加载历史 / 模型、不建推送流；进入对话页再开始。
+        if (!chatVisible) {
+            workspaceViewModel.releaseStream()
+            return@LaunchedEffect
+        }
         if (currentSessionId == null) {
             // 切到「无会话」：显式释放 VM 持有的旧流，避免为过期会话维持连接
             workspaceViewModel.releaseStream()
@@ -1811,29 +1833,7 @@ fun WorkspaceScreen(
     }
 
     // ===== 整体框架：宽屏常驻侧栏；手机/Medium 是会话列表 → 聊天的返回栈 =====
-    // 用实际窗口容器宽度（LocalWindowInfo）而不是设备屏幕宽度：
-    // 分屏、自由窗口和折叠屏下 screenWidthDp 会失真。
-    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
-    val windowDensity = androidx.compose.ui.platform.LocalDensity.current
-    val containerWidthDp = with(windowDensity) { windowInfo.containerSize.width.toDp() }
-    val containerHeightDp = with(windowDensity) { windowInfo.containerSize.height.toDp() }
-    val dshLayout = remember(containerWidthDp, containerHeightDp) {
-        deriveDshLayout(containerWidthDp.value.toInt(), containerHeightDp.value.toInt())
-    }
-    var prevPersistent by remember { mutableStateOf(dshLayout.persistentSidebar) }
-    val collapsingToPhone = prevPersistent && !dshLayout.persistentSidebar
-    val displayDest = when {
-        dshLayout.persistentSidebar -> PhoneDest.Chat.name
-        collapsingToPhone && (currentSessionId != null || composeNewSession) -> PhoneDest.Chat.name
-        else -> phoneDest
-    }
-    SideEffect {
-        if (collapsingToPhone && (currentSessionId != null || composeNewSession)) {
-            phoneDest = PhoneDest.Chat.name
-        }
-        prevPersistent = dshLayout.persistentSidebar
-    }
-    val showSessionHome = !dshLayout.persistentSidebar && displayDest == PhoneDest.Sessions.name
+    // （布局 / displayDest / showSessionHome 已在文件前部推导，S6 起 chatVisible 供预加载判断。）
     val changesProgress by changesPanel.progress.asState()
     val navMotionMs = motionDuration(DshDuration.slow)
     var sidebarCollapsed by remember { mutableStateOf(false) }
@@ -2544,10 +2544,9 @@ fun WorkspaceScreen(
                                 dispatchLocalPaletteAction(picked.kind)
                             }
                             is PaletteCommand.Insertable -> {
-                                // 把 trigger + 空格 放进 composer，并请求焦点 + 弹起 IME
+                                // 把 trigger + 空格 放进 composer，并请求焦点 + 弹起 IME（K3：走聚焦令牌）
                                 inputText = picked.trigger + " "
-                                composerKeyboardController?.show()
-                                composerFocusRequester.requestFocus()
+                                if (composerFocusShouldEmit(ComposerFocusSource.CommandInsert)) composerFocusToken++
                             }
                             is PaletteCommand.Completable -> {
                                 val sid = currentSessionId
@@ -2695,6 +2694,7 @@ fun WorkspaceScreen(
                 },
                 actionError = composerActionError,
                 composerFocusRequester = composerFocusRequester,
+                focusToken = composerFocusToken,
                 onSend = {
                     // 不可逆权限升级：无论从哪个入口触发，都不直发，先走二次确认。
                     if (isDangerPermissionCommand(inputText)) {

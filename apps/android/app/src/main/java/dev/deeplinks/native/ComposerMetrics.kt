@@ -114,6 +114,31 @@ internal fun composerPermissionLabel(preset: String): String = when (preset) {
     else -> L.permWorkspaceWrite
 }
 
+/** K3 聚焦触发来源。 */
+internal enum class ComposerFocusSource {
+    /** 点「+ 新任务」进草稿态。 */
+    NewTaskDraft,
+
+    /** 通知「回复」动作。 */
+    NotificationReply,
+
+    /** 命令面板插入指令。 */
+    CommandInsert,
+
+    /** 首页左滑归档 / 长按删除当前会话触发的草稿态——对话页不可见。 */
+    ArchiveOnHome,
+}
+
+/**
+ * K3：这个来源是否应该发出聚焦令牌。
+ *
+ * 只有「对话页确实在显示」的来源才发；首页归档当前会话会进入草稿态但对话页/输入框根本没组合，
+ * 历史上在这里直接 `requestFocus()` 会抛 `FocusRequester is not initialized` 闪退——这里显式排除。
+ * 真正的 `requestFocus()` 只在 [InputBar] 内部执行，未组合时令牌也不会生效。
+ */
+internal fun composerFocusShouldEmit(source: ComposerFocusSource): Boolean =
+    source != ComposerFocusSource.ArchiveOnHome
+
 /**
  * 输入条占位文案：听写中 / 执行中 / 空闲。
  * 执行中要写清楚这条消息的去向（方案 5.5：补充说明，这一步结束后发给它），

@@ -156,3 +156,26 @@ fun reconcileDeletedWorkspaces(
         .filter { it.isNotBlank() && it !in next }
         .toSet()
 }
+
+/**
+ * S2 冷启动去重：回前台时是否跳过 `refreshSessions` / `refreshWorkspaces` / `refreshAppSettings`。
+ *
+ * 冷启动的 `bootstrap` + `getWorkspaces` 刚成功（[coldStartSyncAt] 为那次时间戳），或同步还在进行中
+ * （[syncInFlight]）时，第一次 `ON_RESUME` 不再把同一份数据下载第二遍。
+ */
+fun shouldSkipResumeRefresh(
+    now: Long,
+    coldStartSyncAt: Long,
+    syncInFlight: Boolean,
+    windowMs: Long = COLD_START_REFRESH_WINDOW_MS,
+): Boolean = syncInFlight || (coldStartSyncAt > 0L && now - coldStartSyncAt < windowMs)
+
+/** 冷启动同步完成后，多久内回前台不再重复刷新。 */
+const val COLD_START_REFRESH_WINDOW_MS = 10_000L
+
+/**
+ * S6：对话页当前是否可见。常驻侧栏（平板 / 宽屏）布局下对话页始终在场；
+ * 手机布局下只有 `displayDest == chatDest` 时才算可见。首页阶段据此决定是否预加载。
+ */
+fun isChatVisible(persistentSidebar: Boolean, displayDest: String, chatDest: String): Boolean =
+    persistentSidebar || displayDest == chatDest

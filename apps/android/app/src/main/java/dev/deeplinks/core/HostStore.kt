@@ -203,6 +203,7 @@ object HostStore {
         val ok = save(ctx, null)
         if (ok) {
             runCatching { dev.deeplinks.native.SessionHistoryCache.clearHost(ctx.cacheDir, current.slotKey) }
+            runCatching { dev.deeplinks.native.util.SessionListCache.clearHost(ctx.cacheDir, current.slotKey) }
             runCatching { dev.deeplinks.native.util.WorkspacePrefs(ctx).saveComposerDrafts(current.slotKey, emptyMap()) }
         }
         return ok

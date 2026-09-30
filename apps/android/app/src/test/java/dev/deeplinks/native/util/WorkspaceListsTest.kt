@@ -224,3 +224,46 @@ class WorkspaceListsTest {
         assertEquals(emptyList<dev.deeplinks.native.MobileSession>(), out)
     }
 }
+
+/** S2：冷启动去重的判定。 */
+class ColdStartRefreshTest {
+
+    @Test
+    fun `同步进行中时跳过`() {
+        assertTrue(shouldSkipResumeRefresh(now = 1_000, coldStartSyncAt = 0, syncInFlight = true))
+    }
+
+    @Test
+    fun `刚同步完成 10 秒内跳过`() {
+        assertTrue(shouldSkipResumeRefresh(now = 5_000, coldStartSyncAt = 4_000, syncInFlight = false))
+    }
+
+    @Test
+    fun `超过 10 秒不再跳过`() {
+        assertFalse(shouldSkipResumeRefresh(now = 20_000, coldStartSyncAt = 4_000, syncInFlight = false))
+    }
+
+    @Test
+    fun `从未冷启动同步过就不跳过`() {
+        assertFalse(shouldSkipResumeRefresh(now = 1_000, coldStartSyncAt = 0, syncInFlight = false))
+    }
+}
+
+/** S6：对话页可见性判定。 */
+class ChatVisibleTest {
+
+    @Test
+    fun `常驻侧栏始终可见`() {
+        assertTrue(isChatVisible(persistentSidebar = true, displayDest = "Sessions", chatDest = "Chat"))
+    }
+
+    @Test
+    fun `手机布局停在首页不可见`() {
+        assertFalse(isChatVisible(persistentSidebar = false, displayDest = "Sessions", chatDest = "Chat"))
+    }
+
+    @Test
+    fun `手机布局进对话页可见`() {
+        assertTrue(isChatVisible(persistentSidebar = false, displayDest = "Chat", chatDest = "Chat"))
+    }
+}

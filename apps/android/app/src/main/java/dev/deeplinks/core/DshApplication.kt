@@ -15,6 +15,10 @@ import okhttp3.OkHttpClient
 class DshApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
+        // K0：最先装崩溃记录，越早越好（后面的初始化万一崩了也要留证据）。
+        CrashRecorder.install(this)
+        // S7：启动打点从进程最早期开始。
+        StartupTrace.markStart()
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         LocaleManager.init(this)
         ThemeManager.init(this)
@@ -23,24 +27,51 @@ class DshApplication : Application(), SingletonImageLoader.Factory {
     }
 
     /**
-     * 网络变化（连上 / 断开 Wi-Fi、换蜂窝、地址变了）让自动选路重新探测局域网（RFC §7.2 第 1 条）。
-     * 首次注册会立刻回调一次 onAvailable，顺带作废进程启动前的一切旧结论，无副作用。
+     * 网络变化让自动选路重新探测局域网（RFC §7.2 第 1 条）。
+     *
+     * S5：只有默认网络**真正切换**（handle 变了 / onLost）才清空连接池；同一张网只是 IP 变了
+     * 只作废选路缓存。注册回调时系统立刻回调一次 onAvailable，此时只登记 handle，不清池。
+     * S4：顺带刷新「当前默认网络能不能走局域网」，供选路跳过蜂窝下的局域网探测。
      */
     private fun watchNetwork() {
         val cm = getSystemService(ConnectivityManager::class.java) ?: return
+        NetworkTransport.refresh(cm)
         runCatching {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) = onNetworkChanged()
-                override fun onLost(network: Network) = onNetworkChanged()
-                override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) =
-                    onNetworkChanged()
+                override fun onAvailable(network: Network) {
+                    val action = networkChangeAction(defaultHandle, network.networkHandle, defaultAddrs, defaultAddrs)
+                    defaultHandle = network.networkHandle
+                    defaultAddrs = emptySet()
+                    applyNetworkAction(action, cm)
+                }
+
+                override fun onLost(network: Network) {
+                    val action = networkChangeAction(defaultHandle, null, defaultAddrs, emptySet())
+                    defaultHandle = null
+                    defaultAddrs = emptySet()
+                    applyNetworkAction(action, cm)
+                }
+
+                override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+                    val addrs = linkProperties.linkAddresses.mapNotNull { it.address?.hostAddress }.toSet()
+                    val action = networkChangeAction(defaultHandle, network.networkHandle, defaultAddrs, addrs)
+                    defaultAddrs = addrs
+                    applyNetworkAction(action, cm)
+                }
             })
         }
     }
 
-    /** 网络变化：作废选路缓存，并请首页探测循环立刻复核（R4；requestProbe 自带 2 秒去抖）。 */
-    private fun onNetworkChanged() {
-        HostHttp.onNetworkChanged()
+    private var defaultHandle: Long? = null
+    private var defaultAddrs: Set<String> = emptySet()
+
+    private fun applyNetworkAction(action: NetworkChangeAction, cm: ConnectivityManager) {
+        when (action) {
+            NetworkChangeAction.ResetPool -> HostHttp.onNetworkChanged()
+            NetworkChangeAction.InvalidateRoutes -> HostHttp.onRoutesChanged()
+            NetworkChangeAction.None -> Unit
+        }
+        NetworkTransport.refresh(cm)
         ConnectivitySignals.requestProbe()
     }
 

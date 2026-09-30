@@ -23,15 +23,27 @@ internal fun deriveChatFeed(
     messages: List<MobileMessage>,
 ): ChatFeedModel {
     val allMessages = mergeHistoryPages(olderMessages, messages)
-    val displayMessages = allMessages.filterNot {
-        (it.role == "reasoning" && it.text.isBlank() && it.running != true) ||
-            isHiddenContextInjection(it)
-    }
+    val displayMessages = dedupeById(
+        allMessages.filterNot {
+            (it.role == "reasoning" && it.text.isBlank() && it.running != true) ||
+                isHiddenContextInjection(it)
+        },
+    )
     val lastCompletedAssistantId = displayMessages.lastOrNull {
         it.role == "assistant" && it.running != true
     }?.id
     val messageGroups = groupMessages(displayMessages)
     return ChatFeedModel(lastCompletedAssistantId, messageGroups)
+}
+
+/**
+ * K4：过滤上下文注入后仍可能因服务端返回重复 messageId 而出现重复 key
+ * （`LazyColumn` 抛「Key was already used」）。这里按 id 去重、保留第一条；
+ * id 为空的（极少见）原样保留，避免把不同消息折叠成一条。
+ */
+internal fun dedupeById(messages: List<MobileMessage>): List<MobileMessage> {
+    val seen = HashSet<String>()
+    return messages.filter { it.id.isBlank() || seen.add(it.id) }
 }
 
 /**
