@@ -91,12 +91,10 @@ fun DshFilterChip(
     onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    // 选中是浅灰底上的深字。品牌蓝不进筛选。
+    // 选中是浅灰底上的深字。品牌蓝不进筛选。按压反馈只留水波纹（P1：去掉手动叠底）
     val bg = when {
         !enabled -> Color.Transparent
         selected -> Dsh.bgSubtle
-        pressed -> Dsh.pressed
         else -> Color.Transparent
     }
     val textColor = when {
@@ -393,11 +391,9 @@ fun DshBanner(
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.width(DshSpace.s8))
             val interaction = remember { MutableInteractionSource() }
-            val pressed by interaction.collectIsPressedAsState()
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(DshRadius.control))
-                    .background(if (pressed) Dsh.pressed else Color.Transparent)
                     .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onAction)
                     .heightIn(min = 48.dp)
                     .widthIn(min = 48.dp)
@@ -492,12 +488,10 @@ fun DshHeaderAction(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(DshRadius.control))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
             .semantics {
                 role = Role.Button
                 contentDescription = label
@@ -534,7 +528,6 @@ fun DshIconAction(
     containerColor: Color? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Box(
         modifier = modifier
             .size(size)
@@ -552,9 +545,8 @@ fun DshIconAction(
                 .background(
                     when {
                         containerColor != null -> containerColor
-                        // 激活态靠底色表达，强调色只给批准 / 发送（V3）
+                        // 激活态靠底色表达，强调色只给批准 / 发送（V3）；按压只留水波纹（P1）
                         active -> Dsh.bgNavSelected
-                        pressed -> Dsh.bgPressed
                         else -> Color.Transparent
                     },
                 ),

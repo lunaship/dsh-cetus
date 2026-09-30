@@ -381,7 +381,6 @@ internal class ChatFeedActions(
 internal fun LazyListScope.chatMessageItems(
     visibleGroups: List<MessageGroup>,
     sweepingId: String?,
-    toolQuery: String,
     actions: ChatFeedActions,
     goalSummary: String? = null,
     todoProgress: TodoProgress = TodoProgress(),
@@ -446,20 +445,6 @@ internal fun LazyListScope.chatMessageItems(
                     sweepingId = sweepingId,
                 )
             }
-        }
-    }
-    // 工具查找无命中（查询非空时提示，区别于"会话无消息"的 hero 态）
-    if (toolQuery.isNotBlank() && visibleGroups.isEmpty()) {
-        item(key = "tool-search-empty") {
-            Text(
-                L.noMatchingToolCalls,
-                color = Dsh.labelTertiary,
-                style = DshType.body,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = DshSpace.s24),
-            )
         }
     }
 }

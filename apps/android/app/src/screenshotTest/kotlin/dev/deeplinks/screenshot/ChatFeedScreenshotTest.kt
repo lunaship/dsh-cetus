@@ -371,7 +371,6 @@ private fun ChatPage(dark: Boolean, english: Boolean) {
                 chatMessageItems(
                     visibleGroups = groupMessages(completedTurn),
                     sweepingId = null,
-                    toolQuery = "",
                     actions = actions,
                 )
             }

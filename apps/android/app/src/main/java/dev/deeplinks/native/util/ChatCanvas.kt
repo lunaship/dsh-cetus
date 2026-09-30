@@ -85,12 +85,11 @@ fun hostDisplayLabel(alias: String?, hostName: String?, address: String?): Strin
  * 电脑卡右侧的连接状态文案（方案 7.2「在线状态与延迟」）。
  *
  * [online] 为 null 表示还没探过（刚进设置页），此时不写状态——写「离线」是假消息。
- * 延迟拿不到时只写「在线 · 云端」，不编一个数字。
+ * 延迟仍在内部计算（在线判定用），但**不再显示毫秒数**（H2，2026-09-30 决定）。
  */
 fun hostStatusText(
     online: Boolean?,
     viaRemote: Boolean,
-    latencyMs: Long?,
     onlineText: String,
     offlineText: String,
     viaRemoteText: String,
@@ -99,6 +98,5 @@ fun hostStatusText(
     if (!online) return offlineText
     val parts = mutableListOf(onlineText)
     if (viaRemote) parts += viaRemoteText
-    if (latencyMs != null && latencyMs > 0) parts += "${latencyMs}ms"
     return "● " + parts.joinToString(" · ")
 }

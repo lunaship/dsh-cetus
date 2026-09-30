@@ -167,11 +167,9 @@ internal fun WorkspaceSidebar(
                 sessionsInWorkspace(visibleCandidates, activeWorkspace, workspaceAccounts, deletedWorkspaces)
             }
         }
-        // 概况行：等你处理 / 在跑。筛选到某个工作区时结果为空也保留（W2），否则回不到全部工作区。
+        // 工作区筛选行（H1）：概况文字已删，只剩靠左的工作区胶囊。筛选到某个工作区时结果为空也保留（W2）。
         if (online && (scoped.isNotEmpty() || activeWorkspace != null)) {
-            HomeSummaryRow(
-                awaitingCount = scoped.count { it.awaitingInput },
-                runningCount = scoped.count { it.running && !it.awaitingInput },
+            HomeWorkspaceFilterRow(
                 workspaces = knownWorkspaces,
                 selected = activeWorkspace,
                 onSelect = onSelectWorkspace,

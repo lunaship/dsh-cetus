@@ -123,12 +123,11 @@ private fun CropAction(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(DshRadius.container))
-            .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
+            .background(Dsh.bgSubtle)
             .semantics {
                 role = Role.Button
                 contentDescription = label

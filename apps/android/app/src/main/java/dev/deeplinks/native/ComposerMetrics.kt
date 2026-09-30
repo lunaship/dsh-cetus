@@ -48,6 +48,24 @@ internal fun composerModelSeat(
 }
 
 /**
+ * 草稿态模型座兜底（N2）：目录还没回来（座位为空名）时显示全局默认模型，
+ * 避免座位短暂显示「选择模型」或上个会话的模型。纯函数，可单测。
+ */
+internal fun composerModelSeatOrDefault(
+    catalog: MobileModelCatalog?,
+    pending: Triple<String, String, String?>?,
+    defaultModel: String?,
+    defaultEffort: String?,
+): ComposerModelSeat {
+    val seat = composerModelSeat(catalog, pending)
+    if (!seat.name.isNullOrBlank()) return seat
+    return ComposerModelSeat(
+        name = defaultModel,
+        effort = defaultEffort?.takeUnless { it.isBlank() || it == "null" },
+    )
+}
+
+/**
  * 手机端只认 DSH 三个权限预设；表外值（含旧值、自定义）按默认的
  * `workspace-write` 显示，避免座位显示成空白或服务端拒绝的名字。
  */
@@ -81,6 +99,13 @@ fun composerPermissionPreset(
 
 /** 无会话时 slash 完整命令不得清空输入；有会话才提交并清空。 */
 fun completableCanSubmit(hasSession: Boolean): Boolean = hasSession
+
+/**
+ * 草稿态模式行显示的预设 id（N3）：用户选过（pending 非空）就用它，否则回落全局默认。
+ * 纯函数，选择器写入 pendingAgentPreset 后这里立刻反映新值。
+ */
+internal fun draftPresetId(pending: String?, defaultPreset: String): String =
+    pending?.takeIf { it.isNotBlank() } ?: defaultPreset
 
 /** 访问模式预设 → 显示名（输入卡与新任务面板的座位共用）。 */
 internal fun composerPermissionLabel(preset: String): String = when (preset) {

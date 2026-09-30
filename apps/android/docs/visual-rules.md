@@ -108,7 +108,7 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 | 稿子 | 用途 | 角色 |
 |---|---|---|
 | 28 / 粗 | 设置页大标题 | `display`（28，设置页专用例外；页面标题默认仍是 `headlineMedium`） |
-| 20–22 / 粗 | 首页概况「1 件等你处理」、空状态标题 | `headlineMedium`（20/26）；后半句同尺寸、Medium、`labelSecondary` |
+| 20–22 / 粗 | 空状态标题 | `headlineMedium`（20/26）；后半句同尺寸、Medium、`labelSecondary` |
 | 16–17 / 粗 | 电脑名、审批卡标题 | `titleLarge`（17/24，配 SemiBold） |
 | 15 / Medium | 列表行标题、按钮 | `title`（15/22 Medium） |
 | 15 / 常规 | 输入文字、列表副标题 | `body`（15/22） |
@@ -129,7 +129,7 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 | 状态 | `DshStatusBadge`、`DshStatusChip`、`DshStatusIcon`、`DshBanner` | 等待、运行、成功、错误语义固定；`DshStatusChip` 是收件箱的四种状态胶囊（等你批准 / 等你回答 / 在电脑上处理 / 完成），`DshStatusIcon` 是 32dp 列表行首状态圈 |
 | 操作 | `DshPrimaryAction`、`DshPillButton`、`DshFloatingPill`、`DshIconAction` | 一个表面最多一个实心主操作；`DshPillButton` 分 Accent（品牌蓝实心）/ Ink（墨色实心）/ Tonal 三种，视觉 44dp、热区 48dp；`DshFloatingPill` 是页面底部唯一的悬浮主按钮（唯一带阴影的普通按钮） |
 | 空态 | `DshEmptyState`、`DshErrorState` | 未配对与空数据用 `DshEmptyState`（标题、说明、文字动作），不挂品牌标志；空会话只留白 |
-| 浮层 | `DshSheet`、`DshDialog`、`DshMenu` | 统一 modal 形状、scrim、阴影和关闭按钮 |
+| 浮层 | `DshSheet`、`DshDialog`、`DshMenu` | 统一 modal 形状、scrim、阴影和关闭按钮；浮层阴影 4dp（对话框 16dp 保留） |
 | 输入 | `ComposerBar` | 保留专用能力，内部按钮和菜单使用共享原语 |
 
 **密度**：空白留在组与组之间，不在每个元素周围均匀撒。
@@ -137,7 +137,9 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 - 列表的分区标题与行标题对齐同一条左边线；会话行不加行尾 `›`。
 - 任务首页：「任务」页面标题 + 当前电脑一行小字；标题、筛选文字、分区标题、会话标题都落在 `DrawerTextStart`，
   选中底色向外多伸出一截。会话时间放在标题行尾，副标题只写项目和状态。
-- 新会话：从首页浮起「新任务」底部面板（继续上次的任务 / 工作区胶囊 / 输入卡 / 模型与模式座），对话页不再有草稿起始区；系统分享进来的文本与图片直接落在这个面板里。
+- 新会话（2026-09-30 N1）：点「+ 新任务」直接进对话页**草稿态**，复用对话页输入栏；草稿画布贴底三块
+  （继续上次的任务 / 工作区胶囊 / 模式），不放标语和品牌标志；系统分享进来的文本与图片直接落在草稿态输入框。
+  旧的「新任务」底部面板已删除。
 - 列表行最小高 **52dp**（2026-09-28 重设计把原先的 48 提到 52，设置行与列表行同一规格；方案 2.3）。
   触控下限仍是 48，52 是行本身的视觉高度。
 - `DshListRow` 的图标槽默认 22dp（设置 / 设备行）；收件箱行传 `iconSlot = 32.dp`，
@@ -258,7 +260,8 @@ DSH 没有把间距做成 token；刻度取自 DSH Web 实际写下的 padding /
 | `successContainer` / `successContent` | `#E6F4EC` / `#17753F` | `#16301F` / `#5CC38A` | 完成图标圈 |
 | `warnContainer` / `warnLabel` | `#FFF1DE` / `#8A4B00` | `#3A2A12` / `#F0B86A` | 等你批准 / 等你回答胶囊 |
 | `error` | `#B42318` | `#FF8A7E` | 危险文字（解除配对） |
-| `bgOverlay` | `rgba(22,23,26,.42)` | `rgba(0,0,0,.6)` | 底部面板遮罩 |
+| `bgOverlay` | `rgba(22,23,26,.25)` | `rgba(0,0,0,.45)` | 底部面板遮罩（2026-09-30 调轻） |
+| 按压反馈 | 单层中性 6% | 单层中性 8% | 水波纹 / 按压底色都用 `labelPrimary`，不用品牌蓝 |
 | `bgTrack` | `#E6E6E1` | `#3A3B41` | 进行中转圈轨道 |
 
 `Dsw` 镜像（`core/DswPalette.kt`）继续按 DSH 原样保留：偏离只发生在 `DshTheme.kt` 的角色映射层，

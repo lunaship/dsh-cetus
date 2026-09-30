@@ -59,11 +59,9 @@ import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.util.userTurnJumps
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
-import dev.deeplinks.native.util.selectShareTurns
 import dev.deeplinks.native.util.WorkspaceAccount
 import dev.deeplinks.native.util.runReachabilityLoop
 import dev.deeplinks.native.util.chatTopSubtitle
@@ -74,7 +72,6 @@ import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
 import dev.deeplinks.native.util.chatCanvasKind
 import dev.deeplinks.native.util.ChatCanvasKind
-import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.localHideAfterRemote
 import dev.deeplinks.native.util.forkAccepted
 import dev.deeplinks.native.util.catalogKind
@@ -228,9 +225,6 @@ fun WorkspaceScreen(
     var sessionsInitialLoad by workspaceViewModel.sessionsInitialLoad
     var workspacesLoadError by workspaceViewModel.workspacesLoadError
     var workspacesInitialLoad by workspaceViewModel.workspacesInitialLoad
-    // 工具调用查找（客户端过滤当前会话工具消息；toolQuery 为瞬时视图状态，不持久化）
-    var toolSearchOpen by remember { mutableStateOf(false) }
-    var toolQuery by remember { mutableStateOf("") }
     var modelCatalog by workspaceViewModel.modelCatalog
     var modelCatalogLoading by workspaceViewModel.modelCatalogLoading
     var modelCatalogError by workspaceViewModel.modelCatalogError
@@ -338,16 +332,11 @@ fun WorkspaceScreen(
     var showSubagentSheet by remember { mutableStateOf(false) }
     /** 新会话阶段的默认模型（create 后 selectModel）。 */
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
-    // 新任务面板（方案阶段 4）：首页、空态起手式、侧栏与分享都从这里起新任务，
-    // 不再走对话页的草稿态（ComposerTopRow 起始块已删）。
-    var showNewTaskSheet by remember { mutableStateOf(false) }
-    var showNewTaskWorkspacePicker by remember { mutableStateOf(false) }
+    // 新任务改为对话页草稿态（N1）：工作区选择器仍由状态驱动，「+ 新任务」不再开面板。
+    var showDraftWorkspacePicker by remember { mutableStateOf(false) }
     var showArchivedSheet by remember { mutableStateOf(false) }
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host?.name, host?.baseUrl)
-    // 建会话成功后收起面板；失败时 currentSessionId 仍为空 → 面板保持打开并显示错误（方案 4.5）
-    LaunchedEffect(currentSessionId) {
-        if (currentSessionId != null) showNewTaskSheet = false
-    }
+    DraftComposerAutoFocus(composeNewSession && currentSessionId == null, composerFocusRequester, composerKeyboardController)
 
     var deleteWorkspaceTarget by remember { mutableStateOf<String?>(null) } // 待删除的工作区路径
     var deleteWorkspaceError by remember { mutableStateOf<String?>(null) }
@@ -524,7 +513,6 @@ fun WorkspaceScreen(
             unreadWhileScrolled = (messages.size - scrollAnchorCount).coerceAtLeast(0)
         }
     }
-    var showTurnJumpSheet by remember { mutableStateOf(false) }
     var showFileBrowser by remember { mutableStateOf(false) }
     val changesPanel = remember { ChangesPanelState() }
     LaunchedEffect(currentSessionId) { changesPanel.reset() }
@@ -627,9 +615,21 @@ fun WorkspaceScreen(
         loadOlderFailed = false
         initialLoadInFlight = false
     }
+
+    /**
+     * 点「+ 新任务」：进对话页草稿态（N1），复用对话页输入栏；可带工作区与预填文本。
+     * 草稿态下先重置模型目录（N2）再拉「无会话」目录，避免显示上一个会话的旧列表。
+     */
+    fun openNewTaskDraft(cwd: String? = null, prefill: String? = null) {
+        startComposeSession(cwd)
+        if (!prefill.isNullOrBlank()) inputText = prefill
+        workspaceViewModel.resetModelCatalog()
+        workspaceViewModel.loadModelCatalog(null, null)
+        showPhoneChat()
+    }
     LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
-        startComposeSession(); showNewTaskSheet = true // 分享进来的内容落在新任务面板里预填（阶段 4），不再进对话页草稿态
+        openNewTaskDraft() // 分享进来的内容落在草稿态输入框里预填（N1）
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
@@ -1027,7 +1027,7 @@ fun WorkspaceScreen(
                 showPhoneSessions()
             }
             LocalKind.NEW_SESSION -> {
-                startComposeSession(); showNewTaskSheet = true
+                openNewTaskDraft()
             }
             LocalKind.OPEN_SETTINGS -> {
                 // 与顶栏抽屉设置按钮共享入口；CONSUMED 显示可以放在 picker 选中后的 toast 中
@@ -1088,7 +1088,7 @@ fun WorkspaceScreen(
     }
 
     fun createSessionIn(cwd: String?) {
-        startComposeSession(cwd); showNewTaskSheet = true
+        openNewTaskDraft(cwd)
     }
 
     fun appendStreamMessage(m: MobileMessage) {
@@ -1746,8 +1746,35 @@ fun WorkspaceScreen(
     }
     // 输入条模型座内容（名称 + 推理等级拆开，DSH ModelSelect 同构）；
     // 新会话看 pendingModel，已开聊只看该会话的目录（pending 不得跨会话泄到已有会话上）。
-    val inputModelSeat = remember(pendingModel, modelCatalog, currentSessionId) {
-        composerModelSeat(modelCatalog, pendingModel.takeIf { currentSessionId == null })
+    // 草稿态目录重置后（N2）座位先回落到全局默认模型，目录回来再刷新。
+    val inputModelSeat = remember(
+        pendingModel,
+        modelCatalog,
+        currentSessionId,
+        composeNewSession,
+        appSettings.defaultModel,
+        appSettings.defaultReasoningEffort,
+    ) {
+        composerModelSeatOrDefault(
+            catalog = modelCatalog,
+            pending = pendingModel.takeIf { currentSessionId == null },
+            defaultModel = appSettings.defaultModel,
+            defaultEffort = appSettings.defaultReasoningEffort,
+        )
+    }
+    // 草稿画布的「继续上次」：最近更新的一条会话（不含草稿本身）。
+    val draftLastTask = remember(sessions, composeNewSession) {
+        if (!composeNewSession) {
+            null
+        } else {
+            sessions.maxByOrNull { sessionMillis(it.updatedAt) }?.let { last ->
+                DraftLastTask(
+                    sessionId = last.sessionId,
+                    title = displaySessionTitle(last.title),
+                    workspaceLabel = last.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
+                )
+            }
+        }
     }
     val activeSubagentCount = remember(sessions, currentSessionId, currentSession) {
         resolveActiveSubagentCount(sessions, currentSessionId, currentSession?.subagentCount)
@@ -1835,7 +1862,7 @@ fun WorkspaceScreen(
 
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
-        onNewSession = { startComposeSession(); showNewTaskSheet = true },
+        onNewSession = { openNewTaskDraft() },
         onSelectSession = { sid ->
             selectSession(sid)
             showPhoneChat()
@@ -2044,7 +2071,7 @@ fun WorkspaceScreen(
                 }
 
     // 空态起手式（W4）：带着那句话去开新任务，而不是丢掉参数只开面板。
-    val onPickStarter: (String) -> Unit = { text -> startComposeSession(); inputText = text; showNewTaskSheet = true }
+    val onPickStarter: (String) -> Unit = { text -> openNewTaskDraft(prefill = text) }
 
     // 根容器：承载抽屉框架与置顶 Snackbar
     Box(
@@ -2160,108 +2187,74 @@ fun WorkspaceScreen(
         ) {
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
+            var showShareSheet by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
-            // 跳转轮次从悬浮按钮移到这里：≥3 轮才出现，不占输入区视觉重量
-            val turnJumpsForMenu = remember(olderMessages, messages) {
-                userTurnJumps(mergeHistoryPages(olderMessages, messages))
-            }
             val topBarMenuItems = workspaceHeaderMenuItems(
-                            viewMode = viewMode,
-                            toolSearchOpen = toolSearchOpen,
-                            activeSubagentCount = activeSubagentCount,
-                            turnJumpCount = turnJumpsForMenu.size,
-                            canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
-                            onCloseMenu = { headerMenuOpen = false },
-                            onOpenToolSearch = {
-                                toolSearchOpen = !toolSearchOpen
-                                if (!toolSearchOpen) toolQuery = ""
-                            },
-                            onShowSubagents = { showSubagentSheet = true },
-                            onShowTurnJump = { showTurnJumpSheet = true },
-                            onBrowseFiles = { showFileBrowser = true },
-                            onRename = { currentSession?.let { openRename(it) } },
-                            onFork = { currentSessionId?.let { forkNow(it) } },
-                            onCopyTitle = {
-                                val title = currentSession?.title
-                                if (title != null) {
-                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("session title", title))
-                                    if (copiedNeedsAppToast(android.os.Build.VERSION.SDK_INT)) {
-                                        Toast.makeText(context, L.copied, Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            },
-                            onArchive = {
-                                currentSession?.let { session ->
-                                    archiveSessionNow(session) { err ->
-                                        if (err == null) {
-                                            showArchiveUndo(session.sessionId)
-                                        } else {
-                                            sessionsLoadError = err
-                                        }
-                                    }
-                                }
-                            },
-                            onShareImage = {
-                                val sid = currentSessionId
-                                if (sid != null) {
-                                    val title = currentSession?.title?.let(::displaySessionTitle) ?: L.sessionFallbackTitle
-                                    val dark = shareDark
-                                    scope.launch(Dispatchers.IO) {
-                                        try {
-                                            val turns = selectShareTurns(loadSessionMessagesForExport(client, sid))
-                                            withContext(Dispatchers.Main) {
-                                                if (turns.isEmpty()) {
-                                                    composerActionError = L.shareConversationEmpty
-                                                } else {
-                                                    val bmp = ShareCardRenderer.render(title, turns, dark, "DeepLinks")
-                                                    try {
-                                                        ShareCardRenderer.sharePng(context, bmp, title, L.shareConversationImage)
-                                                    } finally {
-                                                        bmp.recycle()
-                                                    }
-                                                }
-                                            }
-                                        } catch (e: Exception) {
-                                            withContext(Dispatchers.Main) {
-                                                composerActionError = L.exportFailed.format(e.message ?: L.unknownError)
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            onExport = {
-                                val sid = currentSessionId
-                                if (sid != null) {
-                                    val title = currentSession?.title ?: L.sessionFallbackTitle
-                                    scope.launch(Dispatchers.IO) {
-                                        try {
-                                            val text = exportSessionTranscript(client, sid, title)
-                                            withContext(Dispatchers.Main) {
-                                                val send = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(Intent.EXTRA_SUBJECT, title)
-                                                    putExtra(Intent.EXTRA_TEXT, text)
-                                                }
-                                                context.startActivity(Intent.createChooser(send, L.exportConversation))
-                                            }
-                                        } catch (e: Exception) {
-                                            withContext(Dispatchers.Main) {
-                                                composerActionError = L.exportFailed.format(e.message ?: L.unknownError)
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            onOpenDevice = { onOpenDevice(null) },
-                            onDelete = { currentSession?.let { openDeleteSession(it) } },
+                canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
+                onCloseMenu = { headerMenuOpen = false },
+                onBrowseFiles = { showFileBrowser = true },
+                onRename = { currentSession?.let { openRename(it) } },
+                onShare = { showShareSheet = true },
+                onArchive = {
+                    currentSession?.let { session ->
+                        archiveSessionNow(session) { err ->
+                            if (err == null) {
+                                showArchiveUndo(session.sessionId)
+                            } else {
+                                sessionsLoadError = err
+                            }
+                        }
+                    }
+                },
+                onDelete = { currentSession?.let { openDeleteSession(it) } },
             )
+            if (showShareSheet) {
+                val sid = currentSessionId
+                ConversationShareSheet(
+                    onDismiss = { showShareSheet = false },
+                    onShareImage = {
+                        showShareSheet = false
+                        if (sid != null) {
+                            shareConversationAsImage(
+                                scope = scope,
+                                context = context,
+                                client = client,
+                                sessionId = sid,
+                                title = currentSession?.title?.let(::displaySessionTitle) ?: L.sessionFallbackTitle,
+                                dark = shareDark,
+                                onError = { composerActionError = it },
+                            )
+                        }
+                    },
+                    onExportText = {
+                        showShareSheet = false
+                        if (sid != null) {
+                            exportConversationText(
+                                scope = scope,
+                                context = context,
+                                client = client,
+                                sessionId = sid,
+                                title = currentSession?.title ?: L.sessionFallbackTitle,
+                                onError = { composerActionError = it },
+                            )
+                        }
+                    },
+                )
+            }
             WorkspaceTopBar(
                 running = running,
-                // 新会话的标题和电脑名写在输入框上方的起始块里，顶栏不重复
-                title = if (currentSessionId == null) "" else currentSession?.title?.let(::displaySessionTitle) ?: L.newSession,
-                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」
-                subtitle = chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec),
+                // 草稿态标题固定「新任务」；有会话显示会话名；无会话且非草稿留空（起始块已删）
+                title = when {
+                    composeNewSession && currentSessionId == null -> L.homeNewTask
+                    currentSessionId == null -> ""
+                    else -> currentSession?.title?.let(::displaySessionTitle) ?: L.newSession
+                },
+                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」；草稿态不显示
+                subtitle = if (composeNewSession && currentSessionId == null) {
+                    null
+                } else {
+                    chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec)
+                },
                 showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
@@ -2273,9 +2266,12 @@ fun WorkspaceScreen(
                 viewMode = viewMode,
                 showViewModeTabs = currentSessionId != null,
                 onSelectViewMode = ::selectViewMode,
+                subagentCount = activeSubagentCount,
+                onOpenSubagents = { showSubagentSheet = true },
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
-                menuItems = topBarMenuItems,
+                // 草稿态不显示「⋯」菜单（N1）
+                menuItems = if (composeNewSession && currentSessionId == null) emptyList() else topBarMenuItems,
             )
 
             // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
@@ -2300,14 +2296,6 @@ fun WorkspaceScreen(
             StreamReconnectBanner(
                 kind = streamBanner,
                 onRetry = { streamClient?.reconnect() },
-            )
-
-            // 工具调用查找条（chat 视图；客户端过滤，瞬时状态不持久化）
-            // 已抽为独立 composable（COM-001 拆解）：位于视图区上方、Column 直子级
-            ToolSearchBar(
-                visible = toolSearchOpen && viewMode == "chat",
-                query = toolQuery,
-                onQueryChange = { toolQuery = it },
             )
 
             // 消息流 + 悬浮「回到底部」：weight 加在容器（Column 直接子级）上，
@@ -2374,9 +2362,9 @@ fun WorkspaceScreen(
 
             // ===== 消息流（max-width 748 居中） =====
             // 消息流数据推导（纯函数，见 ChatFeedDerivation.kt）：
-            // 合并历史页 → 丢弃空思考行 → 按相邻工具调用聚合 → 工具查找过滤
-            val chatFeed = remember(olderMessages, messages, toolQuery) {
-                deriveChatFeed(olderMessages, messages, toolQuery)
+            // 合并历史页 → 丢弃空思考行 → 按相邻工具调用聚合 → 过滤上下文注入（C3）
+            val chatFeed = remember(olderMessages, messages) {
+                deriveChatFeed(olderMessages, messages)
             }
             val visibleGroups = chatFeed.visibleGroups
             // 消息渲染的副作用集合（COM-001 拆解）：状态用 getter/setter 注入，调用时读最新值
@@ -2437,6 +2425,24 @@ fun WorkspaceScreen(
                 )
             ) {
                 if (messages.isEmpty()) {
+                    if (composeNewSession && currentSessionId == null) {
+                        newTaskDraftCanvas(
+                            lastTask = draftLastTask,
+                            workspaces = workspaceCatalogItems.map { it.path },
+                            selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
+                            modeLabel = presetDisplayName(
+                                draftPresetId(pendingAgentPreset, appSettings.agentPreset),
+                                null,
+                            ),
+                            onOpenLastTask = { sid -> selectSession(sid); showPhoneChat() },
+                            onSelectWorkspace = { cwd ->
+                                pendingSessionCwd = cwd
+                                workspacePrefs.lastSelectedWorkspace = cwd
+                            },
+                            onOpenWorkspacePicker = { showDraftWorkspacePicker = true },
+                            onOpenModePicker = { showAgentPresetPicker = true },
+                        )
+                    } else {
                     chatEmptyCanvas(
                         kind = chatCanvasKind(
                             hasMessages = false,
@@ -2448,6 +2454,7 @@ fun WorkspaceScreen(
                         historyLoadError = historyLoadError,
                         onRetry = { refreshMessages() },
                     )
+                    }
             } else { // 闭合 if (messages.isEmpty())，打开 else 分支
                     // 会话标题只保留在顶栏；消息流不再重复大标题
                     // 加载更早（DSH chat.loadOlder：hasMore 时显示在消息流顶部，点击向前翻页）
@@ -2467,7 +2474,6 @@ fun WorkspaceScreen(
                     chatMessageItems(
                         visibleGroups = visibleGroups,
                         sweepingId = sweepingId,
-                        toolQuery = toolQuery,
                         actions = chatActions,
                         goalSummary = latestGoalSummary(messagesForSummary),
                         todoProgress = latestTodoProgress(messagesForSummary),
@@ -2768,45 +2774,23 @@ fun WorkspaceScreen(
         )
     }
 
-    // 模型选择底部抽屉
-    // 面板里的模型 / 模式座沿用输入卡的那份预设（这里而不是更早，是因为依赖 appSettings）
-
-    if (showNewTaskSheet) {
-        NewTaskSheetHost(
-            state = NewTaskSheetState(
-                workspaces = workspaceCatalogItems.map { it.path }, selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
-                lastSession = sessions.maxByOrNull { sessionMillis(it.updatedAt) },
-                input = inputText,
-                modelName = pendingModel?.second ?: appSettings.defaultModel, modelEffort = pendingModel?.third ?: appSettings.defaultReasoningEffort,
-                permissionPreset = appSettings.agentPreset, permissionLabel = presetDisplayName(appSettings.agentPreset, null),
-                sending = isSending, error = composerActionError,
-            ),
-            actions = NewTaskSheetActions(
-                onSelectWorkspace = { pendingSessionCwd = it; workspacePrefs.lastSelectedWorkspace = it }, onOpenWorkspacePicker = { showNewTaskWorkspacePicker = true },
-                onOpenLastTask = { selectSession(it); showPhoneChat() },
-                onInputChange = { inputText = it }, onOpenModelPicker = { showModelPicker = true }, onOpenModePicker = { showAgentPresetPicker = true },
-                onAttach = { imagePickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                onSend = { submitComposer() },
-                onDismiss = { showNewTaskSheet = false },
-            ),
-        )
-    }
+    // 模型选择底部抽屉（会话内与草稿态共用；草稿态目录由 openNewTaskDraft 重置加载）
 
     ArchivedSessionsHost(
         open = showArchivedSheet, prefs = workspacePrefs, sessions = sessions,
         loading = sessionsInitialLoad, onDismiss = { showArchivedSheet = false },
     )
 
-    if (showNewTaskWorkspacePicker) {
+    if (showDraftWorkspacePicker) {
         WorkspacePickerSheet(
             sessions = sessions,
             deletedWorkspaces = deletedWorkspaces,
             registeredPaths = workspaceRegistry,
             registryReady = workspaceRegistryReady,
-            selectedPath = pendingSessionCwd,
-            onDismiss = { showNewTaskWorkspacePicker = false },
+            selectedPath = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
+            onDismiss = { showDraftWorkspacePicker = false },
             onPick = { path ->
-                showNewTaskWorkspacePicker = false
+                showDraftWorkspacePicker = false
                 if (path != null) {
                     pendingSessionCwd = path
                     workspacePrefs.lastSelectedWorkspace = path
@@ -2834,18 +2818,10 @@ fun WorkspaceScreen(
                     showModelPicker = false
                     return@ModelPickerSheet
                 }
-                scope.launch(Dispatchers.IO) {
-                    try {
-                        client.selectModel(sid, provider, model, effort)
-                        withContext(Dispatchers.Main) {
-                            modelCatalogError = null
-                            refreshModels()
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            modelCatalogError = L.switchModelFailed.format(friendlySelectModelError(e.message))
-                        }
-                    }
+                // 立刻关闭并乐观更新座位（N2）；后台 selectModel 成功校正、失败回滚。
+                showModelPicker = false
+                workspaceViewModel.selectModelOptimistic(sid, provider, model, effort) { message ->
+                    modelCatalogError = message
                 }
             }
         )
@@ -3045,22 +3021,6 @@ fun WorkspaceScreen(
             currentSessionId = currentSessionId,
             onSelectSession = { selectSession(it) },
             onDismiss = { showSubagentSheet = false },
-        )
-    }
-
-    if (showTurnJumpSheet) {
-        TurnJumpBottomSheet(
-            olderMessages = olderMessages,
-            messages = messages,
-            onJumpToGroupIndex = { groupIndex ->
-                val offset = if (hasMoreMessages) 1 else 0
-                stickToBottom = false
-                showScrollToBottom = true
-                scope.launch {
-                    listState.scrollToItem(offset + groupIndex)
-                }
-            },
-            onDismiss = { showTurnJumpSheet = false },
         )
     }
 

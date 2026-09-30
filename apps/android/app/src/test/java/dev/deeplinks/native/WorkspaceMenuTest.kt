@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 顶栏「更多操作」菜单的纯逻辑测试。对话/轨迹切换在顶栏胶囊分段里，不属于溢出菜单。
+ * 顶栏「更多操作」菜单的纯逻辑测试。
  *
- * 这些规则原先埋在 WorkspaceScreen 的 composable 里，无法单测；
- * 抽成 workspaceHeaderMenuItems 后即可表驱动验证。
+ * C1（2026-09-30）把菜单精简到最多 5 项：重命名 / 浏览文件（按能力）/ 分享 / 归档 / 删除。
+ * 工具查找、跳转轮次、复制标题、设备入口、分叉都移除；子智能体挪到 Tab 行右侧。
  */
 class WorkspaceMenuTest {
 
@@ -19,95 +19,53 @@ class WorkspaceMenuTest {
 
     private fun menu(
         ctx: Ctx,
-        viewMode: String = "chat",
-        toolSearchOpen: Boolean = false,
-        subagents: Int = 0,
-        turnJumps: Int = 0,
         browseFiles: Boolean = false,
     ) = workspaceHeaderMenuItems(
-        viewMode = viewMode,
-        toolSearchOpen = toolSearchOpen,
-        activeSubagentCount = subagents,
-        turnJumpCount = turnJumps,
         canBrowseFiles = browseFiles,
         onCloseMenu = { ctx.log += "close" },
-        onOpenToolSearch = { ctx.log += "toolSearch" },
-        onShowSubagents = { ctx.log += "subagents" },
-        onShowTurnJump = { ctx.log += "turnJump" },
         onBrowseFiles = { ctx.log += "browseFiles" },
         onRename = { ctx.log += "rename" },
-        onFork = { ctx.log += "fork" },
-        onCopyTitle = { ctx.log += "copy" },
+        onShare = { ctx.log += "share" },
         onArchive = { ctx.log += "archive" },
-        onShareImage = { ctx.log += "shareImage" },
-        onExport = { ctx.log += "export" },
-        onOpenDevice = { ctx.log += "device" },
         onDelete = { ctx.log += "delete" },
     )
 
     @Test
-    fun baseMenuAlwaysHasEightActions() {
-        assertEquals(8, menu(Ctx(), viewMode = "trace").size)
+    fun baseMenuHasFourActionsWithoutFileBrowsing() {
+        assertEquals(4, menu(Ctx()).size)
     }
 
     @Test
-    fun contextualItemsAreGatedByState() {
-        assertEquals(9, menu(Ctx(), viewMode = "chat").size)  // 对话视图含工具查找
-        assertEquals(8, menu(Ctx(), viewMode = "trace").size)  // 轨迹视图无工具查找
+    fun browseFilesAppearsOnlyWhenPluginSupportsTree() {
+        assertEquals(5, menu(Ctx(), browseFiles = true).size)
+        val items = menu(Ctx(), browseFiles = true)
+        assertEquals(L.renameSession, items[0].label)
+        assertEquals(L.browseFiles, items[1].label)
+        assertEquals(L.shareConversation, items[2].label)
     }
 
     @Test
-    fun subagentsAndTurnJumpsAppearOnlyWhenRelevant() {
-        assertEquals(8, menu(Ctx(), viewMode = "trace", subagents = 0, turnJumps = 2).size)
-        assertEquals(9, menu(Ctx(), viewMode = "trace", subagents = 1).size)
-        assertEquals(9, menu(Ctx(), viewMode = "trace", turnJumps = 3).size)
-        assertEquals(10, menu(Ctx(), viewMode = "trace", subagents = 1, turnJumps = 3).size)
+    fun shareOpensSubSheetAndClosesMenu() {
+        val ctx = Ctx()
+        val share = menu(ctx).first { it.label == L.shareConversation }
+        share.onClick()
+        assertEquals(listOf("close", "share"), ctx.log)
     }
 
     @Test
     fun clickingClosesMenuBeforeActing() {
         val ctx = Ctx()
-        val delete = menu(ctx).last()
+        val rename = menu(ctx).first { it.label == L.renameSession }
+        rename.onClick()
+        assertEquals(listOf("close", "rename"), ctx.log)
+    }
+
+    @Test
+    fun deleteIsLastWithDangerAndDivider() {
+        val items = menu(Ctx())
+        val delete = items.last()
         assertEquals(L.deleteSession, delete.label)
         assertTrue(delete.danger)
-        delete.onClick()
-        assertEquals(listOf("close", "delete"), ctx.log)
-    }
-
-    @Test
-    fun deviceEntrySitsAboveDelete() {
-        val ctx = Ctx()
-        val items = menu(ctx)
-        val device = items[items.lastIndex - 1]
-        assertEquals(L.deviceAndPairing, device.label)
-        device.onClick()
-        assertEquals(listOf("close", "device"), ctx.log)
-    }
-
-    @Test
-    fun contextualActionClosesMenuToo() {
-        val ctx = Ctx()
-        val toolSearch = menu(ctx, toolSearchOpen = false).first { it.label == L.searchToolCalls }
-        assertEquals(L.searchToolCalls, toolSearch.label)
-        toolSearch.onClick()
-        assertEquals(listOf("close", "toolSearch"), ctx.log)
-    }
-
-    @Test
-    fun toolSearchLabelReflectsOpenState() {
-        val open = menu(Ctx(), viewMode = "chat", toolSearchOpen = true).first { it.label == L.closeToolSearch }
-        assertEquals(L.closeToolSearch, open.label)
-    }
-
-    @Test
-    fun browseFilesAppearsOnlyWhenPluginSupportsTree() {
-        assertEquals(8, menu(Ctx(), viewMode = "trace").size)
-        val ctx = Ctx()
-        val items = menu(ctx, viewMode = "trace", browseFiles = true)
-        assertEquals(9, items.size)
-        val browse = items.first()
-        assertEquals(L.browseFiles, browse.label)
-        browse.onClick()
-        assertEquals(listOf("close", "browseFiles"), ctx.log)
+        assertTrue(delete.dividerBefore)
     }
 }

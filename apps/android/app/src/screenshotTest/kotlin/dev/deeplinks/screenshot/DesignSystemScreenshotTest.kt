@@ -164,7 +164,6 @@ import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
 import dev.deeplinks.native.ComposerSeatsRow
 import dev.deeplinks.native.StreamReconnectBanner
-import dev.deeplinks.native.ToolSearchBar
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
 import dev.deeplinks.native.util.ChatCanvasKind
 import dev.deeplinks.native.util.StreamBannerKind
@@ -458,9 +457,6 @@ private fun SettingsHomeWall() {
 
 @Composable
 private fun ChromeWall() {
-    SectionTitle("Tool search bar")
-    ToolSearchBar(visible = true, query = "", onQueryChange = {})
-    ToolSearchBar(visible = true, query = "grep", onQueryChange = {})
     SectionTitle("Stream banner")
     StreamReconnectBanner(kind = StreamBannerKind.Connecting, onRetry = {})
     StreamReconnectBanner(kind = StreamBannerKind.Failed, onRetry = {})

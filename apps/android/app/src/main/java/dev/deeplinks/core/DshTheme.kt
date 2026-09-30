@@ -11,8 +11,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -122,7 +125,7 @@ val DarkDshColors = DshColors(
     bgDrawer = Color(0xFF121214),            // 偏离 DSH：重设计稿抽屉底与页面底同档
     bgNavSelected = Color(0xFF26272C),       // 偏离 DSH：与 bgSelected 同一 selection container
     bgTrack = Color(0xFF2E3036),             // 偏离 DSH：重设计稿深色进行中轨道 #2E3036（MainDark.dc.html 的转圈底）
-    bgOverlay = Color(0x99000000),           // 偏离 DSH：重设计稿遮罩 rgba(0,0,0,.6)
+    bgOverlay = Color(0x73000000),           // 偏离 DSH：2026-09-30 真机反馈遮罩过重，从 .6 降到 .45
     bgRecessed = Color(0xFF17181B),          // 偏离 DSH：重设计稿凹进面（思考轨迹）比卡片再暗一档
     bgSurface = Color(0xFF1C1D21),           // 偏离 DSH：重设计稿面板面 #1C1D21
     labelPrimary = Color(0xFFEDEDEF),        // 偏离 DSH：重设计稿主文字 #EDEDEF
@@ -173,11 +176,11 @@ val LightDshColors = DshColors(
     bgCode = Color(0xFFF3F3EF),              // 偏离 DSH：重设计稿代码块底 #F3F3EF
     bgCodeBanner = Color(0xFFFAFAF8),        // 偏离 DSH：重设计稿卡片头/弱底 #FAFAF8
     bgSelected = Color(0xFFE7E7E1),          // 偏离 DSH：重设计稿选中态改中性灰（不再用品牌蓝 tonal）
-    bgPressed = Color(0x103F5BD6),           // 偏离 DSH：浅色按压改低透明品牌蓝，避免叠加成近黑色阴影
+    bgPressed = Color(0x0F16171A),           // 偏离 DSH：2026-09-30 按压改中性 6%（品牌蓝只给批准/发送，且避免双层叠成黑影）
     bgDrawer = Color(0xFFF5F5F2),            // 偏离 DSH：重设计稿抽屉底与页面底同档
     bgNavSelected = Color(0xFFE7E7E1),       // 偏离 DSH：与 bgSelected 同一 selection container
     bgTrack = Color(0xFFE6E6E1),             // 偏离 DSH：重设计稿进行中轨道 #E6E6E1（Main.dc.html 的转圈底）
-    bgOverlay = Color(0x6B16171A),           // 偏离 DSH：重设计稿遮罩 rgba(22,23,26,.42)
+    bgOverlay = Color(0x4016171A),           // 偏离 DSH：2026-09-30 真机反馈遮罩过重，从 .42 降到 .25
     bgRecessed = Color(0xFFF3F3EF),          // 偏离 DSH：重设计稿凹进面（思考轨迹）#F3F3EF
     bgSurface = Color(0xFFFFFFFF),           // 偏离 DSH：重设计稿面板面 #FFFFFF
     labelPrimary = Color(0xFF16171A),        // 偏离 DSH：重设计稿主文字 #16171A
@@ -186,7 +189,7 @@ val LightDshColors = DshColors(
     labelDimmed = Color(0xFFB5B7BB),         // 偏离 DSH：重设计稿禁用 #B5B7BB
     borderSubtle = Color(0xFFEEEEE9),        // 偏离 DSH：重设计稿分隔线 #EEEEE9（只用于分隔线，不做容器描边）
     borderStrong = Dsw.borderL3Light,        // alias-border-l3
-    pressed = Color(0x103F5BD6),             // 偏离 DSH：与 bgPressed 统一，浅色点击保持轻微品牌色反馈
+    pressed = Color(0x0F16171A),             // 偏离 DSH：2026-09-30 与 bgPressed 统一，浅色按压中性 6%
     activated = Dsw.interactiveActiveLight,  // alias-interactive-bg-active
     brand400 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
     brand500 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝 #3F5BD6（批准、发送）
@@ -526,7 +529,18 @@ fun DshTheme(
                 fontScale = baseDensity.fontScale * fontMultiplier,
             ),
         ) {
-            CompositionLocalProvider(LocalIndication provides dshRipple()) {
+            CompositionLocalProvider(
+                LocalIndication provides dshRipple(),
+                LocalRippleConfiguration provides RippleConfiguration(
+                    color = colors.labelPrimary,
+                    rippleAlpha = RippleAlpha(
+                        draggedAlpha = 0.08f,
+                        focusedAlpha = 0.08f,
+                        hoveredAlpha = 0.04f,
+                        pressedAlpha = 0.06f,
+                    ),
+                ),
+            ) {
                 content()
             }
         }

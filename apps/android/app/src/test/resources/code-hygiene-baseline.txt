@@ -3,12 +3,12 @@
 # 只允许下调：拆解后请把数字改小；新增文件默认上限由测试里的 DEFAULT_MAX_LINES 决定。
 # 2026-09-28 重设计阶段 10：删掉被取代的旧组件（WorkspaceChips / HomeNewTaskBar /
 # ComposerTopRow 起始块等）后按方案「预算相应下调」，把各文件上限收到当前实际行数。
-dev/deeplinks/native/WorkspaceActivity.kt 3076
+dev/deeplinks/native/WorkspaceActivity.kt 3038
 dev/deeplinks/native/DshIcons.kt 4912
 # 2026-09-27 设备页拆出 DeviceCard 分组段落后下调。
 dev/deeplinks/devices/DevicesActivity.kt 622
 # 2026-09-27 设置 UI 拆到 SettingsRoute.kt（批次 2），本文件只剩外部入口兼容壳。
 dev/deeplinks/native/SettingsActivity.kt 34
 # 文案表在 AppLocaleZh / AppLocaleEn；本文件只留取值。分组列表文案并入后仍远低于旧预算。
-dev/deeplinks/core/AppLocale.kt 667
-dev/deeplinks/native/WorkspaceSidebar.kt 322
+dev/deeplinks/core/AppLocale.kt 655
+dev/deeplinks/native/WorkspaceSidebar.kt 320

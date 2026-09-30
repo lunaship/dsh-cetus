@@ -299,7 +299,6 @@ private fun MessageActionIcon(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Box(
         modifier = Modifier
             .size(48.dp)
@@ -313,8 +312,7 @@ private fun MessageActionIcon(
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .clip(RoundedCornerShape(DshRadius.control))
-                .background(if (pressed) Dsh.pressed else Color.Transparent),
+                .clip(RoundedCornerShape(DshRadius.control)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -828,14 +826,12 @@ internal fun LoadOlderRow(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     val kind = loadOlderKind(loading, failed)
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
                 .heightIn(min = 48.dp)
                 .clip(RoundedCornerShape(DshRadius.container))
-                .background(if (pressed) Dsh.pressed else Color.Transparent)
                 .clickable(enabled = !loading, interactionSource = interaction, indication = dshRipple(), onClick = onClick)
                 .padding(horizontal = DshSpace.s12),
             contentAlignment = Alignment.Center,
@@ -960,8 +956,6 @@ private fun AssistantMarkdown(text: String, longPress: Modifier = Modifier, stre
 private fun CommandCard(title: String, body: String?, running: Boolean = false, runningLabel: String = L.executing) {
     var expanded by remember { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val pressTint = Dsh.pressed
     val rail = Dsh.borderStrong
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -969,7 +963,6 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                 .heightIn(min = DshTouch.min)
                 .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
-                .then(if (pressed) Modifier.drawBehind { drawRect(pressTint) } else Modifier)
                 .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {

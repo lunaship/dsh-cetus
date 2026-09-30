@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
@@ -120,7 +121,6 @@ internal fun SessionRowItem(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val itemInteraction = remember { MutableInteractionSource() }
-    val itemPressed by itemInteraction.collectIsPressedAsState()
     val haptic = LocalHapticFeedback.current
     val semanticHaptic = rememberDshHaptic()
     val s = DshS
@@ -145,12 +145,14 @@ internal fun SessionRowItem(
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            // 只在真的滑开时显形：平时不铺底、不写字，否则会从会话行的弱蓝（半透明）
-            // 与圆角后面透出来，看起来像「归档会话」和标题重叠、行用阴影。
-            val revealing = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+            // P1（2026-09-30）：底色改浅灰，且只有实际左滑超过 24dp 才显形。平时完全透明，
+            // 手指点击时的一点点横向位移不会再从圆角后面透出深色（真机反馈的「黑色阴影」）。
+            val revealThreshold = with(LocalDensity.current) { 24.dp.toPx() }
+            val swipeOffset = runCatching { -dismissState.requireOffset() }.getOrDefault(0f)
+            val revealing = swipeOffset > revealThreshold
             val revealBg by animateColorAsState(
-                // 中性反色底（不用强调色，强调色只给批准 / 发送，V3）。
-                targetValue = if (revealing) Dsh.labelPrimary else Color.Transparent,
+                // 浅灰底 + 墨色图标文字（不用强调色，强调色只给批准 / 发送）。
+                targetValue = if (revealing) Dsh.bgSubtle else Color.Transparent,
                 animationSpec = tween(motionDuration(DshDuration.normal)),
                 label = "sessionArchiveRevealBg",
             )
@@ -176,13 +178,13 @@ internal fun SessionRowItem(
                     Icon(
                         ArchiveOutline20,
                         contentDescription = null,
-                        tint = Dsh.bgBase,
+                        tint = Dsh.labelPrimary,
                         modifier = Modifier.size(DshIconSize.md),
                     )
                     Spacer(Modifier.width(DshSpace.s8))
                     Text(
                         archiveLabel,
-                        color = Dsh.bgBase,
+                        color = Dsh.labelPrimary,
                         style = DshType.body,
                         fontWeight = FontWeight.Medium,
                     )
@@ -206,7 +208,6 @@ internal fun SessionRowItem(
                     .background(
                         when {
                             isSelected -> Dsh.bgSubtle
-                            itemPressed -> Dsh.bgPressed
                             else -> Color.Transparent
                         },
                     )
@@ -485,7 +486,6 @@ internal fun SidebarIconAction(
     active: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Box(
         modifier = Modifier
             .size(size)
@@ -493,7 +493,6 @@ internal fun SidebarIconAction(
             .background(
                 when {
                     active -> Dsh.bgNavSelected
-                    pressed -> Dsh.bgPressed
                     else -> Color.Transparent
                 },
             )

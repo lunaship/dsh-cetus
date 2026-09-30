@@ -2,7 +2,8 @@ package dev.deeplinks.native
 
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.util.groupMessages
-import dev.deeplinks.native.util.matchesTool
+import dev.deeplinks.native.util.isContextInjectionText
+import dev.deeplinks.native.util.isGoalRoundText
 
 internal data class ChatFeedModel(
     val lastCompletedAssistantId: String?,
@@ -15,35 +16,32 @@ internal data class ChatFeedModel(
  * 纯函数、无 Compose 依赖，因此这几条原本埋在 composable 里无法验证的规则现在可单测：
  * 1. 合并更早的历史页；
  * 2. 丢弃「空的、且不在运行中的」思考行；
- * 3. 按相邻 tool_call/tool_result 聚合（见 groupMessages）；
- * 4. 工具查找查询非空时只保留命中的组。
+ * 3. 按相邻 tool_call/tool_result 聚合（见 groupMessages）。
  */
 internal fun deriveChatFeed(
     olderMessages: List<MobileMessage>,
     messages: List<MobileMessage>,
-    toolQuery: String,
 ): ChatFeedModel {
     val allMessages = mergeHistoryPages(olderMessages, messages)
     val displayMessages = allMessages.filterNot {
-        it.role == "reasoning" && it.text.isBlank() && it.running != true
+        (it.role == "reasoning" && it.text.isBlank() && it.running != true) ||
+            isHiddenContextInjection(it)
     }
     val lastCompletedAssistantId = displayMessages.lastOrNull {
         it.role == "assistant" && it.running != true
     }?.id
     val messageGroups = groupMessages(displayMessages)
-    val visibleGroups = if (toolQuery.isBlank()) {
-        messageGroups
-    } else {
-        messageGroups.filter { group ->
-            when (group) {
-                is MessageGroup.Single -> matchesTool(group.msg, toolQuery)
-                is MessageGroup.ToolGroup -> group.items.any { matchesTool(it, toolQuery) }
-                else -> false
-            }
-        }
-    }
-    return ChatFeedModel(lastCompletedAssistantId, visibleGroups)
+    return ChatFeedModel(lastCompletedAssistantId, messageGroups)
 }
+
+/**
+ * 对话 Tab 是否隐藏这条消息（C3）：DSH 注入的 system-reminder / runtime context / skill catalog
+ * 不再铺进对话流（轨迹 Tab 仍能看到过程）；目标轮次（`<goal_round>`）是用户可见的目标信息，保留。
+ */
+internal fun isHiddenContextInjection(msg: MobileMessage): Boolean =
+    (msg.role == "context_injection" || isContextInjectionText(msg.text)) &&
+        !isGoalRoundText(msg.text)
+
 /**
  * 「正在扫过」的行 id：只有运行中的 tool_call / tool_result / reasoning 才能抢状态条，
  * 已定稿的「已思考」不行。纯函数、可单测。

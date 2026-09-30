@@ -256,16 +256,16 @@ internal fun HomeApprovalCard(
 }
 
 /**
- * 概况行：「N 件等你处理 · M 个在跑」+ 右侧工作区筛选（W1/V1/W5）。
+ * 工作区筛选行（H1，原「概况行」）：只剩工作区筛选胶囊，靠左与分区标题同一条左边线。
  *
- * - 待处理为 0 时不喊「0 件等你处理」：有在跑的就只显示「3 个在跑」，都没有就显示「都处理完了」；
+ * 上一轮的「N 件等你处理 · M 个在跑 / 都处理完了」概况文字已删除——下面的分区标题
+ * （等你处理 / 进行中 / 最近）已表达同样信息，这里不再重复喊一遍。
+ *
  * - 筛选胶囊显示当前选中的工作区名（选中时用中性底表示已筛选），点整行打开单层菜单；
  * - 菜单：全部工作区 / 每个工作区（打勾）/ 添加工作区 / 已归档；选中某个工作区时底部多一行危险项删除它。
  */
 @Composable
-internal fun HomeSummaryRow(
-    awaitingCount: Int,
-    runningCount: Int,
+internal fun HomeWorkspaceFilterRow(
     workspaces: List<String>,
     selected: String?,
     onSelect: (String?) -> Unit,
@@ -282,30 +282,6 @@ internal fun HomeSummaryRow(
             .clickable(role = Role.Button, onClick = { menuOpen = true }),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            val awaiting = awaitingCount > 0
-            Text(
-                when {
-                    awaiting -> s.homeSummaryAwaiting.format(awaitingCount)
-                    runningCount > 0 -> s.homeSummaryRunning.format(runningCount).removePrefix("· ").trim()
-                    else -> s.homeAllDone
-                },
-                color = if (awaiting) Dsh.labelPrimary else Dsh.labelSecondary,
-                style = DshType.title,
-                maxLines = 1,
-            )
-            if (awaiting && runningCount > 0) {
-                Text(
-                    " ${s.homeSummaryRunning.format(runningCount)}",
-                    color = Dsh.labelSecondary,
-                    style = DshType.title,
-                    maxLines = 1,
-                )
-            }
-        }
         Box {
             Row(
                 modifier = Modifier
