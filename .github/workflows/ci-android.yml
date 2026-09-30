@@ -66,10 +66,37 @@ jobs:
           cache: gradle
           cache-dependency-path: 'apps/android/**/*.gradle*'
 
+      - name: Enable emulator hardware acceleration
+        run: |
+          test -e /dev/kvm
+          sudo chmod a+rw /dev/kvm
+
+      - name: Build debug smoke APKs before starting the emulator
+        run: cd apps/android && ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+
       - name: Cold start and background on an emulator
         uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
         with:
           api-level: 34
           arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -cores 2
           disable-animations: true
-          script: cd apps/android && ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.deeplinks.StartupSmokeTest --stacktrace
+          script: |
+            adb install -r apps/android/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r apps/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb logcat -c
+            for i in 1 2 3; do adb shell am force-stop dev.deeplinks.debug; adb shell am start -W -n dev.deeplinks.debug/dev.deeplinks.devices.SplashActivity; sleep 2; adb shell pidof dev.deeplinks.debug; done
+            adb shell am instrument -w -r -e class dev.deeplinks.StartupSmokeTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee startup-instrumentation.txt
+            grep -q 'OK (1 test)' startup-instrumentation.txt
+            adb logcat -d -s AndroidRuntime:E StrictMode:E > startup-errors.txt
+            test ! -s startup-errors.txt || ! grep -E 'FATAL EXCEPTION|StrictMode|NetworkOnMainThreadException' startup-errors.txt
+
+      - name: Preserve smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: startup-smoke-diagnostics
+          path: |
+            startup-instrumentation.txt
+            startup-errors.txt
+          if-no-files-found: ignore
