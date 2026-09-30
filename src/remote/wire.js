@@ -26,7 +26,7 @@ export const CLOCK_SKEW_SEC = 60
 export const NONCE_CACHE_MAX = 10_000
 
 /** Agent 执行的并发上限（RFC §5.8）。 */
-export const DEVICE_MAX_STREAMS = 6
+export const DEVICE_MAX_STREAMS = 12
 export const BOOTSTRAP_MAX_STREAMS = 4
 export const HOST_MAX_STREAMS = 32
 
