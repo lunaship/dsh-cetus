@@ -454,10 +454,14 @@ internal class WorkspaceViewModel(
         viewModelScope.launch {
             try {
                 val catalog = if (sessionId == null) {
+                    // 草稿态（N2）：没手动选过就用全局默认模型作为「当前选中」，列表才打得开勾。
+                    val effective = pending ?: appSettings.value.defaultModel?.takeIf { it.isNotBlank() }?.let {
+                        Triple(appSettings.value.defaultModelProvider.orEmpty(), it, appSettings.value.defaultReasoningEffort)
+                    }
                     MobileModelCatalog(
-                        currentProvider = pending?.first,
-                        currentModel = pending?.second,
-                        currentReasoningEffort = pending?.third,
+                        currentProvider = effective?.first,
+                        currentModel = effective?.second,
+                        currentReasoningEffort = effective?.third,
                         groups = repo.llmModels(),
                     )
                 } else {
@@ -473,6 +477,39 @@ internal class WorkspaceViewModel(
                 }
             } finally {
                 modelCatalogLoading.value = false
+            }
+        }
+    }
+
+    /** 清空模型目录（N2）：进草稿态先清掉上一个会话的目录，避免座位显示旧模型。 */
+    fun resetModelCatalog() {
+        modelCatalog.value = null
+        modelCatalogError.value = null
+    }
+
+    /**
+     * 会话内乐观换模型（N2）：先改目录让座位立刻更新，再后台 selectModel；
+     * 成功后拉目录校正，失败回滚到选择前的快照并回报错误文案。
+     */
+    fun selectModelOptimistic(
+        sessionId: String,
+        provider: String,
+        model: String,
+        effort: String?,
+        onError: (String) -> Unit,
+    ) {
+        val optimism = ModelSelectionOptimism(modelCatalog.value)
+        modelCatalog.value = optimism.select(provider, model, effort)
+        modelCatalogError.value = null
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { client.selectModel(sessionId, provider, model, effort) }
+                loadModelCatalog(sessionId, null)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                modelCatalog.value = optimism.rollback()
+                onError(L.switchModelFailed.format(friendlySelectModelError(e.message)))
             }
         }
     }
@@ -558,6 +595,19 @@ internal class WorkspaceViewModel(
             }
         }
     }
+}
+
+/**
+ * 乐观换模型的目录状态转移（N2 纯逻辑，见 ModelSelectionOptimismTest）：
+ * [select] 返回带新选中值的目录；失败时用 [rollback] 回到选择前的快照。
+ */
+internal class ModelSelectionOptimism(initial: MobileModelCatalog?) {
+    private val snapshot = initial
+
+    fun select(provider: String, model: String, effort: String?): MobileModelCatalog? =
+        snapshot?.copy(currentProvider = provider, currentModel = model, currentReasoningEffort = effort)
+
+    fun rollback(): MobileModelCatalog? = snapshot
 }
 
 private class SavedStateMutableState<T>(

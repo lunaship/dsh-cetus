@@ -1,7 +1,5 @@
 package dev.deeplinks.native.util
 
-import dev.deeplinks.native.MobileMessage
-
 /**
  * DSH 斜杠命令/工具搜索（WI-005 / WI-006 抽出）。
  *
@@ -37,26 +35,4 @@ fun filterSlashCommands(
         val filtered = g.items.filter { it.token.contains(prefix, ignoreCase = true) }
         if (filtered.isEmpty()) null else SlashCommandGroup(g.title, filtered)
     }
-}
-
-/**
- * 当前会话内的工具调用查找：判断 [message] 是否为工具消息且命中 [query]。
- *
- * 匹配范围（大小写不敏感）：
- * - 工具名 [MobileMessage.toolName]（例如 "bash"、"Write"）；
- * - 工具参数 [MobileMessage.toolArgs]（JSON 参数原文）；
- * - 结果文本 [MobileMessage.text]（tool_result 的执行输出摘要）。
- *
- * 非工具消息（user/assistant/reasoning/...）一律不命中——查找目标是"这条对话里
- * 哪几步工具调用跟 X 有关"，不把普通聊天内容卷进来。
- *
- * 空查询 = 命中所有工具消息（UI 层通常用空查询表示"不过滤"）。
- */
-fun matchesTool(message: MobileMessage, query: String): Boolean {
-    if (message.role != "tool_call" && message.role != "tool_result") return false
-    if (query.isBlank()) return true
-    val q = query.trim()
-    return (message.toolName?.contains(q, ignoreCase = true) == true) ||
-        (message.toolArgs?.contains(q, ignoreCase = true) == true) ||
-        message.text.contains(q, ignoreCase = true)
 }

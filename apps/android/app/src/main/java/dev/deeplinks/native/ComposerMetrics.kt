@@ -82,6 +82,13 @@ fun composerPermissionPreset(
 /** 无会话时 slash 完整命令不得清空输入；有会话才提交并清空。 */
 fun completableCanSubmit(hasSession: Boolean): Boolean = hasSession
 
+/**
+ * 草稿态模式行显示的预设 id（N3）：用户选过（pending 非空）就用它，否则回落全局默认。
+ * 纯函数，选择器写入 pendingAgentPreset 后这里立刻反映新值。
+ */
+internal fun draftPresetId(pending: String?, defaultPreset: String): String =
+    pending?.takeIf { it.isNotBlank() } ?: defaultPreset
+
 /** 访问模式预设 → 显示名（输入卡与新任务面板的座位共用）。 */
 internal fun composerPermissionLabel(preset: String): String = when (preset) {
     "read-only" -> L.permReadOnly

@@ -26,14 +26,13 @@ class ChatFeedDerivationTest {
                 msg("r1", "reasoning", text = "", running = false),
                 msg("a1", "assistant", text = "hi"),
             ),
-            toolQuery = "",
         )
         assertEquals(1, feed.visibleGroups.size)
     }
 
     @Test
     fun runningReasoningRowsAreKept() {
-        val feed = deriveChatFeed(emptyList(), listOf(msg("r1", "reasoning", text = "", running = true)), "")
+        val feed = deriveChatFeed(emptyList(), listOf(msg("r1", "reasoning", text = "", running = true)))
         assertEquals(1, feed.visibleGroups.size)
     }
 
@@ -45,14 +44,13 @@ class ChatFeedDerivationTest {
                 msg("a1", "assistant", "done"),
                 msg("a2", "assistant", "streaming", running = true),
             ),
-            "",
         )
         assertEquals("a1", feed.lastCompletedAssistantId)
     }
 
     @Test
     fun lastCompletedAssistantIsNullWithoutAssistant() {
-        assertNull(deriveChatFeed(emptyList(), listOf(msg("u1", "user")), "").lastCompletedAssistantId)
+        assertNull(deriveChatFeed(emptyList(), listOf(msg("u1", "user"))).lastCompletedAssistantId)
     }
 
     @Test
@@ -60,7 +58,6 @@ class ChatFeedDerivationTest {
         val feed = deriveChatFeed(
             olderMessages = listOf(msg("a1", "assistant", "old")),
             messages = listOf(msg("a2", "assistant", "new")),
-            toolQuery = "",
         )
         assertEquals(2, feed.visibleGroups.size)
     }
@@ -91,8 +88,32 @@ class ChatFeedDerivationTest {
 
     @Test
     fun blankToolQueryKeepsEveryGroup() {
-        val feed = deriveChatFeed(emptyList(), listOf(msg("u1", "user")), "   ")
+        val feed = deriveChatFeed(emptyList(), listOf(msg("u1", "user")))
         assertEquals(1, feed.visibleGroups.size)
         assertTrue(feed.visibleGroups.isNotEmpty())
+    }
+
+    @Test
+    fun contextInjectionRowsAreHiddenButGoalRoundsStay() {
+        val feed = deriveChatFeed(
+            emptyList(),
+            listOf(
+                msg("c1", "context_injection", text = "Current runtime context: ..."),
+                msg("g1", "user", text = "<goal_round>\nObjective: \"ship it\"\n</goal_round>"),
+                msg("a1", "assistant", text = "done"),
+            ),
+        )
+        assertEquals(2, feed.visibleGroups.size)
+    }
+
+    @Test
+    fun goalRoundRoleMessageIsKeptEvenThoughInjectionText() {
+        val feed = deriveChatFeed(
+            emptyList(),
+            listOf(
+                msg("g1", "context_injection", text = "<goal_round>Round: 1/3</goal_round>"),
+            ),
+        )
+        assertEquals(1, feed.visibleGroups.size)
     }
 }
