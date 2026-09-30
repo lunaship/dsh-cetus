@@ -9,6 +9,8 @@ GitHub `lunaship/dsh-links` = **插件源码、DLP/1 中继源码（`relay/`）�
 - [ ] 本仓 `git ls-files` 不得出现 keystore、token、`state.json`、服务器凭据、`local.properties` 或任何私密配置。
 - [ ] `npm test` 通过；`npm run prepack`（= build-client + 全量测试）通过，且 `pnpm build:client && git diff --exit-code -- src/client.js` 干净（`src/client.js` 是提交进仓库的产物）。
 - [ ] 合并到 `main` 后，用户以 git 源重装插件并重启 host 才生效（见根 `CLAUDE.md` 红线）。
+- [ ] 每次准备让用户升级，都要打 `v<version>` tag，并同步更新 README 的安装命令。
+- [ ] `main` 不是发布渠道。用户安装写死的 tag；`github:lunaship/dsh-links`（main）只给想跟开发版的人，不保证稳定。
 
 ## App 发版流程
 

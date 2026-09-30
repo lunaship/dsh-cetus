@@ -85,7 +85,7 @@
 
 | 发布物 | 位置 | 作用 | 分发 |
 |---|---|---|---|
-| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-links`） |
+| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-links#v0.1.0-beta.19`） |
 | **Android App** | [`apps/android/`](apps/android/) | 扫码配对、原生会话工作台、实时流、审批与提问 | 签名 APK，见 [Releases](https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true)（`app-v*`） |
 | **Relay** | [`relay/`](relay/) | 远程连接的哑管道中继（DLP/1，`cmd/dlp-relay`），只拼接两条 WSS | 源码公开；可用官方中继或自建，无需接入码 |
 
@@ -205,9 +205,11 @@ dsh-links/
 1. **在运行 DSH 的电脑上安装插件**，并启动 DSH Web：
 
    ```bash
-   dsh plugin --profile web add github:lunaship/dsh-links   # 以本仓 git 源安装
+   dsh plugin --profile web add github:lunaship/dsh-links#v0.1.0-beta.19
    dsh web
    ```
+
+   想跟最新开发版可以装 `github:lunaship/dsh-links`（main），不保证稳定。
 
 2. **配对**：打开 DSH Web 设置 →「手机连接」，用 App「扫描二维码」或「从相册识别」（选择一张含连接二维码的截图）完成配对。
 
