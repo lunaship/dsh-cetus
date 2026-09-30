@@ -3,6 +3,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.core.CrashRecorder
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.core.deriveDshLayout
@@ -537,7 +538,9 @@ fun WorkspaceScreen(
         streamQuietElapsed = true
     }
     LaunchedEffect(streamClient?.connectionState) {
-        if (streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED) {
+        val streamState = streamClient?.connectionState
+        CrashRecorder.breadcrumb("stream", streamState?.name ?: "none")
+        if (streamState == SessionStreamClient.ConnectionState.CONNECTED) {
             streamEverConnected = true
         }
     }
@@ -573,6 +576,7 @@ fun WorkspaceScreen(
     }
 
     fun selectSession(sessionId: String) {
+        CrashRecorder.breadcrumb("session", "select ${sessionId.take(8)}")
         switchComposer(sessionId, composingNew = false)
     }
 
@@ -600,6 +604,7 @@ fun WorkspaceScreen(
         }
     }
     fun startComposeSession(cwd: String? = null) {
+        CrashRecorder.breadcrumb("draft", "enter")
         switchComposer(null, composingNew = true)
         pendingSessionCwd = cwd
         pendingAgentPreset = appSettings.agentPreset
@@ -1505,8 +1510,10 @@ fun WorkspaceScreen(
         // 必须在 effect 协程内执行，host 切换时自动取消，避免旧主机结果写回
         var bootstrapOk = false
         try {
+            CrashRecorder.breadcrumb("bootstrap", "start")
             val (boot, refreshed) = workspaceViewModel.repo.bootstrap()
             bootstrapOk = true
+            CrashRecorder.breadcrumb("bootstrap", "done ${boot.sessions.size}")
             workspaceViewModel.filesTreeSupported.value = boot.filesTree
             if (refreshed != host) {
                 // 远程能力补齐 / 清除（bootstrap 的 remote，RFC §6.4）

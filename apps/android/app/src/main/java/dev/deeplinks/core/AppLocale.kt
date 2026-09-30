@@ -649,6 +649,9 @@ class DshStrings(private val values: Map<String, String>) {
     val addSelectedModels: String get() = t("addSelectedModels")
     val customProviderDesktopHint: String get() = t("customProviderDesktopHint")
     val switchedSessionNotSent: String get() = t("switchedSessionNotSent")
+    val crashLast: String get() = t("crashLast")
+    val crashShare: String get() = t("crashShare")
+    val crashClear: String get() = t("crashClear")
 }
 
 /** Non-composable access; reading this observes LocaleManager.language. */

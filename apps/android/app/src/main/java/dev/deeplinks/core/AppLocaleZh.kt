@@ -589,5 +589,8 @@ val DshStringsZh = DshStrings(
         put("addSelectedModels", "添加所选（%d）")
         put("customProviderDesktopHint", "自定义接口（协议、地址）请在电脑端「设置 → 模型」中添加。")
         put("switchedSessionNotSent", "已切换会话，未发送")
+        put("crashLast", "上次崩溃")
+        put("crashShare", "分享")
+        put("crashClear", "清除")
     }
 )

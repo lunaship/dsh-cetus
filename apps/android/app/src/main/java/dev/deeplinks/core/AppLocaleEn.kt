@@ -590,5 +590,8 @@ val DshStringsEn = DshStrings(
         put("addSelectedModels", "Add selected (%d)")
         put("customProviderDesktopHint", "Add custom endpoints (protocol, URL) on the computer under Settings → Models.")
         put("switchedSessionNotSent", "Session switched; not sent")
+        put("crashLast", "Last crash")
+        put("crashShare", "Share")
+        put("crashClear", "Clear")
     }
 )

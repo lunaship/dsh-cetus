@@ -545,6 +545,8 @@ internal fun SettingsHome(
             )
         }
     }
+    // K0：有崩溃记录时多一行「上次崩溃」（没有记录则不渲染）
+    CrashReportEntry()
     // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，
     // 「关于」仍可点进 ABOUT（开源许可在里面，不能丢）
     DshListNote(

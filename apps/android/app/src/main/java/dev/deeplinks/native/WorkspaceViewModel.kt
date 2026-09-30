@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.deeplinks.core.AppSettingsStore
+import dev.deeplinks.core.CrashRecorder
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.native.util.ComposerDraft
@@ -361,6 +362,7 @@ internal class WorkspaceViewModel(
                     (current.size == merged.size && current.withIndex().all { (i, m) -> m === merged[i] }) ||
                     current.contentSignature() == merged.contentSignature()
                 if (!sameContent) messages.value = merged
+                CrashRecorder.breadcrumb("history", "loaded ${merged.size}")
                 // 同步推导各会话的 goal 摘要（供侧栏 / 顶栏 / 粘性摘要卡消费）
                 recomputeGoalSummaries()
                 sessionStats.value = result.stats
