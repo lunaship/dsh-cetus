@@ -18,6 +18,7 @@ If you use an intranet-tunnelling product yourself, treat it as an **experimenta
 - Private-network requests fail closed if the certificate fingerprint is missing or does not match. After a successful pair, the app should persist that pin (Keystore / prefs) for later requests.
 - The loopback/same-origin fence on the desktop panel does not stop another process running as the same user from calling `127.0.0.1`. If the host is compromised, this plugin cannot save you; run dsh as a least-privilege user and keep `18640` off untrusted networks.
 - dsh itself is powerful; this plugin does not sandbox the agent.
+- Approvals received on the phone do not include tool arguments. By default the notification offers only **Reject**; approving requires opening the app. An optional setting enables **Allow once** in the notification on Android 12+ only, and it requires unlocking the device.
 
 ## Do
 

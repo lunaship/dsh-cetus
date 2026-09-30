@@ -17,6 +17,13 @@ import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.WorkspaceActivity
 import java.util.concurrent.ConcurrentHashMap
 
+/** 纯函数：根据设置与 SDK 版本决定审批通知里要挂几个 action，以及每个 action 是不是「允许」。 */
+internal fun approvalActionKinds(quickApprove: Boolean, sdkInt: Int): List<Boolean> =
+    buildList {
+        add(false)
+        if (quickApprove && sdkInt >= Build.VERSION_CODES.S) add(true)
+    }
+
 /**
  * DSH 会话事件系统通知：审批请求（会话在后台等你处理）与任务完成 / 已停止。
  * 点击回到对应主机的工作台并直接打开该会话；仅当 App 不在前台时发（前台已有审批卡与运行状态）。
@@ -83,11 +90,13 @@ object DshNotifier {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
         if (!approvalId.isNullOrBlank()) {
-            // 「拒绝」对所有版本都保留；「允许一次」只在 Android 12+ 上显示，
-            // 因为 setAuthenticationRequired 在更低版本不生效，锁屏下可能直接批准。
-            builder.addAction(approvalAction(context, host, sessionId, approvalId, false, L.reject, 12))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                builder.addAction(approvalAction(context, host, sessionId, approvalId, true, L.allowOnce, 11))
+            val kinds = approvalActionKinds(
+                quickApprove = WorkspacePrefs(context).allowApproveFromNotification,
+                sdkInt = Build.VERSION.SDK_INT,
+            )
+            kinds.forEachIndexed { index, approve ->
+                val label = if (approve) L.allowOnce else L.reject
+                builder.addAction(approvalAction(context, host, sessionId, approvalId, approve, label, 11 + index))
             }
         }
         // 锁屏只显示「有一项操作等待确认」，不暴露工具名。
@@ -179,6 +188,17 @@ object DshNotifier {
             },
             4_000,
         )
+    }
+
+    /** 锁屏状态下点了「允许」：不批准，把原通知替换成「请解锁后在 App 内确认」，点正文进入会话。 */
+    fun notifyApprovalNeedsUnlock(context: Context, host: Host, sessionId: String) {
+        val builder = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+            .setContentTitle(L.notifNeedApproval)
+            .setContentText(L.notifApprovalNeedsUnlock)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+        postNotification(context, notificationId(host, sessionId, 1), builder.build())
     }
 
     /** 打开该会话（动作失败时的兜底，与点通知同一条路）。 */

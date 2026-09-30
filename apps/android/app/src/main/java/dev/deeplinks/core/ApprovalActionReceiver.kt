@@ -26,7 +26,7 @@ class ApprovalActionReceiver : BroadcastReceiver() {
         if (approve) {
             val km = context.getSystemService(KeyguardManager::class.java)
             if (km != null && km.isDeviceLocked) {
-                DshNotifier.openSession(context, host, sessionId)
+                DshNotifier.notifyApprovalNeedsUnlock(context, host, sessionId)
                 return
             }
         }

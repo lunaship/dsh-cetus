@@ -399,6 +399,7 @@ internal fun SettingsHome(
     var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
     var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
     var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
+    var quickApprove by remember { mutableStateOf(notifyPrefs.allowApproveFromNotification) }
     var autoLoadRemoteImages by remember { mutableStateOf(notifyPrefs.autoLoadRemoteImages) }
     var alias by remember { mutableStateOf(notifyPrefs.hostAlias) }
     var renameOpen by remember { mutableStateOf(false) }
@@ -523,6 +524,18 @@ internal fun SettingsHome(
                 if (!it) SessionBackgroundMonitorService.stopAll(notifyContext)
             },
         )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            DshSwitchRow(
+                title = s.allowApproveFromNotification,
+                subtitle = s.allowApproveFromNotificationDesc,
+                checked = quickApprove,
+                enabled = notifyApproval,
+                onCheckedChange = {
+                    quickApprove = it
+                    notifyPrefs.allowApproveFromNotification = it
+                },
+            )
+        }
         DshSwitchRow(
             title = s.autoLoadRemoteImages,
             subtitle = s.autoLoadRemoteImagesDesc,

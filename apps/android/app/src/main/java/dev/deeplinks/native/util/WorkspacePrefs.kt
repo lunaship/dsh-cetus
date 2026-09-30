@@ -110,6 +110,13 @@ class WorkspacePrefs(context: Context) {
             prefs.edit().putBoolean(KEY_BACKGROUND_TAKEOVER, value).apply()
         }
 
+    /** 通知栏是否提供「允许一次」。默认关闭：手机收不到工具参数，通知栏批准等于盲批。 */
+    var allowApproveFromNotification: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_APPROVE_FROM_NOTIFICATION, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_ALLOW_APPROVE_FROM_NOTIFICATION, value).apply()
+        }
+
     var notifPermissionAsked: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ASKED, false)
         set(value) {
@@ -262,6 +269,7 @@ class WorkspacePrefs(context: Context) {
         const val KEY_NOTIFY_APPROVAL = "notify_on_approval"
         const val KEY_NOTIFY_DONE = "notify_on_done"
         const val KEY_BACKGROUND_TAKEOVER = "background_takeover"
+        const val KEY_ALLOW_APPROVE_FROM_NOTIFICATION = "workspace_allow_approve_from_notification"
 
         const val KEY_LAST_WORKSPACE = "workspace_last_selected_cwd"
         const val KEY_SESSION_SNAPSHOTS = "workspace_session_snapshots"
