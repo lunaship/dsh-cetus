@@ -282,7 +282,7 @@ fun DshFloatingPill(
         Surface(
             shape = RoundedCornerShape(DshRadius.full),
             color = container,
-            shadowElevation = if (enabled) 8.dp else 0.dp,
+            shadowElevation = if (enabled) 4.dp else 0.dp,
         ) {
             Row(
                 modifier = Modifier

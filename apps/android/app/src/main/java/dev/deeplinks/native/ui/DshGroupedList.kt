@@ -617,7 +617,7 @@ fun DshOptionsMenu(
         containerColor = Dsh.bgCard,
         shape = RoundedCornerShape(DshRadius.container),
         tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
+        shadowElevation = 4.dp,
         offset = DpOffset(0.dp, 4.dp),
     ) {
         Column(

@@ -97,7 +97,6 @@ internal fun ApprovalCard(
 
     if (!open && !sent) {
         val interaction = remember { MutableInteractionSource() }
-        val pressed by interaction.collectIsPressedAsState()
         Text(
             L.openApproval,
             color = Dsh.labelPrimary,
@@ -105,7 +104,7 @@ internal fun ApprovalCard(
             fontWeight = FontWeight(500),
             modifier = Modifier
                 .clip(RoundedCornerShape(DshRadius.control))
-                .background(if (pressed) Dsh.pressed else Dsh.bgSubtle)
+                .background(Dsh.bgSubtle)
                 .clickable(interactionSource = interaction, indication = dshRipple()) { open = true }
                 .semantics {
                     role = Role.Button
@@ -323,12 +322,10 @@ private fun ApprovalOptionRow(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.control))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
             .selectable(
                 selected = selected,
                 onClick = onClick,

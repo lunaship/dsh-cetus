@@ -258,12 +258,10 @@ internal fun InputBar(
                             else -> L.modelSeatAriaEffort.format(modelName, modelEffort)
                         }
                         val modelPillInteraction = remember { MutableInteractionSource() }
-                        val modelPillPressed by modelPillInteraction.collectIsPressedAsState()
                         Row(
                             modifier = Modifier
                                 .heightIn(min = DshTouch.min)
                                 .clip(RoundedCornerShape(DshRadius.control))
-                                .background(if (modelPillPressed) Dsh.pressed else Color.Transparent)
                                 .clickable(
                                     interactionSource = modelPillInteraction,
                                     indication = dshRipple(),
@@ -321,7 +319,7 @@ internal fun InputBar(
                     targetValue = when {
                         // 空态语音：与左侧 + / 同一规格的 bgTrack 圆钮；实心蓝只给「需要你动手」的
                         // 批准与发送，停止（打断过程）按 2026-09-28 重设计改用墨色实心
-                        showMic -> composerRoundButtonBg(sendPressed)
+                        showMic -> Dsh.bgTrack
                         actionError != null && (showStopAtSend || canSend) -> Dsh.error
                         showStopAtSend -> Dsh.labelPrimary
                         isListening -> Dsh.brand500
@@ -517,11 +515,6 @@ internal fun ComposerSeatsRow(
     }
 }
 
-/** DSH 座位底：无边框无底色，按压才叠一层弱底，圆角胶囊。 */
-@Composable
-private fun composerSeatBackground(pressed: Boolean): Color =
-    if (pressed) Dsh.pressed else Color.Transparent
-
 /**
  * 模型座：DSH `ModelSelect` 触发器。名称主文，推理等级是次级文本；
  * 两者都省略号截断，等级先被挤掉；窄档只留模型图标。
@@ -534,7 +527,6 @@ private fun ComposerModelSeat(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     val hasModel = !name.isNullOrBlank()
     val aria = when {
         !hasModel -> L.selectModel
@@ -557,7 +549,6 @@ private fun ComposerModelSeat(
                 .height(28.dp)
                 // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
                 .clip(RoundedCornerShape(DshRadius.control))
-                .background(composerSeatBackground(pressed))
                 .padding(start = DshSpace.s8, end = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
@@ -612,7 +603,6 @@ private fun ComposerAccessSeat(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     val canonical = canonicalComposerPermission(preset)
     val danger = composerPermissionIsDanger(canonical)
     val glyph = when (canonical) {
@@ -636,7 +626,6 @@ private fun ComposerAccessSeat(
                 .height(28.dp)
                 // composer 内入口统一 control 形状（8dp 圆角矩形），不用 pill
                 .clip(RoundedCornerShape(DshRadius.control))
-                .background(composerSeatBackground(pressed))
                 .padding(start = DshSpace.s8, end = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
@@ -663,13 +652,8 @@ private fun ComposerAccessSeat(
 }
 
 /**
- * 输入条圆钮的统一底色：静置 [Dsh.bgTrack]、按压品牌淡色。
- * 「+ / 空态 Mic」共用，保证一排按钮看起来是一套。
+ * 输入条圆钮的统一底色：静置 [Dsh.bgTrack]；按压反馈只留水波纹（P1）。
  */
-@Composable
-private fun composerRoundButtonBg(pressed: Boolean): Color =
-    if (pressed) Dsh.pressed else Dsh.bgTrack
-
 @Composable
 internal fun RoundIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -692,8 +676,7 @@ internal fun RoundIconButton(
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .clip(CircleShape)
-                .background(if (pressed) Dsh.pressed else Color.Transparent),
+                .clip(CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = if (pressed) Dsh.labelPrimary else tint, modifier = Modifier.size(16.dp))
@@ -709,12 +692,10 @@ private fun ComposerSetupRow(
     onClick: (() -> Unit)?,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Row(
         modifier = Modifier
             .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.container))
-            .background(if (pressed) Dsh.pressed else Color.Transparent)
             .then(
                 if (onClick != null) {
                     Modifier

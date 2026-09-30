@@ -66,7 +66,7 @@ internal fun DshMenu(
         containerColor = Dsh.bgCard,
         shape = RoundedCornerShape(DshRadius.container),
         tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
+        shadowElevation = 4.dp,
     ) {
         Column(
             modifier = Modifier
@@ -81,7 +81,6 @@ internal fun DshMenu(
                     )
                 }
                 val interaction = remember { MutableInteractionSource() }
-                val pressed by interaction.collectIsPressedAsState()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -90,7 +89,6 @@ internal fun DshMenu(
                         .background(
                             when {
                                 item.selected -> Dsh.bgSubtle
-                                pressed -> Dsh.pressed
                                 else -> Color.Transparent
                             }
                         )

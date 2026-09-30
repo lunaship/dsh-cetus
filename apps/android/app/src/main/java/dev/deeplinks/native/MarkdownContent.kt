@@ -319,12 +319,10 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                 modifier = Modifier.weight(1f)
             )
             val copyInteraction = remember { MutableInteractionSource() }
-            val copyPressed by copyInteraction.collectIsPressedAsState()
             Row(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(DshRadius.control))
-                    .background(if (copyPressed) Dsh.pressed else Color.Transparent)
                     .clickable(interactionSource = copyInteraction, indication = dshRipple()) {
                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("code", content.trimEnd()))

@@ -200,14 +200,12 @@ private fun ThinkingHeader(
     onToggle: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(motionDuration(300), easing = ThinkingEase),
         label = "thinkingChevron",
     )
     val expandLabel = if (expanded) L.collapse else L.expand
-    val pressTint = Dsh.pressed
     val labelFadeIn = motionDuration(350)
     val labelFadeOut = motionDuration(180)
     Row(
@@ -227,10 +225,6 @@ private fun ThinkingHeader(
     ) {
         Row(
             modifier = Modifier
-                .then(
-                    if (pressed) Modifier.drawBehind { drawRect(pressTint) }
-                    else Modifier,
-                )
                 .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
