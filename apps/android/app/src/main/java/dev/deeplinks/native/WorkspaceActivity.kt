@@ -120,7 +120,6 @@ class WorkspaceActivity : ComponentActivity() {
     }
 }
 
-// ---------- 工作台主界面 ----------
 
 /** 手机 / Medium 上的目的地。宽屏常驻侧栏时忽略，列表和聊天同时在。 */
 private enum class PhoneDest { Sessions, Chat }
@@ -1053,7 +1052,8 @@ fun WorkspaceScreen(
                     SessionMonitorLifecycle.onBackground(context, host, currentSessionId, sessions, streamClient)
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                    // 回前台：SSE 断线时立即补全消息，并刷新会话列表（移动网络切换场景）
+                    dev.deeplinks.core.HostHttp.onForeground() // R5：回前台清空闲连接
+                    // SSE 断线时立即补全消息，并刷新会话列表（移动网络切换场景）
                     if (streamClient?.isConnected != true) refreshMessages(autoScroll = true)
                     // 设置页可能改动了归档/删除集合，回前台重新水合（唯一所有者）
                     localStore.reload()

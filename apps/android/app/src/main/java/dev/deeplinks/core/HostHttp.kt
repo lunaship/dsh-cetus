@@ -249,6 +249,12 @@ object HostHttp {
         remoteClients.values.forEach { it.connectionPool.evictAll() }
     }
 
+    /** 回到前台：清掉空闲连接，避免继续使用可能已被远端关掉的连接（R5）。 */
+    fun onForeground() {
+        lanClients.values.forEach { it.connectionPool.evictAll() }
+        remoteClients.values.forEach { it.connectionPool.evictAll() }
+    }
+
     // ===== 局域网 =====
 
     /** 同主机（URL+指纹）复用连接池。 */
@@ -339,7 +345,8 @@ object HostHttp {
             .dns(TunnelDns)
             .proxy(Proxy.NO_PROXY)
             .connectionPool(ConnectionPool(4, 60, TimeUnit.SECONDS))
-            .retryOnConnectionFailure(false)
+            // 复用连接被远端关掉时，GET 等幂等请求应自动换路重试（R5）
+            .retryOnConnectionFailure(true)
             .build()
     }
 

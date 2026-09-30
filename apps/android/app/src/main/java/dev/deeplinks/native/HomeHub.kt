@@ -347,19 +347,45 @@ internal fun HomeSummaryRow(
                             DshMenuItem(
                                 icon = FolderOpenOutline16,
                                 label = if (selected == cwd) "$name ✓" else name,
+                                selected = selected == cwd,
                                 onClick = {
                                     menuOpen = false
                                     onSelect(if (selected == cwd) null else cwd)
                                 },
-                                trailingContent = {
-                                    WorkspaceMoreAction(
-                                        onAddWorkspace = { menuOpen = false; onAddWorkspace() },
-                                        onCreateSessionIn = { menuOpen = false; onCreateSessionIn(cwd) },
-                                        onDeleteWorkspace = { menuOpen = false; onDeleteWorkspace(cwd) },
-                                    )
+                            ),
+                        )
+                        add(
+                            DshMenuItem(
+                                icon = PlusOutline16,
+                                label = s.createSession,
+                                onClick = {
+                                    menuOpen = false
+                                    onCreateSessionIn(cwd)
                                 },
                             ),
                         )
+                        add(
+                            DshMenuItem(
+                                icon = FolderOpenOutline16,
+                                label = s.addWorkspace,
+                                onClick = {
+                                    menuOpen = false
+                                    onAddWorkspace()
+                                },
+                            ),
+                        )
+                        add(
+                            DshMenuItem(
+                                icon = TrashOutline16,
+                                label = s.deleteWorkspace,
+                                danger = true,
+                                onClick = {
+                                    menuOpen = false
+                                    onDeleteWorkspace(cwd)
+                                },
+                            ),
+                        )
+                    }
                     }
                     add(
                         DshMenuItem(
@@ -374,35 +400,6 @@ internal fun HomeSummaryRow(
                 },
             )
         }
-    }
-}
-
-/** 筛选菜单每项的「更多」：原来长按工作区胶囊的两个动作 + 添加工作区。 */
-@Composable
-private fun WorkspaceMoreAction(
-    onAddWorkspace: () -> Unit,
-    onCreateSessionIn: () -> Unit,
-    onDeleteWorkspace: () -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        DshIconAction(
-            icon = EllipsisOutline16,
-            contentDescription = DshS.moreActions,
-            onClick = { open = true },
-            size = 32.dp,
-            iconSize = 16.dp,
-        )
-        DshMenu(
-            expanded = open,
-            onDismiss = { open = false },
-            offset = DpOffset(0.dp, 4.dp),
-            items = listOf(
-                DshMenuItem(PlusOutline16, DshS.createSession) { open = false; onCreateSessionIn() },
-                DshMenuItem(FolderOpenOutline16, DshS.addWorkspace) { open = false; onAddWorkspace() },
-                DshMenuItem(TrashOutline16, DshS.deleteWorkspace, danger = true) { open = false; onDeleteWorkspace() },
-            ),
-        )
     }
 }
 
