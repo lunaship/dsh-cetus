@@ -91,12 +91,14 @@ data class DshColors(
     val toolsAccent: Color = Color.Unspecified,
     // 轨迹角色语义色（跨主题稳定，与 systemAccent/toolsAccent 同类）
     val traceReasoning: Color = Color.Unspecified,
-    val traceApproval: Color = Color.Unspecified,
-    val traceTodo: Color = Color.Unspecified,
     // 品牌色调叠加层（按钮/标签底），跨主题稳定
     val brandTint: Color = Color.Unspecified,
     /** 品牌/语义实心底上的内容色（brand500 / error 等），替代散落的硬编码 Color.White。 */
     val onBrand: Color = Color.Unspecified,
+    /** 过程控制按钮（新任务、停止）的底。浅色等于 labelPrimary；深色为深灰，避免比批准更亮。 */
+    val inkFill: Color = Color.Unspecified,
+    /** [inkFill] 上的图标和文字。 */
+    val onInk: Color = Color.Unspecified,
     // 状态容器配对（M3 container/on-container 语义，保证 WCAG AA）
     val successContent: Color = Color.Unspecified,
     val successContainer: Color = Color.Unspecified,
@@ -136,8 +138,8 @@ val DarkDshColors = DshColors(
     borderStrong = Dsw.borderL3Dark,         // alias-border-l3
     pressed = Dsw.interactiveHoverDark,      // alias-interactive-bg-hover
     activated = Dsw.interactiveActiveDark,   // alias-interactive-bg-active
-    brand400 = Color(0xFF7C93FF),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
-    brand500 = Color(0xFF7C93FF),            // 偏离 DSH：重设计稿强调蓝 #7C93FF（批准、发送）
+    brand400 = Color(0xFF8B9DFF),            // 偏离 DSH：2026-09-30 第四轮，深色强调蓝提亮一档（#8B9DFF，对画布约 7.4）
+    brand500 = Color(0xFF8B9DFF),            // 偏离 DSH：2026-09-30 第四轮，与 brand400 同值（批准、发送）
     success = Color(0xFF3BC476),             // 偏离 DSH：重设计稿在线点 #3BC476
     warn = Dsw.amber500,                     // DSH 无 warning alias，取 static amber
     warnLabel = Color(0xFFF0B86A),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #F0B86A
@@ -147,14 +149,14 @@ val DarkDshColors = DshColors(
     buttonElevated = Dsw.neutralBluish750,   // alias-button-elevated-fill
     buttonFloating = Dsw.neutralBluish850,   // alias-button-floating-fill
     shadowCard = Color(0x1F000000),          // 偏离 DSH：DSH 阴影不分深浅（0D），深色画布上看不见，加深到 1F
-    systemAccent = Color(0xFF94A3B8),        // 偏离 DSH：无对应角色（Android 分段语义色）
-    toolsAccent = Color(0xFF8BA3C7),         // 偏离 DSH：无对应角色；蓝灰弱强调，不与品牌蓝抢层级
-    traceReasoning = Color(0xFF7B93F8),      // 偏离 DSH：无对应角色；推理轨蓝系弱强调（非紫）
-    traceApproval = Color(0xFFE07A3A),       // 偏离 DSH：无对应角色；审批降噪橙
-    traceTodo = Color(0xFF5BB8C9),           // 偏离 DSH：无对应角色；待办青
-    brandTint = Color(0xFF7C93FF).copy(alpha = 0.1f), // 偏离 DSH：随重设计稿强调蓝
-    // 重设计稿：深色强调底 #7C93FF 上必须写深字（白字只有 2.8:1），本测试下限是 3:1
+    systemAccent = Color(0xFF6B6F78),        // 偏离 DSH：2026-09-30 第四轮，上下文条改中性灰
+    toolsAccent = Color(0xFF4A4D55),         // 偏离 DSH：2026-09-30 第四轮，工具分段改中性灰
+    traceReasoning = Color(0xFF8B9DFF),      // 偏离 DSH：2026-09-30 第四轮，推理轨与 brand400 同值，去掉第二套蓝
+    brandTint = Color(0xFF8B9DFF).copy(alpha = 0.1f), // 偏离 DSH：2026-09-30 第四轮，随强调蓝 #8B9DFF
+    // 深色强调底 #8B9DFF 上写深字；DshPaletteProvenanceTest 要求 onBrand/brand500 ≥ 3:1
     onBrand = Color(0xFF121214),             // 偏离 DSH：重设计稿深色强调底上的内容色（非白）
+    inkFill = Color(0xFF3A3C43),             // 偏离 DSH：2026-09-30 第四轮，深色过程按钮深灰（让批准蓝成为最亮）
+    onInk = Color(0xFFECEDF0),               // 偏离 DSH：2026-09-30 第四轮，深色过程按钮上的字（对 inkFill 约 9.4）
     successContent = Color(0xFF5CC38A),      // 偏离 DSH：重设计稿完成图标 #5CC38A（DSH 没有深底绿字档）
     successContainer = Color(0xFF16301F),    // 偏离 DSH：重设计稿完成图标圈底 #16301F
     cloudContent = Dsw.deepseek300,
@@ -166,35 +168,33 @@ val LightDshColors = DshColors(
     // ===== 2026-09-28 重设计稿浅色板（方案 2.2）=====
     // 与旧浅色板最大的差别：**页面底是灰的、卡片才白**。分层靠这一组 tonal 差，
     // 不给卡片加描边（docs/visual-rules.md 第二节）。
-    bgBase = Color(0xFFF5F5F2),              // 偏离 DSH：2026-09-28 重设计稿（页面底 #F5F5F2）
-    bgSidePanel = Color(0xFFF5F5F2),         // 偏离 DSH：同上（导航面与页面底同档）
+    bgBase = Color(0xFFF3F4F7),              // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（页面底 #F3F4F7）
+    bgSidePanel = Color(0xFFF3F4F7),         // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（导航面与页面底同档）
     bgCard = Color(0xFFFFFFFF),              // 偏离 DSH：重设计稿卡片/面板面 #FFFFFF（与灰底成对）
-    bgInput = Color(0xFFF5F5F2),             // 偏离 DSH：重设计稿输入条底 #F5F5F2（在白色对话页上凹进去）
-    // 稿子写 #F1F1ED：与页面底 #F5F5F2 只差 1.04:1，过不了 DshContrastTest 的 1.05 分层下限，
-    // 下压一档到 #EAEAE5（气泡与选中/胶囊共用这一层）
-    bgSubtle = Color(0xFFEAEAE5),            // 偏离 DSH：重设计稿气泡 #F1F1ED 下压一档（见上）
-    bgCode = Color(0xFFF3F3EF),              // 偏离 DSH：重设计稿代码块底 #F3F3EF
-    bgCodeBanner = Color(0xFFFAFAF8),        // 偏离 DSH：重设计稿卡片头/弱底 #FAFAF8
-    bgSelected = Color(0xFFE7E7E1),          // 偏离 DSH：重设计稿选中态改中性灰（不再用品牌蓝 tonal）
-    bgPressed = Color(0x0F16171A),           // 偏离 DSH：2026-09-30 按压改中性 6%（品牌蓝只给批准/发送，且避免双层叠成黑影）
-    bgDrawer = Color(0xFFF5F5F2),            // 偏离 DSH：重设计稿抽屉底与页面底同档
-    bgNavSelected = Color(0xFFE7E7E1),       // 偏离 DSH：与 bgSelected 同一 selection container
-    bgTrack = Color(0xFFE6E6E1),             // 偏离 DSH：重设计稿进行中轨道 #E6E6E1（Main.dc.html 的转圈底）
-    bgOverlay = Color(0x4016171A),           // 偏离 DSH：2026-09-30 真机反馈遮罩过重，从 .42 降到 .25
-    bgRecessed = Color(0xFFF3F3EF),          // 偏离 DSH：重设计稿凹进面（思考轨迹）#F3F3EF
+    bgInput = Color(0xFFF3F4F7),             // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（输入条底，在白卡上凹进去）
+    bgSubtle = Color(0xFFEBEDF1),            // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（对画布 1.07，门禁 ≥ 1.05）
+    bgCode = Color(0xFFF2F3F6),              // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（代码块底 #F2F3F6）
+    bgCodeBanner = Color(0xFFF9FAFB),        // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（卡片头/弱底 #F9FAFB）
+    bgSelected = Color(0xFFE5E7EC),          // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（选中态 #E5E7EC，对画布 1.12）
+    bgPressed = Color(0x0F15171C),           // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（按压 6%，随 labelPrimary）
+    bgDrawer = Color(0xFFF3F4F7),            // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（抽屉底与页面底同档）
+    bgNavSelected = Color(0xFFE5E7EC),       // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（与 bgSelected 同一 selection container）
+    bgTrack = Color(0xFFE4E6EB),             // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（进行中轨道 #E4E6EB）
+    bgOverlay = Color(0x4015171C),           // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（遮罩 .25，随 labelPrimary）
+    bgRecessed = Color(0xFFF2F3F6),          // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（思考轨迹凹进面 #F2F3F6）
     bgSurface = Color(0xFFFFFFFF),           // 偏离 DSH：重设计稿面板面 #FFFFFF
-    labelPrimary = Color(0xFF16171A),        // 偏离 DSH：重设计稿主文字 #16171A
-    labelSecondary = Color(0xFF5B5F66),      // 偏离 DSH：重设计稿次要文字 #5B5F66（灰底 5.9:1）
-    labelTertiary = Color(0xFF6E7278),       // 偏离 DSH：重设计稿第三级文字/箭头 #6E7278
-    labelDimmed = Color(0xFFB5B7BB),         // 偏离 DSH：重设计稿禁用 #B5B7BB
-    borderSubtle = Color(0xFFEEEEE9),        // 偏离 DSH：重设计稿分隔线 #EEEEE9（只用于分隔线，不做容器描边）
+    labelPrimary = Color(0xFF15171C),        // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（主文字 #15171C，对画布 16.3）
+    labelSecondary = Color(0xFF5A5F69),      // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（次要文字 #5A5F69，对画布 5.83）
+    labelTertiary = Color(0xFF686D77),       // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（第三级 #686D77，对画布 4.72）
+    labelDimmed = Color(0xFFB3B7BF),         // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（置灰 #B3B7BF，不承载必读信息）
+    borderSubtle = Color(0xFFECEEF2),        // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（分隔线 #ECEEF2，对白卡 1.16）
     borderStrong = Dsw.borderL3Light,        // alias-border-l3
-    pressed = Color(0x0F16171A),             // 偏离 DSH：2026-09-30 与 bgPressed 统一，浅色按压中性 6%
+    pressed = Color(0x0F15171C),             // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（与 bgPressed 统一，按压 6%）
     activated = Dsw.interactiveActiveLight,  // alias-interactive-bg-active
     brand400 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
     brand500 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝 #3F5BD6（批准、发送）
     success = Color(0xFF1F9D55),             // 偏离 DSH：重设计稿在线点 #1F9D55
-    warn = Dsw.amber600,                     // DSH 无 warning alias，取 static amber
+    warn = Color(0xFFC4801A),                // 偏离 DSH：2026-09-30 第四轮，小圆点琥珀（对白卡 3.26，非文字 ≥ 3）
     warnLabel = Color(0xFF8A4B00),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #8A4B00
     warnContainer = Color(0xFFFFF1DE),       // 偏离 DSH：重设计稿「等你批准」胶囊底 #FFF1DE
     error = Color(0xFFB42318),               // 偏离 DSH：重设计稿危险文字 #B42318（4.8:1）
@@ -202,13 +202,13 @@ val LightDshColors = DshColors(
     buttonElevated = Dsw.neutralBluish00,    // alias-button-elevated-fill
     buttonFloating = Dsw.neutralBluish00,    // alias-button-floating-fill
     shadowCard = Dsw.shadowLv1,              // shadow-lv1 的颜色分量
-    systemAccent = Color(0xFF64748B),        // 偏离 DSH：无对应角色（Android 分段语义色）
-    toolsAccent = Color(0xFF5B7A9D),         // 偏离 DSH：无对应角色；蓝灰，不与品牌蓝抢层级
-    traceReasoning = Color(0xFF5B6FB8),      // 偏离 DSH：无对应角色；11sp 标签需 AA（4.8:1）
-    traceApproval = Dsw.amber600,
-    traceTodo = Color(0xFF0E8A9A),           // 偏离 DSH：无对应角色；待办青
+    systemAccent = Color(0xFF8C919B),        // 偏离 DSH：2026-09-30 第四轮，上下文条改中性灰
+    toolsAccent = Color(0xFFB3B7BF),         // 偏离 DSH：2026-09-30 第四轮，工具分段改中性灰
+    traceReasoning = Color(0xFF3F5BD6),      // 偏离 DSH：2026-09-30 第四轮，推理轨与 brand400 同值，去掉第二套蓝
     brandTint = Color(0xFF3F5BD6).copy(alpha = 0.1f), // 偏离 DSH：随重设计稿强调蓝
     onBrand = Dsw.neutralBluish00,           // 浅色强调底上写白字（#3F5BD6 上 5.7:1）
+    inkFill = Color(0xFF15171C),             // 偏离 DSH：2026-09-30 第四轮，浅色过程按钮等于 labelPrimary
+    onInk = Color(0xFFFFFFFF),               // 偏离 DSH：2026-09-30 第四轮，浅色过程按钮上的白字
     successContent = Color(0xFF17753F),      // 偏离 DSH：重设计稿完成图标 #17753F（DSH 绿色族白底不达 AA）
     successContainer = Color(0xFFE6F4EC),    // 偏离 DSH：重设计稿完成图标圈底 #E6F4EC
     cloudContent = Dsw.deepseek600,          // 在 deepseek-100 上 4.6:1
@@ -760,16 +760,6 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.traceReasoning
 
-    val traceApproval: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.traceApproval
-
-    val traceTodo: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.traceTodo
-
     val brandTint: Color
         @Composable
         @ReadOnlyComposable
@@ -779,6 +769,16 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.onBrand
+
+    val inkFill: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.inkFill
+
+    val onInk: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.onInk
 
     val successContent: Color
         @Composable

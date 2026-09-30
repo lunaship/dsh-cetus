@@ -1,36 +1,22 @@
 <resources>
     <!-- ================================================
-         DSH / DeepSeek Harness 深色色板（与 Compose DarkDshColors 对齐）
-         画布 DSH alias-bg-base #151517；主强调 DSH deepseek-450。见 docs/visual-rules.md。
+         与 Compose DarkDshColors 对齐（2026-09-30 第四轮）。
+         没人引用的旧色名已删除。见 docs/visual-rules.md。
          ================================================ -->
-    <color name="dsh_bg_base">#151517</color>
-    <color name="dsh_bg_card">#232324</color>
-    <color name="dsh_bg_secondary">#2C2C2E</color>
+    <color name="dsh_bg_base">#121214</color>
+    <color name="dsh_bg_card">#1C1D21</color>
+    <color name="dsh_bg_secondary">#2A2B30</color>
 
-    <color name="dsh_label_primary">#F9FAFB</color>
-    <color name="dsh_label_secondary">#CFD3D6</color>
-    <color name="dsh_label_muted">#ADB2B8</color>
+    <color name="dsh_label_primary">#EDEDEF</color>
+    <color name="dsh_label_secondary">#A3A7AE</color>
+    <color name="dsh_label_muted">#8B8F96</color>
 
-    <color name="dsh_border">#29FFFFFF</color>
-    <color name="dsh_border_light">#1FFFFFFF</color>
+    <color name="dsh_brand">#8B9DFF</color>
+    <color name="dsh_on_brand">#121214</color>
 
-    <color name="dsh_brand">#5686FE</color>
-    <color name="dsh_on_brand">#FFFFFF</color>
-    <color name="dsh_pressed">#14FFFFFF</color>
-    <color name="dsh_overlay">#80000000</color>
-
-    <color name="dsh_online">#22C55E</color>
-    <color name="dsh_online_bg">#1A22C55E</color>
-    <color name="dsh_source_cloud">#B7C8FE</color>
-    <color name="dsh_source_cloud_bg">#1AB7C8FE</color>
-    <color name="dsh_endpoint_web">#8BA3C7</color>
-    <color name="dsh_endpoint_web_bg">#1A8BA3C7</color>
-
-    <color name="dsh_offline">#ADB2B8</color>
-    <color name="dsh_checking">#43454A</color>
-    <color name="dsh_avatar_bg">#2C2C2E</color>
-    <color name="dsh_avatar_text">#F9FAFB</color>
+    <color name="dsh_avatar_bg">#2A2B30</color>
+    <color name="dsh_avatar_text">#EDEDEF</color>
 
     <!-- Splash: 与深色画布一致 -->
-    <color name="splash_field">#151517</color>
+    <color name="splash_field">#121214</color>
 </resources>
