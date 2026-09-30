@@ -222,7 +222,13 @@ object HostHttp {
         }
         try {
             val response = executeRemoteCall(host, remote, request, url, key, onCall)
-            return response.newBuilder().body(ReleasingBody(response.body, release)).build()
+            // K4：只有真正过闸门的短请求才包 ReleasingBody；SSE 不包，
+            // 免得 ReleasingBody 构造时提前 original.source() 介入流式响应。
+            return if (gated) {
+                response.newBuilder().body(ReleasingBody(response.body, release)).build()
+            } else {
+                response
+            }
         } catch (e: Throwable) {
             release()
             throw e

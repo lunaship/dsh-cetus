@@ -65,6 +65,8 @@ internal fun shareConversationAsImage(
                     }
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             withContext(Dispatchers.Main) { onError(L.exportFailed.format(e.message ?: L.unknownError)) }
         }
@@ -91,6 +93,8 @@ internal fun exportConversationText(
                 }
                 context.startActivity(Intent.createChooser(send, L.exportConversation))
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             withContext(Dispatchers.Main) { onError(L.exportFailed.format(e.message ?: L.unknownError)) }
         }
