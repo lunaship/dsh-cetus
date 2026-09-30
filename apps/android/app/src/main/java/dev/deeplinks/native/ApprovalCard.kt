@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
+import dev.deeplinks.native.ui.DshChipTone
+import dev.deeplinks.native.ui.DshStatusChip
 
 private enum class ApprovalChoice { AllowOnce, Reject }
 
@@ -127,27 +129,11 @@ internal fun ApprovalCard(
     // 所以 takenOverByPhone 恒为 false——此时**不给选中/提交按钮**，否则点了必然 409。
     // 只有真的被手机接管（/requests 快照里有这条 pending）才画可交互的审批卡。
     if (msg.requestStatus == REQUEST_PENDING && !msg.takenOverByPhone) {
-        Text(
-            L.homeApprovalOnDesktop,
-            color = Dsh.labelSecondary,
-            style = DshType.body,
-            modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.control))
-                .background(Dsh.bgSubtle)
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-        )
+        DshStatusChip(text = L.homeApprovalOnDesktop, tone = DshChipTone.Remote)
         return
     }
     if (msg.requestStatus == REQUEST_UNKNOWN) {
-        Text(
-            L.approvalStatusUnknown,
-            color = Dsh.labelSecondary,
-            style = DshType.body,
-            modifier = Modifier
-                .clip(RoundedCornerShape(DshRadius.control))
-                .background(Dsh.bgSubtle)
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-        )
+        DshStatusChip(text = L.approvalStatusUnknown, tone = DshChipTone.Remote)
         return
     }
 
@@ -157,13 +143,12 @@ internal fun ApprovalCard(
             .fillMaxWidth()
             .heightIn(min = 160.dp),
     ) {
-        // 暖色 tonal 容器（2026-09-28 重设计 · 方案 5.4）：审批是「需要你动手」的状态，
-        // 用 warnContainer + composer 圆角与普通行内卡片分开；仍是行内卡，不浮起、不加阴影。
+        // 白卡片：需要处理的信号是标题旁的 6dp 琥珀点。不加描边、色边、阴影。
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(DshRadius.composer))
-                .background(Dsh.warnContainer),
+                .background(Dsh.bgCard),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = DshSpace.s12)) {
                 Row(
@@ -171,13 +156,22 @@ internal fun ApprovalCard(
                     verticalAlignment = Alignment.Top,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            L.approvalQuestion,
-                            color = Dsh.labelPrimary,
-                            style = DshType.titleSmall,
-                            fontWeight = FontWeight(500),
-                            lineHeight = 18.sp,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Dsh.warn),
+                            )
+                            Spacer(Modifier.width(DshSpace.s6))
+                            Text(
+                                L.approvalQuestion,
+                                color = Dsh.labelPrimary,
+                                style = DshType.titleSmall,
+                                fontWeight = FontWeight(500),
+                                lineHeight = 18.sp,
+                            )
+                        }
                         Spacer(Modifier.height(DshSpace.s4))
                         Text(
                             msg.text.ifBlank {
@@ -346,7 +340,7 @@ private fun ApprovalOptionRow(
                 .clip(if (radio) CircleShape else RoundedCornerShape(DshRadius.control))
                 .then(
                     if (selected) Modifier.background(Dsh.labelPrimary)
-                    else Modifier.border(1.5.dp, Dsh.borderStrong, if (radio) CircleShape else RoundedCornerShape(DshRadius.control)),
+                    else Modifier.border(1.5.dp, Dsh.labelTertiary, if (radio) CircleShape else RoundedCornerShape(DshRadius.control)),
                 ),
             contentAlignment = Alignment.Center,
         ) {
@@ -387,34 +381,10 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
         REQUEST_EXPIRED -> L.approvalExpired
         else -> if (allowed) L.approvalAllowedSent else L.approvalRejectedSent
     }
-    val tint = if (allowed) Dsh.success else Dsh.error
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(DshRadius.full))
-            .background(tint.copy(alpha = 0.14f))
-            .padding(start = DshSpace.s4, end = 10.dp, top = DshSpace.s4, bottom = DshSpace.s4),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(tint),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                CheckOutline14,
-                contentDescription = null,
-                tint = Dsh.onBrand,
-                modifier = Modifier.size(11.dp),
-            )
-        }
-        Spacer(Modifier.width(DshSpace.s6))
-        Text(
-            label,
-            color = tint,
-            style = DshType.title,
-            fontWeight = FontWeight(500),
-        )
-    }
+    DshStatusChip(
+        text = label,
+        tone = DshChipTone.Remote,
+        leading = if (allowed) CheckOutline14 else CloseOutline16,
+        leadingTint = if (allowed) Dsh.successContent else Dsh.labelTertiary,
+    )
 }

@@ -337,9 +337,9 @@ internal fun InputBar(
                         // 批准与发送，停止（打断过程）按 2026-09-28 重设计改用墨色实心
                         showMic -> Dsh.bgTrack
                         actionError != null && (showStopAtSend || canSend) -> Dsh.error
-                        showStopAtSend -> Dsh.labelPrimary
+                        showStopAtSend -> Dsh.inkFill
                         isListening -> Dsh.brand500
-                        !canSend && !isSending -> Dsh.brand500.copy(alpha = 0.55f)
+                        !canSend && !isSending -> Dsh.bgSubtle
                         sendPressed -> Dsh.brand400
                         else -> Dsh.brand500
                     },
@@ -435,7 +435,7 @@ internal fun InputBar(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .clip(RoundedCornerShape(DshRadius.micro))
-                                        .background(Dsh.bgCard)
+                                        .background(Dsh.onInk)
                                 )
                             }
                             isListening || isSending -> {
@@ -460,7 +460,7 @@ internal fun InputBar(
                                 Icon(
                                     SendOutline16,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = if (canSend) Dsh.onBrand else Dsh.labelDimmed,
                                     modifier = Modifier.size(14.dp)
                                 )
                             }

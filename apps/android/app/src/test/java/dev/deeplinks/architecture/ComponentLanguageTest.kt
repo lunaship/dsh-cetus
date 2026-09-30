@@ -69,10 +69,10 @@ class ComponentLanguageTest {
          *
          * 2026-09-28 重设计阶段 3：HomeHub 的胶囊按钮/悬浮主按钮换成共享组件后，
          * 只剩概况行那个「全部工作区」筛选胶囊，预算由 3 下调到 1（只降不升）。
+         * 2026-09-30 第四轮：ApprovalCard 的结果胶囊改走 DshStatusChip，预算清零。
          */
         val PILL_SHAPE_BUDGET = mapOf(
             "dev/deeplinks/native/WorkspaceSheets.kt" to 1,
-            "dev/deeplinks/native/ApprovalCard.kt" to 1,
             "dev/deeplinks/native/WorkspaceChangesPanel.kt" to 1,
             "dev/deeplinks/native/ProducedFiles.kt" to 1,
             "dev/deeplinks/native/WorkspaceChrome.kt" to 5,

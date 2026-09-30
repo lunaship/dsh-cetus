@@ -309,7 +309,7 @@ internal fun SessionRowItem(
  * 行首 32dp 状态圈（稿 01/07）：
  * - 等你处理：电脑图标（这条审批在电脑端网页上处理）；
  * - 进行中：墨色转圈（系统关动画时静止成一段弧）；
- * - 已结束：有 lastResult = 完成（绿底带勾文档），否则按「已停止」（灰底方块）。
+ * - 已结束：有 lastResult = 完成（中性底 + successContent 图标），否则按「已停止」（灰底方块）。
  */
 @Composable
 private fun SessionLeadingIcon(session: MobileSession, offline: Boolean) {
@@ -337,7 +337,7 @@ private fun SessionLeadingIcon(session: MobileSession, offline: Boolean) {
         )
         else -> DshStatusIcon(
             icon = DocumentCheckOutline16,
-            container = Dsh.successContainer,
+            container = Dsh.bgSubtle,
             content = Dsh.successContent,
         )
     }

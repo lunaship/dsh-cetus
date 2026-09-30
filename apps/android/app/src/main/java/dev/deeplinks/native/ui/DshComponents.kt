@@ -58,7 +58,9 @@ import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.readableTextColor
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
+import dev.deeplinks.native.CheckOutline16
 import dev.deeplinks.native.DshDuration
+import dev.deeplinks.native.WarningOutline16
 import dev.deeplinks.native.DshEasing
 import dev.deeplinks.native.DshHaptic
 import dev.deeplinks.native.DshIconSize
@@ -360,10 +362,10 @@ fun DshBanner(
     val (bg, fg, accent) = when (tone) {
         // Info 用 bgSubtle：浅色 bgCard 与白画布同色，横幅会整块隐形（暗色下却是一张卡）。
         DshBannerTone.Info -> Triple(Dsh.bgSubtle, Dsh.labelSecondary, Dsh.brand400)
-        DshBannerTone.Warn -> Triple(Dsh.warn.copy(alpha = 0.12f), Dsh.warnLabel, Dsh.warn)
+        // 警告 / 成功：中性底 + 左侧图标。语义色只在图标上，文字用 labelPrimary。错误横幅保留 errorBg。
+        DshBannerTone.Warn -> Triple(Dsh.bgSubtle, Dsh.labelPrimary, Dsh.labelPrimary)
         DshBannerTone.Error -> Triple(Dsh.errorBg, Dsh.error, Dsh.error)
-        // 文字用 successContent：success 绿字压 12% 绿底只有 ≈2:1。
-        DshBannerTone.Success -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.successContent, Dsh.success)
+        DshBannerTone.Success -> Triple(Dsh.bgSubtle, Dsh.labelPrimary, Dsh.labelPrimary)
     }
     Row(
         modifier = modifier
@@ -377,9 +379,15 @@ fun DshBanner(
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 语气只靠 tonal 底色 + 文字色表达；左侧竖色条是网页 callout 写法，不用
+        // 语义色只做图标，不加单侧色边。调用方传入 leading 时用调用方的。
         if (leading != null) {
             leading()
+            Spacer(Modifier.width(DshSpace.s8))
+        } else if (tone == DshBannerTone.Warn) {
+            Icon(WarningOutline16, contentDescription = null, tint = Dsh.warn, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(DshSpace.s8))
+        } else if (tone == DshBannerTone.Success) {
+            Icon(CheckOutline16, contentDescription = null, tint = Dsh.successContent, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(DshSpace.s8))
         }
         Text(
@@ -564,7 +572,7 @@ fun DshIconAction(
 
 // ============================================================
 // DshPrimaryAction —— 实心主操作（每个表面最多一个）
-// 语义角色：Button；品牌蓝实心 + 全圆，禁用降透明
+// 语义角色：Button；品牌蓝实心 + 全圆。禁用 = bgSubtle 底 + labelDimmed 字，与其它按钮同一种写法。
 // ============================================================
 @Composable
 fun DshPrimaryAction(
@@ -575,13 +583,14 @@ fun DshPrimaryAction(
     icon: ImageVector? = null,
     danger: Boolean = false,
 ) {
-    val container = if (danger) Dsh.error else Dsh.brand500
+    val container = if (!enabled) Dsh.bgSubtle else if (danger) Dsh.error else Dsh.brand500
+    val content = if (!enabled) Dsh.labelDimmed else Dsh.onBrand
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(DshRadius.full))
-            .background(if (enabled) container else container.copy(alpha = 0.55f))
+            .background(container)
             .clickable(
                 interactionSource = interaction,
                 indication = dshRipple(),
@@ -594,16 +603,17 @@ fun DshPrimaryAction(
         horizontalArrangement = Arrangement.Center,
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = Dsh.onBrand, modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(DshSpace.s8))
         }
-        Text(label, color = Dsh.onBrand, style = DshType.labelLarge, maxLines = 1)
+        Text(label, color = content, style = DshType.labelLarge, maxLines = 1)
     }
 }
 
 // ============================================================
 // DshStatusBadge —— 状态 pill（等待 / 运行 / 成功 / 错误 / 中性）
-// 状态必须「颜色 + 文字」双通道，不得只靠色点；由 DshStatusBadge 统一语义
+// 等待 / 运行 / 成功：bgSubtle 底，靠 6dp 色点（warn / brand400 / successContent）和对应文字色区分。
+// 错误保留 errorBg。不铺语义色底，不加单侧色边。
 // ============================================================
 enum class DshStatusTone { Neutral, Waiting, Running, Success, Error }
 
@@ -617,12 +627,12 @@ fun DshStatusBadge(
 ) {
     val (bg, fg, accent) = when (tone) {
         DshStatusTone.Neutral -> Triple(Dsh.bgSubtle, Dsh.labelSecondary, Dsh.labelTertiary)
-        // 与 DshBanner 同一套容器/内容配对，保证 AA 对比
-        DshStatusTone.Waiting -> Triple(Dsh.warn.copy(alpha = 0.12f), Dsh.warnLabel, Dsh.warn)
-        DshStatusTone.Running -> Triple(Dsh.brandTint, Dsh.brand400, Dsh.brand400)
-        DshStatusTone.Success -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.successContent, Dsh.success)
+        DshStatusTone.Waiting -> Triple(Dsh.bgSubtle, Dsh.warnLabel, Dsh.warn)
+        DshStatusTone.Running -> Triple(Dsh.bgSubtle, Dsh.brand400, Dsh.brand400)
+        DshStatusTone.Success -> Triple(Dsh.bgSubtle, Dsh.successContent, Dsh.successContent)
         DshStatusTone.Error -> Triple(Dsh.errorBg, Dsh.error, Dsh.error)
     }
+    val showDot = dot || tone == DshStatusTone.Waiting || tone == DshStatusTone.Running || tone == DshStatusTone.Success
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(DshRadius.full))
@@ -633,7 +643,7 @@ fun DshStatusBadge(
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (dot) {
+        if (showDot) {
             Box(
                 Modifier
                     .size(6.dp)

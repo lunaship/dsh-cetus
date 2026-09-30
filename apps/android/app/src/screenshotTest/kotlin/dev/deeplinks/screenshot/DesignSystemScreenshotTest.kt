@@ -251,7 +251,7 @@ private fun InboxWall() {
         DshStatusIcon(DocumentCheckOutline16)
         DshStatusIcon(ClockOutline16, container = Dsh.bgSubtle, content = Dsh.labelSecondary)
         DshStatusIcon(CloudOffOutline16, container = Dsh.bgSubtle, content = Dsh.labelTertiary)
-        DshStatusIcon(LockOutline16, container = Dsh.warnContainer, content = Dsh.warnLabel)
+        DshStatusIcon(LockOutline16, container = Dsh.bgSubtle, content = Dsh.warnLabel)
         DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
     }
     SectionTitle("Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
@@ -406,14 +406,12 @@ private fun TokenWall() {
         "brand400" to Dsh.brand400,
         "success" to Dsh.success,
         "warn" to Dsh.warn,
-        "warnContainer" to Dsh.warnContainer,
         "error" to Dsh.error,
         "traceReasoning" to Dsh.traceReasoning,
         "inkFill" to Dsh.inkFill,
         "onInk" to Dsh.onInk,
         "borderStrong" to Dsh.borderStrong,
         "successContent" to Dsh.successContent,
-        "successContainer" to Dsh.successContainer,
         "cloudContent" to Dsh.cloudContent,
         "cloudContainer" to Dsh.cloudContainer,
         "brandTint" to Dsh.brandTint,

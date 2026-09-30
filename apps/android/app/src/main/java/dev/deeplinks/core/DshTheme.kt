@@ -75,11 +75,6 @@ data class DshColors(
     val success: Color,
     val warn: Color,
     val warnLabel: Color,
-    /**
-     * 「等你批准 / 等你回答」胶囊的暖色容器（重设计稿 2026-09-28，方案 2.2）。
-     * 与 [warnLabel] 成对，参照 [successContainer] 的容器/内容写法；DSH 没有 warning 容器档。
-     */
-    val warnContainer: Color = Color.Unspecified,
     val error: Color,
     val errorBg: Color,
     val buttonElevated: Color,
@@ -101,7 +96,6 @@ data class DshColors(
     val onInk: Color = Color.Unspecified,
     // 状态容器配对（M3 container/on-container 语义，保证 WCAG AA）
     val successContent: Color = Color.Unspecified,
-    val successContainer: Color = Color.Unspecified,
     val cloudContent: Color = Color.Unspecified,
     val cloudContainer: Color = Color.Unspecified,
 )
@@ -143,7 +137,6 @@ val DarkDshColors = DshColors(
     success = Color(0xFF3BC476),             // 偏离 DSH：重设计稿在线点 #3BC476
     warn = Dsw.amber500,                     // DSH 无 warning alias，取 static amber
     warnLabel = Color(0xFFF0B86A),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #F0B86A
-    warnContainer = Color(0xFF3A2A12),       // 偏离 DSH：重设计稿「等你批准」胶囊底 #3A2A12
     error = Color(0xFFFF8A7E),               // 偏离 DSH：重设计稿危险文字 #FF8A7E
     errorBg = Dsw.interactiveHoverDangerDark, // alias-interactive-bg-hover-danger
     buttonElevated = Dsw.neutralBluish750,   // alias-button-elevated-fill
@@ -158,7 +151,6 @@ val DarkDshColors = DshColors(
     inkFill = Color(0xFF3A3C43),             // 偏离 DSH：2026-09-30 第四轮，深色过程按钮深灰（让批准蓝成为最亮）
     onInk = Color(0xFFECEDF0),               // 偏离 DSH：2026-09-30 第四轮，深色过程按钮上的字（对 inkFill 约 9.4）
     successContent = Color(0xFF5CC38A),      // 偏离 DSH：重设计稿完成图标 #5CC38A（DSH 没有深底绿字档）
-    successContainer = Color(0xFF16301F),    // 偏离 DSH：重设计稿完成图标圈底 #16301F
     cloudContent = Dsw.deepseek300,
     cloudContainer = Dsw.deepseek800,        // alias-state-business-tertiary
 )
@@ -196,7 +188,6 @@ val LightDshColors = DshColors(
     success = Color(0xFF1F9D55),             // 偏离 DSH：重设计稿在线点 #1F9D55
     warn = Color(0xFFC4801A),                // 偏离 DSH：2026-09-30 第四轮，小圆点琥珀（对白卡 3.26，非文字 ≥ 3）
     warnLabel = Color(0xFF8A4B00),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #8A4B00
-    warnContainer = Color(0xFFFFF1DE),       // 偏离 DSH：重设计稿「等你批准」胶囊底 #FFF1DE
     error = Color(0xFFB42318),               // 偏离 DSH：重设计稿危险文字 #B42318（4.8:1）
     errorBg = Color(0x1AB42318),             // 偏离 DSH：随 error 同色相
     buttonElevated = Dsw.neutralBluish00,    // alias-button-elevated-fill
@@ -210,7 +201,6 @@ val LightDshColors = DshColors(
     inkFill = Color(0xFF15171C),             // 偏离 DSH：2026-09-30 第四轮，浅色过程按钮等于 labelPrimary
     onInk = Color(0xFFFFFFFF),               // 偏离 DSH：2026-09-30 第四轮，浅色过程按钮上的白字
     successContent = Color(0xFF17753F),      // 偏离 DSH：重设计稿完成图标 #17753F（DSH 绿色族白底不达 AA）
-    successContainer = Color(0xFFE6F4EC),    // 偏离 DSH：重设计稿完成图标圈底 #E6F4EC
     cloudContent = Dsw.deepseek600,          // 在 deepseek-100 上 4.6:1
     cloudContainer = Dsw.deepseek100,        // alias-state-business-tertiary
 )
@@ -456,8 +446,8 @@ fun DshTheme(
             secondaryContainer = colors.bgSubtle,
             onSecondaryContainer = colors.labelPrimary,
             tertiary = colors.successContent,
-            onTertiary = colors.successContainer,
-            tertiaryContainer = colors.successContainer,
+            onTertiary = colors.bgBase,
+            tertiaryContainer = colors.bgSubtle,
             onTertiaryContainer = colors.successContent,
             background = colors.bgBase,
             onBackground = colors.labelPrimary,
@@ -489,7 +479,7 @@ fun DshTheme(
             onSecondaryContainer = colors.labelPrimary,
             tertiary = colors.successContent,
             onTertiary = Color.White,
-            tertiaryContainer = colors.successContainer,
+            tertiaryContainer = colors.bgSubtle,
             onTertiaryContainer = colors.successContent,
             background = colors.bgBase,
             onBackground = colors.labelPrimary,
@@ -706,12 +696,6 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.warnLabel
 
-    /** 「等你批准 / 等你回答」胶囊的暖色容器（与 [warnLabel] 成对）。 */
-    val warnContainer: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.warnContainer
-
     val error: Color
         @Composable
         @ReadOnlyComposable
@@ -784,11 +768,6 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.successContent
-
-    val successContainer: Color
-        @Composable
-        @ReadOnlyComposable
-        get() = LocalDshColors.current.successContainer
 
     val cloudContent: Color
         @Composable

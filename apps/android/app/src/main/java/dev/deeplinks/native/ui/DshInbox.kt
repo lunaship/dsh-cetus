@@ -63,7 +63,7 @@ enum class DshPillTone {
     /** 品牌蓝实心：批准、发送这类主操作。 */
     Accent,
 
-    /** 墨色实心：新任务、停止、开关开启态（方案 2.2「墨色按钮」）。 */
+    /** 过程控制：新任务、停止。底色 inkFill，浅色墨色、深色深灰。 */
     Ink,
 
     /** Tonal：次要动作（拒绝、取消）。 */
@@ -81,17 +81,15 @@ fun DshPillButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    // 墨色底取正文色、字取卡片色：浅色下是深底白字，深色下是浅底深字，正好是方案 2.2 的两套取值
-    val (container, content) = when (tone) {
+    // 置灰全 App 一种写法：bgSubtle 底 + labelDimmed 字，不用透明度。
+    val (container, content) = if (!enabled) {
+        Dsh.bgSubtle to Dsh.labelDimmed
+    } else when (tone) {
         DshPillTone.Accent -> Dsh.brand500 to Dsh.onBrand
-        DshPillTone.Ink -> Dsh.labelPrimary to Dsh.bgCard
+        DshPillTone.Ink -> Dsh.inkFill to Dsh.onInk
         DshPillTone.Tonal -> Dsh.bgSubtle to Dsh.labelPrimary
     }
-    val bg = when {
-        !enabled -> container.copy(alpha = 0.4f)
-        pressed -> container.copy(alpha = 0.88f)
-        else -> container
-    }
+    val bg = if (enabled && pressed) container.copy(alpha = 0.88f) else container
     // 与 DshFilterChip 同一手法：热区 48dp 挂在外层、胶囊视觉 44dp 画在内层，
     // 点按面积不缩，观感收紧（方案 2.1 第 5 条）。
     Box(
@@ -131,16 +129,16 @@ fun DshPillButton(
 // ============================================================
 
 enum class DshChipTone {
-    /** 等你批准：暖色容器（方案 2.2 新增 warnContainer）。 */
+    /** 等你批准：6dp 琥珀点 + warnLabel 文字，不铺底。 */
     Approval,
 
-    /** 等你回答：与批准同色，靠文字区分。 */
+    /** 等你回答：与批准同一种点，靠文字区分。 */
     Answer,
 
-    /** 在电脑上处理：手机没接管这条审批，用中性灰而不是暖色。 */
+    /** 在电脑上处理、以及中性结果：bgSubtle 胶囊 + labelSecondary。 */
     Remote,
 
-    /** 完成：绿色容器。 */
+    /** 完成：与 Remote 同一套中性胶囊。完成的颜色在行首 DshStatusIcon 上。 */
     Done,
 }
 
@@ -149,33 +147,50 @@ fun DshStatusChip(
     text: String,
     tone: DshChipTone,
     modifier: Modifier = Modifier,
+    leading: ImageVector? = null,
+    leadingTint: Color = Dsh.labelSecondary,
 ) {
-    val (container, content) = when (tone) {
-        DshChipTone.Approval, DshChipTone.Answer -> Dsh.warnContainer to Dsh.warnLabel
-        DshChipTone.Remote -> Dsh.bgSubtle to Dsh.labelSecondary
-        DshChipTone.Done -> Dsh.successContainer to Dsh.successContent
+    if (tone == DshChipTone.Approval || tone == DshChipTone.Answer) {
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(Dsh.warn),
+            )
+            Text(text, color = Dsh.warnLabel, style = DshType.captionMedium, maxLines = 1)
+        }
+        return
     }
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(DshRadius.full))
-            .background(container)
+            .background(Dsh.bgSubtle)
             .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, color = content, style = DshType.captionMedium, maxLines = 1)
+        if (leading != null) {
+            Icon(leading, contentDescription = null, tint = leadingTint, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(DshSpace.s6))
+        }
+        Text(text, color = Dsh.labelSecondary, style = DshType.captionMedium, maxLines = 1)
     }
 }
 
 // ============================================================
 // DshStatusIcon —— 32dp 状态图标圈（列表行首）
-// 完成 = 绿底带勾文档；已停止 = 灰底方块；失败 = 错误色
+// 完成 = 中性底 + successContent 图标；已停止 = 灰底方块；失败 = 错误色
 // ============================================================
 
 @Composable
 fun DshStatusIcon(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    container: Color = Dsh.successContainer,
+    container: Color = Dsh.bgSubtle,
     content: Color = Dsh.successContent,
     size: Dp = 32.dp,
     iconSize: Dp = 18.dp,
@@ -261,9 +276,9 @@ fun DshFloatingPill(
     enabled: Boolean = true,
     icon: ImageVector? = null,
 ) {
-    // 禁用 = 灰底 + 暗字（方案 3.8：离线时新任务按钮置灰不可点）
-    val container = if (enabled) Dsh.labelPrimary else Dsh.bgSubtle
-    val content = if (enabled) Dsh.bgCard else Dsh.labelDimmed
+    // 启用 = inkFill / onInk；置灰 = bgSubtle + labelDimmed，与 DshPillButton 同一种写法。
+    val container = if (enabled) Dsh.inkFill else Dsh.bgSubtle
+    val content = if (enabled) Dsh.onInk else Dsh.labelDimmed
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
