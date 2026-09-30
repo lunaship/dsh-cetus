@@ -9,6 +9,7 @@ DeepLinks Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版�
 - **绝不**对 release 变体跑 `connectedReleaseAndroidTest`（AGP 9 也不为 release 构建 androidTest）：AGP 设备测试收尾会卸载被测包，连同用户配对数据——2026-09-12 发生过。设备测试一律走 debug 变体（`applicationIdSuffix = ".debug"`）+ 手动 `adb install` + `am instrument`，跑完手动卸载两个 debug 包。
 - HyperOS/MIUI 真机跑 Compose UI 测试前，需给 debug 包授「后台弹出界面 → 始终允许」（安全中心 → 应用详情 → 权限管理 → 其他权限），否则测试 Activity 被拦、uid 被冻结、进程被 OneKeyClean 强杀，表象是 "Process crashed"。
 - 正式包只发签名 APK（签名环境自动读取 `~/Library/Application Support/DSH Links Signing/env`）。
+- 联调/复现用 `node scripts/dev-isolated-host.mjs`（临时 `stateDir` + 避开 18640 端口）；它读取用户真实的 `~/.dsh` 会话数据，**只许读**——不得发送 prompt、新建/归档/删除/重命名会话、注册/删除工作区或改设置。
 
 ## 门禁命令
 

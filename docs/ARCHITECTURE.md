@@ -100,6 +100,19 @@
 字段级约定（结构、出现时机、回退语义、边界）见
 [`MOBILE_SYNC_CONTRACT.md`](MOBILE_SYNC_CONTRACT.md) 的「会话『当前步骤』与『结果一句话』」。
 
+### 冷启动与崩溃记录（2026-09-30 第三轮）
+
+- **会话列表本地缓存**：`native/util/SessionListCache.kt` 复用 `LocalCacheCrypto` 加密落盘，按 `host.slotKey`
+  隔离，最多 200 条会话 + 工作区目录 + 归档集合；冷启动先铺缓存再被网络数据整体替换，解除配对 / token
+  失效时清除（`HostStore.remove` / `onAuthExpired`）。
+- **冷启动去重**：`bootstrap` + `getWorkspaces` 完成后 10 秒内回前台不再重复刷新会话 / 工作区 / 设置
+  （`native/util/WorkspaceLists.kt::shouldSkipResumeRefresh`）。
+- **首页不预加载**：手机布局停在首页时不为当前会话加载历史 / 模型、也不建推送流（`chatVisible`，
+  `native/WorkspaceChromeState.kt`）；进入对话页再开始。
+- **崩溃记录**：`core/CrashRecorder.kt` 把未捕获异常（脱敏、最多 3 份、64KB）写进
+  `noBackupFilesDir/crash/`，设置页可查看 / 复制 / 分享 / 清除；启动各阶段耗时经 `core/StartupTrace.kt`
+  写 logcat（`DshStartup`）与面包屑。
+
 ## 远程连接（DLP/1）
 
 ```text
