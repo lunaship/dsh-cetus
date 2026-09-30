@@ -3,7 +3,10 @@ package dev.deeplinks
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import dev.deeplinks.native.MainActivity
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -21,13 +24,25 @@ class StartupSmokeTest {
         repeat(3) {
             context.startActivity(launch())
             Thread.sleep(800)
+            assertHomeResumed()
         }
         repeat(3) {
             instrumentation.uiAutomation.executeShellCommand("input keyevent KEYCODE_HOME").close()
             Thread.sleep(400)
             context.startActivity(launch())
             Thread.sleep(800)
+            assertHomeResumed()
         }
+    }
+
+    private fun assertHomeResumed() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        var resumed = false
+        instrumentation.runOnMainSync {
+            resumed = ActivityLifecycleMonitorRegistry.getInstance()
+                .getActivitiesInStage(Stage.RESUMED).any { it is MainActivity }
+        }
+        assertTrue("MainActivity must reach RESUMED after launch", resumed)
     }
 
     private fun launch(): Intent =
