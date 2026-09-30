@@ -3,6 +3,7 @@ package dev.deeplinks.native.util
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.deeplinks.core.ConnectivitySignals
 
 /** 一次探测的结果快照：传参比传三个值省地方，也让「哪三个值是一组」显式。 */
 data class HostConnectivitySnapshot(
@@ -35,6 +36,11 @@ object HostConnectivity {
         this.viaRemote = viaRemote
         this.latencyMs = latencyMs
     }
+
+    /** 请求立刻重新探测（回前台、网络变化、用户点「重试」）——只是转调 [ConnectivitySignals]。 */
+    fun requestProbe() = ConnectivitySignals.requestProbe()
+
+    val probeNow: kotlinx.coroutines.flow.SharedFlow<Unit> get() = ConnectivitySignals.probeNow
 
     /** 只读快照（读它就会订阅这三个 state，变化时自动重组）。 */
     val snapshot: HostConnectivitySnapshot

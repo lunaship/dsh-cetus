@@ -3,7 +3,7 @@ package dev.deeplinks.core.remote
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** 自动选路（RFC §7.2）：探测、缓存时长、网络代、单飞、离线计数。 */
+/** 自动选路（RFC §7.2）：探测、缓存时长、网络代、单飞。 */
 class RouteSelectorTest {
 
     private var now = 1_000_000L
@@ -77,23 +77,4 @@ class RouteSelectorTest {
         assertEquals(1, probes)
     }
 
-    @Test
-    fun `consecutive failures mark offline after 2`() {
-        selector.order("k", true) { true }
-        selector.markFailure("k")
-        assertEquals(false, selector.isOffline("k"))
-        selector.markFailure("k")
-        assertEquals(true, selector.isOffline("k"))
-        selector.clearFailure("k")
-        assertEquals(false, selector.isOffline("k"))
-    }
-
-    @Test
-    fun `offline expires after ttl`() {
-        selector.markFailure("k")
-        selector.markFailure("k")
-        assertEquals(true, selector.isOffline("k"))
-        now += RouteSelector.OFFLINE_TTL_MS + 1
-        assertEquals(false, selector.isOffline("k"))
-    }
 }

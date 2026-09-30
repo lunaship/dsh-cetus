@@ -199,6 +199,8 @@ class SessionStreamClient(
                     ),
                     connectTimeoutMs = connectMs,
                     readTimeoutMs = 90_000,
+                    // SSE 是长连接：不经过 RemoteGate，否则会一直占着并发名额（R2）。
+                    streaming = true,
                 ),
                 onCall = { call = it },
             )

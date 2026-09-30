@@ -1,12 +1,13 @@
 package dev.deeplinks.core
 
 import dev.deeplinks.core.remote.HostRoute
+import dev.deeplinks.core.remote.ReleasingBody
+import dev.deeplinks.core.remote.RemoteGate
 import dev.deeplinks.core.remote.RouteOfflineException
 import dev.deeplinks.core.remote.RouteRejectedException
 import dev.deeplinks.core.remote.RouteUnreachableException
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -16,9 +17,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.ServerSocket
 import java.net.SocketTimeoutException
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+
 
 /**
  * 换路规则（RFC §7.2 第 7、8 条）。传输本身（TLS / DLP 隧道）由 WebSocketTunnelSocketFactoryTest
@@ -29,7 +28,7 @@ class HostHttpTest {
     @Test
     fun `connect failure switches to the next route`() {
         val order = mutableListOf<String>()
-        val result = attemptWithFailover(listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = false) { route ->
+        val result = attemptWithFailover("test", listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = false) { route ->
             order += route.name
             if (route == HostRoute.LAN) throw ConnectException("refused")
             "remote-response"
@@ -41,7 +40,7 @@ class HostHttpTest {
     @Test
     fun `remote rendezvous failure before ready falls back to LAN`() {
         val order = mutableListOf<String>()
-        val result = attemptWithFailover(listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = true) { route ->
+        val result = attemptWithFailover("test", listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = true) { route ->
             order += route.name
             if (route == HostRoute.REMOTE) throw RouteOfflineException()
             "lan-response"
@@ -53,7 +52,7 @@ class HostHttpTest {
     @Test
     fun `when every route fails the preferred route's error is reported`() {
         val thrown = assertThrows(IOException::class.java) {
-            attemptWithFailover(listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = false) { route ->
+            attemptWithFailover("test", listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = false) { route ->
                 if (route == HostRoute.REMOTE) throw RouteRejectedException("UNKNOWN_KEY")
                 throw ConnectException("refused")
             }
@@ -65,7 +64,7 @@ class HostHttpTest {
     fun `pin change fails closed and never falls back`() {
         val order = mutableListOf<String>()
         assertThrows(PinnedSsl.CertChangedException::class.java) {
-            attemptWithFailover(listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = false) { route ->
+            attemptWithFailover("test", listOf(HostRoute.REMOTE, HostRoute.LAN), hasBody = false) { route ->
                 order += route.name
                 throw PinnedSsl.CertChangedException()
             }
@@ -78,7 +77,7 @@ class HostHttpTest {
         for (hasBody in listOf(true, false)) {
             val order = mutableListOf<String>()
             assertThrows(IOException::class.java) {
-                attemptWithFailover(listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = hasBody) { route ->
+                attemptWithFailover("test", listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = hasBody) { route ->
                     order += route.name
                     throw SocketTimeoutException("Read timed out")
                 }
@@ -102,6 +101,28 @@ class HostHttpTest {
     }
 
     @Test
+    fun `busy failures never switch route and never get forgotten`() {
+        val order = mutableListOf<String>()
+        assertThrows(dev.deeplinks.core.remote.RouteBusyException::class.java) {
+            attemptWithFailover("test", listOf(HostRoute.LAN, HostRoute.REMOTE), hasBody = false) { route ->
+                order += route.name
+                throw dev.deeplinks.core.remote.RouteBusyException("DEVICE_LIMIT")
+            }
+        }
+        assertEquals(listOf("LAN"), order)
+    }
+
+    @Test
+    fun `isBusy sees through the cause chain`() {
+        assertTrue(isBusy(dev.deeplinks.core.remote.RouteBusyException("DEVICE_LIMIT")))
+        assertTrue(isBusy(dev.deeplinks.core.remote.RouteServerBusyException()))
+        assertTrue(isBusy(dev.deeplinks.core.remote.RouteRateLimitedException()))
+        assertTrue(isBusy(IOException(dev.deeplinks.core.remote.RouteServerBusyException())))
+        assertFalse(isBusy(ConnectException("refused")))
+        assertFalse(isBusy(RouteRejectedException("UNKNOWN_KEY")))
+    }
+
+    @Test
     fun `LAN probe needs a pin and a reachable TLS peer`() {
         val pin = "ab".repeat(32)
         // 没有指纹：无法确认是这台电脑，不算通
@@ -117,63 +138,49 @@ class HostHttpTest {
     }
 }
 
-/** R2: 远程请求限流门测试。 */
+/** R2: 远程请求并发闸门（同机最多 4 个在途短请求）+ 名额在响应体关闭时归还。 */
 class RemoteGateTest {
     @Test
-    fun `limit=1 blocks second concurrent call with SERVER_BUSY`() {
-        HostHttp.RemoteGate.limit(1)
-        val client = OkHttpClient.Builder()
-            .connectionPool(okhttp3.ConnectionPool(4, 60, java.util.concurrent.TimeUnit.SECONDS))
-            .build()
-        val latch = java.util.concurrent.CountDownLatch(1)
-        val started = java.util.concurrent.CountDownLatch(1)
-        val thread = Thread {
-            val req = Request.Builder().url("http://localhost:1").build()
-            try {
-                started.countDown()
-                client.newCall(req).execute()
-            } finally {
-                latch.countDown()
-            }
-        }
-        thread.start()
-        started.await()
-        // 此时 client dispatcher 里有一条 running call
-        assertFailsWith<dev.deeplinks.core.remote.RouteServerBusyException> {
-            HostHttp.RemoteGate.enter()
-        }
-        latch.await()
-        // 请求结束后应正常放行
-        HostHttp.RemoteGate.enter()
-        HostHttp.RemoteGate.exit()
+    fun `at most four concurrent acquires per host`() {
+        val key = "gate-" + System.nanoTime()
+        val granted = (1..10).map { RemoteGate.acquire(key, 100) }
+        assertEquals(4, granted.count { it })
+        repeat(4) { RemoteGate.release(key) }
+        assertTrue(RemoteGate.acquire(key, 100))
+        RemoteGate.release(key)
     }
 
     @Test
-    fun `limit=2 blocks third concurrent call with BUSY`() {
-        HostHttp.RemoteGate.limit(2)
-        val client = OkHttpClient.Builder()
-            .connectionPool(okhttp3.ConnectionPool(4, 60, java.util.concurrent.TimeUnit.SECONDS))
-            .build()
-        val latch = java.util.concurrent.CountDownLatch(2)
-        val started = java.util.concurrent.CountDownLatch(2)
-        val threads = (1..2).map {
-            Thread {
-                val req = Request.Builder().url("http://localhost:1").build()
-                try {
-                    started.countDown()
-                    client.newCall(req).execute()
-                } finally {
-                    latch.countDown()
-                }
+    fun `queued thread gets the permit after release`() {
+        val key = "gate-wait-" + System.nanoTime()
+        repeat(RemoteGate.PERMITS) { assertTrue(RemoteGate.acquire(key, 100)) }
+        val got = java.util.concurrent.atomic.AtomicBoolean(false)
+        val thread = Thread {
+            if (RemoteGate.acquire(key, 5_000)) {
+                got.set(true)
+                RemoteGate.release(key)
             }
         }
-        threads.forEach { it.start() }
-        started.await()
-        assertFailsWith<dev.deeplinks.core.remote.RouteBusyException> {
-            HostHttp.RemoteGate.enter()
+        thread.start()
+        Thread.sleep(50)
+        RemoteGate.release(key)
+        thread.join(3_000)
+        assertTrue("排队的线程应在释放后拿到名额", got.get())
+    }
+
+    @Test
+    fun `releasing body returns the permit exactly once`() {
+        val key = "gate-body-" + System.nanoTime()
+        assertTrue(RemoteGate.acquire(key, 100))
+        val released = java.util.concurrent.atomic.AtomicInteger(0)
+        val body = ReleasingBody("x".toResponseBody("text/plain".toMediaType())) {
+            released.incrementAndGet()
+            RemoteGate.release(key)
         }
-        latch.await()
-        HostHttp.RemoteGate.enter()
-        HostHttp.RemoteGate.exit()
+        body.close()
+        body.close()
+        assertEquals(1, released.get())
+        assertTrue("名额应已归还", RemoteGate.acquire(key, 100))
+        RemoteGate.release(key)
     }
 }

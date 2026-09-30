@@ -30,12 +30,18 @@ class DshApplication : Application(), SingletonImageLoader.Factory {
         val cm = getSystemService(ConnectivityManager::class.java) ?: return
         runCatching {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) = HostHttp.onNetworkChanged()
-                override fun onLost(network: Network) = HostHttp.onNetworkChanged()
+                override fun onAvailable(network: Network) = onNetworkChanged()
+                override fun onLost(network: Network) = onNetworkChanged()
                 override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) =
-                    HostHttp.onNetworkChanged()
+                    onNetworkChanged()
             })
         }
+    }
+
+    /** 网络变化：作废选路缓存，并请首页探测循环立刻复核（R4；requestProbe 自带 2 秒去抖）。 */
+    private fun onNetworkChanged() {
+        HostHttp.onNetworkChanged()
+        ConnectivitySignals.requestProbe()
     }
 
     /** Coil3 全局 ImageLoader：Markdown 图片只允许 https 公网（DNS 层 + 拦截器双保险）。 */
