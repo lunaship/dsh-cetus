@@ -42,9 +42,21 @@ class RouteSelector(
     /**
      * 本次请求按什么顺序尝试。首项是选中的路；第二项只在「路由建立阶段」失败时才会用到
      * （由调用方判定，见 HostHttp.attemptWithFailover）。
+     *
+     * [lanCapable]（S4）：当前默认网络是否可能走局域网。明确为 `false`（只有蜂窝）时跳过局域网探测，
+     * 直接缓存并返回远程；`true` / `null`（未知）时行为不变。
      */
-    fun order(key: String, hasRemote: Boolean, probeLan: () -> Boolean): List<HostRoute> {
+    fun order(
+        key: String,
+        hasRemote: Boolean,
+        lanCapable: () -> Boolean? = { null },
+        probeLan: () -> Boolean,
+    ): List<HostRoute> {
         if (!hasRemote) return listOf(HostRoute.LAN)
+        if (lanCapable() == false) {
+            remember(key, HostRoute.REMOTE)
+            return orderFrom(HostRoute.REMOTE)
+        }
         cached(key)?.let { return orderFrom(it) }
         val lock = locks.computeIfAbsent(key) { Any() }
         synchronized(lock) {

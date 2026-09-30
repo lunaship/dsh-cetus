@@ -77,4 +77,37 @@ class RouteSelectorTest {
         assertEquals(1, probes)
     }
 
+    // ---------- S4：默认网络没有 Wi-Fi / 以太网时跳过局域网探测 ----------
+
+    @Test
+    fun `cellular only skips LAN probe and caches remote`() {
+        var probes = 0
+        assertEquals(
+            listOf(HostRoute.REMOTE, HostRoute.LAN),
+            selector.order("k", true, { false }, { probes++; true }),
+        )
+        assertEquals(0, probes)
+        // 15 秒内用缓存的远程，不探测
+        now += RouteSelector.REMOTE_TTL_MS - 1
+        assertEquals(HostRoute.REMOTE, selector.order("k", true, { true }, { probes++; true }).first())
+        assertEquals(0, probes)
+        // 缓存过期、此时有 Wi-Fi → 恢复探测
+        now += 1
+        assertEquals(HostRoute.LAN, selector.order("k", true, { true }, { probes++; true }).first())
+        assertEquals(1, probes)
+    }
+
+    @Test
+    fun `unknown lan capability keeps probing`() {
+        var probes = 0
+        selector.order("k", true, { null }, { probes++; false })
+        assertEquals(1, probes)
+    }
+
+    @Test
+    fun `lan capable true probes`() {
+        var probes = 0
+        selector.order("k", true, { true }, { probes++; true })
+        assertEquals(1, probes)
+    }
 }

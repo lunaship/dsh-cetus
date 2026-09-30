@@ -175,7 +175,8 @@ object HostHttp {
         require(url.startsWith("https://")) { "拒绝明文 HTTP，仅支持 HTTPS" }
         val key = routeKey(host)
         val remote = remoteOverride ?: host.remoteRoute()
-        val routes = forceRoute?.let { listOf(it) } ?: selector.order(key, remote != null) { probeLan(host) }
+        val routes = forceRoute?.let { listOf(it) }
+            ?: selector.order(key, remote != null, { NetworkTransport.lanCapable }, { probeLan(host) })
         return attemptWithFailover(key, routes, request.body != null) { route ->
             try {
                 val response = if (route == HostRoute.REMOTE) {
@@ -309,6 +310,11 @@ object HostHttp {
         selector.onNetworkChanged()
         lanClients.values.forEach { it.connectionPool.evictAll() }
         remoteClients.values.forEach { it.connectionPool.evictAll() }
+    }
+
+    /** 只有 IP 变了（还是同一张默认网）：只作废选路缓存，不动连接池（S5）。 */
+    fun onRoutesChanged() {
+        selector.onNetworkChanged()
     }
 
     /** 回到前台：清掉空闲的远程连接，避免继续使用可能已被远端关掉的隧道（R5）。 */
