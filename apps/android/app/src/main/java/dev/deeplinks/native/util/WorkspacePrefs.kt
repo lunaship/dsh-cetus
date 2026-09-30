@@ -116,6 +116,13 @@ class WorkspacePrefs(context: Context) {
             prefs.edit().putBoolean(KEY_NOTIF_ASKED, value).apply()
         }
 
+    /** 对话中的网络图片默认不自动加载（防止提示词注入外泄数据与 IP）。 */
+    var autoLoadRemoteImages: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_LOAD_REMOTE_IMAGES, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AUTO_LOAD_REMOTE_IMAGES, value).apply()
+        }
+
     /** 输入区工作区选择：记住上次选中的 cwd，避免始终显示排序第一项。 */
     var lastSelectedWorkspace: String?
         get() = prefs.getString(KEY_LAST_WORKSPACE, null)
@@ -259,6 +266,9 @@ class WorkspacePrefs(context: Context) {
         const val KEY_LAST_WORKSPACE = "workspace_last_selected_cwd"
         const val KEY_SESSION_SNAPSHOTS = "workspace_session_snapshots"
         const val KEY_PARKED_SEND = "workspace_parked_send"
+
+        /** 对话中的网络图片自动加载开关。 */
+        const val KEY_AUTO_LOAD_REMOTE_IMAGES = "workspace_auto_load_remote_images"
 
         /** 每台主机一条：`workspace_composer_drafts:<slotKey>`。 */
         const val KEY_COMPOSER_DRAFTS_PREFIX = "workspace_composer_drafts:"
