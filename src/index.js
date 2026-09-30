@@ -1702,7 +1702,7 @@ export function apply(ctx, config) {
           if (!requireJsonWrite(req, res)) return
           const sessionId = decodeURIComponent(permissionMatch[1])
           const body = await readAuthorizedJson(req, res, state, device)
-  if (!body) return
+          if (!body) return
           // 与审批请求同规则：只有正在查看该会话（活跃 SSE 订阅）的设备才能改权限。
           if (!isDeviceSubscribedToSession(rt, sessionId, device.deviceId)) {
             return json(res, 403, { error: "仅正在查看该会话的设备可修改权限" })

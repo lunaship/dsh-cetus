@@ -7,7 +7,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { createServer } from "node:http"
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply } from "../src/index.js"
@@ -162,6 +162,23 @@ test("TLS 凭据损坏：不假就绪、路由报 phase=failed、无 unhandled r
   assert.equal(pair.body?.error, "proxy_not_ready")
   assert.equal(pair.body?.phase, "failed")
   assert.equal(pair.body?.pairingCode, undefined)
+  for (const fn of effects) try { fn() } catch (e) { assert.fail(`dispose threw: ${e}`) }
+})
+
+test("tls.json 无法解析：拒绝就绪、备份原文件、不生成新证书", async () => {
+  const dir = join(ROOT_TMP, "unreadable-tls")
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  writeFileSync(join(dir, "tls.json"), "{not json")
+  const port = await freePort()
+  const { ctx, registered, effects } = makeCtx(upstream.address().port)
+  const ready = apply(ctx, configFor(dir, port))
+  await assert.rejects(() => ready, (err) => /tls\.json 已损坏/.test(String(err?.message ?? err)))
+  const pair = await callRoute(pairInfoRoute(registered))
+  assert.equal(pair.status, 503)
+  assert.equal(pair.body?.phase, "failed")
+  const names = readdirSync(dir)
+  assert.equal(names.includes("tls.json"), false)
+  assert.equal(names.some((name) => name.startsWith("tls.json.corrupt-")), true)
   for (const fn of effects) try { fn() } catch (e) { assert.fail(`dispose threw: ${e}`) }
 })
 

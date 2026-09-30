@@ -3,7 +3,7 @@
  * App 按指纹钉死；换 Wi-Fi 或局域网 IP 变化不影响。
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { basename, join } from "node:path"
 import { X509Certificate } from "node:crypto"
 import selfsigned from "selfsigned"
 
@@ -18,15 +18,23 @@ export async function loadOrCreateTls(stateDir) {
   const file = join(stateDir, "tls.json")
   if (existsSync(file)) {
     try { chmodSync(file, 0o600) } catch {}
+    let data = null
+    let parsed = false
     try {
-      const data = JSON.parse(readFileSync(file, "utf8"))
-      if (data?.key && data?.cert) {
-        const fingerprint = data.fingerprint || certFingerprintSha256(data.cert)
-        return { key: data.key, cert: data.cert, fingerprint }
-      }
+      data = JSON.parse(readFileSync(file, "utf8"))
+      parsed = true
     } catch {
-      // 损坏则重新生成
+      parsed = false
     }
+    if (parsed && data?.key && data?.cert) {
+      const fingerprint = data.fingerprint || certFingerprintSha256(data.cert)
+      return { key: data.key, cert: data.cert, fingerprint }
+    }
+    const backup = join(stateDir, `tls.json.corrupt-${Date.now()}`)
+    renameSync(file, backup)
+    throw new Error(
+      `tls.json 已损坏（已备份为 ${basename(backup)}）；删除该备份并重启会生成新证书，已配对手机需要重新扫码`,
+    )
   }
   const notAfter = new Date()
   notAfter.setFullYear(notAfter.getFullYear() + 10)

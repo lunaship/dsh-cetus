@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     paths-ignore:
-      - 'android/**'
+      - 'apps/android/**'
   pull_request:
     paths-ignore:
-      - 'android/**'
+      - 'apps/android/**'
   workflow_dispatch:
 
 permissions:
