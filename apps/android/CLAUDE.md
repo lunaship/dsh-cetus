@@ -20,6 +20,11 @@ DeepLinks Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版�
 - 构建：`./gradlew :app:assembleDebug :app:assembleDebugAndroidTest` / `:app:assembleRelease`（自动签名）
 - 真机测试完整命令见 `README.md`「真机设备测试」一节。
 
+## 截图基线
+
+- Compose 截图基线**只允许**由 `.github/workflows/regen-screenshots.yml` 产出；禁止在开发机上生成后提交基线图片。
+- UI 改动影响截图后，先手动触发该 workflow 生成新基线，再把生成的 reference 图片提交到 PR 中。
+
 ## 深入文档
 
 | 主题 | 文件 |
