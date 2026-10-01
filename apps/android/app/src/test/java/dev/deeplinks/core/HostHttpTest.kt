@@ -18,7 +18,6 @@ import java.net.ConnectException
 import java.net.ServerSocket
 import java.net.SocketTimeoutException
 
-
 /**
  * 换路规则（RFC §7.2 第 7、8 条）。传输本身（TLS / DLP 隧道）由 WebSocketTunnelSocketFactoryTest
  * 与真实中继联调覆盖，这里只验证 [attemptWithFailover] 与局域网探测的契约。

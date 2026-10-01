@@ -116,7 +116,7 @@ class DshTypeScaleTest {
             } else {
                 val ratio = lh.toDouble() / fs
                 if (ratio < MIN_RATIO || ratio > MAX_RATIO) {
-                    violations += "${role.name}: 行高/字号 = %.2f，超出 [%.1f, %.1f]（$fs/${lh}）。".format(ratio, MIN_RATIO, MAX_RATIO) +
+                    violations += "${role.name}: 行高/字号 = %.2f，超出 [%.1f, %.1f]（$fs/$lh）。".format(ratio, MIN_RATIO, MAX_RATIO) +
                         "比 M3 bodyLarge（16/26）还松的行高是 Web 移植期形态；正文本请用 body/bodyStrong（15sp 起）"
                 }
             }

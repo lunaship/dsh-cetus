@@ -4,14 +4,12 @@ import androidx.compose.runtime.getValue
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,14 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -60,16 +53,12 @@ import dev.deeplinks.core.readableTextColor
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.native.CheckOutline16
-import dev.deeplinks.native.DshDuration
 import dev.deeplinks.native.WarningOutline16
-import dev.deeplinks.native.DshEasing
-import dev.deeplinks.native.DshHaptic
 import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
 import dev.deeplinks.native.motionDuration
-import dev.deeplinks.native.rememberDshHaptic
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.selection.selectableGroup
 

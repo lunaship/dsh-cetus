@@ -27,6 +27,7 @@ class DshApplication : Application(), SingletonImageLoader.Factory {
         }
         // K0：最先装崩溃记录，越早越好（后面的初始化万一崩了也要留证据）。
         CrashRecorder.install(this)
+        PrivacySafeDiagnostics.install(dev.deeplinks.BuildConfig.DEBUG)
         val app = this
         Thread({
             dev.deeplinks.core.UpdateChecker.checkBlocking(app, dev.deeplinks.BuildConfig.VERSION_NAME)

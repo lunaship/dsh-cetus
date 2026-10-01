@@ -30,11 +30,14 @@ export function pluginCapabilities({ changes = false } = {}) {
     sync: { resync: true, catchupIntegrity: true },
     questions: { multi: true, serverValidation: true },
     requests: { snapshot: true, reconnectGraceMs: RECONNECT_GRACE_MS },
+    // 排队消息管理、目标操作、定时任务（DSH 不支持的 Host 上会返回 400/502，App 据此隐藏入口）
+    control: { queue: true, goals: true, schedules: true },
     files: {
       workspace: true,
       maxBytes: MAX_WORKSPACE_FILE_BYTES,
       tree: true,
       treeMaxEntries: MAX_WORKSPACE_DIR_ENTRIES,
+      sha256: true,
       ...(changes ? { changes: true, diff: true, diffMaxLines: MAX_DIFF_LINES } : {}),
     },
   }

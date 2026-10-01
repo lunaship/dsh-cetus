@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.core.L
+import dev.deeplinks.core.scheduledTasks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +21,7 @@ class WorkspaceMenuTest {
     private fun menu(
         ctx: Ctx,
         browseFiles: Boolean = false,
+        schedules: Boolean = false,
     ) = workspaceHeaderMenuItems(
         canBrowseFiles = browseFiles,
         onCloseMenu = { ctx.log += "close" },
@@ -27,6 +29,8 @@ class WorkspaceMenuTest {
         onRename = { ctx.log += "rename" },
         onShare = { ctx.log += "share" },
         onArchive = { ctx.log += "archive" },
+        canSchedules = schedules,
+        onSchedules = { ctx.log += "schedules" },
         onDelete = { ctx.log += "delete" },
     )
 
@@ -67,5 +71,16 @@ class WorkspaceMenuTest {
         assertEquals(L.deleteSession, delete.label)
         assertTrue(delete.danger)
         assertTrue(delete.dividerBefore)
+    }
+
+    @Test
+    fun scheduledTasksAppearOnlyWithSessionControl() {
+        val ctx = Ctx()
+        val items = menu(ctx, schedules = true)
+        assertEquals(5, items.size)
+        val entry = items.first { it.label == dev.deeplinks.core.L.scheduledTasks }
+        entry.onClick()
+        assertEquals(listOf("close", "schedules"), ctx.log)
+        assertTrue(menu(Ctx()).none { it.label == L.scheduledTasks })
     }
 }

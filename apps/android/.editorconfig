@@ -1,0 +1,20 @@
+# ktlint（CI「Kotlin lint」步骤）。detekt 与 AGP 9 内置 Kotlin 不兼容，这里只用 ktlint。
+# 先启用一组低噪声、可自动修复的正确性规则，存量代码已全部通过；其余风格规则逐步打开，
+# 打开前先 `ktlint -F` 修一遍，避免一次性改动整个仓库。
+root = true
+
+[*.{kt,kts}]
+ktlint_code_style = android_studio
+ktlint_standard = disabled
+ktlint_standard_no-unused-imports = enabled
+ktlint_standard_no-trailing-spaces = enabled
+ktlint_standard_no-consecutive-blank-lines = enabled
+ktlint_standard_final-newline = enabled
+ktlint_standard_no-blank-line-before-rbrace = enabled
+ktlint_standard_no-empty-file = enabled
+ktlint_standard_string-template = enabled
+ktlint_standard_no-unit-return = enabled
+ktlint_standard_no-empty-class-body = enabled
+ktlint_standard_no-line-break-before-assignment = enabled
+ktlint_standard_comment-spacing = enabled
+ktlint_standard_kdoc-wrapping = enabled

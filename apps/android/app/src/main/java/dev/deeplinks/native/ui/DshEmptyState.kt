@@ -1,6 +1,5 @@
 package dev.deeplinks.native.ui
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

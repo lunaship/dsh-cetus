@@ -5,6 +5,7 @@ import dev.deeplinks.core.BoundedIo
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostHttp
 import dev.deeplinks.core.L
+import dev.deeplinks.core.fileIntegrityFailed
 import dev.deeplinks.core.PinnedSsl
 import dev.deeplinks.core.applyBootstrapRemote
 import dev.deeplinks.core.remote.RouteConnectException
@@ -76,6 +77,11 @@ data class HistoryResult(
     val nextBeforeSeq: Long? = null,
     val maxSeq: Long? = null,
     val stoppedReason: String? = null,
+    /** 排队 / 引导中的消息；null = 旧插件没有该字段（不覆盖现值）。 */
+    val queue: List<QueuedPrompt>? = null,
+    val goal: SessionGoal? = null,
+    /** 响应里带了 goal 字段（即便为 null，表示目标已清除）。 */
+    val goalKnown: Boolean = false,
 )
 
 data class MobileSession(
@@ -146,6 +152,8 @@ data class MobileBootstrap(
     val requestSnapshot: Boolean = false,
     /** 插件支持按层列工作区目录（capabilities.files.tree）。 */
     val filesTree: Boolean = false,
+    /** 插件支持排队 / 目标 / 定时任务管理（capabilities.control）。 */
+    val sessionControl: Boolean = false,
 )
 
 data class SessionRequestState(
@@ -680,6 +688,7 @@ class MobileApiClient(private val host: Host) {
             multiQuestion = root.optJSONObject("capabilities")?.optJSONObject("questions")?.optBoolean("multi") == true,
             requestSnapshot = root.optJSONObject("capabilities")?.optJSONObject("requests")?.optBoolean("snapshot") == true,
             filesTree = root.optJSONObject("capabilities")?.optJSONObject("files")?.optBoolean("tree") == true,
+            sessionControl = root.optJSONObject("capabilities")?.optJSONObject("control")?.optBoolean("queue") == true,
         )
         return info to applyBootstrapRemote(host, root)
     }
@@ -764,10 +773,18 @@ class MobileApiClient(private val host: Host) {
                 }
                 val bytes = response.body.byteStream()
                     .use { BoundedIo.readBytes(it, BoundedIo.MAX_WORKSPACE_FILE_BYTES) }
+                // 完整性：插件给了 SHA-256 就必须对上（截断 / 中途被改都拒收）；旧插件不带头则跳过
+                val digest = response.header("x-dsh-link-sha256")
+                if (!sha256Matches(digest, bytes)) {
+                    dev.deeplinks.core.PrivacySafeDiagnostics.event(dev.deeplinks.core.PrivacySafeDiagnostics.Area.File, dev.deeplinks.core.PrivacySafeDiagnostics.Op.Verify, ok = false, count = bytes.size)
+                    throw FileIntegrityException(L.fileIntegrityFailed)
+                }
                 val mime = response.header("Content-Type")?.substringBefore(';')?.trim().orEmpty()
                     .ifBlank { "application/octet-stream" }
                 return mime to bytes
             }
+        } catch (e: FileIntegrityException) {
+            throw e
         } catch (e: MobileAuthException) {
             throw e
         } catch (e: Exception) {
@@ -816,6 +833,50 @@ class MobileApiClient(private val host: Host) {
             MobileSearchResult(item.getString("sessionId"), item.optStringOrEmpty("snippet"))
         }
         return list to root.optBoolean("degraded", false)
+    }
+
+    // ===== 会话控制（capabilities.control）：排队消息 / 目标 / 定时任务 =====
+
+    private fun sessionPath(sessionId: String): String =
+        "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8")
+
+    fun getSessionQueue(sessionId: String): List<QueuedPrompt> =
+        parseQueueItems(request("GET", sessionPath(sessionId) + "/queue").optJSONArray("items"))
+
+    /** [action]：edit（需 [text]）/ remove / steer。 */
+    fun updateQueueItem(sessionId: String, itemId: String, action: String, text: String? = null) {
+        val body = JSONObject().put("action", action)
+        if (text != null) body.put("text", text)
+        request("POST", sessionPath(sessionId) + "/queue/" + java.net.URLEncoder.encode(itemId, "UTF-8"), body)
+    }
+
+    /** [op]：edit / pause / resume / clear；返回新的 CAS 引用（clear 为 null）。 */
+    fun goalAction(sessionId: String, op: String, ref: SessionGoalRef, objective: String? = null, maxGoalRounds: Int? = null): SessionGoalRef? {
+        val body = JSONObject().put("ref", JSONObject().put("id", ref.id).put("revision", ref.revision))
+        if (objective != null) body.put("objective", objective)
+        if (maxGoalRounds != null) body.put("maxGoalRounds", maxGoalRounds)
+        val next = request("POST", sessionPath(sessionId) + "/goal/" + op, body).optJSONObject("ref") ?: return null
+        val id = next.optString("id").takeIf { it.isNotBlank() } ?: return null
+        return SessionGoalRef(id, next.optInt("revision", ref.revision))
+    }
+
+    fun getScheduleCatalog(): List<ScheduledTask> =
+        parseScheduledTasks(request("GET", "/dsh-link/mobile/schedules").optJSONArray("items"))
+
+    fun getSessionSchedules(sessionId: String): List<ScheduledTask> =
+        parseScheduledTasks(request("GET", sessionPath(sessionId) + "/schedules").optJSONArray("items"))
+            .map { if (it.sessionId == null) it.copy(sessionId = sessionId) else it }
+
+    /** 只改标题 / 提示词；原始记录作为 expected 回传（插件只保留 ScheduleRecord 字段）。 */
+    fun updateSchedule(sessionId: String, task: ScheduledTask, title: String?, prompt: String?) {
+        val body = JSONObject().put("expected", task.raw)
+        if (title != null) body.put("title", title)
+        if (prompt != null) body.put("prompt", prompt)
+        request("PUT", sessionPath(sessionId) + "/schedules/" + java.net.URLEncoder.encode(task.id, "UTF-8"), body)
+    }
+
+    fun deleteSchedule(sessionId: String, id: String) {
+        request("DELETE", sessionPath(sessionId) + "/schedules/" + java.net.URLEncoder.encode(id, "UTF-8"))
     }
 
     fun cancelSession(sessionId: String) {
@@ -1023,6 +1084,15 @@ class MobileApiClient(private val host: Host) {
 }
 
 internal class MobileAuthException(message: String, val code: Int) : IllegalStateException(message)
+
+internal class FileIntegrityException(message: String) : IllegalStateException(message)
+
+/** [expectedHex] 为空表示对端未提供（旧插件），视为通过；否则大小写不敏感比较。 */
+internal fun sha256Matches(expectedHex: String?, bytes: ByteArray): Boolean {
+    val expected = expectedHex?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return true
+    val actual = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+    return actual == expected
+}
 
 /** 改动对比 JSON 的读取上限：插件侧已按 5000 行 / 150 万字符截断，转义后留足余量。 */
 private const val DIFF_BODY_MAX_BYTES = 4 * 1_048_576
@@ -1247,6 +1317,9 @@ internal fun parseHistoryResponse(root: JSONObject, beforeSeq: Long?): HistoryRe
         maxSeq = if (root.has("maxSeq") && !root.isNull("maxSeq")) root.optLong("maxSeq") else null,
         stoppedReason = parseStoppedReason(root.optNullableString("stoppedReason")),
         stats = parseMobileSessionStats(stats),
+        queue = if (root.has("queue")) parseQueueItems(root.optJSONArray("queue")) else null,
+        goal = parseSessionGoal(root.optJSONObject("goal")),
+        goalKnown = root.has("goal"),
     )
     return result
 }

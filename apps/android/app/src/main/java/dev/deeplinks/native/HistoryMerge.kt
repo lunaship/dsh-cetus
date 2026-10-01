@@ -108,4 +108,3 @@ internal fun isEphemeralStreamId(id: String): Boolean =
         id.startsWith("reason-") ||
         id.startsWith("tool-stream-") ||
         id.startsWith("compact-")
-

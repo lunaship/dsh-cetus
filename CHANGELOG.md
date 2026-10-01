@@ -1,3 +1,19 @@
+## dsh-links 0.5.0-beta.26 — 2026-10-02
+
+**复核建议落地（参考 dsh-mobile / dsh-plugin-mobile-gateway）**
+
+- App：长回复分段渲染。超过约 320 字的 Markdown 回复在 LazyColumn 里拆成多个条目（代码块围栏不拆开），滚动与首帧不再一次测量整条长消息；操作行与流式光标只挂在最后一段。
+- App：流式增量合帧。SSE 增量按帧合并（每帧最多提交一次，48ms 兜底），长回复流式输出时不再逐 token 触发重组；流式分块处理抽到 `StreamChunks.kt`。
+- App：顶栏 / 输入区毛玻璃。Android 12+ 使用 Kyant0 Backdrop 做背景模糊 + 活力（表面 78% 不透明）；低版本、省电 / 减少透明度、预览环境退回原半透明 / 不透明方案。
+- App + 插件：会话控制。新增排队消息条（编辑 / 撤回 / 插队）、目标控制（编辑目标与轮数上限、暂停 / 继续 / 清除）、「⋯」菜单「定时任务」面板（查看规则与历史、修改间隔、删除）。插件新增 `/sessions/:id/queue`、`/sessions/:id/goal/*`、`/schedules`、`/sessions/:id/schedules*` 路由，RPC 白名单补 goals / session.updateQueue / schedule.*；能力协商 `capabilities.control` 声明支持情况，旧插件不显示这些入口。
+- App + 插件：文件下载完整性校验。插件在文件响应头返回 `x-dsh-link-sha256`，App 下载后校验，不一致则丢弃并报错。
+- App：隐私安全诊断。新增仅 debug 构建启用的 `PrivacySafeDiagnostics`，只记录布尔值与计数，不记录正文、路径或 token。
+- CI：新增 ktlint 检查（1.8.0，固定 sha256），全量格式化一次。
+- 文档：第三方声明补 Kyant0 Backdrop（Apache-2.0）与 dsh-mobile / dsh-plugin-mobile-gateway（MIT）。
+- 截图基线需由 `regen-screenshots.yml` 重新生成。
+
+---
+
 ## dsh-links 0.5.0-beta.25 — 2026-10-01
 
 **Android UI 精简整改（7 步）**

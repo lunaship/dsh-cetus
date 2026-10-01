@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -15,7 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,7 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -346,7 +343,6 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
         )
     }
 }
-
 
 /** 行内渲染：`code` / **bold** / *italic* / ~~删除线~~ / [链接](url) / $公式$（KaTeX，异步渲染完成后重组换图） */
 @Composable

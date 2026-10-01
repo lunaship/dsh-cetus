@@ -21,7 +21,6 @@ class WorkspaceHeaderMenuItemsTest {
 
     private fun source(name: String): File = mainRoot().resolve("dev/deeplinks/native/$name")
 
-
     @Test
     fun `no subagent item when count is zero`() {
         val items = menuWithSubagents(topBarMenuItems = baseMenu(), subagentCount = 0)

@@ -1,18 +1,15 @@
 package dev.deeplinks.devices
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.EditOutline16
 import dev.deeplinks.native.RefreshOutline16
 import dev.deeplinks.native.ScanOutline16
-import dev.deeplinks.native.SwapOutline16
 import dev.deeplinks.native.UnlinkOutline16
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
 import dev.deeplinks.native.ChevronRightOutline16
 import dev.deeplinks.native.ui.DshListActionRow
@@ -20,10 +17,7 @@ import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListSection
-import dev.deeplinks.native.ui.DshSelectRow
 import dev.deeplinks.native.ui.DshSheet
-import dev.deeplinks.native.ui.DshStatusBadge
-import dev.deeplinks.native.ui.DshStatusTone
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource

@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -42,7 +41,6 @@ import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.catalogKind
 import dev.deeplinks.native.util.compactTokens
 import java.util.Locale
-
 
 private enum class ModelPickerPage { MENU, MODELS, EFFORT }
 

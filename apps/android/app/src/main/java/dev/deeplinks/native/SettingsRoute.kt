@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.persist
 import dev.deeplinks.core.Dsh
@@ -32,7 +31,6 @@ import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.SessionListKind
 import dev.deeplinks.native.util.catalogKind
 import dev.deeplinks.core.AppSettingsStore
-import dev.deeplinks.devices.DevicesActivity
 import dev.deeplinks.devices.hostDisplayName
 import dev.deeplinks.BuildConfig
 

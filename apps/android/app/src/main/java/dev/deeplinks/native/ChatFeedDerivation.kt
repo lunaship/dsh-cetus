@@ -1,7 +1,6 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.native.util.MessageGroup
-import dev.deeplinks.native.util.foldToolCalls
 import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.isGoalRoundText

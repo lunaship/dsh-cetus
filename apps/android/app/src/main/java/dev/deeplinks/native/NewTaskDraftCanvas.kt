@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll

@@ -30,8 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import java.util.LinkedHashMap
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
@@ -201,7 +199,7 @@ object MathRenderer {
                     android.util.Log.w(TAG, "render: evaluate returned null")
                     null
                 } else if (!result.optBoolean("ok", false)) {
-                    android.util.Log.w(TAG, "render: JS ok=false: ${result}")
+                    android.util.Log.w(TAG, "render: JS ok=false: $result")
                     null
                 } else {
                     val cssW = result.optDouble("w", 0.0).toFloat()

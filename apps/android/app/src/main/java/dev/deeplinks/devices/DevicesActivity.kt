@@ -22,7 +22,6 @@ import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.shouldBlockLocalHostRemoval
 import dev.deeplinks.native.DshConfirmDialog
 import dev.deeplinks.native.DshRenameDialog
-import dev.deeplinks.native.EditOutline16
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
@@ -203,7 +202,6 @@ fun DevicesScreen(
             }
         }
     }
-
 
     fun requestUnpair(current: DeviceUi) {
         unpairTarget = current.host

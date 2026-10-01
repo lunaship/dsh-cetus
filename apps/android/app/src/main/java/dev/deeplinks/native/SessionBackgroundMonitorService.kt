@@ -14,8 +14,6 @@ import dev.deeplinks.core.ApprovalActionReceiver
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
-import dev.deeplinks.core.notifMonitorBody
-import dev.deeplinks.core.notifMonitorTitle
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.parseStoppedReason
 import kotlinx.coroutines.CoroutineScope
