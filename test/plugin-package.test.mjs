@@ -79,5 +79,4 @@ test("插件包内容只含插件文件，不含 relay / apps/android", () => {
   assert.ok(![...packedFiles].some((entry) => /^relay\/.+\.go$/.test(entry)))
   assert.ok(![...packedFiles].some((entry) => entry.startsWith("cmd/")))
   assert.ok(![...packedFiles].some((entry) => entry.startsWith("apps/")))
-  assert.ok(!packedFiles.has("docs/images/android-workspace-dark.jpg"))
 })

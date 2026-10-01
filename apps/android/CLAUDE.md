@@ -1,6 +1,6 @@
 # deeplinks — AI 协作规则
 
-DeepLinks Android 客户端。配对插件在 `../docs/COMPATIBILITY.md`；版本基线以 `../docs/COMPATIBILITY.md` 为准，本仓库不另维护版本表。
+DeepLinks Android 客户端。配对插件源码在仓库根目录 `src/`；版本基线以 `../../docs/COMPATIBILITY.md` 为准，本仓库不另维护版本表。
 
 连接方式只有两条路：局域网直连与 DLP/1 远程（`core/remote/`）。选路在 `RouteSelector`（每次新建连接探测局域网，按网络变化作废），传输在 `HostHttp`；两条路都钉扎同一张插件证书。中继转来的拒绝码只能用来提示，删除或改写本机凭据只认插件在内层 TLS 上的答复（RFC §7.4）。
 
