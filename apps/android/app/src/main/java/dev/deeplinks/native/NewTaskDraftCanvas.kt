@@ -64,7 +64,9 @@ internal fun LazyListScope.newTaskDraftCanvas(
         Column(
             modifier = Modifier
                 .fillParentMaxSize()
-                .padding(horizontal = COMPOSER_SIDE_CLEARANCE),
+                // F02（2026-10-01）：与对话内容同一页面坐标——聊天正文线是
+                // COMPOSER_SIDE_CLEARANCE + s8，草稿不再用更窄的 12dp 输入框留白
+                .padding(horizontal = COMPOSER_SIDE_CLEARANCE + DshSpace.s8),
             verticalArrangement = Arrangement.Bottom,
         ) {
             if (lastTask != null) {

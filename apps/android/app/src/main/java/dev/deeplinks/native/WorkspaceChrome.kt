@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.ui.DshErrorState
+import dev.deeplinks.native.ui.DshPageChromeDensity
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.DshS
@@ -613,7 +614,8 @@ internal fun WorkspaceTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                // 紧凑档 56dp（2026-10-01 R2）：高度与标题字阶收敛到 DshPageChrome 规格
+                .heightIn(min = DshPageChromeDensity.Compact.minHeight)
                 .padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -657,8 +659,8 @@ internal fun WorkspaceTopBar(
                     Text(
                         title,
                         color = Dsh.labelPrimary,
-                        style = DshType.title,
-                        fontWeight = FontWeight.SemiBold,
+                        // 紧凑档标题 17/24（2026-10-01 R2）：DshType.titleLarge 自带 SemiBold
+                        style = DshType.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

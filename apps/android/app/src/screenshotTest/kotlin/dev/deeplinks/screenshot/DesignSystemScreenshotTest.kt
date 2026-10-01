@@ -160,6 +160,8 @@ import dev.deeplinks.native.SessionRowItem
 import dev.deeplinks.native.SessionStatsDetailDialog
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
+import dev.deeplinks.native.newTaskDraftCanvas
+import dev.deeplinks.native.DraftLastTask
 import dev.deeplinks.native.ComposerSeatsRow
 import dev.deeplinks.native.StreamReconnectBanner
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
@@ -1137,14 +1139,56 @@ private fun DevicesWall() {
 @Preview(name = "devices light zh", showBackground = true, widthDp = 412, heightDp = 900)
 @Composable
 internal fun DevicesLightZh() {
-    GroupedWall(dark = false, english = false) { DevicesWall() }
+    // F09：预览宿主 = 生产页面结构（ShotFrame + DshPageScaffold 直接组合），
+    // 不再套 GroupedWall → SettingsPageCanvas 的滚动容器——嵌套滚动宿主在
+    // Linux layoutlib 上渲染崩溃（UnsupportedClassVersionError 修复前的 ScreenshotRenderException）
+    // 且双层水平边距会掩盖真实页面
+    ShotFrame(dark = false, english = false) { DevicesWall() }
 }
 
 @PreviewTest
 @Preview(name = "devices dark en", showBackground = true, widthDp = 412, heightDp = 900)
 @Composable
 internal fun DevicesDarkEn() {
-    GroupedWall(dark = true, english = true) { DevicesWall() }
+    ShotFrame(dark = true, english = true) { DevicesWall() }
+}
+
+/**
+ * 新任务草稿态（F09 补齐）：生产结构 [newTaskDraftCanvas]（对话页 LazyColumn 的
+ * messages.isEmpty() 分支）+ 固定业务状态——继续上次 / 工作区胶囊 / 智能体预设。
+ */
+@Composable
+private fun NewTaskDraftWall(english: Boolean) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        newTaskDraftCanvas(
+            lastTask = DraftLastTask(
+                sessionId = "preview",
+                title = if (english) "Refactor settings into grouped list" else "重构设置页为分组列表",
+                workspaceLabel = "/Users/me/dsh-links",
+            ),
+            workspaces = listOf("/Users/me/dsh-links", "/Users/me/relay"),
+            selectedWorkspace = "/Users/me/dsh-links",
+            modeLabel = if (english) "Balanced" else "均衡",
+            onOpenLastTask = {},
+            onSelectWorkspace = {},
+            onOpenWorkspacePicker = {},
+            onOpenModePicker = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "new task draft light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun NewTaskDraftLightZh() {
+    ShotFrame(dark = false, english = false) { NewTaskDraftWall(english = false) }
+}
+
+@PreviewTest
+@Preview(name = "new task draft dark en", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun NewTaskDraftDarkEn() {
+    ShotFrame(dark = true, english = true) { NewTaskDraftWall(english = true) }
 }
 
 /**

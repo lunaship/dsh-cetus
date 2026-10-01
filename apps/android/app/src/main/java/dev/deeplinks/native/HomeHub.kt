@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,8 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -38,6 +34,9 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshEmptyState
+import dev.deeplinks.native.ui.DshMenuChip
+import dev.deeplinks.native.ui.DshPageChrome
+import dev.deeplinks.native.ui.DshPageChromeDensity
 import dev.deeplinks.native.ui.DshFloatingPill
 import dev.deeplinks.native.ui.DshStatusChip
 import dev.deeplinks.native.ui.HostStatusDot
@@ -79,37 +78,22 @@ internal fun HomeHeader(
     val s = DshS
     val statusDesc = if (online) s.statusOnline
         else offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .padding(start = DrawerTextStart, end = DrawerEdgePadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .semantics(mergeDescendants = true) {
-                    heading()
-                    contentDescription = "DeepLinks, $statusDesc"
-                },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "DeepLinks",
-                color = Dsh.labelPrimary,
-                style = DshType.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
-            Spacer(Modifier.width(DshSpace.s8))
-            HostStatusDot(online)
-        }
-        DshIconAction(icon = SearchOutline16, contentDescription = s.searchSessions,
-            onClick = onToggleSearch, active = searchActive, visualSize = DshTouch.compact)
-        DshIconAction(icon = SettingsOutline16, contentDescription = s.settingsTitle,
-            onClick = onOpenSettings, visualSize = DshTouch.compact)
-    }
+    // 品牌顶栏收敛到 DshPageChrome 紧凑档（2026-10-01 R1/R2）：「DeepLinks + 状态点」单行，
+    // 状态描述参与标题区合并朗读；不显示电脑名与下拉。
+    DshPageChrome(
+        title = "DeepLinks",
+        density = DshPageChromeDensity.Compact,
+        horizontalPadding = DrawerTextStart,
+        modifier = Modifier.padding(end = DrawerEdgePadding),
+        titleContentDescription = "DeepLinks, $statusDesc",
+        titleTrailing = { HostStatusDot(online) },
+        actions = {
+            DshIconAction(icon = SearchOutline16, contentDescription = s.searchSessions,
+                onClick = onToggleSearch, active = searchActive, visualSize = DshTouch.compact)
+            DshIconAction(icon = SettingsOutline16, contentDescription = s.settingsTitle,
+                onClick = onOpenSettings, visualSize = DshTouch.compact)
+        },
+    )
 }
 
 /**
@@ -222,8 +206,8 @@ internal fun HomeWorkspaceFilterRow(
 ) {
     val s = DshS
     var menuOpen by remember { mutableStateOf(false) }
-    // 点击层只有胶囊本体一处（F03）：外层再挂 clickable 会造出第二个同名按钮节点，
-    // 读屏重复朗读、视觉上出现两圈按压反馈。胶囊自带 48dp 热区。
+    // 筛选胶囊收敛到 DshMenuChip（F03/R7）：与草稿工作区胶囊同一表面、同一 48dp 热区，
+    // Button 语义 + 展开状态；点击层只有胶囊本体一处。
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -231,38 +215,12 @@ internal fun HomeWorkspaceFilterRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
-            Row(
-                modifier = Modifier
-                    .heightIn(min = DshTouch.min)
-                    .clickable(role = Role.Button, onClick = { menuOpen = true })
-                    .padding(horizontal = DshSpace.s4),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .height(DshSpace.s32)
-                        .clip(RoundedCornerShape(DshRadius.full))
-                        .background(if (selected != null) Dsh.bgSubtle else Dsh.bgCard)
-                        .padding(start = DshSpace.s12, end = DshSpace.s8),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        selected?.let { workspaceDisplayName(it) } ?: s.homeAllWorkspaces,
-                        color = Dsh.labelPrimary,
-                        style = DshType.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 160.dp),
-                    )
-                    Spacer(Modifier.width(DshSpace.s4))
-                    Icon(
-                        ChevronDownOutline16,
-                        contentDescription = null,
-                        tint = Dsh.labelTertiary,
-                        modifier = Modifier.size(DshIconSize.xs),
-                    )
-                }
-            }
+            DshMenuChip(
+                label = selected?.let { workspaceDisplayName(it) } ?: s.homeAllWorkspaces,
+                expanded = menuOpen,
+                onClick = { menuOpen = true },
+                selected = selected != null,
+            )
             DshMenu(
                 expanded = menuOpen,
                 onDismiss = { menuOpen = false },

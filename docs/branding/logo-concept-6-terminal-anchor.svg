@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="dl-grad-term" x1="20" y1="30" x2="80" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#3F5BD6"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Badge Squircle -->
+  <rect x="12" y="12" width="76" height="76" rx="22" fill="#15171C" stroke="#2A2B30" stroke-width="2"/>
+  
+  <!-- Terminal Prompt Chevron (Command / Intelligence) -->
+  <path d="M 28 36 L 42 50 L 28 64" 
+        stroke="url(#dl-grad-term)" 
+        stroke-width="6" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+        
+  <!-- Remote Link Node / Tunnel Loop (Pipe / Mobile Link) -->
+  <path d="M 52 64 L 62 64 C 70 64 76 58 76 50 C 76 42 70 36 62 36 L 52 36" 
+        stroke="#8B9DFF" 
+        stroke-width="6" 
+        stroke-linecap="round"/>
+        
+  <!-- Interactive Beam Connector -->
+  <line x1="44" y1="50" x2="62" y2="50" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 3"/>
+  <circle cx="62" cy="50" r="3.5" fill="#38BDF8"/>
+</svg>
