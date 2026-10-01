@@ -22,6 +22,7 @@ import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
+import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.MessageItem
@@ -46,6 +47,11 @@ import dev.deeplinks.native.MobileMessage
 
 @Composable
 private fun ChatFrame(dark: Boolean, english: Boolean = false, content: @Composable () -> Unit) {
+    // E1：同一屏里直接读全局 LocaleManager.strings 的组件（TimeLabels 的相对时间、
+    // ApprovalCard 的「允许一次」等）不会因为注入本地 LocalDshStrings 而变语言。
+    // 渲染环境（layoutlib）没有可用的 SharedPreferences，走 setLanguageForPreview
+    // 只切内存态，保证英文预览里不再混中文。
+    LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
     val typography = dshTypography(DshFontFamily)
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(

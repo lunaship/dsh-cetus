@@ -107,7 +107,9 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
+import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
+import dev.deeplinks.core.L
 import androidx.compose.foundation.layout.ColumnScope
 import dev.deeplinks.core.Host
 import dev.deeplinks.devices.DeviceDetailSections
@@ -189,6 +191,10 @@ import dev.deeplinks.native.ui.DshTextTabs
 
 @Composable
 private fun ShotFrame(dark: Boolean, english: Boolean = false, content: @Composable () -> Unit) {
+    // E1：直接读全局 LocaleManager.strings 的组件（首页副标题、审批卡、时间标签等）
+    // 不会因为注入本地 LocalDshStrings 而变语言；渲染环境（layoutlib）没有可用的
+    // SharedPreferences，所以走 setLanguageForPreview 只切内存态，英文预览不混中文。
+    LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
     val colors = if (dark) DarkDshColors else LightDshColors
     val typography = dshTypography(DshFontFamily)
     MaterialTheme(typography = typography) {
@@ -230,24 +236,26 @@ private fun SectionTitle(text: String) {
  * 分组标签、底部悬浮主按钮。浅色 / 深色各出一张，改色板或改形状时看这两张。
  */
 @Composable
-private fun InboxWall() {
+private fun InboxWall(english: Boolean = false) {
     SectionTitle("Pill buttons — Accent / Ink / Tonal")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        DshPillButton(label = "批准", onClick = {}, tone = DshPillTone.Accent)
-        DshPillButton(label = "拒绝", onClick = {}, tone = DshPillTone.Tonal)
-        DshPillButton(label = "停止", onClick = {}, tone = DshPillTone.Ink)
-        DshPillButton(label = "发送", onClick = {}, tone = DshPillTone.Accent, icon = SendOutline16)
-        DshPillButton(label = "置灰", onClick = {}, tone = DshPillTone.Ink, enabled = false)
+        DshPillButton(label = if (english) "Approve" else "批准", onClick = {}, tone = DshPillTone.Accent)
+        DshPillButton(label = if (english) "Reject" else "拒绝", onClick = {}, tone = DshPillTone.Tonal)
+        DshPillButton(label = if (english) "Stop" else "停止", onClick = {}, tone = DshPillTone.Ink)
+        DshPillButton(label = if (english) "Send" else "发送", onClick = {}, tone = DshPillTone.Accent, icon = SendOutline16)
+        DshPillButton(label = if (english) "Disabled" else "置灰", onClick = {}, tone = DshPillTone.Ink, enabled = false)
     }
-    SectionTitle("Status chips — 等你批准 / 等你回答 / 在电脑上处理 / 完成")
+    SectionTitle(if (english) "Status chips — waiting for approval / for your answer / on computer / done"
+        else "Status chips — 等你批准 / 等你回答 / 在电脑上处理 / 完成")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        DshStatusChip("等你批准", DshChipTone.Approval)
-        DshStatusChip("等你回答", DshChipTone.Answer)
-        DshStatusChip("在电脑上处理", DshChipTone.Remote)
-        DshStatusChip("完成", DshChipTone.Done)
-        DshStatusChip("已停止", DshChipTone.Remote)
+        DshStatusChip(if (english) "Waiting for approval" else "等你批准", DshChipTone.Approval)
+        DshStatusChip(if (english) "Waiting for your answer" else "等你回答", DshChipTone.Answer)
+        DshStatusChip(if (english) "On computer" else "在电脑上处理", DshChipTone.Remote)
+        DshStatusChip(if (english) "Done" else "完成", DshChipTone.Done)
+        DshStatusChip(if (english) "Stopped" else "已停止", DshChipTone.Remote)
     }
-    SectionTitle("Status icons — 完成 / 进行中 / 离线 / 需解锁")
+    SectionTitle(if (english) "Status icons — done / running / offline / needs unlock"
+        else "Status icons — 完成 / 进行中 / 离线 / 需解锁")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         DshStatusIcon(DocumentCheckOutline16)
         DshStatusIcon(ClockOutline16, container = Dsh.bgSubtle, content = Dsh.labelSecondary)
@@ -255,27 +263,28 @@ private fun InboxWall() {
         DshStatusIcon(LockOutline16, container = Dsh.bgSubtle, content = Dsh.warnLabel)
         DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
     }
-    SectionTitle("Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
+    SectionTitle(if (english) "Group card — white card + 32dp status rows + divider"
+        else "Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
     DshGroupCard {
         DshListRow(
-            title = "完善审批状态同步",
-            subtitle = "正在运行 go test ./... · 第 12 步",
-            value = "3 分钟",
+            title = if (english) "Approval status sync" else "完善审批状态同步",
+            subtitle = if (english) "Running go test ./... · step 12" else "正在运行 go test ./... · 第 12 步",
+            value = if (english) "3 min" else "3 分钟",
             iconSlot = 32.dp,
         )
         DshCardDivider()
         DshListRow(
             title = "2026-09-27_DSH-L",
-            subtitle = "完成 · 改了 79 个文件，门禁全绿",
-            value = "昨天",
+            subtitle = if (english) "Done · changed 79 files, gate all green" else "完成 · 改了 79 个文件，门禁全绿",
+            value = if (english) "Yesterday" else "昨天",
             leading = { DshStatusIcon(DocumentCheckOutline16) },
             iconSlot = 32.dp,
         )
         DshCardDivider()
         DshListRow(
-            title = "修复手机模型切换",
-            subtitle = "已停止 · 你中断了这一轮",
-            value = "周四",
+            title = if (english) "Fix mobile model switch" else "修复手机模型切换",
+            subtitle = if (english) "Stopped · you interrupted this turn" else "已停止 · 你中断了这一轮",
+            value = if (english) "Thu" else "周四",
             leading = {
                 DshStatusIcon(
                     StopFill16,
@@ -288,10 +297,11 @@ private fun InboxWall() {
         )
     }
     SectionTitle("Section label + floating pill")
-    DshSectionLabel("等你处理")
-    DshFloatingPill(label = "新任务", onClick = {}, icon = PlusOutline16)
-    DshFloatingPill(label = "新任务（离线置灰）", onClick = {}, icon = PlusOutline16, enabled = false)
-    SectionTitle("Icons — 本次新增（文档/云/列表/锁/上传/分支）")
+    DshSectionLabel(if (english) "Waiting for you" else "等你处理")
+    DshFloatingPill(label = if (english) "New task" else "新任务", onClick = {}, icon = PlusOutline16)
+    DshFloatingPill(label = if (english) "New task (offline disabled)" else "新任务（离线置灰）", onClick = {}, icon = PlusOutline16, enabled = false)
+    SectionTitle(if (english) "Icons — new this round (doc / cloud / list / lock / upload / branch)"
+        else "Icons — 本次新增（文档/云/列表/锁/上传/分支）")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         listOf(
             DocumentCheckOutline16,
@@ -319,7 +329,7 @@ internal fun InboxComponentsLightZh() {
 @Preview(name = "inbox components dark en", showBackground = true, widthDp = 412, heightDp = 720)
 @Composable
 internal fun InboxComponentsDarkEn() {
-    Wall(dark = true, english = true) { InboxWall() }
+    Wall(dark = true, english = true) { InboxWall(english = true) }
 }
 
 /**
@@ -328,6 +338,8 @@ internal fun InboxComponentsDarkEn() {
  */
 @Composable
 private fun PureBlackWall(content: @Composable () -> Unit) {
+    // 纯黑基线只出中文一张：全局语言固定回中文，避免上一张英文预览把它带成英文。
+    LocaleManager.setLanguageForPreview("zh")
     val colors = DarkDshColors.pureBlack()
     val typography = dshTypography(DshFontFamily)
     MaterialTheme(typography = typography) {
@@ -370,27 +382,27 @@ private fun TypeScale() {
 }
 
 @Composable
-private fun ComponentWall() {
+private fun ComponentWall(english: Boolean = false) {
     SectionTitle("Chips")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        DshFilterChip(label = "全部", selected = true, onClick = {})
-        DshFilterChip(label = "对话", selected = false, count = 12, onClick = {})
+        DshFilterChip(label = if (english) "All" else "全部", selected = true, onClick = {})
+        DshFilterChip(label = if (english) "Chats" else "对话", selected = false, count = 12, onClick = {})
     }
     SectionTitle("Tabs")
-    DshTextTabs(labels = listOf("对话", "轨迹"), selectedIndex = 0, onSelect = {})
+    DshTextTabs(labels = if (english) listOf("Chat", "Trace") else listOf("对话", "轨迹"), selectedIndex = 0, onSelect = {})
     SectionTitle("Tags & badges")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        DshTag(text = "任务")
-        DshTag(text = "压缩")
+        DshTag(text = if (english) "Task" else "任务")
+        DshTag(text = if (english) "Compacted" else "压缩")
         DshBadge(dot = true)
         DshBadge(count = 3)
         DshBadge(count = 150)
     }
     SectionTitle("Banners")
-    DshBanner(text = "实时流连接断开，正在重连…")
-    DshBanner(text = "等待审批通过", tone = DshBannerTone.Warn, actionLabel = "查看", onAction = {})
-    DshBanner(text = "会话已归档", tone = DshBannerTone.Success)
-    DshBanner(text = "连接失败", tone = DshBannerTone.Error, actionLabel = "重试", onAction = {})
+    DshBanner(text = if (english) "Live stream dropped. Reconnecting…" else "实时流连接断开，正在重连…")
+    DshBanner(text = if (english) "Waiting for approval" else "等待审批通过", tone = DshBannerTone.Warn, actionLabel = if (english) "View" else "查看", onAction = {})
+    DshBanner(text = if (english) "Session archived" else "会话已归档", tone = DshBannerTone.Success)
+    DshBanner(text = if (english) "Connection failed" else "连接失败", tone = DshBannerTone.Error, actionLabel = if (english) "Retry" else "重试", onAction = {})
     SectionTitle("Loading")
     ChatLoadingSkeleton()
 }
@@ -581,10 +593,10 @@ internal fun ChatBottomDarkEn() {
 }
 
 @Composable
-private fun TopBarWall() {
+private fun TopBarWall(english: Boolean = false) {
     WorkspaceTopBar(
         running = true,
-        title = "调研 t3code 移动端设计并对比项目",
+        title = if (english) "Research t3code mobile design" else "调研 t3code 移动端设计并对比项目",
         subtitle = "dsh-links · Mac mini",
         showBack = true,
         onNavigate = {},
@@ -594,8 +606,8 @@ private fun TopBarWall() {
         menuExpanded = false,
         onMenuExpandedChange = {},
         menuItems = listOf(
-            DshMenuItem(SearchOutline16, "搜索工具调用") {},
-            DshMenuItem(SearchOutline16, "重命名会话") {},
+            DshMenuItem(SearchOutline16, if (english) "Search tool calls" else "搜索工具调用") {},
+            DshMenuItem(SearchOutline16, if (english) "Rename session" else "重命名会话") {},
         ),
     )
 }
@@ -604,7 +616,7 @@ private fun TopBarWall() {
 @Preview(name = "workspace top bar light", showBackground = true, widthDp = 412, heightDp = 140)
 @Composable
 internal fun WorkspaceTopBarLight() {
-    Wall(dark = false, english = false) { TopBarWall() }
+    Wall(dark = false, english = false) { TopBarWall(english = false) }
 }
 
 @PreviewTest
@@ -761,7 +773,7 @@ internal fun SettingsPrivacySectionDarkEn() {
 @Preview(name = "workspace top bar dark en", showBackground = true, widthDp = 412, heightDp = 140)
 @Composable
 internal fun WorkspaceTopBarDarkEn() {
-    Wall(dark = true, english = true) { TopBarWall() }
+    Wall(dark = true, english = true) { TopBarWall(english = true) }
 }
 
 @PreviewTest
@@ -802,7 +814,7 @@ internal fun ComponentsLightZh() {
 internal fun ComponentsDarkEn() {
     Wall(dark = true, english = true) {
         TypeScale()
-        ComponentWall()
+        ComponentWall(english = true)
         TokenWall()
     }
 }
@@ -936,25 +948,25 @@ private fun GroupedWall(dark: Boolean, english: Boolean, content: @Composable Co
 @Composable
 private fun SectionWall(dark: Boolean, english: Boolean) {
     Wall(dark = dark, english = english) {
-        DshSection(header = "Flat · 默认") {
-            DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
-            DshListRow(title = "外观", icon = PaletteOutline16, value = "跟随系统", onClick = {})
-            DshSwitchRow(title = "系统字体", icon = FontOutline16, checked = true, onCheckedChange = {})
+        DshSection(header = if (english) "Flat · default" else "Flat · 默认") {
+            DshListRow(title = if (english) "Language" else "语言", icon = TranslateOutline16, value = if (english) "Chinese" else "中文", onClick = {})
+            DshListRow(title = if (english) "Appearance" else "外观", icon = PaletteOutline16, value = if (english) "System" else "跟随系统", onClick = {})
+            DshSwitchRow(title = if (english) "System font" else "系统字体", icon = FontOutline16, checked = true, onCheckedChange = {})
         }
-        DshSection(header = "Tonal · 独立数据块", container = DshSectionContainer.Tonal) {
-            DshListRow(title = "MacBook Pro", subtitle = "在线 · 24ms · 局域网", icon = LaptopOutline16)
-            DshListRow(title = "思考令牌", subtitle = "上下文余量", icon = WalletOutline16, value = "18.7K")
+        DshSection(header = if (english) "Tonal · standalone blocks" else "Tonal · 独立数据块", container = DshSectionContainer.Tonal) {
+            DshListRow(title = "MacBook Pro", subtitle = if (english) "Online · 24ms · LAN" else "在线 · 24ms · 局域网", icon = LaptopOutline16)
+            DshListRow(title = if (english) "Thinking tokens" else "思考令牌", subtitle = if (english) "Context left" else "上下文余量", icon = WalletOutline16, value = "18.7K")
         }
-        DshSection(header = "状态语义") {
+        DshSection(header = if (english) "Status semantics" else "状态语义") {
             DshListRow(
-                title = "等待确认",
-                subtitle = "权限申请待处理",
-                leading = { DshStatusBadge("等待", tone = DshStatusTone.Waiting, dot = true) },
+                title = if (english) "Waiting for confirmation" else "等待确认",
+                subtitle = if (english) "Permission request pending" else "权限申请待处理",
+                leading = { DshStatusBadge(if (english) "Waiting" else "等待", tone = DshStatusTone.Waiting, dot = true) },
             )
             DshListRow(
-                title = "运行中",
-                subtitle = "正在执行工具调用",
-                leading = { DshStatusBadge("运行", tone = DshStatusTone.Running, dot = true) },
+                title = if (english) "Running" else "运行中",
+                subtitle = if (english) "Running a tool call" else "正在执行工具调用",
+                leading = { DshStatusBadge(if (english) "Running" else "运行", tone = DshStatusTone.Running, dot = true) },
             )
         }
     }
@@ -1139,7 +1151,7 @@ internal fun DevicesDarkEn() {
  * 会话时间都给 0，避免相对时间随时钟漂移导致基线抖动。
  */
 @Composable
-private fun SidebarWall() {
+private fun SidebarWall(english: Boolean = false) {
     fun session(
         id: String,
         title: String,
@@ -1191,24 +1203,24 @@ private fun SidebarWall() {
         HomeSectionHeader(HomeSection.AWAITING)
         // 稿 07：最早一件展开成审批卡（手机已接管），其余收成行
         HomeApprovalCard(
-            title = "任务首页改版",
+            title = if (english) "Home inbox redesign" else "任务首页改版",
             workspaceLabel = "dsh-links",
-            timeLabel = "2 分钟前",
+            timeLabel = if (english) "2 min ago" else "2 分钟前",
             toolName = "./gradlew :app:connectedDebugAndroidTest",
             chipText = DshS.homeChipWaitingApproval,
             onReject = {},
             onApprove = {},
         )
-        SessionRowItem(session("s5", "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s5", if (english) "Relay deploy check" else "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RUNNING)
-        SessionRowItem(session("s2", "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s2", if (english) "Approval status sync" else "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         HomeSectionHeader(HomeSection.RECENT)
         // 「最近」里的两种已结束：有 lastResult（绿底带勾 + 结果一句话）／只有 stoppedReason
         // （灰底方块 + 它怎么停的）。图标与文案必须同时来自同一个判断。
-        SessionRowItem(session("r0", "跑门禁时被中断", stoppedReason = "interrupted"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s3", "修复手机模型切换", lastResult = MobileSessionResult(text = "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s4", "整理工作区导航", lastResult = MobileSessionResult(text = "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
-        SessionRowItem(session("s6", "补齐移动端测试", lastResult = MobileSessionResult(text = "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("r0", if (english) "Interrupted during gate run" else "跑门禁时被中断", stoppedReason = "interrupted"), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s3", if (english) "Fix mobile model switch" else "修复手机模型切换", lastResult = MobileSessionResult(text = if (english) "You interrupted this turn" else "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s4", if (english) "Tidy workspace navigation" else "整理工作区导航", lastResult = MobileSessionResult(text = if (english) "Gate run all green" else "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
+        SessionRowItem(session("s6", if (english) "Fill in mobile tests" else "补齐移动端测试", lastResult = MobileSessionResult(text = if (english) "Added 3 test cases" else "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {}, containerColor = Dsh.bgBase)
         Spacer(Modifier.height(24.dp))
         HomeNewTaskFab(onClick = {})
     }
@@ -1219,10 +1231,10 @@ private fun SidebarWall() {
  * 列表 72% 不透明、进行中行换成静止时钟 + 「最后看到：」、新任务置灰。
  */
 @Composable
-private fun HomeOfflineWall() {
+private fun HomeOfflineWall(english: Boolean = false) {
     val session = MobileSession(
         sessionId = "s2",
-        title = "完善审批状态同步",
+        title = if (english) "Approval status sync" else "完善审批状态同步",
         updatedAt = 0L,
         running = true,
         blank = false,
@@ -1241,13 +1253,13 @@ private fun HomeOfflineWall() {
             hostName = "Mac mini",
             online = false,
             viaRemote = true,
-            offlineSinceLabel = "10 分钟前",
+            offlineSinceLabel = if (english) "10 min ago" else "10 分钟前",
             searchActive = false,
             onOpenDevice = {},
             onToggleSearch = {},
             onOpenSettings = {},
         )
-        HomeOfflineCard(hostName = "Mac mini", sinceLabel = "10 分钟前", onRetry = {}, onOpenConnectionMode = {})
+        HomeOfflineCard(hostName = "Mac mini", sinceLabel = if (english) "10 min ago" else "10 分钟前", onRetry = {}, onOpenConnectionMode = {})
         HomeSectionHeader(HomeSection.RUNNING)
         Box(Modifier.alpha(0.72f)) {
             SessionRowItem(
@@ -1297,14 +1309,14 @@ private fun HomeEmptyWall() {
 @Preview(name = "home offline light zh", showBackground = true, widthDp = 412, heightDp = 620)
 @Composable
 internal fun HomeOfflineLightZh() {
-    Wall(dark = false, english = false) { HomeOfflineWall() }
+    Wall(dark = false, english = false) { HomeOfflineWall(english = false) }
 }
 
 @PreviewTest
 @Preview(name = "home offline dark en", showBackground = true, widthDp = 412, heightDp = 620)
 @Composable
 internal fun HomeOfflineDarkEn() {
-    Wall(dark = true, english = true) { HomeOfflineWall() }
+    Wall(dark = true, english = true) { HomeOfflineWall(english = true) }
 }
 
 @PreviewTest
@@ -1325,12 +1337,12 @@ internal fun HomeEmptyDarkEn() {
 @Preview(name = "sidebar light zh", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SidebarLightZh() {
-    Wall(dark = false, english = false) { SidebarWall() }
+    Wall(dark = false, english = false) { SidebarWall(english = false) }
 }
 
 @PreviewTest
 @Preview(name = "sidebar dark en", showBackground = true, widthDp = 412, heightDp = 980)
 @Composable
 internal fun SidebarDarkEn() {
-    Wall(dark = true, english = true) { SidebarWall() }
+    Wall(dark = true, english = true) { SidebarWall(english = true) }
 }

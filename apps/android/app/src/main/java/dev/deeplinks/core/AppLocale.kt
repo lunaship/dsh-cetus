@@ -38,6 +38,18 @@ object LocaleManager {
             .apply()
     }
 
+    /**
+     * 截图 / 预览专用：只切内存态、不落盘。
+     *
+     * Compose 截图测试跑在 layoutlib 渲染环境里，SharedPreferences 不可用
+     * （读写不抛错但拿不到值），且测试也不该把语言偏好写进宿主机 App 数据；
+     * 但同一屏里直接读全局 [strings]（如 TimeLabels / ApprovalCard）的组件
+     * 仍要与本地 `LocalDshStrings` 一致切换语言，否则英文预览里混中文。
+     */
+    internal fun setLanguageForPreview(code: String) {
+        language = normalize(code)
+    }
+
     fun normalize(code: String?): String =
         if (code?.lowercase()?.startsWith("en") == true) "en" else "zh"
 }

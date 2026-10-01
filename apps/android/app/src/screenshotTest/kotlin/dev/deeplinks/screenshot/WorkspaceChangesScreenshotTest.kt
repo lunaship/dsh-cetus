@@ -26,6 +26,7 @@ import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
 import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
+import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
 import dev.deeplinks.native.ChangedFile
 import dev.deeplinks.native.ChangesPanelState
@@ -40,6 +41,9 @@ import dev.deeplinks.native.WorkspaceTopBar
 
 @Composable
 private fun ChangesFrame(dark: Boolean, english: Boolean = false, content: @Composable () -> Unit) {
+    // E1：直接读全局 LocaleManager.strings 的组件也要跟着 english 切语言（详见
+    // ChatFeedScreenshotTest.ChatFrame 同位置注释）。
+    LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
     val typography = dshTypography(DshFontFamily)
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(

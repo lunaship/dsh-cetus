@@ -11,5 +11,6 @@ dev/deeplinks/devices/DevicesActivity.kt 622
 dev/deeplinks/native/SettingsActivity.kt 34
 # 文案表在 AppLocaleZh / AppLocaleEn；本文件只留取值。分组列表文案并入后仍远低于旧预算。
 # 2026-09-30 第 4 步新增模型切换提示文案（modelChangedFrom / modelChanged）后按实际上调。
-dev/deeplinks/core/AppLocale.kt 673
+# 2026-09-30 E1 新增 setLanguageForPreview（截图专用，只切内存态）后再上调。
+dev/deeplinks/core/AppLocale.kt 685
 dev/deeplinks/native/WorkspaceSidebar.kt 320
