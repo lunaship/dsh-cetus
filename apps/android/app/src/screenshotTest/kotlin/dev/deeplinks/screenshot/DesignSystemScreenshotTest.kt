@@ -45,6 +45,7 @@ import dev.deeplinks.native.FileOutline16
 import dev.deeplinks.native.FontOutline16
 import dev.deeplinks.native.GiftOutline16
 import dev.deeplinks.native.ImageOutline16
+import dev.deeplinks.native.RemoteImageBlock
 import dev.deeplinks.native.InfoOutline16
 import dev.deeplinks.native.KeyOutline16
 import dev.deeplinks.native.KeyboardOutline16
@@ -672,6 +673,52 @@ internal fun ChatEmptyHero() {
 @Composable
 internal fun ChatEmptyError() {
     ChatCanvasFrame(ChatCanvasKind.Error)
+}
+
+// ---- 第 2 步 B4：远程图片占位卡 / 失败态 / 设置「隐私」分组 ----
+
+@PreviewTest
+@Preview(name = "remote image placeholder", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun RemoteImagePlaceholder() {
+    ShotFrame(dark = false) {
+        RemoteImageBlock(url = "https://example.com/a.png")
+    }
+}
+
+@PreviewTest
+@Preview(name = "remote image placeholder dark en", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun RemoteImagePlaceholderDarkEn() {
+    ShotFrame(dark = true, english = true) {
+        RemoteImageBlock(url = "https://example.com/a.png")
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings privacy section", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun SettingsPrivacySection() {
+    ShotFrame(dark = false) {
+        SettingsHome(
+            appSettings = AppSettings(),
+            onOpen = {},
+            host = null,
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "settings privacy section dark en", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun SettingsPrivacySectionDarkEn() {
+    ShotFrame(dark = true, english = true) {
+        SettingsHome(
+            appSettings = AppSettings(),
+            onOpen = {},
+            host = null,
+        )
+    }
 }
 
 @PreviewTest

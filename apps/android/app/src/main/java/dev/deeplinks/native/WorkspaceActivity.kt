@@ -39,8 +39,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -253,6 +255,13 @@ fun WorkspaceScreen(
         if (id in archivedIds) archivedIds - id else archivedIds + id,
     )
     val workspacePrefs = localStore.prefs
+    // 第 2 步 B2：会话级远程图片策略。滚出屏幕不丢失放行记录，切会话换一个实例；
+    // 设置页开关改动后由 LifecycleResumeEffect 回前台刷入，Compose 状态立即重组。
+    val imagePolicy = remember(currentSessionId) { RemoteImagePolicy(workspacePrefs.autoLoadRemoteImages) }
+    LifecycleResumeEffect(Unit) {
+        imagePolicy.autoLoad = workspacePrefs.autoLoadRemoteImages
+        onPauseOrDispose { }
+    }
     // 记录该设备最近打开的会话（下次冷启动恢复；失效时由 boot 校验回退）。
     LaunchedEffect(hostIdentity, currentSessionId) {
         val sid = currentSessionId ?: return@LaunchedEffect
@@ -2396,6 +2405,8 @@ fun WorkspaceScreen(
             }
             // 列表高度随 IME/底栏变化时：贴底用户按变矮像素上推，跟手不跳
             var chatListHeightPx by remember { mutableIntStateOf(0) }
+            // 第 2 步 B2：把会话级图片策略注进消息流（MarkdownContent 读 LocalRemoteImagePolicy）
+            CompositionLocalProvider(LocalRemoteImagePolicy provides imagePolicy) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -2491,6 +2502,7 @@ fun WorkspaceScreen(
                     }
                 }
             }
+            } // CompositionLocalProvider(LocalRemoteImagePolicy) 结束
 
             } // else 分支结束
             } // when(viewMode) 结束

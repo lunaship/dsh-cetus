@@ -33,6 +33,8 @@ If you use an intranet-tunnelling product yourself, treat it as an **experimenta
 
 ## Do not
 
+- Remote images in conversations are not loaded automatically, to prevent prompt-injected output from exfiltrating data via image URLs. Only public HTTPS hosts are allowed even after the user taps to load. A setting under Privacy enables auto-load.
+
 - Expose `0.0.0.0:18640` to untrusted networks.
 - Treat Cloudflare Tunnel, Tailscale, frp, or the experimental DLP/1 relay as a supported public Beta feature.
 - Commit `local.properties`, keystores, `state.json`, or any `*.token` / `*.pem` files.

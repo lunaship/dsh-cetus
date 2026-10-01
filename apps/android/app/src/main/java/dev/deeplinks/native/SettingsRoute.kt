@@ -536,14 +536,14 @@ internal fun SettingsHome(
                 },
             )
         }
+    }
+    // 第 2 步 B1：远程图片开关移到「隐私」分组。默认不自动加载——
+    // 对话里的网络图片可能被提示词注入用来外泄内容、暴露 IP。
+    DshListSection(header = s.sectionPrivacy, footer = s.autoLoadRemoteImagesFooter) {
         DshSwitchRow(
             title = s.autoLoadRemoteImages,
-            subtitle = s.autoLoadRemoteImagesDesc,
             checked = autoLoadRemoteImages,
-            onCheckedChange = {
-                autoLoadRemoteImages = it
-                notifyPrefs.autoLoadRemoteImages = it
-            },
+            onCheckedChange = { autoLoadRemoteImages = it; notifyPrefs.autoLoadRemoteImages = it },
         )
     }
     if (renameOpen) {
