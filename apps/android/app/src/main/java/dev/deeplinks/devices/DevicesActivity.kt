@@ -25,6 +25,7 @@ import dev.deeplinks.native.DshRenameDialog
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
+import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSheet
 
@@ -105,6 +106,9 @@ fun DevicesScreen(
     onDismissSheet: () -> Unit = {},
     alias: String = "",
     onAliasChanged: () -> Unit = {},
+    /** 整页形态的返回入口由宿主按导航栈决定：根页面（首次配对 / 凭据失效）不提供虚假返回。 */
+    showsBack: Boolean = false,
+    onNavigateBack: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
@@ -234,6 +238,8 @@ fun DevicesScreen(
             onAddDevice = { showPairingPanel = true },
             alias = alias,
             onRename = { renameOpen = true },
+            showsBack = showsBack,
+            onNavigateBack = onNavigateBack,
         )
     }
 
@@ -370,9 +376,15 @@ private fun DevicesPage(
     onAddDevice: () -> Unit,
     alias: String = "",
     onRename: () -> Unit = {},
+    showsBack: Boolean = false,
+    onNavigateBack: () -> Unit = {},
 ) {
     val s = DshS
-    DshPageScaffold(title = s.pairingManage) {
+    DshPageScaffold(
+        title = s.pairingManage,
+        navigation = if (showsBack) DshPageNavigation.Back else DshPageNavigation.None,
+        onNavigateBack = onNavigateBack,
+    ) {
         val current = device
         if (current == null) {
             Box(Modifier.weight(1f)) {

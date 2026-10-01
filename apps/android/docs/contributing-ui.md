@@ -54,7 +54,8 @@
 ./gradlew testDebugUnitTest lintDebug :app:assembleDebug validateDebugScreenshotTest
 ```
 
-CI（`.github/workflows/ci.yml`）按顺序跑：DLR 向量检查 → JVM 测试 + lint → **截图校验** → debug APK → 空白检查。
+CI（`.github/workflows/ci-android.yml`）按顺序跑：固定版本 ktlint → JVM 测试 + lint →
+**截图校验** → debug APK → release R8 构建（无签名验证，不等于正式安装包）→ Debug emulator smoke。
 
 ## 5. 截图基线工作流（AGP Compose Preview Screenshot Testing）
 

@@ -24,6 +24,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
@@ -67,6 +69,9 @@ fun DshPageScaffold(
         contentAlignment = Alignment.TopCenter,
     ) {
         // 系统栏 inset 由本骨架统一消费（edge-to-edge + 透明系统栏）
+        // F06：导航玻璃与内容区共用同一采样源——内容层录制、顶栏取样模糊，
+        // 设置 / 设备不再退化为无 backdrop 的纯色半透明假玻璃。
+        val backdrop = rememberLayerBackdrop()
         Column(
             modifier = Modifier
                 .widthIn(max = maxContentWidth)
@@ -81,7 +86,7 @@ fun DshPageScaffold(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = PageNavHeight)
-                        .dshTranslucent(showDivider = false)
+                        .dshTranslucent(showDivider = false, backdrop = backdrop)
                         .padding(horizontal = DshSpace.s4),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -110,7 +115,9 @@ fun DshPageScaffold(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1f)
+                    // 采样源挂在内容层，与顶栏同级——不能挂到含玻璃的祖先（递归采样）
+                    .layerBackdrop(backdrop),
             ) {
                 content()
             }

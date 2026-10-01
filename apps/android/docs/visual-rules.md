@@ -8,12 +8,15 @@
 
 这一条是全 App 视觉决策的最终依据。本 App 是 DeepSeek Harness 的客户端，**视觉取值的唯一参照是
 DSH Web**（`@deepseek-ai/dsh-client-ui-theme` 的 `--dsw-*` token，见下方「色源」）。
-lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生），
-不得作为新增组件、形状、色值或页面语法的直接来源。需要新视觉元素时，先问它属于下面哪一份合同，
-合同没有的，先改合同（连同门禁测试），再改页面。
 
-本文件是设计语言统一改造（2026-09-27 方案）的落地合同，由
-`DesignTokenUsageTest` / `ComponentLanguageTest` / `DshShapeRoleTest` / `DshSurfaceRoleTest` /
+**外部参考的使用边界（2026-10-01 修订）**：lody-iOS 的**玻璃分层与操作反馈**（导航只模糊、
+输入区圆角浮岛、边缘高光与轻折射）是本次液态玻璃改造明确允许的材质与交互参考；
+Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生）。组件、形状、色值与页面语法
+仍以本合同与 DSH 为唯一来源——参考解决「材质怎么做」，不改变「界面长什么样」。
+需要新视觉元素时，先问它属于下面哪一份合同，合同没有的，先改合同（连同门禁测试），再改页面。
+
+本文件是设计语言统一改造（2026-09-27 方案）+ UI 统一与液态玻璃改造（**2026-10-01 v2 方案**）的落地合同，
+由 `DesignTokenUsageTest` / `ComponentLanguageTest` / `DshShapeRoleTest` / `DshSurfaceRoleTest` /
 `DshPaletteProvenanceTest` / `DshSpacingUsageTest` 共同强制；违反即让 `testDebugUnitTest` 失败。
 
 ## 一、页面骨架（DshPageScaffold）
@@ -36,10 +39,16 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 
 - 一级页面必须使用 `DshPageScaffold`（`native/ui/DshPageScaffold.kt`）：统一标题、
   inset、返回按钮热区与页面背景。
-- 页面背景固定 `Dsh.bgBase`；Compact 水平边距 16dp。
+- 页面背景固定 `Dsh.bgBase`；Compact 水平边距 16dp。**聊天页是唯一写明的页面底色例外**（见第二节）。
 - Medium/Expanded 内容最大宽度 720dp；聊天工作区与双栏布局不受此限制。
-- 页面标题统一 `DshType.headlineMedium`（`pageTitle` 角色），全 App 一致。
+- **页面标题两档（2026-10-01 R2）**：标准页（设置、设备、二级页）`DshType.headlineMedium`
+  （20/26 SemiBold）、导航区最小 64dp；聊天顶栏为紧凑档 `DshType.titleLarge`（17/24 SemiBold）、
+  单行 56dp，右侧保留分段控件与「⋯」。同一组件提供两档密度，页面不得自定字号与顶栏高度。
+- 首页顶栏是「DeepLinks + 连接状态点」品牌单行（R1）：紧凑档 56dp，不显示电脑名与下拉，
+  右侧保留搜索与设置。
 - `DshLargeTitle` 只是迁移期兼容包装，调用清零后删除；新页面不得使用。
+- 页面导航的返回/关闭行为按实际入口传入（设备页：根页面无返回、从设置进入显示返回、
+  凭据失效清栈后重进无返回；Sheet 遵循手势关闭），不得猜测返回栈或伪造上一页。
 
 ## 二、表面层级（五种用途，不以页面来源命名）
 
@@ -56,7 +65,31 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 | Recessed | 思考轨迹、代码或深层数据区 | `bgRecessed` / `bgCode` | `#F2F3F6` | `#17181B` / `#26272C` |
 | Divider | **只用于分隔线**，不做容器描边 | `borderSubtle` | `#ECEEF2` | `#2A2B30` |
 
-对话页整页白（`bgCard` + `bgBase` 同白），首页整页灰（`bgBase` 灰 + `bgCard` 白）。
+**页面底色例外（2026-10-01 R4，唯一写明的一条）**：聊天页（含新任务草稿态）整页白——
+浅色 `#FFFFFF` / 深 `#1C1D21`（`bgCard`），助手正文直接排在白底上，用户消息用 `bgSubtle`
+中性气泡，代码与思考区域用 recessed 表面，三层在白底上可清楚区分。理由：浅色用户气泡
+`#EBEDF1` 与冷灰画布 `#F3F4F7` 几乎无差，灰底会把气泡与思考下沉面糊在一起。
+首页、设置、设备及其二级页一律冷灰画布（`bgBase` 灰 + `bgCard` 白卡）。
+
+### 2.1 液态玻璃（2026-10-01 起，三种表面用途）
+
+| 用途 | 规则 | 典型位置 |
+|---|---|---|
+| 清晰内容面 | 稳定底色，无玻璃、无折射 | 正文、代码、设置行、长菜单、设备信息 |
+| 导航玻璃 | 较浓底色、适量模糊、很弱的边缘分层；**全宽矩形不折射** | 页面顶栏与必要的导航操作区 |
+| 浮动玻璃 | 圆角浮岛：外圈边缘高光、轻折射与柔和阴影；**输入框本体用接近实色的面**（浅 0.92 / 深 0.94 alpha），保证输入文字不受背后内容干扰（R5） | 聊天输入区外圈、附件入口、发送按钮、少量浮动控件 |
+
+- 材质与回退实现收敛在共用入口（`DshGlass` / `dshTranslucent`），页面不得自带一套效果参数。
+- 折射（lens）是共用开关，默认只在输入区外圈开轻档；导航永远不折射。
+  实现约束：Backdrop 1.0.6 的 lens 参数单位为 **px**（在效果作用域内由 dp 换算）、仅 Android 13+、
+  形状必须为圆角（`CornerBasedShape`），传 `RectangleShape` 会抛异常（R10）。
+- 回退阶梯：API 33+ 模糊 + 折射 → API 31–32 模糊（无折射）→ API 26–30 稳定表面 →
+  截图预览 / 省电 / 关动画用不透明或纯色半透明表面。回退不得留透明空洞或读不清的文字；
+  省电与动画设置变化要跟手（进前台与设置变化时更新，见 `DshTranslucentBar`）。
+- 首轮调参起点（导航 / 浮动）：模糊 16dp / 12dp 起；底色浓度浅 0.84 / 0.88、外圈 0.68 / 0.76 起；
+  折射高度 8dp、折射量 12dp 起（6–12 / 8–20 内调）；色散与深度效果关闭；高光、阴影克制。
+  参数按角色定义在共用文件中，禁止页面单独调数字。
+- 静止状态不做循环浮动、呼吸或折射动画；性能不达标先关折射再降模糊（先减覆盖面、再降强度、最后回退稳定表面）。
 
 迁移规则：
 
@@ -92,7 +125,7 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 
 | 内容 | 角色 |
 |---|---|
-| 页面标题 | `headlineMedium`，全 App 一致 |
+| 页面标题 | 标准页 `headlineMedium`（20/26）；聊天顶栏紧凑档 `titleLarge`（17/24） |
 | Section 标题 | `titleSmall` |
 | 列表主标题 | `bodyLarge` |
 | 列表辅助文字 | `supporting` |
@@ -108,8 +141,7 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 
 | 稿子 | 用途 | 角色 |
 |---|---|---|
-| 28 / 粗 | 设置页大标题 | `display`（28，设置页专用例外；页面标题默认仍是 `headlineMedium`） |
-| 20–22 / 粗 | 空状态标题 | `headlineMedium`（20/26）；后半句同尺寸、Medium、`labelSecondary` |
+| 20–22 / 粗 | 空状态标题 | `headlineMedium`（20/26）；后半句同尺寸、Medium、`labelSecondary`。**设置页大标题已并入此档（2026-10-01 删除 28sp 专用例外，与代码现状一致）** |
 | 16–17 / 粗 | 电脑名、审批卡标题 | `titleLarge`（17/24，配 SemiBold） |
 | 15 / Medium | 列表行标题、按钮 | `title`（15/22 Medium） |
 | 15 / 常规 | 输入文字、列表副标题 | `body`（15/22） |
@@ -125,7 +157,7 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 |---|---|---|
 | 页面 | `DshPageScaffold` | 统一标题、inset、宽度和背景 |
 | Section | `DshSectionHeader`、`DshSection`、`DshSectionLabel` | 默认扁平；设置页不用 `tonal`。分区标题只有灰字，不挂计数；`DshSectionLabel` 是 13/Medium/次要色的分组标签 |
-| 列表 | `DshListRow`、`DshGroupCard`、`DshCardDivider`、`DshSwitchRow`、`DshSelectRow` | 设置、设备、Sheet、首页分组卡复用同一行骨架；`DshGroupCard` 是 `bgCard` + `composer` 圆角 + 16 内边距的白色分组卡，行间只用 `DshCardDivider` 发丝线 |
+| 列表 | `DshListRow`、`DshGroupCard`、`DshCardDivider`、`DshSwitchRow`、`DshSelectRow` | 设置、设备、Sheet、首页分组卡复用同一行骨架；`DshGroupCard` 是 `bgCard` + **`container` 12dp** 圆角 + 16 内边距的白色分组卡（2026-10-01 修正：普通分组卡不再映射 `composer` 22dp——22dp 只留聊天输入卡与任务入口这一品牌特征），行间只用 `DshCardDivider` 发丝线 |
 | 筛选 | `DshFilterChip` | 工作区、模型、状态筛选统一使用 |
 | 状态 | `DshStatusBadge`、`DshStatusChip`、`DshStatusIcon`、`DshBanner` | 等待、运行、成功、错误语义固定；`DshStatusChip` 是收件箱的四种状态胶囊（等你批准 / 等你回答 / 在电脑上处理 / 完成），`DshStatusIcon` 是 32dp 列表行首状态圈 |
 | 操作 | `DshPrimaryAction`、`DshPillButton`、`DshFloatingPill`、`DshIconAction` | 一个表面最多一个实心主操作；`DshPillButton` 分 Accent（品牌蓝实心）/ Ink（墨色实心）/ Tonal 三种，视觉 44dp、热区 48dp；`DshFloatingPill` 是页面底部唯一的悬浮主按钮（唯一带阴影的普通按钮） |
@@ -136,8 +168,9 @@ lody-iOS / Paseo / t3code 只能作为**问题样例**（说明某处为什么�
 **密度**：空白留在组与组之间，不在每个元素周围均匀撒。
 - 助手消息的复制 / 赞踩 / 时间行只挂在每轮最后一条回复；过程说明靠长按菜单复制。
 - 列表的分区标题与行标题对齐同一条左边线；会话行不加行尾 `›`。
-- 任务首页：「任务」页面标题 + 当前电脑一行小字；标题、筛选文字、分区标题、会话标题都落在 `DrawerTextStart`，
-  选中底色向外多伸出一截。会话时间放在标题行尾，副标题只写项目和状态。
+- 任务首页：顶栏是「DeepLinks + 连接状态点」品牌单行（2026-10-01 R1，不显示电脑名与下拉）；
+  筛选胶囊、分区标题、会话标题按两级对齐线落位（页面内容线 16dp / 容器内容线再进 16dp）。
+  会话时间放在标题行尾，副标题只写项目和状态。
 - 新会话（2026-09-30 N1）：点「+ 新任务」直接进对话页**草稿态**，复用对话页输入栏；草稿画布贴底三块
   （继续上次的任务 / 工作区胶囊 / 智能体预设），不放标语和品牌标志；系统分享进来的文本与图片直接落在草稿态输入框。
   旧的「新任务」底部面板已删除。工作区胶囊的「更多」入口常驻行尾、不随横向滚动滚走；同名末级目录在胶囊上
