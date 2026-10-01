@@ -70,9 +70,9 @@ import dev.deeplinks.native.DshTouch
  * **Tonal**（[Dsh.bgSubtle] 容器 + container 12dp 圆角）。
  *
  * 行只有一种骨架 [DshListRow]：图标 · 标题 / 副标题 · 取值 · 尾标，
- * 开关、下拉、按钮行都是它的变体。行首图标默认中性灰（与侧栏一致），
- * 品牌蓝只留给可执行的操作行和选中勾。行间发丝线由 Section 自动画，
- * 起点跟随下一行的文字起点（有图标时让开图标）。
+ * 开关、下拉、按钮行都是它的变体。行首图标默认 accentIcon 强调蓝（2026-10-02 Lody
+ * 简化 3.3/L4：线性图标集中取色，页面不各自写），危险行强制 error。
+ * 行间发丝线由 Section 自动画，起点跟随下一行的文字起点（有图标时让开图标）。
  *
  * [DshListSection] 是 [DshSection] 的迁移期别名（tonal 参数直通）；
  * 批次 6 起 DshGroupedPage / DshLargeTitle 兼容包装已删除——页面壳层一律用
@@ -114,6 +114,12 @@ enum class DshSectionContainer {
 
     /** tonal 容器（bgSubtle + container 圆角）：总结、警告、独立账户或设备摘要。 */
     Tonal,
+
+    /**
+     * 白色分组卡（bgCard + card 20dp 圆角，2026-10-02 Lody 简化 3.1）：
+     * 首页分区、设置分组、设备信息的内容承载面。行间发丝线从文字起点起算。
+     */
+    Card,
 }
 
 /**
@@ -142,7 +148,7 @@ fun DshSection(
                 onAction = onHeaderAction,
             )
         }
-        DshSectionRows(tonal = container == DshSectionContainer.Tonal, content = content)
+        DshSectionRows(container = container, content = content)
         if (footer != null) {
             Text(
                 footer,
@@ -233,28 +239,30 @@ fun DshSectionHeader(
 
 /**
  * Section 行容器：自排版子节点，逐行画发丝分隔线（0 高度的节点——例如弹层锚点——不参与）。
- * [tonal] 时加 bgSubtle 底 + container 圆角；Flat 时行直接落在画布上。
+ * [container] = Tonal 时加 bgSubtle 底 + container 圆角；Card 时加 bgCard 底 + card 圆角
+ * （白色分组卡，页面内容承载面）；Flat 时行直接落在画布上。
  */
 @Composable
 private fun DshSectionRows(
-    tonal: Boolean,
+    container: DshSectionContainer,
     content: @Composable () -> Unit,
 ) {
     val dividerColor = Dsh.borderSubtle
     val boundaries = remember { mutableListOf<Pair<Float, Float>>() }
+    val surface = when (container) {
+        DshSectionContainer.Tonal -> Modifier
+            .clip(RoundedCornerShape(DshRadius.container))
+            .background(Dsh.bgSubtle)
+        DshSectionContainer.Card -> Modifier
+            .clip(RoundedCornerShape(DshRadius.card))
+            .background(Dsh.bgCard)
+        DshSectionContainer.Flat -> Modifier
+    }
     Layout(
         content = content,
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (tonal) {
-                    Modifier
-                        .clip(RoundedCornerShape(DshRadius.container))
-                        .background(Dsh.bgSubtle)
-                } else {
-                    Modifier
-                },
-            )
+            .then(surface)
             .drawWithContent {
                 drawContent()
                 val stroke = 0.5.dp.toPx()
@@ -304,7 +312,9 @@ fun DshListRow(
     /** 副标题用等宽字体（方案 7：电脑卡的地址要等宽，让 IP 与端口对齐好读）。 */
     subtitleMono: Boolean = false,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.labelSecondary,
+    // 行首线性图标默认强调色（2026-10-02 Lody 简化 3.3/L4）：设置 / 设备分组图标集中取
+    // accentIcon，页面不各自写颜色；危险行仍强制 error。
+    iconTint: Color = Dsh.accentIcon,
     value: String? = null,
     destructive: Boolean = false,
     enabled: Boolean = true,
@@ -494,7 +504,7 @@ fun DshSwitchRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.labelSecondary,
+    iconTint: Color = Dsh.accentIcon,
     enabled: Boolean = true,
 ) {
     DshListRowLayout(
@@ -527,13 +537,13 @@ fun DshSwitchRow(
 
 @Composable
 fun dshSwitchColors(): SwitchColors = SwitchDefaults.colors(
-    // 开关开启态 = 墨色（2026-09-28 重设计 · 方案 2.2/7.3；2026-10-01 R8 补齐拇指）：
-    // 品牌蓝只给「需要你动手」的动作（批准、发送），开关是状态而不是动作。
-    // 轨道 inkFill + 拇指 onInk 成对使用——深色里 labelPrimary 轨道曾接近纯白抢过批准蓝，
-    // 沿用 bgCard 拇指又会在 #3A3C43 轨道上几乎不可见。
-    checkedThumbColor = Dsh.onInk,
-    checkedTrackColor = Dsh.inkFill,
-    checkedBorderColor = Dsh.inkFill,
+    // 开关开启态 = 品牌蓝轨（2026-10-02 Lody 简化 3.3/L4：线性图标与主入口放宽到品牌蓝）。
+    // 上一版墨色轨（inkFill/onInk）比内容抢眼；开关是状态不是动作，但开启轨取 brand400 后
+    // 视觉重量反而低于原墨色。拇指浅色 bgCard、深色 onInk（onInk 深色语义 = 内容前景，
+    // 在浅蓝轨上仍是最亮侧；ON/OFF 轨道明度差 ≥ 3:1，灰度可区分）。
+    checkedThumbColor = if (Dsh.isDark) Dsh.onInk else Dsh.bgCard,
+    checkedTrackColor = Dsh.switchOnTrack,
+    checkedBorderColor = Dsh.switchOnTrack,
     uncheckedThumbColor = Dsh.labelSecondary,
     uncheckedTrackColor = Dsh.bgSubtle,
     uncheckedBorderColor = Dsh.borderStrong,
@@ -553,7 +563,7 @@ fun DshSelectRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.labelSecondary,
+    iconTint: Color = Dsh.accentIcon,
     saving: Boolean = false,
     error: String? = null,
     onRetry: (() -> Unit)? = null,
