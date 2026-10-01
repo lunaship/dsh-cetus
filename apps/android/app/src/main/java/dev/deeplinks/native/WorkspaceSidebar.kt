@@ -46,9 +46,9 @@ import dev.deeplinks.native.util.HostConnectivity
 import dev.deeplinks.native.util.workspaceDisplayName
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshCardRows
-import dev.deeplinks.native.ui.dshEdgeFade
-import dev.deeplinks.native.ui.DshEdgeFadeEdge
 import dev.deeplinks.native.ui.rememberDshTopFadeHeight
+import dev.deeplinks.native.ui.DshEdgeFadeDefaults
+import dev.deeplinks.native.ui.DshEdgeFades
 
 /** 侧栏回调集合（对齐 [ChatFeedActions] 模式：状态由参数注入，动作由此承载）。 */
 internal class WorkspaceSidebarActions(
@@ -139,7 +139,7 @@ internal fun WorkspaceSidebar(
     val homeScrolled by remember { derivedStateOf { homeListState.canScrollBackward } }
     val homeNotAtBottom by remember { derivedStateOf { homeListState.canScrollForward } }
     val chrome = rememberOverlayChromeState()
-    val topFadeHeight = rememberDshTopFadeHeight()
+    val topFadeHeight = rememberDshTopFadeHeight() + DshEdgeFadeDefaults.overhang
     val bottomFadeHeight = chrome.bottomDp() + DshSpace.s24
     Box(Modifier.fillMaxSize().background(containerColor)) {
         Box(Modifier.fillMaxSize()) {
@@ -224,33 +224,8 @@ internal fun WorkspaceSidebar(
                     }
             }
 
-            // 顶部 / 底部渐隐（4.5.3）：内容滚到边缘下方才出现；不进采样源
-            Box(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(topFadeHeight)
-                    .zIndex(0.5f)
-                    .dshEdgeFade(
-                        edge = DshEdgeFadeEdge.Top,
-                        visible = homeScrolled,
-                        canvasColor = containerColor,
-                        height = topFadeHeight,
-                    ),
-            )
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(bottomFadeHeight)
-                    .zIndex(0.5f)
-                    .dshEdgeFade(
-                        edge = DshEdgeFadeEdge.Bottom,
-                        visible = homeNotAtBottom,
-                        canvasColor = containerColor,
-                        height = bottomFadeHeight,
-                    ),
-            )
+            // 顶部 / 底部渐隐（4.5.3；v3 渐进模糊）：内容滚到边缘下方才出现；不进采样源
+            DshEdgeFades(topFadeHeight, bottomFadeHeight, homeScrolled, homeNotAtBottom, containerColor, chrome.backdrop)
 
             // 顶部悬浮区（无玻璃条）：顶栏胶囊 + 崩溃横幅 + 搜索框 + 离线卡
             HomeTopChrome(

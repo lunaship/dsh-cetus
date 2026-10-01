@@ -96,7 +96,7 @@ fun DshPageScaffold(
                 bottomBar()
             }
         }
-        // 顶部渐隐：画布色 @0.94 → 0；内容未滚入时（同色叠同色）不可见
+        // 顶部渐隐：渐进模糊 + 画布色 @0.96 → 0；内容未滚入时（同色叠同色）不可见
         if (topInset > 0.dp) {
             Box(
                 Modifier
@@ -108,6 +108,8 @@ fun DshPageScaffold(
                         visible = true,
                         canvasColor = Dsh.bgBase,
                         height = topInset,
+                        // v3：同一采样源做渐进模糊；带区只覆盖顶栏，静置内容不被柔化
+                        backdrop = backdrop,
                     ),
             )
         }

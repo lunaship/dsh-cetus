@@ -25,7 +25,6 @@ import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
 import dev.deeplinks.native.DshSpace
-import dev.deeplinks.native.MessageItem
 import dev.deeplinks.native.ChangedFile
 import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.ROLE_WORKSPACE_CHANGES
@@ -35,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import dev.deeplinks.native.ChatFeedActions
 import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.chatMessageItems
+import dev.deeplinks.native.resolveSweepingId
 import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.ToolGroupHeader
@@ -60,7 +60,8 @@ private fun ChatFrame(dark: Boolean, english: Boolean = false, content: @Composa
             LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
-            Box(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
+            // v3：聊天画布是白底（bgCard），与生产 WorkspaceScreen 一致
+            Box(modifier = Modifier.fillMaxSize().background(Dsh.bgCard)) {
                 Column(
                     modifier = Modifier.padding(DshSpace.s16),
                     verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
@@ -70,16 +71,54 @@ private fun ChatFrame(dark: Boolean, english: Boolean = false, content: @Composa
     }
 }
 
+/**
+ * 预览用的消息流动作：不连真实主机，回调全部空实现。
+ * 与 [ChatPage] 共用，保证逐条墙与整页墙走同一条生产渲染路径。
+ */
+@Composable
+private fun rememberPreviewChatActions(messages: List<MobileMessage>, running: Boolean = false): ChatFeedActions {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    return remember(context, messages, running) {
+        ChatFeedActions(
+            client = MobileApiClient(PreviewHost),
+            scope = scope,
+            context = context,
+            host = PreviewHost,
+            currentSessionId = { null },
+            messages = { messages },
+            setMessages = {},
+            olderMessages = { emptyList() },
+            composerText = { "" },
+            setComposerText = {},
+            setComposerError = {},
+            isRunning = { running },
+            busyEnter = { "queue" },
+            isFeedbackSupported = { false },
+            feedbackFor = { null },
+            updateFeedback = {},
+            refreshSessions = {},
+            fork = {},
+        )
+    }
+}
+
+/**
+ * v3：逐条墙也走生产消息流（groupMessages → chatMessageItems：过程折叠、思考并入活动行、
+ * 轮末元信息），不再逐条直接画 MessageItem——旧写法绕过折叠，基线与真机不一致。
+ */
 @Composable
 private fun Messages(messages: List<MobileMessage>, running: Boolean = false) {
-    messages.forEachIndexed { index, msg ->
-        MessageItem(
-            msg = msg,
-            running = running && index == messages.lastIndex,
-            onAnswerApproval = { _, _, done -> done(true) },
-            onAnswerQuestion = { _, _, done -> done(true) },
-            onRate = {},
-            showActions = index == messages.lastIndex,
+    val actions = rememberPreviewChatActions(messages, running)
+    LazyColumn(
+        userScrollEnabled = false,
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
+    ) {
+        chatMessageItems(
+            visibleGroups = groupMessages(messages),
+            sweepingId = resolveSweepingId(messages, running),
+            actions = actions,
+            isRunning = running,
         )
     }
 }
@@ -285,7 +324,7 @@ private fun ProcessRows(dark: Boolean, english: Boolean) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Dsh.bgBase)
+                .background(Dsh.bgCard)
                 .padding(DshSpace.s16),
             verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
         ) {
@@ -348,32 +387,12 @@ internal fun ProcessRowDarkEn() {
 @Composable
 private fun ChatPage(dark: Boolean, english: Boolean) {
     ChatFrame(dark = dark, english = english) {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        val scope = rememberCoroutineScope()
-        val actions = remember(context) {
-            ChatFeedActions(
-                client = MobileApiClient(PreviewHost),
-                scope = scope,
-                context = context,
-                host = PreviewHost,
-                currentSessionId = { null },
-                messages = { completedTurn },
-                setMessages = {},
-                olderMessages = { emptyList() },
-                composerText = { "" },
-                setComposerText = {},
-                setComposerError = {},
-                isRunning = { false },
-                busyEnter = { "queue" },
-                isFeedbackSupported = { false },
-                feedbackFor = { null },
-                updateFeedback = {},
-                refreshSessions = {},
-                fork = {},
-            )
-        }
-        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+        val actions = rememberPreviewChatActions(completedTurn)
+        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgCard)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
+            ) {
                 chatMessageItems(
                     visibleGroups = groupMessages(completedTurn),
                     sweepingId = null,

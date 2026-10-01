@@ -223,7 +223,7 @@ fun DshStatusIcon(
 
 // ============================================================
 // DshGroupCard —— 白色分组卡（方案 2.3：圆角 composer、内边距 16）
-// 分层靠 tonal（灰底 + 白卡），不加 1dp 描边（SurfaceHierarchyTest）
+// 分层靠 tonal（灰底 + 白卡）+ v3 发丝边与一级柔阴影（dshCardSurface），不加 1dp 描边（SurfaceHierarchyTest）
 // ============================================================
 
 @Composable
@@ -236,8 +236,7 @@ fun DshGroupCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.card))
-            .background(Dsh.bgCard)
+            .dshCardSurface()
             .padding(contentPadding),
         content = content,
     )

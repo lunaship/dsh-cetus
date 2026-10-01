@@ -19,7 +19,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.inset
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.shadow.Shadow as ComposeShadow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.ui.graphics.RectangleShape
@@ -49,7 +58,8 @@ import dev.deeplinks.core.Dsh
  *   档位只为本 PR 中间提交的存量调用点过渡期保留，随 PR 内后续提交删除。
  *
  * 回退阶梯（4.5.5）：API 33+ 模糊 + 折射 → API 31–32 模糊 → API 26–30 / 预览 / 省电 /
- * 关动画 / 无采样源 → 稳定实色表面 + 0.5dp 描边。回退不留透明空洞或读不清的文字。
+ * 关动画 / 无采样源 → 按 shape 绘制的实色表面（Control 档为拟物回退，见 [dshGlassFallback]）。
+ * 回退不留透明空洞或读不清的文字，也不得把圆角控件画成方块（v3 修复）。
  *
  * 实现基于 kyant0/backdrop 1.0.6（Apache-2.0）。lens 参数单位是 px（在效果作用域内由
  * dp 换算）、仅 API 33+、且形状必须是圆角（`CornerBasedShape`）——1.0.6 对
@@ -289,7 +299,6 @@ fun Modifier.dshGlass(
         DshGlassTier.Control -> if (dark) Dsh.bgSubtle else Dsh.bgCard
         else -> base
     }
-    val fallbackBorder = Dsh.borderSubtle
     val surfaceAlpha = when {
         !canBlur -> if (reduceTransparency) 1f else spec.fallbackAlpha
         tier == DshGlassTier.Navigation || tier == DshGlassTier.Floating ->
@@ -341,20 +350,88 @@ fun Modifier.dshGlass(
             onDrawSurface = { drawRect(surfaceColor.copy(alpha = surfaceAlpha)) },
         )
     } else {
-        Modifier
-            .drawBehind {
-                drawRect(fallbackColor.copy(alpha = surfaceAlpha))
-                // 4.5.5 回退描边：0.5dp 发丝线把控件从画布上衬出来（功能性描边，非容器卡片）
-                if (tier == DshGlassTier.Control) {
-                    drawRect(
-                        color = fallbackBorder,
-                        style = Stroke(width = 0.5.dp.toPx()),
-                    )
-                }
-            }
+        // v3：回退按 shape 画（此前 drawRect 忽略 shape，胶囊 / 圆钮在 API 26–30、省电、预览里
+        // 变成方块）。Control 档用拟物回退（借鉴 ChunUI，MIT）：对角渐变 + 顶光描边 + 柔阴影。
+        Modifier.dshGlassFallback(
+            shape = shape,
+            color = fallbackColor.copy(alpha = surfaceAlpha),
+            skeuomorphic = tier == DshGlassTier.Control,
+            dark = dark,
+        )
     }
     glass
 }
+
+/**
+ * 无模糊回退表面（v3，docs/visual-rules.md 2.1.1）：一律按 [shape] 的 outline 绘制。
+ *
+ * [skeuomorphic] = true（Control 档）时借鉴 ChunUI（liseami/ChunUI，MIT）的拟物降级：
+ * - 填充：左上 → 右下对角渐变，底色 → 底色混入黑（浅 6% / 深 10%）；
+ * - 描边：1dp 顶光渐变（白 → 透明 → 黑），把控件从任意画布上衬出来；
+ * - 阴影：柔和投影（radius 8 / y 2），深色加浓。
+ * 否则（Floating / Navigation）只画按 shape 裁剪的实色。
+ */
+private fun Modifier.dshGlassFallback(
+    shape: Shape,
+    color: Color,
+    skeuomorphic: Boolean,
+    dark: Boolean,
+): Modifier {
+    val shadow = if (skeuomorphic) {
+        dropShadow(
+            shape = shape,
+            shadow = ComposeShadow(
+                radius = FALLBACK_SHADOW_RADIUS,
+                color = Color.Black.copy(alpha = if (dark) FALLBACK_SHADOW_ALPHA_DARK else FALLBACK_SHADOW_ALPHA),
+                offset = DpOffset(0.dp, FALLBACK_SHADOW_Y),
+            ),
+        )
+    } else {
+        this
+    }
+    return shadow.drawWithCache {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val fill: Brush = if (skeuomorphic) {
+            Brush.linearGradient(
+                colors = listOf(color, lerp(color, Color.Black.copy(alpha = color.alpha), if (dark) FALLBACK_SHADE_DARK else FALLBACK_SHADE)),
+                start = Offset.Zero,
+                end = Offset(size.width, size.height),
+            )
+        } else {
+            SolidColor(color)
+        }
+        val strokeWidth = 1.dp.toPx()
+        val stroke = Brush.verticalGradient(
+            0f to Color.White.copy(alpha = if (dark) FALLBACK_TOP_LIGHT_DARK else FALLBACK_TOP_LIGHT),
+            // 浅色中段补一丝暗边：白控件落在聊天白画布上也有轮廓
+            0.5f to if (dark) Color.Transparent else Color.Black.copy(alpha = FALLBACK_MID_SHADE),
+            1f to Color.Black.copy(alpha = if (dark) FALLBACK_BOTTOM_SHADE_DARK else FALLBACK_BOTTOM_SHADE),
+        )
+        onDrawBehind {
+            drawOutline(outline, fill)
+            if (skeuomorphic) {
+                // 描边内缩半个线宽，避免被裁到 shape 外
+                inset(strokeWidth / 2f) {
+                    drawOutline(shape.createOutline(size, layoutDirection, this), stroke, style = Stroke(strokeWidth))
+                }
+            }
+        }
+    }
+}
+
+/** 拟物回退参数（ChunUI skeuomorphic fallback 的 Android 换算；调校只改这里）。 */
+// ChunUI 原值 10%；Android 宽胶囊上对角渐变近似横向渐变，浅色 10% 显脏，取 6%
+private const val FALLBACK_SHADE = 0.06f
+private const val FALLBACK_SHADE_DARK = 0.10f
+private const val FALLBACK_TOP_LIGHT = 0.5f
+private const val FALLBACK_TOP_LIGHT_DARK = 0.14f
+private const val FALLBACK_MID_SHADE = 0.03f
+private const val FALLBACK_BOTTOM_SHADE = 0.07f
+private const val FALLBACK_BOTTOM_SHADE_DARK = 0.24f
+private val FALLBACK_SHADOW_RADIUS = 8.dp
+private val FALLBACK_SHADOW_Y = 2.dp
+private const val FALLBACK_SHADOW_ALPHA = 0.08f
+private const val FALLBACK_SHADOW_ALPHA_DARK = 0.30f
 
 /** 全宽导航条（过渡期）的常用形状；显式命名以免调用点各自写 RectangleShape。 */
 @Deprecated("全宽导航条已下线（L9）")
