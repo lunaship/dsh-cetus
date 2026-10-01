@@ -61,7 +61,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -231,146 +230,73 @@ internal fun ContextMeterButton(
     running: Boolean = false,
     showPercent: Boolean = true,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var statsOpen by remember { mutableStateOf(false) }
     val used = stats.contextPressureTokens
     val window = stats.contextWindow
     if (window <= 0) return
     val percent = ((used * 100) / window).toFloat().coerceIn(0f, 100f)
-    // 明细占比（系统/工具/对话消息，按 breakdown 分段）
-    val breakdownTotal = stats.systemTokens + stats.toolsTokens + stats.messageTokens
-    val hasBreakdown = breakdownTotal > 0
-    val systemRatio = if (hasBreakdown) stats.systemTokens.toFloat() / breakdownTotal else 0f
-    val toolsRatio = if (hasBreakdown) stats.toolsTokens.toFloat() / breakdownTotal else 0f
-    val messagesRatio = if (hasBreakdown) stats.messageTokens.toFloat() / breakdownTotal else 0f
 
-    Box {
-        // 环形按钮（DSH：28px trigger，14px viewBox 圆环，2px stroke，后面跟百分比）
-        val interaction = remember { MutableInteractionSource() }
-        val borderL3Color = Dsh.borderStrong
-        val fillColor = if (running) Dsh.labelTertiary.copy(alpha = 0.55f) else Dsh.labelTertiary
-        Row(
-            modifier = Modifier
-                .height(48.dp)
-                .clip(RoundedCornerShape(DshRadius.control))
-                .semantics {
-                    role = Role.Button
-                    contentDescription = L.contextUsed
-                    stateDescription = "${percent.toInt()}%"
-                }
-                .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = true }
-                .padding(horizontal = DshSpace.s8),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
-        ) {
-            Canvas(modifier = Modifier.size(14.dp)) {
-                val stroke = 2.dp.toPx()
-                val arcSize = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+    // 环形按钮（DSH：28px trigger，14px viewBox 圆环，2px stroke，后面跟百分比）。
+    // E8：百分比此前没有任何说明，TalkBack 只读到「上下文已用」不知道数值；现在
+    // contentDescription 直接把数值带上（「上下文已用 46%」），点按打开「会话用量」
+    // 面板（面板里的「上下文占用」与此环同一口径：contextPressureTokens/contextWindow，
+    // 两处都改成同一份样例数据后截图不会再出现 46% vs 19% 的矛盾）。
+    val interaction = remember { MutableInteractionSource() }
+    val borderL3Color = Dsh.borderStrong
+    val fillColor = if (running) Dsh.labelTertiary.copy(alpha = 0.55f) else Dsh.labelTertiary
+    Row(
+        modifier = Modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(DshRadius.control))
+            .semantics {
+                role = Role.Button
+                contentDescription = L.contextUsedPercent.format(percent.toInt())
+            }
+            .clickable(interactionSource = interaction, indication = dshRipple()) { statsOpen = true }
+            .padding(horizontal = DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
+    ) {
+        Canvas(modifier = Modifier.size(14.dp)) {
+            val stroke = 2.dp.toPx()
+            val arcSize = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+            drawArc(
+                color = borderL3Color,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = stroke),
+                topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
+                size = arcSize
+            )
+            if (used > 0) {
                 drawArc(
-                    color = borderL3Color,
-                    startAngle = 0f,
-                    sweepAngle = 360f,
+                    color = fillColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * percent / 100f,
                     useCenter = false,
-                    style = Stroke(width = stroke),
+                    style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
                     topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
                     size = arcSize
                 )
-                if (used > 0) {
-                    drawArc(
-                        color = fillColor,
-                        startAngle = -90f,
-                        sweepAngle = 360f * percent / 100f,
-                        useCenter = false,
-                        style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-                        topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
-                        size = arcSize
-                    )
-                }
-            }
-            if (showPercent) {
-                Text(
-                    text = "${percent.toInt()}%",
-                    color = Dsh.labelTertiary,
-                    style = DshType.caption,
-                    lineHeight = 20.sp,
-                    maxLines = 1,
-                )
             }
         }
-
-        // 用量面板（DSH：240dp 宽、radius 12、上方弹出）
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            containerColor = Dsh.bgSubtle,
-            shape = RoundedCornerShape(DshRadius.container)
-        ) {
-            Column(modifier = Modifier.width(240.dp).padding(DshSpace.s12)) {
-                // header：上下文已用 + 百分比 + 用量数字
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(L.contextUsed, color = Dsh.labelTertiary, style = DshType.caption)
-                    Spacer(Modifier.width(DshSpace.s6))
-                    Text(
-                        "${percent.toInt()}%",
-                        color = Dsh.labelPrimary,
-                        style = DshType.label,
-                        lineHeight = 20.sp,
-                        fontWeight = FontWeight(500)
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        "~${compactTokens(used)} / ${compactTokens(window)} ${L.tokenUnitShort}",
-                        color = Dsh.labelPrimary,
-                        style = DshType.label.tabularNums(),
-                        lineHeight = 20.sp,
-                        fontWeight = FontWeight(500),
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                // 分段条（DSH：4px 高、系统/工具/消息按占比分段）
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(DshRadius.full))
-                        .background(Dsh.pressed)
-                ) {
-                    if (hasBreakdown) {
-                        // 段色与下方明细行的色块一一对应（systemAccent / toolsAccent / brand400）
-                        val segments = listOf(
-                            systemRatio to Dsh.systemAccent,
-                            toolsRatio to Dsh.toolsAccent,
-                            messagesRatio to Dsh.brand400,
-                        )
-                        segments.forEach { (ratio, color) ->
-                            if (ratio > 0f) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(ratio)
-                                        .background(color)
-                                )
-                            }
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(percent / 100f)
-                                .background(Dsh.labelTertiary)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(DshSpace.s12))
-                // 明细行（系统提示词/工具/对话消息 + 色块 + tok 数）
-                ContextMeterRow(L.systemPrompt, compactTokens(stats.systemTokens), Dsh.systemAccent)
-                Spacer(Modifier.height(DshSpace.s4))
-                ContextMeterRow(L.tools, compactTokens(stats.toolsTokens), Dsh.toolsAccent)
-                Spacer(Modifier.height(DshSpace.s4))
-                ContextMeterRow(L.chatMessages, compactTokens(stats.messageTokens), Dsh.brand400)
-            }
+        if (showPercent) {
+            Text(
+                text = "${percent.toInt()}%",
+                color = Dsh.labelTertiary,
+                style = DshType.caption,
+                lineHeight = 20.sp,
+                maxLines = 1,
+            )
         }
     }
+
+    if (statsOpen) {
+        SessionStatsDetailDialog(stats = stats, onDismiss = { statsOpen = false })
+    }
 }
+
 
 @Composable
 internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {

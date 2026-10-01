@@ -307,6 +307,7 @@ val DshStringsEn = DshStrings(
         put("modelUnavailable", "This model is currently unavailable")
         put("modelApiFailed", "The computer failed to call the model API. Check the DeepSeek key and reload the plugin.")
         put("contextUsed", "Context used")
+        put("contextUsedPercent", "Context used %s%%")
         put("systemPrompt", "System prompt")
         put("tools", "Tools")
         put("chatMessages", "Chat messages")

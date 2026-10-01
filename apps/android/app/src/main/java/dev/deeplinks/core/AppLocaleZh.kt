@@ -307,6 +307,7 @@ val DshStringsZh = DshStrings(
         put("modelUnavailable", "该模型当前不可用")
         put("modelApiFailed", "电脑端调用模型接口失败，请检查 DeepSeek 密钥后重载插件")
         put("contextUsed", "上下文已用")
+        put("contextUsedPercent", "上下文已用 %s%%")
         put("systemPrompt", "系统提示词")
         put("tools", "工具")
         put("chatMessages", "对话消息")

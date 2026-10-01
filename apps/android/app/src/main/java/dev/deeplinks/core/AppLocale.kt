@@ -367,6 +367,8 @@ class DshStrings(private val values: Map<String, String>) {
     val modelUnavailable: String get() = t("modelUnavailable")
     val modelApiFailed: String get() = t("modelApiFailed")
     val contextUsed: String get() = t("contextUsed")
+    /** 带百分比的无障碍朗读（输入框上下文环）：如「上下文已用 46%」。 */
+    val contextUsedPercent: String get() = t("contextUsedPercent")
     val systemPrompt: String get() = t("systemPrompt")
     val tools: String get() = t("tools")
     val chatMessages: String get() = t("chatMessages")

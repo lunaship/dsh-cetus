@@ -530,16 +530,35 @@ internal fun WorkspaceChromeLight() {
 }
 
 /**
+ * 会话用量预览共用的同一份会话统计（E8）：输入框上下文环与「会话用量」面板的
+ * 「上下文占用」是同一口径（contextPressureTokens / contextWindow），样例数据
+ * 也必须一致，否则两张截图互相矛盾（曾出现 46% vs 19%）。
+ */
+private val sampleSessionStats = MobileSessionStats(
+    turns = 3,
+    steps = 421,
+    llmMs = 82_000,
+    toolMs = 43_000,
+    decodeMs = 19_000,
+    decodeTokens = 1_900,
+    uncachedInputTokens = 2_100_000,
+    cacheReadTokens = 126_000_000,
+    outputTokens = 1_000_000,
+    contextPressureTokens = 60_000,
+    contextWindow = 128_000,
+    systemTokens = 2_800,
+    toolsTokens = 6_400,
+    messageTokens = 15_300,
+)
+
+/**
  * 对话页输入区：上下文条 + 输入卡（两层输入区）。
  * 真机上「没有消息」的画布下方就是它——空会话的起点是输入框占位句。
  * ChatBottomWall 与空态画布帧共用，样例数据（含上下文占用）保持单一来源。
  */
 @Composable
 private fun ChatComposerArea(modifier: Modifier = Modifier) {
-    val stats = MobileSessionStats(
-        turns = 3, steps = 421, uncachedInputTokens = 2_100_000, cacheReadTokens = 126_000_000, outputTokens = 1_000_000,
-        contextPressureTokens = 60_000, contextWindow = 128_000,
-    )
+    val stats = sampleSessionStats
     Column(modifier) {
         ComposerContextStrip(
             hostName = "dev-macbook",
@@ -646,25 +665,7 @@ internal fun SessionUsageDarkEn() {
 @Composable
 private fun SessionUsageWall(dark: Boolean, english: Boolean) {
     Wall(dark = dark, english = english) {
-        SessionStatsDetailDialog(
-            stats = MobileSessionStats(
-                turns = 12,
-                steps = 31,
-                llmMs = 82_000,
-                toolMs = 43_000,
-                decodeMs = 19_000,
-                decodeTokens = 1_900,
-                uncachedInputTokens = 18_400,
-                cacheReadTokens = 2_600,
-                outputTokens = 8_800,
-                contextPressureTokens = 24_500,
-                contextWindow = 128_000,
-                systemTokens = 2_800,
-                toolsTokens = 6_400,
-                messageTokens = 15_300,
-            ),
-            onDismiss = {},
-        )
+        SessionStatsDetailDialog(stats = sampleSessionStats, onDismiss = {})
     }
 }
 

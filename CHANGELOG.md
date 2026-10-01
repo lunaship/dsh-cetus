@@ -2,6 +2,7 @@
 
 ## dsh-links 未发布
 
+- App：输入框右侧的上下文百分比有了说明。核对后确认它与「会话用量」面板的「上下文占用」是同一口径（都是 `contextPressureTokens / contextWindow`），截图里的 46% vs 19% 只是两份预览样例数据不同——已抽成同一份 `sampleSessionStats`，两处数值一致（无需改名）。进度圈的 contentDescription 改为带数值的「上下文已用 46%」（新增中英文案 `contextUsedPercent`，不再单独挂 stateDescription）；点按从原来的小下拉面板改为直接打开「会话用量」面板（信息是原下拉的超集：同一进度条 + 系统 / 工具 / 对话消息分段明细都在），展开态收回进度圈自身，不动上下文条与 WorkspaceScreen。
 - App：小字号上调。`DshType.microRelaxed / microMedium / microStrong` 从 11sp 提到 12sp（行高 16sp 不变，行高/字号 1.33 仍符合字阶契约）：统计了全部 31 处调用点，均为用户要读的辅助信息（会话用量面板「令牌总量 / 缓存命中率」、对话页底部「N 轮 · M 步 · X 令牌」状态栏、设置分组说明、轨迹行元数据、表格标签、错误文案等），没有纯装饰用途；12sp 是方案给的正文辅助信息下限。设置分组说明原本就用 `captionRelaxed`（12sp），不变。所有 sp 字号经 FontScaleManager 的 density fontScale 缩放，设置里的「字号」选项与系统字体缩放照常生效；大字号（1.3）下是否截断由 CI 重生成的 `SettingsDarkEnLarge` 等基线检查。
 - App：空会话的截图基线不再是一张全空白图。核对后确认 `ChatCanvasKind.Empty` 按设计「空会话只留白」（画布就是空的 `fillParentMaxSize`，不存在入场动画，预览同样空白），真正的问题是只截画布；截图帧改为把真机上空会话的起点——下方输入区（上下文条 + 输入框占位句）一起入镜，输入区样例数据抽成 `ChatComposerArea` 与「对话页底部」预览共用。
 - App：英文界面不再混中文。截图 / 预览帧在 `english = true` 时除注入本地词条外，同时切换全局界面语言（新增仅切内存态、不落盘的 `LocaleManager.setLanguageForPreview`：Compose 截图跑在 layoutlib 渲染环境里，SharedPreferences 不可用，且测试不应把语言偏好写进宿主机 App 数据）；首页、设置、设备、对话等英文截图全部为英文，各共享预览墙的示例数据也按语言切换。
