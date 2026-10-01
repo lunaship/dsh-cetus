@@ -43,6 +43,7 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
 import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.DshSectionContainer
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListRetry
 import dev.deeplinks.native.ui.DshListRow
@@ -218,7 +219,7 @@ internal fun ModelsSettingsPage(
 
     // ── 默认模型 ──
     val defaultLabel = defaultModelName(llmGroups, appSettings.defaultModelProvider, appSettings.defaultModel)
-    DshListSection(footer = s.defaultModelSettingDesc) {
+    DshListSection(container = DshSectionContainer.Card, footer = s.defaultModelSettingDesc) {
         DshListRow(
             title = s.defaultModelSetting,
             icon = SparkleOutline16,

@@ -15,6 +15,8 @@ import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.AppSettings
 import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.DshSectionContainer
+import dev.deeplinks.native.ui.LocalDshPageTopInset
 import dev.deeplinks.native.ui.DshListCaption
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListRetry
@@ -90,8 +92,10 @@ internal fun SettingsPageCanvas(content: @Composable ColumnScope.() -> Unit) {
             .fillMaxSize()
             .background(Dsh.bgBase)
             .verticalScroll(rememberScrollState())
+            // 顶部避让悬浮 chrome（L9）：骨架实测高度经 LocalDshPageTopInset 注入
+            .padding(top = LocalDshPageTopInset.current)
             .padding(horizontal = DshSpace.s16)
-            .padding(top = DshSpace.s4, bottom = DshSpace.s32),
+            .padding(bottom = DshSpace.s32),
         content = content,
     )
 }
@@ -410,7 +414,7 @@ internal fun SettingsHome(
     }
 
     // 设置页只用一种容器：扁平行 + 发丝分隔，已配对电脑也不另铺灰卡
-    DshListSection(header = s.sectionComputer) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionComputer) {
         if (host != null) {
             val address = hostDisplayName(host.baseUrl)
             // E4：状态点改用共享组件 HostStatusDot（此前的「●」是文字 glyph，颜色跟随
@@ -457,7 +461,7 @@ internal fun SettingsHome(
         }
     }
     if (host != null) {
-        DshListSection(header = s.sectionAgent) {
+        DshListSection(container = DshSectionContainer.Card, header = s.sectionAgent) {
             DshListRow(
                 title = s.agentPermission,
                 icon = ShieldOutline16,
@@ -471,7 +475,7 @@ internal fun SettingsHome(
             )
         }
     }
-    DshListSection(header = s.sectionGeneral) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionGeneral) {
         DshListRow(
             title = s.language,
             icon = TranslateOutline16,
@@ -502,7 +506,7 @@ internal fun SettingsHome(
             description = s.busyEnterDesc,
         )
     }
-    DshListSection(header = s.sectionNotifications, footer = s.notifyExplain) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionNotifications, footer = s.notifyExplain) {
         DshSwitchRow(
             title = s.notifyOnApproval,
             checked = notifyApproval,
@@ -539,7 +543,7 @@ internal fun SettingsHome(
     }
     // 第 2 步 B1：远程图片开关移到「隐私」分组。默认不自动加载——
     // 对话里的网络图片可能被提示词注入用来外泄内容、暴露 IP。
-    DshListSection(header = s.sectionPrivacy, footer = s.autoLoadRemoteImagesFooter) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionPrivacy, footer = s.autoLoadRemoteImagesFooter) {
         DshSwitchRow(
             title = s.autoLoadRemoteImages,
             checked = autoLoadRemoteImages,
@@ -567,7 +571,7 @@ internal fun LanguageSettings(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
-    DshListSection(footer = s.languageDesc) {
+    DshListSection(container = DshSectionContainer.Card, footer = s.languageDesc) {
         DshSelectRow(
             title = s.language,
             icon = TranslateOutline16,
@@ -596,7 +600,7 @@ internal fun AppearanceSettings(
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
     val haptic = rememberDshHaptic()
-    DshListSection(header = s.settingsTheme, footer = s.darkBackgroundDesc) {
+    DshListSection(container = DshSectionContainer.Card, header = s.settingsTheme, footer = s.darkBackgroundDesc) {
         DshSelectRow(
             title = s.settingsTheme,
             icon = ContrastOutline16,
@@ -628,7 +632,7 @@ internal fun AppearanceSettings(
             onSelect = { _, id -> ThemeManager.setPureBlack(context, id == "black") },
         )
     }
-    DshListSection(header = s.sectionText, footer = s.systemFontDesc) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionText, footer = s.systemFontDesc) {
         DshSelectRow(
             title = s.settingsFontSize,
             icon = TextSizeOutline16,
@@ -653,7 +657,7 @@ internal fun AppearanceSettings(
         )
     }
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        DshListSection(header = s.sectionColor, footer = s.dynamicColorDesc) {
+        DshListSection(container = DshSectionContainer.Card, header = s.sectionColor, footer = s.dynamicColorDesc) {
             DshSwitchRow(
                 title = s.dynamicColor,
                 icon = ImageOutline16,
@@ -675,7 +679,7 @@ internal fun ConversationSettings(
     onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
 ) {
     val s = DshS
-    DshListSection(header = s.sectionNewSessionDefaults, footer = s.agentPresetDesc) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionNewSessionDefaults, footer = s.agentPresetDesc) {
         DshSelectRow(
             title = s.agentPreset,
             icon = AgentPresetOutline16,
@@ -740,7 +744,7 @@ internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Uni
     var newer by androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(dev.deeplinks.core.UpdateCheckPrefs.cachedNewer(context))
     }
-    DshListSection(footer = s.unofficialNotice) {
+    DshListSection(container = DshSectionContainer.Card, footer = s.unofficialNotice) {
         DshListRow(
             title = "DeepLinks",
             subtitle = s.aboutVersion.replace("%s", BuildConfig.VERSION_NAME),
@@ -764,7 +768,7 @@ internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Uni
             )
         }
     }
-    DshListSection(header = s.sectionLegal) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionLegal) {
         DshListRow(
             title = s.openSourceLicense,
             icon = FileOutline16,
@@ -945,13 +949,13 @@ internal fun SessionsSettingsContent(
         SessionListKind.Loading -> DshListSection { DshListNote(s.loading) }
         SessionListKind.Error -> DshListSection { DshListRetry(loadError ?: s.loadFailed, onRetry) }
         else -> {
-            DshListSection(header = s.sectionArchivedSessions) {
+            DshListSection(container = DshSectionContainer.Card, header = s.sectionArchivedSessions) {
                 if (archivedRows.isEmpty()) DshListNote(s.noArchivedSessions)
                 archivedRows.forEach { row ->
                     ManagedSessionRow(row, onRestore = { onRestore(row.sessionId) }, onClear = { onClear(row.sessionId) })
                 }
             }
-            DshListSection(header = s.sectionDeletedSessions) {
+            DshListSection(container = DshSectionContainer.Card, header = s.sectionDeletedSessions) {
                 if (deletedRows.isEmpty()) DshListNote(s.noDeletedSessions)
                 deletedRows.forEach { row ->
                     ManagedSessionRow(row, onRestore = { onRestore(row.sessionId) }, onClear = { onClear(row.sessionId) })
@@ -959,7 +963,7 @@ internal fun SessionsSettingsContent(
             }
             if (archivedRows.size + deletedRows.size > 0) {
                 // 危险操作单独成组（红字 destructive 行），不再与普通设置行混排
-                DshListSection(footer = s.clearAllLocalRecordsDesc) {
+                DshListSection(container = DshSectionContainer.Card, footer = s.clearAllLocalRecordsDesc) {
                     DshListActionRow(
                         label = s.clearAllLocalRecords,
                         icon = TrashOutline16,

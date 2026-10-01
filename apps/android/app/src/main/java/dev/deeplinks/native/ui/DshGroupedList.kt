@@ -150,18 +150,40 @@ fun DshSection(
         }
         DshSectionRows(container = container, content = content)
         if (footer != null) {
+            // 4.2：长说明首页只留一行灰字摘要，点按展开完整段落（不再整段铺在页面上）
+            var footerExpanded by remember(footer) { mutableStateOf(false) }
+            val collapsible = footer.length > FOOTER_COLLAPSE_LIMIT
             Text(
                 footer,
                 color = Dsh.labelTertiary,
                 style = DshType.captionRelaxed,
-                modifier = Modifier.padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s6),
+                maxLines = if (collapsible && !footerExpanded) 1 else Int.MAX_VALUE,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s6)
+                    .then(
+                        if (collapsible) {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = dshRipple(),
+                                role = Role.Button,
+                                onClick = { footerExpanded = !footerExpanded },
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
         }
     }
 }
 
+/** 页脚超过这个字符数就按「一行摘要 + 点按展开」渲染（4.2 长说明收纳）。 */
+private const val FOOTER_COLLAPSE_LIMIT = 48
+
 /**
- * Section（迁移期兼容包装）：与 [DshSection] 同一件，[tonal] = true 时使用 tonal 容器。
+ * Section（迁移期兼容包装）：与 [DshSection] 同一件，[container] 直通容器策略
+ * （2026-10-02 Lody 简化：设置 / 设备页统一传 Card）；[tonal] 为兼容旧调用保留。
  */
 @Composable
 fun DshListSection(
@@ -173,13 +195,14 @@ fun DshListSection(
     headerActionEnabled: Boolean = true,
     onHeaderAction: (() -> Unit)? = null,
     tonal: Boolean = false,
+    container: DshSectionContainer? = null,
     content: @Composable () -> Unit,
 ) {
     DshSection(
         modifier = modifier,
         header = header,
         footer = footer,
-        container = if (tonal) DshSectionContainer.Tonal else DshSectionContainer.Flat,
+        container = container ?: if (tonal) DshSectionContainer.Tonal else DshSectionContainer.Flat,
         headerAction = headerAction,
         headerActionDanger = headerActionDanger,
         headerActionEnabled = headerActionEnabled,

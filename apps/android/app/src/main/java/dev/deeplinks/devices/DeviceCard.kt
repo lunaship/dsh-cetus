@@ -13,6 +13,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.native.ChevronRightOutline16
 import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.DshSectionContainer
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.ui.DshListNote
@@ -83,7 +84,7 @@ internal fun DeviceDetailSections(
     }
     notice?.let { DevicesNotice(message = it, actionLabel = s.resync, onAction = onRecheck) }
     // 顺序：设备 → 操作 → 危险操作。状态已在设备卡里，操作行不再重复显示。
-    DshListSection(footer = s.replaceDeviceHint) {
+    DshListSection(container = DshSectionContainer.Card, footer = s.replaceDeviceHint) {
         DshListActionRow(label = s.recheckConnection, icon = RefreshOutline16, onClick = onRecheck)
         DshListActionRow(label = s.replaceDevice, icon = ScanOutline16, onClick = onReplace)
     }
