@@ -139,6 +139,24 @@ object MermaidRenderer {
         if (appContext == null) appContext = context.applicationContext
     }
 
+    /**
+     * 仅供 androidTest 收尾调用（须在主线程）：销毁共享离屏 WebView 并清空缓存。
+     *
+     * 与 [dev.deeplinks.native.MathRenderer.resetForTests] 同一理由：该 WebView 常驻
+     * 进程生命周期，App 内从不需要释放；但同一 Instrumentation 进程内跑完一个测试类
+     * 不会重启进程，残留的 WebView / Chromium 沙箱进程会阻塞后续 Compose UI 测试的
+     * Espresso 主线程空闲检测（真机表现为下一个测试类挂起、白屏无响应）。
+     */
+    fun resetForTests() {
+        webView?.destroy()
+        webView = null
+        pageReady = null
+        synchronized(cacheLock) {
+            cache.clear()
+            failures.clear()
+        }
+    }
+
     private fun cacheKey(source: String, dark: Boolean) = "$dark\u0000$source"
 
     fun peek(source: String, dark: Boolean, persistFailure: Boolean = true): Rendered? {
@@ -282,10 +300,17 @@ object MermaidRenderer {
         return wv
     }
 
+    /**
+     * CSP 说明：页面经 loadDataWithBaseURL 以 file:///android_asset/mermaid/ 为基址加载，
+     * 本地 bundle（mermaid.min.js）是 file: 子资源。Chromium 对 file:// 页面的
+     * 'self' 匹配不可靠，故每个 scheme 列表都显式带上 file:；联网仍由
+     * WebViewSecurity 的 blockNetworkLoads 与 shouldInterceptRequest（只放行
+     * file:///android_asset/）双重禁止，加 file: 不放宽这一边界。
+     */
     private const val PAGE_HTML = """
         <!DOCTYPE html><html><head><meta charset="utf-8">
         <meta http-equiv="Content-Security-Policy"
-              content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;">
+              content="default-src 'none'; script-src 'self' file: 'unsafe-inline' 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' file: data:;">
         <style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}#m{display:inline-block}</style>
         </head><body><div id="m"></div>
         <script src="mermaid.min.js"></script>

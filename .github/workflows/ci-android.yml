@@ -47,6 +47,14 @@ jobs:
       - name: Assemble release (R8, unsigned)
         run: ./gradlew :app:assembleRelease --stacktrace
 
+      - name: Upload R8 mapping
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: r8-mapping-${{ github.sha }}
+          path: apps/android/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Check whitespace errors
         run: git diff --check
 
@@ -91,6 +99,15 @@ jobs:
             for i in 1 2 3; do adb shell am force-stop dev.deeplinks.debug; adb shell am start -W -n dev.deeplinks.debug/dev.deeplinks.devices.SplashActivity; sleep 2; adb shell pidof dev.deeplinks.debug; done
             adb shell am instrument -w -r -e class dev.deeplinks.StartupSmokeTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee startup-instrumentation.txt
             grep -q 'OK (1 test)' startup-instrumentation.txt
+            # 第 5 步 D1：公式 / Mermaid 的离屏 WebView 渲染链路此前从未在 CI 真机验证（该 job 只 assemble 不执行）。
+            # 按仓库约定走 debug 变体 + 手动 am instrument（AGP 设备测试收尾会卸载被测包，绝不跑 connectedRelease）。
+            adb shell am instrument -w -r -e class dev.deeplinks.native.MathRendererInstrumentedTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee math-renderer-instrumentation.txt
+            grep -q 'OK (2 tests)' math-renderer-instrumentation.txt
+            adb shell am instrument -w -r -e class dev.deeplinks.native.MermaidRendererInstrumentedTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee mermaid-renderer-instrumentation.txt
+            grep -q 'OK (1 test)' mermaid-renderer-instrumentation.txt
+            # 第 5 步 D5：TokenCrypto 并发首生（删测试密钥后 16 线程同时首次 encrypt 全部可解密）
+            adb shell am instrument -w -r -e class dev.deeplinks.core.TokenCryptoConcurrencyTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee token-crypto-instrumentation.txt
+            grep -q 'OK (1 test)' token-crypto-instrumentation.txt
             adb logcat -d -s AndroidRuntime:E StrictMode:E > startup-errors.txt
             test ! -s startup-errors.txt || ! grep -E 'FATAL EXCEPTION|StrictMode|NetworkOnMainThreadException' startup-errors.txt
 
@@ -102,4 +119,7 @@ jobs:
           path: |
             startup-instrumentation.txt
             startup-errors.txt
+            math-renderer-instrumentation.txt
+            mermaid-renderer-instrumentation.txt
+            token-crypto-instrumentation.txt
           if-no-files-found: ignore

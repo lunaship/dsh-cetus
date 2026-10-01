@@ -9,9 +9,12 @@
 - App：模型切换提示由原样显示 DSH 注入的英文系统文本改为本地化分隔线（「以上回复由 %s 生成」）；未配对电脑时设置页只保留配对入口，不再显示改名 / 连接方式 / 权限等无效行；首页、设置、设备页三处在线状态点统一为共享组件与同一组颜色 token；首页「最近」列表条目的副标题在有一句话结果时也会拼上停止原因。
 - App：对话内审批卡补「不含完整参数」说明（与首页共用一份文案）；工具名不再同屏出现两次；底部 9dp 空心圆点与「^」提交图标改为带文字按钮（按所选项显示「拒绝 / 允许一次」），提问卡提交按钮同步替换；「状态待确认」改为「已发送，等待电脑确认」。首页审批卡「允许一次」改用描边按钮，与「拒绝」同等视觉权重。
 - 对话中的网络图片默认不自动加载，点按单张加载；新增「隐私」设置分组。
-- 通知栏默认不再提供「允许一次」；新增设置「允许在通知栏直接批准」（默认关闭，仅 Android 12+）。
+- 通知栏默认只提供「拒绝」；新增「允许在通知栏直接批准」（默认关闭，仅 Android 12+，需解锁）。
 - 锁屏状态下的审批通知不再显示工具名。
 - App：通知栏审批兜底重排。关掉「离开 App 后继续接管审批」后，旧通知上的「允许」只收回通知、不再生效；在该开关开着但关掉「允许在通知栏直接批准」后点「允许」，通知改为提示「请在 App 内确认」。
+- App：公式（KaTeX）与 Mermaid 图表的离屏 WebView 禁止联网并增加 CSP：只放行 `file:///android_asset/` 本地 bundle（`blockNetworkLoads` + `shouldInterceptRequest` 双重禁止联网）；Chromium 对 file:// 页面的 `'self'` 匹配不可靠，CSP 的 scheme 列表显式带 `file:`。
+- CI：release（R8）构建后上传 mapping 制品（保留 30 天，用于崩溃反混淆）；模拟器 job 真正执行设备测试——公式与 Mermaid 渲染链路（`MathRendererInstrumentedTest` / `MermaidRendererInstrumentedTest`）此前只 `assembleDebugAndroidTest` 不执行，新增 `MermaidRendererInstrumentedTest`（`graph TD; A-->B;` 断言位图非空）与 TokenCrypto 并发首生用例（删测试密钥后 16 线程同时首次 `encrypt`，全部 `decrypt` 成功）。
+- 新增提案：设备 token 过期与轮换（`docs/proposals/001-device-token-expiry-rotation.md`）。
 
 ## dsh-links 0.1.0-beta.19 — 2026-09-30
 

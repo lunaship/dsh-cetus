@@ -21,7 +21,9 @@ import javax.crypto.spec.GCMParameterSpec
  */
 object TokenCrypto {
     private const val KEYSTORE = "AndroidKeyStore"
-    private const val KEY_ALIAS = "dsh_hosts_key_v1"
+
+    /** Keystore 别名。internal：androidTest 的并发用例要删掉它做「首次并发生成」验证。 */
+    internal const val KEY_ALIAS = "dsh_hosts_key_v1"
     private const val PREFIX = "enc1:"
     private const val GCM_TAG_BITS = 128
     private const val IV_BYTES = 12

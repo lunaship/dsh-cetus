@@ -19,6 +19,8 @@
   </p>
 </div>
 
+<p align="center"><sub>部分截图为设计稿，审批卡中的命令文本为示意；实际手机端不显示工具参数。</sub></p>
+
 <table>
   <tr>
     <td width="25%"><img src="docs/images/redesign/01-首页.png" alt="任务收件箱" /></td>
@@ -34,18 +36,18 @@
   </tr>
 </table>
 
-<p align="center"><sub>Android 重设计页面预览（15 个手机 / 平板、浅色 / 深色页面与状态）；图片来自 <code>docs/images/redesign/</code>。
-其中 <b>02 是历史截图</b>：旧版「新任务」是首页拉起的底部面板，现行流程已改为点「+ 新任务」进入对话页
-<b>草稿态</b>（继续上次 / 工作区胶囊 + 常驻「更多」/ 智能体预设，复用对话页输入栏发送），该形态尚无实拍图，
+<p align="center"><sub>Android 重设计页面预览（14 个手机 / 平板、浅色 / 深色页面与状态）；图片来自 <code>docs/images/redesign/</code>。
+旧版「新任务」底部面板的历史截图（稿 02）已从本页移除，历史记录见
+<code>apps/android/docs/redesign-index.md</code>；现行流程是点「+ 新任务」进入对话页<b>草稿态</b>
+（继续上次 / 工作区胶囊 + 常驻「更多」/ 智能体预设，复用对话页输入栏发送），该形态尚无实拍图，
 以源码与截图测试为准。</sub></p>
 
 <details>
-  <summary>查看全部 15 个页面与状态</summary>
+  <summary>查看全部 14 个页面与状态</summary>
 
   <table>
     <tr>
       <td><img src="docs/images/redesign/01-首页.png" width="180" alt="首页" /><br /><sub>01 · 首页</sub></td>
-      <td><img src="docs/images/redesign/02-新任务面板.png" width="180" alt="旧版新任务面板（历史截图）" /><br /><sub>02 · 新任务面板（历史）</sub></td>
       <td><img src="docs/images/redesign/03-对话页.png" width="180" alt="对话页" /><br /><sub>03 · 对话页</sub></td>
     </tr>
     <tr>

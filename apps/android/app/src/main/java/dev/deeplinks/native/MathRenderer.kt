@@ -283,10 +283,16 @@ object MathRenderer {
         return wv
     }
 
+    /**
+     * CSP 说明：与 [dev.deeplinks.native.MermaidRenderer] 一致——页面以
+     * file:///android_asset/katex/ 为基址，本地 bundle 是 file: 子资源，
+     * Chromium 对 file:// 页面 'self' 匹配不可靠，显式带 file:；
+     * 联网边界（blockNetworkLoads + shouldInterceptRequest）不受影响。
+     */
     private const val PAGE_HTML = """
         <!DOCTYPE html><html><head><meta charset="utf-8">
         <meta http-equiv="Content-Security-Policy"
-              content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;">
+              content="default-src 'none'; script-src 'self' file: 'unsafe-inline' 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' file: data:;">
         <link rel="stylesheet" href="katex.min.css">
         <style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}</style>
         </head><body><span id="m"></span>
