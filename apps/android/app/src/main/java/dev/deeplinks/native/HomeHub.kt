@@ -256,7 +256,7 @@ internal fun HomeWorkspaceFilterRow(
                     )
                     Spacer(Modifier.width(DshSpace.s4))
                     Icon(
-                        ChevronDownOutline14,
+                        ChevronDownOutline16,
                         contentDescription = null,
                         tint = Dsh.labelTertiary,
                         modifier = Modifier.size(DshIconSize.xs),
@@ -268,7 +268,7 @@ internal fun HomeWorkspaceFilterRow(
                 onDismiss = { menuOpen = false },
                 offset = DpOffset(0.dp, 4.dp),
                 items = buildList {
-                    add(DshMenuItem(ChecklistOutline14, s.homeAllWorkspaces, selected = selected == null) {
+                    add(DshMenuItem(ChecklistOutline16, s.homeAllWorkspaces, selected = selected == null) {
                         menuOpen = false
                         onSelect(null)
                     })

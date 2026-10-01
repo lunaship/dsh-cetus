@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.dp
  */
 
 /** AgentPresetOutline16 */
-val AgentPresetOutline16: ImageVector
-    get() = ImageVector.Builder(
+val AgentPresetOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "AgentPresetOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -130,13 +130,14 @@ val AgentPresetOutline16: ImageVector
             curveTo(13.7642f, 9.07349f, 14.7995f, 10.1081f, 14.7998f, 11.385f)
         }
     }.build()
+}
 
-/** ApiOutline14 */
-val ApiOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ApiOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** ApiOutline16 */
+val ApiOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ApiOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -241,10 +242,11 @@ val ApiOutline14: ImageVector
             lineTo(9.90679f, 8.42697f)
         }
     }.build()
+}
 
 /** ArchiveOutline20 */
-val ArchiveOutline20: ImageVector
-    get() = ImageVector.Builder(
+val ArchiveOutline20: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ArchiveOutline20",
         defaultWidth = 20.0f.dp,
         defaultHeight = 20.dp,
@@ -338,10 +340,11 @@ val ArchiveOutline20: ImageVector
             lineTo(12.7962f, 12.5661f)
         }
     }.build()
+}
 
 /** BranchOutline16 */
-val BranchOutline16: ImageVector
-    get() = ImageVector.Builder(
+val BranchOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "BranchOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -390,10 +393,11 @@ val BranchOutline16: ImageVector
             curveTo(13.6023f, 2.90874f, 13.3666f, 2.67306f, 13.0762f, 2.67285f)
         }
     }.build()
+}
 
 /** BrowseOutline16 */
-val BrowseOutline16: ImageVector
-    get() = ImageVector.Builder(
+val BrowseOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "BrowseOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -497,50 +501,11 @@ val BrowseOutline16: ImageVector
             lineTo(6.76563f, 1.896f)
         }
     }.build()
-
-/** CheckOutline14 */
-val CheckOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "CheckOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
-        viewportWidth = 16.0f,
-        viewportHeight = 16.0f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(11.5635f, 4.58984f)
-            lineTo(7.61426f, 9.07715f)
-            curveTo(7.35154f, 9.37561f, 7.11346f, 9.64812f, 6.89453f, 9.84668f)
-            curveTo(6.66593f, 10.054f, 6.38519f, 10.2506f, 6.01465f, 10.3164f)
-            curveTo(5.82079f, 10.3508f, 5.62207f, 10.3529f, 5.42773f, 10.3213f)
-            curveTo(5.0561f, 10.2609f, 4.77266f, 10.0674f, 4.54102f, 9.86328f)
-            curveTo(4.31926f, 9.66791f, 4.07752f, 9.39911f, 3.81055f, 9.10449f)
-            lineTo(2.44531f, 7.59863f)
-            lineTo(3.55664f, 6.59082f)
-            lineTo(4.92188f, 8.09766f)
-            curveTo(5.21256f, 8.41844f, 5.38878f, 8.61191f, 5.53223f, 8.73828f)
-            curveTo(5.61022f, 8.80699f, 5.65253f, 8.83192f, 5.66895f, 8.83984f)
-            curveTo(5.69648f, 8.84429f, 5.72449f, 8.84467f, 5.75195f, 8.83984f)
-            curveTo(5.72657f, 8.84451f, 5.75564f, 8.85422f, 5.88672f, 8.73535f)
-            curveTo(6.02833f, 8.60692f, 6.20225f, 8.41088f, 6.48828f, 8.08594f)
-            lineTo(10.4385f, 3.59961f)
-            lineTo(11.5635f, 4.58984f)
-        }
-    }.build()
+}
 
 /** CheckOutline16 */
-val CheckOutline16: ImageVector
-    get() = ImageVector.Builder(
+val CheckOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "CheckOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -581,13 +546,14 @@ val CheckOutline16: ImageVector
             lineTo(15.0498f, 3.92579f)
         }
     }.build()
+}
 
-/** ChecklistOutline14 */
-val ChecklistOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ChecklistOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** ChecklistOutline16 */
+val ChecklistOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ChecklistOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -670,13 +636,14 @@ val ChecklistOutline14: ImageVector
             curveTo(4.77791f, 1.0498f, 5.92499f, 2.1969f, 5.925f, 3.6123f)
         }
     }.build()
+}
 
-/** ChevronDownOutline14 */
-val ChevronDownOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ChevronDownOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** ChevronDownOutline16 */
+val ChevronDownOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ChevronDownOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -714,13 +681,14 @@ val ChevronDownOutline14: ImageVector
             lineTo(11.8486f, 5.5f)
         }
     }.build()
+}
 
-/** ChevronLeftOutline14 */
-val ChevronLeftOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ChevronLeftOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** ChevronLeftOutline16 */
+val ChevronLeftOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ChevronLeftOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -758,13 +726,14 @@ val ChevronLeftOutline14: ImageVector
             lineTo(8.5f, 2.15137f)
         }
     }.build()
+}
 
-/** ChevronRightOutline14 */
-val ChevronRightOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ChevronRightOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** ChevronRightOutline16 */
+val ChevronRightOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ChevronRightOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -802,13 +771,14 @@ val ChevronRightOutline14: ImageVector
             lineTo(5.5f, 2.15137f)
         }
     }.build()
+}
 
-/** ChevronUpOutline14 */
-val ChevronUpOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ChevronUpOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** ChevronUpOutline16 */
+val ChevronUpOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ChevronUpOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -846,13 +816,14 @@ val ChevronUpOutline14: ImageVector
             lineTo(2.15137f, 8.5f)
         }
     }.build()
+}
 
-/** CloseFill14 */
-val CloseFill14: ImageVector
-    get() = ImageVector.Builder(
-        name = "CloseFill14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** CloseFill16 */
+val CloseFill16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "CloseFill16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -882,10 +853,11 @@ val CloseFill14: ImageVector
             lineTo(10.6074f, 4.40278f)
         }
     }.build()
+}
 
 /** CloseOutline16 */
-val CloseOutline16: ImageVector
-    get() = ImageVector.Builder(
+val CloseOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "CloseOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -927,10 +899,11 @@ val CloseOutline16: ImageVector
             lineTo(13.197f, 1.88326f)
         }
     }.build()
+}
 
 /** CodeOutline16 */
-val CodeOutline16: ImageVector
-    get() = ImageVector.Builder(
+val CodeOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "CodeOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -984,10 +957,11 @@ val CodeOutline16: ImageVector
             lineTo(5.94937f, 9.67859f)
         }
     }.build()
+}
 
 /** CopyOutline16 */
-val CopyOutline16: ImageVector
-    get() = ImageVector.Builder(
+val CopyOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "CopyOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1072,13 +1046,14 @@ val CopyOutline16: ImageVector
             lineTo(9.80164f, 0.367975f)
         }
     }.build()
+}
 
-/** CordisPluginOutline14 */
-val CordisPluginOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "CordisPluginOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** CordisPluginOutline16 */
+val CordisPluginOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "CordisPluginOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -1123,10 +1098,11 @@ val CordisPluginOutline14: ImageVector
             lineTo(8.33066f, 3.03153f)
         }
     }.build()
+}
 
 /** DarkOutline16 */
-val DarkOutline16: ImageVector
-    get() = ImageVector.Builder(
+val DarkOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "DarkOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1164,10 +1140,11 @@ val DarkOutline16: ImageVector
             curveTo(7.55573f, 3.26311f, 7.05078f, 4.27876f, 7.05078f, 5.41289f)
         }
     }.build()
+}
 
 /** DataOutline16 */
-val DataOutline16: ImageVector
-    get() = ImageVector.Builder(
+val DataOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "DataOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1283,10 +1260,11 @@ val DataOutline16: ImageVector
             curveTo(10.4505f, 2.29079f, 9.06925f, 2.02853f, 7.51205f, 2.02851f)
         }
     }.build()
+}
 
 /** DislikeFill16 */
-val DislikeFill16: ImageVector
-    get() = ImageVector.Builder(
+val DislikeFill16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "DislikeFill16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1350,10 +1328,11 @@ val DislikeFill16: ImageVector
             lineTo(13.0963f, 2.77815f)
         }
     }.build()
+}
 
 /** DislikeOutline16 */
-val DislikeOutline16: ImageVector
-    get() = ImageVector.Builder(
+val DislikeOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "DislikeOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1455,10 +1434,11 @@ val DislikeOutline16: ImageVector
             lineTo(14.2388f, 4.85202f)
         }
     }.build()
+}
 
 /** DownloadOutline16 */
-val DownloadOutline16: ImageVector
-    get() = ImageVector.Builder(
+val DownloadOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "DownloadOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1508,10 +1488,11 @@ val DownloadOutline16: ImageVector
             lineTo(8.72205f, 8.994f)
         }
     }.build()
+}
 
 /** EditOutline16 */
-val EditOutline16: ImageVector
-    get() = ImageVector.Builder(
+val EditOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "EditOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1577,10 +1558,11 @@ val EditOutline16: ImageVector
             curveTo(11.9057f, 2.72863f, 11.795f, 2.6264f, 11.7f, 2.57079f)
         }
     }.build()
+}
 
 /** EllipsisOutline16 */
-val EllipsisOutline16: ImageVector
-    get() = ImageVector.Builder(
+val EllipsisOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "EllipsisOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1639,10 +1621,11 @@ val EllipsisOutline16: ImageVector
             curveTo(13.2338f, 6.85001f, 13.7486f, 7.36488f, 13.7486f, 8.00001f)
         }
     }.build()
+}
 
 /** EnhanceOutline16 */
-val EnhanceOutline16: ImageVector
-    get() = ImageVector.Builder(
+val EnhanceOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "EnhanceOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1718,10 +1701,11 @@ val EnhanceOutline16: ImageVector
             lineTo(8.93274f, 12.6757f)
         }
     }.build()
+}
 
 /** FolderClose16 */
-val FolderClose16: ImageVector
-    get() = ImageVector.Builder(
+val FolderClose16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "FolderClose16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1828,10 +1812,11 @@ val FolderClose16: ImageVector
             lineTo(14.5f, 11.9127f)
         }
     }.build()
+}
 
 /** FolderOpen16 */
-val FolderOpen16: ImageVector
-    get() = ImageVector.Builder(
+val FolderOpen16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "FolderOpen16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1920,10 +1905,11 @@ val FolderOpen16: ImageVector
             lineTo(5.1963f, 2.95154f)
         }
     }.build()
+}
 
 /** FolderOpenOutline16 */
-val FolderOpenOutline16: ImageVector
-    get() = ImageVector.Builder(
+val FolderOpenOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "FolderOpenOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -1979,10 +1965,11 @@ val FolderOpenOutline16: ImageVector
             lineTo(2.91797f, 2.9519f)
         }
     }.build()
+}
 
 /** FollowsystemOutline16 */
-val FollowsystemOutline16: ImageVector
-    get() = ImageVector.Builder(
+val FollowsystemOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "FollowsystemOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2065,10 +2052,11 @@ val FollowsystemOutline16: ImageVector
             curveTo(14.646f, 5.31335f, 14.6455f, 6.07362f, 14.6455f, 7.02379f)
         }
     }.build()
+}
 
 /** FullscreenOutline16 */
-val FullscreenOutline16: ImageVector
-    get() = ImageVector.Builder(
+val FullscreenOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "FullscreenOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2122,13 +2110,14 @@ val FullscreenOutline16: ImageVector
             lineTo(12.9452f, 1.19324f)
         }
     }.build()
+}
 
-/** GlobeOutline14 */
-val GlobeOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "GlobeOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** GlobeOutline16 */
+val GlobeOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "GlobeOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -2186,10 +2175,11 @@ val GlobeOutline14: ImageVector
             curveTo(12.1916f, 4.29575f, 10.7618f, 2.54943f, 8.82887f, 1.8616f)
         }
     }.build()
+}
 
 /** GoalOutline16 */
-val GoalOutline16: ImageVector
-    get() = ImageVector.Builder(
+val GoalOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "GoalOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2270,13 +2260,14 @@ val GoalOutline16: ImageVector
             curveTo(9.06781f, 3.38007f, 9.07308f, 3.36735f, 9.08245f, 3.35798f)
         }
     }.build()
+}
 
-/** InspectOutline12 */
-val InspectOutline12: ImageVector
-    get() = ImageVector.Builder(
-        name = "InspectOutline12",
-        defaultWidth = 12.0f.dp,
-        defaultHeight = 12.dp,
+/** InspectOutline16 */
+val InspectOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "InspectOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -2312,10 +2303,11 @@ val InspectOutline12: ImageVector
             lineTo(9.02514f, 4.0f)
         }
     }.build()
+}
 
 /** LightOutline16 */
-val LightOutline16: ImageVector
-    get() = ImageVector.Builder(
+val LightOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "LightOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2481,10 +2473,11 @@ val LightOutline16: ImageVector
             lineTo(13.5f, 7.35461f)
         }
     }.build()
+}
 
 /** LikeFill16 */
-val LikeFill16: ImageVector
-    get() = ImageVector.Builder(
+val LikeFill16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "LikeFill16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2548,10 +2541,11 @@ val LikeFill16: ImageVector
             lineTo(2.91388f, 13.2113f)
         }
     }.build()
+}
 
 /** LikeOutline16 */
-val LikeOutline16: ImageVector
-    get() = ImageVector.Builder(
+val LikeOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "LikeOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2653,85 +2647,11 @@ val LikeOutline16: ImageVector
             lineTo(1.69122f, 11.1833f)
         }
     }.build()
-
-/** LinkOutline14 */
-val LinkOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "LinkOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
-        viewportWidth = 16.0f,
-        viewportHeight = 16.0f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(8.19727f, 5.86969f)
-            curveTo(9.2092f, 6.90067f, 9.20969f, 8.55271f, 8.19727f, 9.58338f)
-            lineTo(6.88871f, 10.8919f)
-            curveTo(5.85801f, 11.9039f, 4.20584f, 11.9037f, 3.17502f, 10.8919f)
-            lineTo(3.10873f, 10.8243f)
-            curveTo(2.09622f, 9.7934f, 2.09626f, 8.14148f, 3.10873f, 7.11058f)
-            lineTo(4.36757f, 5.85174f)
-            curveTo(4.28261f, 6.33758f, 4.30355f, 6.84354f, 4.44077f, 7.33362f)
-            lineTo(3.89249f, 7.88053f)
-            curveTo(3.30043f, 8.48348f, 3.30108f, 9.4507f, 3.89318f, 10.0536f)
-            lineTo(3.94566f, 10.1061f)
-            curveTo(4.54861f, 10.698f, 5.51521f, 10.6981f, 6.11808f, 10.1061f)
-            lineTo(7.41283f, 8.81275f)
-            curveTo(8.00484f, 8.21002f, 8.00504f, 7.24267f, 7.41352f, 6.63964f)
-            lineTo(7.35966f, 6.58716f)
-            curveTo(7.21975f, 6.44976f, 7.05995f, 6.34434f, 6.89009f, 6.27089f)
-            lineTo(7.70009f, 5.4609f)
-            curveTo(7.85176f, 5.55768f, 7.99607f, 5.67091f, 8.1296f, 5.80202f)
-            lineTo(8.19727f, 5.86969f)
-        }
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(5.80913f, 8.12648f)
-            curveTo(4.79584f, 7.09547f, 4.79591f, 5.44245f, 5.80913f, 4.41141f)
-            curveTo(5.81733f, 4.40304f, 5.82707f, 4.39209f, 5.8409f, 4.37826f)
-            lineTo(7.07833f, 3.14082f)
-            curveTo(7.09224f, 3.12693f, 7.10311f, 3.11729f, 7.11148f, 3.10906f)
-            curveTo(8.14253f, 2.09591f, 9.79557f, 2.09579f, 10.8266f, 3.10906f)
-            lineTo(10.8908f, 3.17328f)
-            curveTo(11.9041f, 4.20425f, 11.9039f, 5.85727f, 10.8908f, 6.88835f)
-            lineTo(9.63193f, 8.14581f)
-            curveTo(9.70566f, 7.66581f, 9.67564f, 7.16895f, 9.53456f, 6.68948f)
-            lineTo(10.1063f, 6.11772f)
-            curveTo(10.6989f, 5.51458f, 10.6992f, 4.54691f, 10.1063f, 3.94391f)
-            lineTo(10.0552f, 3.8942f)
-            curveTo(9.45215f, 3.30157f, 8.48446f, 3.30151f, 7.88142f, 3.8942f)
-            lineTo(6.59358f, 5.18204f)
-            curveTo(6.00081f, 5.78507f, 6.00092f, 6.75274f, 6.59358f, 7.35584f)
-            lineTo(6.6433f, 7.40694f)
-            curveTo(6.77998f, 7.54132f, 6.93555f, 7.64528f, 7.10112f, 7.71837f)
-            lineTo(6.29251f, 8.52699f)
-            curveTo(6.14446f, 8.43127f, 6.00395f, 8.31906f, 5.87335f, 8.1907f)
-            lineTo(5.80913f, 8.12648f)
-        }
-    }.build()
+}
 
 /** LinkOutline16 */
-val LinkOutline16: ImageVector
-    get() = ImageVector.Builder(
+val LinkOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "LinkOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2821,10 +2741,11 @@ val LinkOutline16: ImageVector
             curveTo(6.1871f, 9.61504f, 6.12202f, 9.55018f, 6.06816f, 9.49196f)
         }
     }.build()
+}
 
 /** ListPenOutline16 */
-val ListPenOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ListPenOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ListPenOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -2971,10 +2892,11 @@ val ListPenOutline16: ImageVector
             lineTo(8.24493f, 13.3711f)
         }
     }.build()
+}
 
 /** LoadingOutline16 */
-val LoadingOutline16: ImageVector
-    get() = ImageVector.Builder(
+val LoadingOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "LoadingOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3003,10 +2925,11 @@ val LoadingOutline16: ImageVector
             curveTo(10.2957f, 15.9609f, 5.70341f, 15.961f, 2.871f, 13.1286f)
         }
     }.build()
+}
 
 /** NewChatOutline16 */
-val NewChatOutline16: ImageVector
-    get() = ImageVector.Builder(
+val NewChatOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "NewChatOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3062,10 +2985,11 @@ val NewChatOutline16: ImageVector
             lineTo(7.32033f, 4.82535f)
         }
     }.build()
+}
 
 /** PanelLeftOutline16 */
-val PanelLeftOutline16: ImageVector
-    get() = ImageVector.Builder(
+val PanelLeftOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "PanelLeftOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3140,10 +3064,11 @@ val PanelLeftOutline16: ImageVector
             lineTo(4.1828f, 1.91166f)
         }
     }.build()
+}
 
 /** PaperclipOutline16 */
-val PaperclipOutline16: ImageVector
-    get() = ImageVector.Builder(
+val PaperclipOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "PaperclipOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3186,10 +3111,11 @@ val PaperclipOutline16: ImageVector
             curveTo(6.6469f, 12.2002f, 5.5498f, 11.1031f, 5.5498f, 9.75f)
         }
     }.build()
+}
 
 /** PauseOutline16 */
-val PauseOutline16: ImageVector
-    get() = ImageVector.Builder(
+val PauseOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "PauseOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3253,10 +3179,11 @@ val PauseOutline16: ImageVector
             lineTo(10.286f, 5.14258f)
         }
     }.build()
+}
 
 /** PersonalizationOutline16 */
-val PersonalizationOutline16: ImageVector
-    get() = ImageVector.Builder(
+val PersonalizationOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "PersonalizationOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3354,10 +3281,11 @@ val PersonalizationOutline16: ImageVector
             curveTo(9.50704f, 12.527f, 9.51014f, 12.4713f, 9.51466f, 12.4162f)
         }
     }.build()
+}
 
 /** PlayOutline16 */
-val PlayOutline16: ImageVector
-    get() = ImageVector.Builder(
+val PlayOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "PlayOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3406,10 +3334,11 @@ val PlayOutline16: ImageVector
             lineTo(10.5617f, 8.42578f)
         }
     }.build()
+}
 
 /** PlusOutline16 */
-val PlusOutline16: ImageVector
-    get() = ImageVector.Builder(
+val PlusOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "PlusOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3442,10 +3371,11 @@ val PlusOutline16: ImageVector
             lineTo(8.64453f, 1.5f)
         }
     }.build()
+}
 
 /** ProjectAddOutline16 */
-val ProjectAddOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ProjectAddOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ProjectAddOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3513,13 +3443,14 @@ val ProjectAddOutline16: ImageVector
             lineTo(5.11327f, 2.35f)
         }
     }.build()
+}
 
-/** QuestionOutline14 */
-val QuestionOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "QuestionOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** QuestionOutline16 */
+val QuestionOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "QuestionOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -3592,13 +3523,14 @@ val QuestionOutline14: ImageVector
             lineTo(7.39455f, 9.44026f)
         }
     }.build()
+}
 
-/** QueueOutline14 */
-val QueueOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "QueueOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** QueueOutline16 */
+val QueueOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "QueueOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -3649,51 +3581,11 @@ val QueueOutline14: ImageVector
             lineTo(3.81201f, 6.34924f)
         }
     }.build()
-
-/** RefreshOutline14 */
-val RefreshOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "RefreshOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
-        viewportWidth = 16.0f,
-        viewportHeight = 16.0f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(1.272f, 6.21348f)
-            curveTo(1.70645f, 3.08888f, 4.59169f, 0.908064f, 7.71634f, 1.34239f)
-            curveTo(8.95495f, 1.51469f, 10.0438f, 2.07331f, 10.8814f, 2.87755f)
-            lineTo(11.9458f, 1.81407f)
-            curveTo(12.1347f, 1.6255f, 12.4572f, 1.75911f, 12.4575f, 2.02598f)
-            lineTo(12.4575f, 5.08751f)
-            curveTo(12.4574f, 5.25303f, 12.3233f, 5.38731f, 12.1577f, 5.38731f)
-            lineTo(9.0972f, 5.38731f)
-            curveTo(8.82993f, 5.38731f, 8.69629f, 5.06361f, 8.88528f, 4.87462f)
-            lineTo(10.0327f, 3.72618f)
-            curveTo(9.3732f, 3.09994f, 8.52006f, 2.66569f, 7.5513f, 2.53087f)
-            curveTo(5.08313f, 2.18779f, 2.80376f, 3.91044f, 2.46048f, 6.37852f)
-            curveTo(2.11747f, 8.84665f, 3.84009f, 11.1261f, 6.30814f, 11.4693f)
-            curveTo(8.77612f, 11.8121f, 11.0557f, 10.0896f, 11.399f, 7.62169f)
-            lineTo(11.9937f, 7.70372f)
-            lineTo(12.5874f, 7.78673f)
-            curveTo(12.153f, 10.9112f, 9.26756f, 13.0919f, 6.1431f, 12.6578f)
-            curveTo(3.01854f, 12.2234f, 0.837738f, 9.33809f, 1.272f, 6.21348f)
-        }
-    }.build()
+}
 
 /** RefreshOutline16 */
-val RefreshOutline16: ImageVector
-    get() = ImageVector.Builder(
+val RefreshOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "RefreshOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3730,14 +3622,15 @@ val RefreshOutline16: ImageVector
             curveTo(0.270508f, 3.77478f, 3.69614f, 0.349152f, 7.92136f, 0.349152f)
         }
     }.build()
+}
 
 /** ArrowUpRightOutline16 */
-val ArrowUpRightOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ArrowUpRightOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ArrowUpRightOutline16",
-        defaultWidth = 8.0f.dp,
-        defaultHeight = 8.dp,
-        viewportWidth = 8.0f,
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
         path(
@@ -3751,30 +3644,31 @@ val ArrowUpRightOutline16: ImageVector
             strokeLineMiter = 1f,
             pathFillType = PathFillType.NonZero
         ) {
-            moveTo(6.54199f, 8.62824f)
-            curveTo(6.54199f, 8.44193f, 6.54146f, 8.28829f, 6.53906f, 8.15851f)
-            lineTo(1.11719f, 13.5814f)
-            lineTo(0.728516f, 13.1927f)
-            lineTo(0.339844f, 12.803f)
-            lineTo(5.76172f, 7.38019f)
-            curveTo(5.63201f, 7.3778f, 5.47812f, 7.37824f, 5.29199f, 7.37824f)
-            lineTo(1.43555f, 7.37824f)
-            lineTo(1.43555f, 6.27863f)
-            lineTo(5.29199f, 6.27863f)
-            curveTo(5.65471f, 6.27863f, 5.97167f, 6.27814f, 6.22852f, 6.30597f)
-            curveTo(6.49541f, 6.33493f, 6.76232f, 6.3998f, 7.00293f, 6.57452f)
-            curveTo(7.13452f, 6.67013f, 7.25108f, 6.78571f, 7.34668f, 6.9173f)
-            curveTo(7.52157f, 7.15808f, 7.5863f, 7.4256f, 7.61523f, 7.69269f)
-            curveTo(7.64305f, 7.94948f, 7.64258f, 8.26562f, 7.64258f, 8.62824f)
-            lineTo(7.64258f, 12.4857f)
-            lineTo(6.54199f, 12.4857f)
-            lineTo(6.54199f, 8.62824f)
+            moveTo(10.54199f, 8.62824f)
+            curveTo(10.54199f, 8.44193f, 10.54146f, 8.28829f, 10.53906f, 8.15851f)
+            lineTo(5.11719f, 13.5814f)
+            lineTo(4.72852f, 13.1927f)
+            lineTo(4.33984f, 12.803f)
+            lineTo(9.76172f, 7.38019f)
+            curveTo(9.63201f, 7.3778f, 9.47812f, 7.37824f, 9.29199f, 7.37824f)
+            lineTo(5.43555f, 7.37824f)
+            lineTo(5.43555f, 6.27863f)
+            lineTo(9.29199f, 6.27863f)
+            curveTo(9.65471f, 6.27863f, 9.97167f, 6.27814f, 10.22852f, 6.30597f)
+            curveTo(10.49541f, 6.33493f, 10.76232f, 6.3998f, 11.00293f, 6.57452f)
+            curveTo(11.13452f, 6.67013f, 11.25108f, 6.78571f, 11.34668f, 6.9173f)
+            curveTo(11.52157f, 7.15808f, 11.5863f, 7.4256f, 11.61523f, 7.69269f)
+            curveTo(11.64305f, 7.94948f, 11.64258f, 8.26562f, 11.64258f, 8.62824f)
+            lineTo(11.64258f, 12.4857f)
+            lineTo(10.54199f, 12.4857f)
+            lineTo(10.54199f, 8.62824f)
         }
     }.build()
+}
 
 /** RightUpOutline16 */
-val RightUpOutline16: ImageVector
-    get() = ImageVector.Builder(
+val RightUpOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "RightUpOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3812,10 +3706,11 @@ val RightUpOutline16: ImageVector
             lineTo(13.588429f, 5.147807f)
         }
     }.build()
+}
 
 /** SearchOutline16 */
-val SearchOutline16: ImageVector
-    get() = ImageVector.Builder(
+val SearchOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "SearchOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3862,48 +3757,11 @@ val SearchOutline16: ImageVector
             lineTo(16.000417f, 15.041079f)
         }
     }.build()
-
-/** SendOutline14 */
-val SendOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "SendOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
-        viewportWidth = 16.0f,
-        viewportHeight = 16.0f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(7.24707f, 1.01771f)
-            curveTo(7.52897f, 1.07653f, 7.77619f, 1.19694f, 8.00391f, 1.38001f)
-            curveTo(8.19202f, 1.53136f, 8.39884f, 1.73784f, 8.61914f, 1.95814f)
-            lineTo(12.6396f, 5.9806f)
-            lineTo(11.6299f, 6.99134f)
-            lineTo(7.71484f, 3.0763f)
-            lineTo(7.71484f, 13.0001f)
-            lineTo(6.28516f, 13.0001f)
-            lineTo(6.28516f, 3.0763f)
-            lineTo(2.36914f, 6.99134f)
-            lineTo(1.35938f, 5.9806f)
-            lineTo(5.38086f, 1.95814f)
-            curveTo(5.60116f, 1.73784f, 5.80798f, 1.53136f, 5.99609f, 1.38001f)
-            curveTo(6.19476f, 1.22027f, 6.4385f, 1.06739f, 6.75195f, 1.01771f)
-            curveTo(6.91296f, 0.992304f, 7.07471f, 0.997504f, 7.24707f, 1.01771f)
-        }
-    }.build()
+}
 
 /** SendOutline16 */
-val SendOutline16: ImageVector
-    get() = ImageVector.Builder(
+val SendOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "SendOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -3938,129 +3796,11 @@ val SendOutline16: ImageVector
             curveTo(7.8973f, 0.94841f, 8.1031f, 0.956564f, 8.3125f, 0.981587f)
         }
     }.build()
-
-/** SettingsOutline14 */
-val SettingsOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "SettingsOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
-        viewportWidth = 16.0f,
-        viewportHeight = 16.0f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(12.1192f, 4.91016f)
-            curveTo(11.9392f, 4.52714f, 11.7007f, 4.1292f, 11.4483f, 3.78809f)
-            curveTo(11.385f, 3.70258f, 11.3517f, 3.68409f, 11.2462f, 3.67383f)
-            curveTo(10.7419f, 3.6248f, 10.2318f, 3.69454f, 9.72662f, 3.64551f)
-            curveTo(9.29108f, 3.60318f, 8.93739f, 3.40341f, 8.67682f, 3.05176f)
-            curveTo(8.38762f, 2.66127f, 8.19217f, 2.20926f, 7.90338f, 1.81934f)
-            curveTo(7.83985f, 1.73359f, 7.80848f, 1.71542f, 7.70221f, 1.70508f)
-            curveTo(7.24758f, 1.6609f, 6.7511f, 1.66104f, 6.29791f, 1.70508f)
-            curveTo(6.19164f, 1.71542f, 6.16027f, 1.73359f, 6.09674f, 1.81934f)
-            curveTo(5.80775f, 2.20954f, 5.61248f, 2.66131f, 5.3233f, 3.05176f)
-            curveTo(5.06273f, 3.40341f, 4.70904f, 3.60318f, 4.2735f, 3.64551f)
-            curveTo(3.76831f, 3.69454f, 3.25825f, 3.6248f, 2.75397f, 3.67383f)
-            curveTo(2.6484f, 3.68409f, 2.61509f, 3.70258f, 2.55182f, 3.78809f)
-            curveTo(2.30019f, 4.12814f, 2.06125f, 4.52646f, 1.88092f, 4.91016f)
-            curveTo(1.83256f, 5.01309f, 1.83242f, 5.04912f, 1.88092f, 5.15235f)
-            curveTo(2.07954f, 5.57482f, 2.37449f, 5.94529f, 2.5733f, 6.36817f)
-            curveTo(2.76971f, 6.78606f, 2.76964f, 7.21293f, 2.5733f, 7.63086f)
-            curveTo(2.37462f, 8.05374f, 2.07947f, 8.42453f, 1.88092f, 8.84668f)
-            curveTo(1.83235f, 8.95004f, 1.83257f, 8.98695f, 1.88092f, 9.08985f)
-            curveTo(2.06098f, 9.47285f, 2.2994f, 9.87079f, 2.55182f, 10.2119f)
-            curveTo(2.61509f, 10.2974f, 2.6484f, 10.3159f, 2.75397f, 10.3262f)
-            curveTo(3.25879f, 10.3753f, 3.76834f, 10.3055f, 4.2735f, 10.3545f)
-            curveTo(4.70904f, 10.3968f, 5.06273f, 10.5966f, 5.3233f, 10.9482f)
-            curveTo(5.6125f, 11.3387f, 5.80795f, 11.7907f, 6.09674f, 12.1807f)
-            curveTo(6.16027f, 12.2664f, 6.19164f, 12.2846f, 6.29791f, 12.2949f)
-            curveTo(6.7511f, 12.339f, 7.24758f, 12.3391f, 7.70221f, 12.2949f)
-            curveTo(7.80848f, 12.2846f, 7.83985f, 12.2664f, 7.90338f, 12.1807f)
-            curveTo(8.19237f, 11.7905f, 8.38764f, 11.3387f, 8.67682f, 10.9482f)
-            curveTo(8.93739f, 10.5966f, 9.29108f, 10.3968f, 9.72662f, 10.3545f)
-            curveTo(10.2318f, 10.3055f, 10.7419f, 10.3752f, 11.2462f, 10.3262f)
-            curveTo(11.3517f, 10.3159f, 11.385f, 10.2974f, 11.4483f, 10.2119f)
-            curveTo(11.7007f, 9.87079f, 11.9391f, 9.47285f, 12.1192f, 9.08985f)
-            curveTo(12.1675f, 8.98695f, 12.1678f, 8.95004f, 12.1192f, 8.84668f)
-            curveTo(11.9205f, 8.42428f, 11.6255f, 8.05377f, 11.4268f, 7.63086f)
-            curveTo(11.2305f, 7.21293f, 11.2304f, 6.78606f, 11.4268f, 6.36817f)
-            curveTo(11.6256f, 5.94531f, 11.9207f, 5.5746f, 12.1192f, 5.15235f)
-            curveTo(12.1677f, 5.04912f, 12.1676f, 5.01309f, 12.1192f, 4.91016f)
-            moveTo(13.2051f, 5.66309f)
-            curveTo(13.0064f, 6.08573f, 12.7114f, 6.45579f, 12.5128f, 6.87793f)
-            curveTo(12.4642f, 6.98123f, 12.4645f, 7.01829f, 12.5128f, 7.1211f)
-            curveTo(12.7112f, 7.54328f, 13.0064f, 7.91405f, 13.2051f, 8.33692f)
-            curveTo(13.4015f, 8.75487f, 13.4015f, 9.18169f, 13.2051f, 9.59961f)
-            curveTo(12.9911f, 10.0551f, 12.7109f, 10.5221f, 12.4122f, 10.9258f)
-            curveTo(12.1522f, 11.277f, 11.7974f, 11.4782f, 11.3624f, 11.5205f)
-            curveTo(10.8573f, 11.5696f, 10.3477f, 11.4999f, 9.84283f, 11.5488f)
-            curveTo(9.73621f, 11.5592f, 9.70429f, 11.5772f, 9.64069f, 11.6631f)
-            curveTo(9.35229f, 12.0526f, 9.15705f, 12.5044f, 8.86823f, 12.8945f)
-            curveTo(8.60854f, 13.2452f, 8.25275f, 13.447f, 7.81842f, 13.4893f)
-            curveTo(7.28749f, 13.5409f, 6.71096f, 13.5407f, 6.1817f, 13.4893f)
-            curveTo(5.74737f, 13.447f, 5.39158f, 13.2452f, 5.1319f, 12.8945f)
-            curveTo(4.84312f, 12.5045f, 4.64808f, 12.0529f, 4.35944f, 11.6631f)
-            curveTo(4.29583f, 11.5772f, 4.26392f, 11.5592f, 4.15729f, 11.5488f)
-            curveTo(3.65283f, 11.5f, 3.14295f, 11.5696f, 2.63776f, 11.5205f)
-            curveTo(2.20274f, 11.4782f, 1.84796f, 11.277f, 1.58795f, 10.9258f)
-            curveTo(1.28834f, 10.5209f, 1.00864f, 10.0543f, 0.794982f, 9.59961f)
-            curveTo(0.598644f, 9.18169f, 0.598598f, 8.75487f, 0.794982f, 8.33692f)
-            curveTo(0.993688f, 7.91405f, 1.28889f, 7.54328f, 1.48737f, 7.1211f)
-            curveTo(1.53567f, 7.01829f, 1.53593f, 6.98123f, 1.48737f, 6.87793f)
-            curveTo(1.28887f, 6.45603f, 0.993667f, 6.08569f, 0.794982f, 5.66309f)
-            curveTo(0.598535f, 5.24516f, 0.59869f, 4.81829f, 0.794982f, 4.40039f)
-            curveTo(1.00898f, 3.94492f, 1.28922f, 3.47791f, 1.58795f, 3.07422f)
-            curveTo(1.84796f, 2.723f, 2.20274f, 2.5218f, 2.63776f, 2.47949f)
-            curveTo(3.14295f, 2.43038f, 3.65283f, 2.50003f, 4.15729f, 2.45117f)
-            curveTo(4.26391f, 2.44081f, 4.29583f, 2.4228f, 4.35944f, 2.33692f)
-            curveTo(4.64783f, 1.94742f, 4.84308f, 1.49557f, 5.1319f, 1.10547f)
-            curveTo(5.39158f, 0.754835f, 5.74737f, 0.553005f, 6.1817f, 0.510744f)
-            curveTo(6.71263f, 0.459147f, 7.28917f, 0.459309f, 7.81842f, 0.510744f)
-            curveTo(8.25275f, 0.553005f, 8.60854f, 0.754835f, 8.86823f, 1.10547f)
-            curveTo(9.157f, 1.49551f, 9.35204f, 1.94708f, 9.64069f, 2.33692f)
-            curveTo(9.70429f, 2.4228f, 9.73621f, 2.44081f, 9.84283f, 2.45117f)
-            curveTo(10.3477f, 2.50007f, 10.8573f, 2.43039f, 11.3624f, 2.47949f)
-            curveTo(11.7974f, 2.5218f, 12.1522f, 2.723f, 12.4122f, 3.07422f)
-            curveTo(12.7118f, 3.47909f, 12.9915f, 3.94567f, 13.2051f, 4.40039f)
-            curveTo(13.4014f, 4.81829f, 13.4016f, 5.24516f, 13.2051f, 5.66309f)
-        }
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(7.9317f, 7.0f)
-            curveTo(7.9317f, 6.48569f, 7.51438f, 6.06836f, 7.00006f, 6.06836f)
-            curveTo(6.48575f, 6.06836f, 6.06842f, 6.48569f, 6.06842f, 7.0f)
-            curveTo(6.06842f, 7.51432f, 6.48575f, 7.93164f, 7.00006f, 7.93164f)
-            curveTo(7.51438f, 7.93164f, 7.9317f, 7.51432f, 7.9317f, 7.0f)
-            moveTo(9.13092f, 7.0f)
-            curveTo(9.13092f, 8.17706f, 8.17712f, 9.13086f, 7.00006f, 9.13086f)
-            curveTo(5.823f, 9.13086f, 4.8692f, 8.17706f, 4.8692f, 7.0f)
-            curveTo(4.8692f, 5.82294f, 5.823f, 4.86914f, 7.00006f, 4.86914f)
-            curveTo(8.17712f, 4.86914f, 9.13092f, 5.82294f, 9.13092f, 7.0f)
-        }
-    }.build()
+}
 
 /** SettingsOutline16 */
-val SettingsOutline16: ImageVector
-    get() = ImageVector.Builder(
+val SettingsOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "SettingsOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4176,10 +3916,11 @@ val SettingsOutline16: ImageVector
             curveTo(9.37132f, 5.51669f, 10.4834f, 6.62873f, 10.4834f, 7.99999f)
         }
     }.build()
+}
 
 /** ShareOutline16 */
-val ShareOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ShareOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ShareOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4226,10 +3967,11 @@ val ShareOutline16: ImageVector
             lineTo(9.20911f, 5.13366f)
         }
     }.build()
+}
 
 /** SkillOutline16 */
-val SkillOutline16: ImageVector
-    get() = ImageVector.Builder(
+val SkillOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "SkillOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4329,10 +4071,11 @@ val SkillOutline16: ImageVector
             lineTo(11.0303f, 6.10645f)
         }
     }.build()
+}
 
 /** Sparkle16 */
-val Sparkle16: ImageVector
-    get() = ImageVector.Builder(
+val Sparkle16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "Sparkle16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4391,10 +4134,11 @@ val Sparkle16: ImageVector
             quadTo(12.3f, 11.4f, 12.5f, 9.4f)
         }
     }.build()
+}
 
 /** StopFill16 */
-val StopFill16: ImageVector
-    get() = ImageVector.Builder(
+val StopFill16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "StopFill16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4431,104 +4175,11 @@ val StopFill16: ImageVector
             lineTo(2.0f, 4.88f)
         }
     }.build()
-
-/** ThinkOutline14 */
-val ThinkOutline14: ImageVector
-    get() = ImageVector.Builder(
-        name = "ThinkOutline14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
-        viewportWidth = 16.0f,
-        viewportHeight = 16.0f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.NonZero
-        ) {
-            moveTo(7.06431f, 5.93342f)
-            curveTo(7.68763f, 5.93342f, 8.19307f, 6.43904f, 8.19322f, 7.06233f)
-            curveTo(8.19322f, 7.68573f, 7.68772f, 8.19123f, 7.06431f, 8.19123f)
-            curveTo(6.44099f, 8.19113f, 5.9354f, 7.68567f, 5.9354f, 7.06233f)
-            curveTo(5.93555f, 6.43911f, 6.44108f, 5.93353f, 7.06431f, 5.93342f)
-        }
-        path(
-            fill = SolidColor(Color.Black),
-            fillAlpha = 1f,
-            stroke = null,
-            strokeAlpha = 1f,
-            strokeLineWidth = 1.25f,
-            strokeLineJoin = StrokeJoin.Miter,
-            strokeLineCap = StrokeCap.Butt,
-            strokeLineMiter = 1f,
-            pathFillType = PathFillType.EvenOdd
-        ) {
-            moveTo(8.6815f, 0.963693f)
-            curveTo(10.1169f, 0.447019f, 11.6266f, 0.374829f, 12.5633f, 1.31135f)
-            curveTo(13.5f, 2.24805f, 13.4277f, 3.75776f, 12.911f, 5.19319f)
-            curveTo(12.7126f, 5.74431f, 12.4386f, 6.31796f, 12.0965f, 6.89729f)
-            curveTo(12.4969f, 7.54638f, 12.8141f, 8.19018f, 13.036f, 8.80647f)
-            curveTo(13.5527f, 10.2419f, 13.6251f, 11.7516f, 12.6883f, 12.6883f)
-            curveTo(11.7516f, 13.625f, 10.242f, 13.5527f, 8.8065f, 13.036f)
-            curveTo(8.19022f, 12.8141f, 7.54641f, 12.4969f, 6.89732f, 12.0965f)
-            curveTo(6.31797f, 12.4386f, 5.74435f, 12.7125f, 5.19322f, 12.911f)
-            curveTo(3.75777f, 13.4276f, 2.2481f, 13.5f, 1.31138f, 12.5633f)
-            curveTo(0.374859f, 11.6266f, 0.447049f, 10.1168f, 0.963724f, 8.68147f)
-            curveTo(1.17185f, 8.10338f, 1.46321f, 7.50063f, 1.82896f, 6.8924f)
-            curveTo(1.52182f, 6.35711f, 1.27235f, 5.82825f, 1.08872f, 5.31819f)
-            curveTo(0.572068f, 3.88278f, 0.499714f, 2.37306f, 1.43638f, 1.43635f)
-            curveTo(2.37308f, 0.499655f, 3.8828f, 0.572044f, 5.31822f, 1.08869f)
-            curveTo(5.82828f, 1.27232f, 6.35715f, 1.5218f, 6.89243f, 1.82893f)
-            curveTo(7.50066f, 1.46318f, 8.10341f, 1.17181f, 8.6815f, 0.963693f)
-            moveTo(11.3573f, 8.01154f)
-            curveTo(10.9083f, 8.62253f, 10.3901f, 9.22873f, 9.80943f, 9.8094f)
-            curveTo(9.22877f, 10.3901f, 8.62255f, 10.9083f, 8.01158f, 11.3572f)
-            curveTo(8.4257f, 11.5841f, 8.8287f, 11.7688f, 9.21275f, 11.9071f)
-            curveTo(10.5456f, 12.3868f, 11.4246f, 12.2547f, 11.8397f, 11.8397f)
-            curveTo(12.2548f, 11.4246f, 12.3869f, 10.5456f, 11.9071f, 9.21272f)
-            curveTo(11.7688f, 8.82866f, 11.5841f, 8.42568f, 11.3573f, 8.01154f)
-            moveTo(2.56529f, 8.02912f)
-            curveTo(2.37344f, 8.39322f, 2.21495f, 8.74796f, 2.09263f, 9.08772f)
-            curveTo(1.61291f, 10.4204f, 1.74512f, 11.2995f, 2.16001f, 11.7147f)
-            curveTo(2.57505f, 12.1297f, 3.45415f, 12.2618f, 4.78697f, 11.7821f)
-            curveTo(5.11057f, 11.6656f, 5.44786f, 11.5164f, 5.7938f, 11.3367f)
-            curveTo(5.249f, 10.9223f, 4.70922f, 10.4533f, 4.19029f, 9.9344f)
-            curveTo(3.57578f, 9.31987f, 3.03169f, 8.67633f, 2.56529f, 8.02912f)
-            moveTo(6.90708f, 3.2469f)
-            curveTo(6.24065f, 3.70479f, 5.5646f, 4.26321f, 4.91392f, 4.91389f)
-            curveTo(4.26325f, 5.56456f, 3.70482f, 6.24063f, 3.24693f, 6.90705f)
-            curveTo(3.72674f, 7.63325f, 4.32777f, 8.37459f, 5.03892f, 9.08576f)
-            curveTo(5.64943f, 9.69627f, 6.28183f, 10.2265f, 6.90806f, 10.6678f)
-            curveTo(7.59368f, 10.2025f, 8.2908f, 9.63076f, 8.96079f, 8.96076f)
-            curveTo(9.6308f, 8.29075f, 10.2025f, 7.59366f, 10.6678f, 6.90803f)
-            curveTo(10.2265f, 6.2818f, 9.69631f, 5.6494f, 9.08579f, 5.03889f)
-            curveTo(8.37462f, 4.32773f, 7.63328f, 3.72672f, 6.90708f, 3.2469f)
-            moveTo(11.7147f, 2.15998f)
-            curveTo(11.2996f, 1.74509f, 10.4204f, 1.61288f, 9.08775f, 2.0926f)
-            curveTo(8.74835f, 2.21479f, 8.39382f, 2.37271f, 8.03013f, 2.56428f)
-            curveTo(8.67728f, 3.03065f, 9.31995f, 3.5758f, 9.93443f, 4.19026f)
-            curveTo(10.4534f, 4.7092f, 10.9223f, 5.24896f, 11.3368f, 5.79377f)
-            curveTo(11.5164f, 5.44785f, 11.6656f, 5.11052f, 11.7821f, 4.78694f)
-            curveTo(12.2618f, 3.45416f, 12.1297f, 2.57502f, 11.7147f, 2.15998f)
-            moveTo(4.91197f, 2.2176f)
-            curveTo(3.57922f, 1.73788f, 2.70004f, 1.86995f, 2.28501f, 2.28498f)
-            curveTo(1.87001f, 2.70003f, 1.73791f, 3.5792f, 2.21763f, 4.91194f)
-            curveTo(2.31709f, 5.18822f, 2.44112f, 5.47427f, 2.58677f, 5.7674f)
-            curveTo(3.01931f, 5.1887f, 3.51474f, 4.6158f, 4.06529f, 4.06526f)
-            curveTo(4.61584f, 3.5147f, 5.18872f, 3.01928f, 5.76743f, 2.58674f)
-            curveTo(5.47431f, 2.4411f, 5.18824f, 2.31706f, 4.91197f, 2.2176f)
-        }
-    }.build()
+}
 
 /** ThinkOutline16 */
-val ThinkOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ThinkOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ThinkOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4619,10 +4270,11 @@ val ThinkOutline16: ImageVector
             curveTo(14.0174f, 4.08549f, 13.8736f, 3.08281f, 13.3955f, 2.6045f)
         }
     }.build()
+}
 
 /** TrashOutline16 */
-val TrashOutline16: ImageVector
-    get() = ImageVector.Builder(
+val TrashOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "TrashOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4699,10 +4351,11 @@ val TrashOutline16: ImageVector
             lineTo(7.46399f, 1.80476f)
         }
     }.build()
+}
 
 /** TreeCorner8x10 */
-val TreeCorner8x10: ImageVector
-    get() = ImageVector.Builder(
+val TreeCorner8x10: ImageVector by lazy {
+    ImageVector.Builder(
         name = "TreeCorner8x10",
         defaultWidth = 8.0f.dp,
         defaultHeight = 10.dp,
@@ -4743,13 +4396,14 @@ val TreeCorner8x10: ImageVector
             lineTo(0.0f, 7.0f)
         }
     }.build()
+}
 
-/** TriangleRightFill14 */
-val TriangleRightFill14: ImageVector
-    get() = ImageVector.Builder(
-        name = "TriangleRightFill14",
-        defaultWidth = 14.0f.dp,
-        defaultHeight = 14.dp,
+/** TriangleRightFill16 */
+val TriangleRightFill16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "TriangleRightFill16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 16.0f,
         viewportHeight = 16.0f
     ).apply {
@@ -4773,10 +4427,11 @@ val TriangleRightFill14: ImageVector
             curveTo(4.84243f, 2.09243f, 4.25f, 2.33782f, 4.25f, 2.82782f)
         }
     }.build()
+}
 
 /** UserOutline16 */
-val UserOutline16: ImageVector
-    get() = ImageVector.Builder(
+val UserOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "UserOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4827,10 +4482,11 @@ val UserOutline16: ImageVector
             curveTo(1.81368f, 11.8997f, 4.26579f, 10.3316f, 8.00002f, 10.3316f)
         }
     }.build()
+}
 
 /** WarningOutline16 */
-val WarningOutline16: ImageVector
-    get() = ImageVector.Builder(
+val WarningOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "WarningOutline16",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
@@ -4894,10 +4550,11 @@ val WarningOutline16: ImageVector
             curveTo(10.7876f, 0.141602f, 13.8581f, 3.21219f, 13.8582f, 6.99976f)
         }
     }.build()
+}
 
 /** FishLogo（DeepSeek 鲸鱼 logo，1:1 复刻自 webui ui-primitives/FishLogo.tsx） */
-val FishLogo: ImageVector
-    get() = ImageVector.Builder(
+val FishLogo: ImageVector by lazy {
+    ImageVector.Builder(
         name = "FishLogo",
         defaultWidth = 24.0f.dp,
         defaultHeight = 18.0f.dp,
@@ -4910,10 +4567,11 @@ val FishLogo: ImageVector
             fillAlpha = 1f,
         )
     }.build()
+}
 
 /** QrCodeOutline16 */
-val QrCodeOutline16: ImageVector
-    get() = ImageVector.Builder(
+val QrCodeOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "QrCodeOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -4978,10 +4636,11 @@ val QrCodeOutline16: ImageVector
             close()
         }
     }.build()
+}
 
     /** ArrowLeftRightOutline16 */
-val ArrowLeftRightOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ArrowLeftRightOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ArrowLeftRightOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -5015,10 +4674,11 @@ val ArrowLeftRightOutline16: ImageVector
             close()
         }
     }.build()
+}
 
     /** ChatOutline16 */
-val ChatOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ChatOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ChatOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -5055,10 +4715,11 @@ val ChatOutline16: ImageVector
             close()
         }
     }.build()
+}
 
     /** ListTreeOutline16 */
-val ListTreeOutline16: ImageVector
-    get() = ImageVector.Builder(
+val ListTreeOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "ListTreeOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -5108,10 +4769,11 @@ val ListTreeOutline16: ImageVector
             close()
         }
     }.build()
+}
 
     /** UsersOutline16 */
-val UsersOutline16: ImageVector
-    get() = ImageVector.Builder(
+val UsersOutline16: ImageVector by lazy {
+    ImageVector.Builder(
         name = "UsersOutline16",
         defaultWidth = 16.0f.dp,
         defaultHeight = 16.dp,
@@ -5155,3 +4817,4 @@ val UsersOutline16: ImageVector
             close()
         }
     }.build()
+}

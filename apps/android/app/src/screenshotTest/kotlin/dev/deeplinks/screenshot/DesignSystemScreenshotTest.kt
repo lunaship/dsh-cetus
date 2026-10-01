@@ -30,8 +30,8 @@ import dev.deeplinks.native.Sparkle16
 import dev.deeplinks.native.AgentPresetOutline16
 import dev.deeplinks.native.ArchiveOutline20
 import dev.deeplinks.native.FolderOpenOutline16
-import dev.deeplinks.native.ChevronRightOutline14
-import dev.deeplinks.native.ChevronDownOutline14
+import dev.deeplinks.native.ChevronRightOutline16
+import dev.deeplinks.native.ChevronDownOutline16
 import dev.deeplinks.native.CheckOutline16
 import dev.deeplinks.native.WarningOutline16
 import dev.deeplinks.native.ArrowLeftOutline16
@@ -846,8 +846,8 @@ private val IconWallGlyphs: List<ImageVector> = listOf(
     AgentPresetOutline16,
     ArchiveOutline20,
     FolderOpenOutline16,
-    ChevronRightOutline14,
-    ChevronDownOutline14,
+    ChevronRightOutline16,
+    ChevronDownOutline16,
     CheckOutline16,
     WarningOutline16,
     ArchiveBoxOutline16,

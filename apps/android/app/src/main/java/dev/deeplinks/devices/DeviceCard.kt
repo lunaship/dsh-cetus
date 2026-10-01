@@ -14,7 +14,7 @@ import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
-import dev.deeplinks.native.ChevronRightOutline14
+import dev.deeplinks.native.ChevronRightOutline16
 import dev.deeplinks.native.ui.DshListActionRow
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.HostStatusDot
@@ -235,7 +235,7 @@ internal fun DeviceCard(
         }
         if (onOpen != null) {
             Spacer(Modifier.width(DshSpace.s8))
-            Icon(ChevronRightOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
+            Icon(ChevronRightOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         }
     }
 }

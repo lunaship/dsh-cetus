@@ -262,11 +262,8 @@ fun DshSegmentedToggle(
     modifier: Modifier = Modifier,
     icons: List<ImageVector>? = null,
 ) {
+    if (labels.isEmpty()) return
     val safeIndex = selectedIndex.coerceIn(0, labels.lastIndex)
-    val selectedColor by animateColorAsState(
-        targetValue = if (safeIndex == selectedIndex) Dsh.labelPrimary else Dsh.labelTertiary,
-        animationSpec = tween(motionDuration(150)),
-    )
     Row(
         modifier = modifier
             .height(32.dp)
@@ -277,11 +274,22 @@ fun DshSegmentedToggle(
     ) {
         labels.forEachIndexed { i, label ->
             val selected = i == safeIndex
+            // 每段各自按选中态取色（此前整组共用一个永远为真的判断，未选中段不会变灰）
+            val segmentColor by animateColorAsState(
+                targetValue = if (selected) Dsh.labelPrimary else Dsh.labelTertiary,
+                animationSpec = tween(motionDuration(150)),
+                label = "segment-$i",
+            )
+            val segmentBg by animateColorAsState(
+                targetValue = if (selected) Dsh.bgCard else Color.Transparent,
+                animationSpec = tween(motionDuration(150)),
+                label = "segment-bg-$i",
+            )
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(DshRadius.full))
-                    .background(if (selected) Dsh.bgCard else Color.Transparent)
+                    .background(segmentBg)
                     .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(i) })
                     .padding(horizontal = DshSpace.s12),
                 contentAlignment = Alignment.Center,
@@ -291,7 +299,7 @@ fun DshSegmentedToggle(
                     Icon(
                         icon,
                         contentDescription = label,
-                        tint = selectedColor,
+                        tint = segmentColor,
                         modifier = Modifier.size(DshIconSize.sm),
                     )
                 } else {
@@ -299,7 +307,7 @@ fun DshSegmentedToggle(
                         label,
                         style = DshType.caption,
                         fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-                        color = selectedColor,
+                        color = segmentColor,
                         maxLines = 1,
                     )
                 }

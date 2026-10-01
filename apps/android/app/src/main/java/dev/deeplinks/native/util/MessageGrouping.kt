@@ -27,12 +27,19 @@ interface MessageGroup {
     }
 
     data class ToolSummary(
+        /** 本批第一条工具消息 id：做 LazyColumn key，保证同一会话里多轮相同工具组合也不撞 key。 */
+        val firstId: String,
+        /** 工具调用次数（按 tool_call 计；没有 tool_call 时退化为条数）。 */
         val count: Int,
         val failedCount: Int,
         val durationMs: Long?,
         val toolNames: List<String>,
+        /** 本批里还有工具在执行。 */
+        val running: Boolean = false,
+        /** 最后一个工具名（执行中时显示「正在 X…」）。 */
+        val lastToolName: String? = null,
     ) : MessageGroup {
-        override val groupKey: String get() = "tool-summary-" + toolNames.sorted().joinToString("-")
+        override val groupKey: String get() = "$firstId-toolsummary"
     }
 }
 
@@ -190,19 +197,26 @@ fun foldToolCalls(groups: List<MessageGroup>, viewMode: String): List<MessageGro
     fun flushBatch() {
         if (batch.isEmpty()) return
         val allItems = batch.flatMap { it.items }
+        val calls = allItems.count { it.role == "tool_call" }
         val failedCount = allItems.count { it.role == "tool_result" && it.text.startsWith("error", ignoreCase = true) }
         val durationMs = allItems.mapNotNull { it.durationMs }.takeIf { it.isNotEmpty() }?.sum()
         out += MessageGroup.ToolSummary(
-            count = allItems.size,
+            firstId = allItems.first().id,
+            count = if (calls > 0) calls else allItems.size,
             failedCount = failedCount,
             durationMs = durationMs,
             toolNames = allItems.mapNotNull { it.toolName }.distinct(),
+            running = allItems.any { it.running == true },
+            lastToolName = allItems.lastOrNull { it.toolName != null }?.toolName,
         )
         batch = mutableListOf()
     }
     for (g in groups) {
         if (g is MessageGroup.ToolGroup) {
             batch += g
+        } else if (g is MessageGroup.Single && (g.msg.role == "tool_call" || g.msg.role == "tool_result")) {
+            // 单条工具消息（groupMessages 不足 2 条不成组）也收进摘要，否则对话视图仍会冒出零散命令卡
+            batch += MessageGroup.ToolGroup(listOf(g.msg))
         } else {
             flushBatch()
             out += g

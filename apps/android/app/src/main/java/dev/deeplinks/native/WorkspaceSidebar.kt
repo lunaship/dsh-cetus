@@ -27,6 +27,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -131,13 +135,14 @@ internal fun WorkspaceSidebar(
         initialLoad = sessionsInitialLoad,
         hasError = sessionsLoadError != null,
     )
+    // 第 5 步叠层：列表铺满，顶部（顶栏 / 崩溃横幅 / 搜索 / 离线卡）半透明悬浮在上
+    val homeListState = rememberLazyListState()
+    val homeScrolled by remember { derivedStateOf { homeListState.canScrollBackward } }
+    val chrome = rememberOverlayChromeState()
     Box(Modifier.fillMaxSize().background(containerColor)) {
-        Column(Modifier.fillMaxSize().padding(top = DshSpace.s4)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .dshTranslucent(showDivider = false),
-            ) {
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, containerColor, homeScrolled, consumeStatusBar = false).padding(top = DshSpace.s4)) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 HomeHeader(
                     online = online,
                     offlineSinceLabel = offlineSinceLabel,
@@ -169,12 +174,14 @@ internal fun WorkspaceSidebar(
                     onOpenConnectionMode = { actions.onOpenDevice() },
                 )
             }
+            } // 顶部悬浮区结束
             LazyColumn(
+                state = homeListState,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxSize()
                     .alpha(if (online) 1f else 0.72f),
                 verticalArrangement = Arrangement.spacedBy(DshSpace.s2),
-                contentPadding = PaddingValues(bottom = DshSpace.s32 + DshSpace.s32 + DshSpace.s16),
+                contentPadding = PaddingValues(top = chrome.topDp(), bottom = DshSpace.s32 + DshSpace.s32 + DshSpace.s16),
             ) {
                 if (online && (scoped.isNotEmpty() || activeWorkspace != null)) {
                     item(key = "home-workspace-filter") {

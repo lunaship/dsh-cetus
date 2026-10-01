@@ -70,8 +70,8 @@ internal fun resolveSweepingId(messages: List<MobileMessage>, running: Boolean):
 /** 当 running 且最后一项是运行中的 Reasoning 时，不显示顶部的「思考中」行。 */
 internal fun shouldShowTurnStatus(items: List<MobileMessage>, running: Boolean): Boolean {
     if (!running) return false
-    val last = items.lastOrNull()
-    return last !is MobileMessage || last.role != "reasoning" || last.running != true
+    // 已有正在流式的思考行时，它本身就是「思考中」指示，流尾不再叠一条
+    return items.none { it.role == "reasoning" && it.running == true }
 }
 
 /** 本条助手消息是否是一轮的末尾（下一条是用户消息，或是最后一条且已停止）。 */

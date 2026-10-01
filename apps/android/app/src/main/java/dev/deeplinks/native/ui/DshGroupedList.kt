@@ -62,8 +62,8 @@ import dev.deeplinks.core.DshType
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.native.CheckOutline16
-import dev.deeplinks.native.ChevronDownOutline14
-import dev.deeplinks.native.ChevronRightOutline14
+import dev.deeplinks.native.ChevronDownOutline16
+import dev.deeplinks.native.ChevronRightOutline16
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
@@ -457,9 +457,9 @@ private fun DshListRowLayout(
 private fun DshListTrailingMark(trailing: DshListTrailing) {
     val (icon, tint, size) = when (trailing) {
         DshListTrailing.None -> return
-        DshListTrailing.Chevron -> Triple(ChevronRightOutline14, Dsh.labelTertiary, 16.dp)
+        DshListTrailing.Chevron -> Triple(ChevronRightOutline16, Dsh.labelTertiary, 16.dp)
         DshListTrailing.Check -> Triple(CheckOutline16, Dsh.labelPrimary, 18.dp)
-        DshListTrailing.Select -> Triple(ChevronDownOutline14, Dsh.labelTertiary, 16.dp)
+        DshListTrailing.Select -> Triple(ChevronDownOutline16, Dsh.labelTertiary, 16.dp)
     }
     Spacer(Modifier.width(DshSpace.s6))
     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size))

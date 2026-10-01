@@ -82,7 +82,7 @@ private fun traceRoleVisual(role: String): TraceRoleVisual = when (role) {
     "tool_call" -> TraceRoleVisual(L.traceKindTool, Dsh.labelSecondary, CodeOutline16)
     "tool_result" -> TraceRoleVisual(L.traceKindResult, Dsh.labelSecondary, CheckOutline16)
     "approval" -> TraceRoleVisual(L.approvalRole, Dsh.warn, WarningOutline16)
-    "todo" -> TraceRoleVisual(L.taskRole, Dsh.labelSecondary, ChecklistOutline14)
+    "todo" -> TraceRoleVisual(L.taskRole, Dsh.labelSecondary, ChecklistOutline16)
     "compaction" -> TraceRoleVisual(L.traceKindCompact, Dsh.labelTertiary, ArchiveOutline20)
     "produced_files" -> TraceRoleVisual(L.traceKindOutput, Dsh.brand400, FileOutline16)
     ROLE_WORKSPACE_CHANGES -> TraceRoleVisual(ChangesL.changes, Dsh.brand400, EditOutline16)
@@ -201,7 +201,7 @@ internal fun TrajectoryView(
                     onClick = { actualDuration = !actualDuration },
                 )
                 TraceToggle(
-                    icon = ChecklistOutline14,
+                    icon = ChecklistOutline16,
                     label = L.traceToolbarTurns,
                     active = allTurnsCollapsed,
                     onClick = {

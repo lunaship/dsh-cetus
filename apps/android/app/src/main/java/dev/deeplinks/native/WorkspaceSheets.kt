@@ -349,10 +349,10 @@ internal fun AddWorkspaceRow(onCreate: (String) -> Unit) {
             trailing = DshListTrailing.None,
             trailingContent = {
                 Icon(
-                    if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                    if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                     contentDescription = null,
                     tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(DshIconSize.sm),
                 )
             },
         )

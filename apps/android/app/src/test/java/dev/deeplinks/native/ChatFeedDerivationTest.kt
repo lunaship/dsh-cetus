@@ -260,6 +260,46 @@ class ChatFeedDerivationTest {
         assertEquals(2, folded.size)
     }
 
+    @Test
+    fun `foldToolCalls keys stay unique when turns reuse the same tools`() {
+        val items = listOf(
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t1", "read_file"))),
+            MessageGroup.Single(msg("a1", "assistant", text = "ok")),
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t2", "read_file"))),
+        )
+        val keys = foldToolCalls(items, viewMode = "chat").map { it.groupKey }
+        assertEquals(keys.size, keys.toSet().size)
+    }
+
+    @Test
+    fun `foldToolCalls also folds single tool messages and counts calls not results`() {
+        val items = listOf(
+            MessageGroup.Single(msg("a0", "assistant", text = "start")),
+            MessageGroup.ToolGroup(listOf(
+                toolGroupMsg("t1", "read_file"),
+                msg("r1", "tool_result", text = "done"),
+            )),
+            MessageGroup.Single(toolGroupMsg("t2", "write_file")),
+        )
+        val folded = foldToolCalls(items, viewMode = "chat")
+        assertEquals(2, folded.size)
+        val summary = folded[1] as MessageGroup.ToolSummary
+        assertEquals(2, summary.count)
+    }
+
+    @Test
+    fun `foldToolCalls marks running batch with last tool name`() {
+        val items = listOf(
+            MessageGroup.ToolGroup(listOf(
+                toolGroupMsg("t1", "read_file"),
+                msg("t2", "tool_call", running = true, toolName = "grep"),
+            )),
+        )
+        val summary = foldToolCalls(items, viewMode = "chat").single() as MessageGroup.ToolSummary
+        assertTrue(summary.running)
+        assertEquals("grep", summary.lastToolName)
+    }
+
     // ---- Source scan tests ----
 
     @Test

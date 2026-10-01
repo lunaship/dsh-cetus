@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -339,7 +340,7 @@ private fun paletteIcon(command: PaletteCommand): ImageVector = when (command.tr
     "/model" -> SparkleOutline16
     "/permission" -> ShieldOutline16
     "/chat" -> MessageOutline16
-    "/trace" -> ChecklistOutline14
+    "/trace" -> ChecklistOutline16
     "/settings" -> SettingsOutline16
     else -> CodeOutline16
 }
@@ -426,7 +427,7 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
                 paletteIcon(command),
                 contentDescription = null,
                 tint = if (highlighted) Dsh.brand500 else Dsh.labelSecondary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
         }
         Spacer(Modifier.width(DshSpace.s12))
@@ -556,7 +557,7 @@ internal fun ToolGroupHeader(
                 Spacer(Modifier.width(DshSpace.s6))
             }
             Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                 // 展开状态已在行的 stateDescription 里播报，图标不再重复报一遍
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
@@ -711,13 +712,14 @@ internal fun WorkspaceTopBar(
                             modifier = Modifier.size(DshIconSize.md),
                         )
                         if (subagentCount > 0) {
+                            // 圆点贴在 20dp 图标右上角，而不是 48dp 触控区的角上
                             Box(
                                 modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .offset(x = DshSpace.s8, y = -DshSpace.s8)
                                     .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(Dsh.brand400)
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 4.dp, end = 4.dp),
+                                    .background(Dsh.brand400),
                             )
                         }
                     }
@@ -730,21 +732,6 @@ internal fun WorkspaceTopBar(
             }
         }
     }
-}
-
-/** 进行中的目标：一行次要文字，贴在输入区上方，不进顶栏。 */
-@Composable
-internal fun ChatGoalLine(text: String) {
-    Text(
-        text,
-        color = Dsh.labelSecondary,
-        style = DshType.body,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DshSpace.s20, vertical = DshSpace.s2),
-    )
 }
 
 /**
@@ -814,7 +801,7 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                ChevronDownOutline14,
+                ChevronDownOutline16,
                 contentDescription = null,
                 tint = Dsh.labelPrimary,
                 modifier = Modifier.size(DshIconSize.md),
@@ -894,27 +881,6 @@ internal fun ComposerContextStrip(
                 modifier = Modifier.clickable(role = Role.Button, onClick = onOpenChanges),
             )
         }
-    }
-}
-
-/** 上下文条里的一段：安静文字，按压才出底色；36dp 高，与上方「最近改动」行同一规格。 */
-@Composable
-private fun ContextStripSegment(
-    onClick: () -> Unit,
-    description: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .heightIn(min = DshTouch.min)
-            .clip(RoundedCornerShape(DshRadius.control))
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = description }
-            .padding(horizontal = DshSpace.s6),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        content()
     }
 }
 

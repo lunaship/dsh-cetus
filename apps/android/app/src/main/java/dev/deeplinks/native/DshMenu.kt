@@ -106,7 +106,7 @@ internal fun DshMenu(
                         item.icon,
                         contentDescription = null,
                         tint = if (item.danger) Dsh.error else Dsh.labelSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(DshIconSize.sm)
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
