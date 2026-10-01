@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
@@ -374,7 +376,7 @@ private fun PanelIconButton(icon: ImageVector, description: String, onClick: () 
             },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(DshIconSize.sm))
     }
 }
 
@@ -824,7 +826,7 @@ private fun AskAboutFileBar(file: ChangedFile, onClick: () -> Unit) {
                 .padding(horizontal = DshSpace.s16),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(MessageOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+            Icon(MessageOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
             Spacer(Modifier.width(DshSpace.s8))
             Text(
                 ChangesL.askAboutFile,

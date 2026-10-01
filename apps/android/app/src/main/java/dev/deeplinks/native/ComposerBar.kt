@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
@@ -192,7 +194,7 @@ internal fun InputBar(
                                         CloseOutline16,
                                         contentDescription = null,
                                         tint = Dsh.labelSecondary,
-                                        modifier = Modifier.size(12.dp),
+                                        modifier = Modifier.size(DshIconSize.xs),
                                     )
                                 }
                             }
@@ -312,7 +314,7 @@ internal fun InputBar(
                                 ChevronDownOutline14,
                                 contentDescription = null,
                                 tint = Dsh.labelTertiary,
-                                modifier = Modifier.size(11.dp),
+                                modifier = Modifier.size(DshIconSize.xs),
                             )
                         }
                     }
@@ -453,7 +455,7 @@ internal fun InputBar(
                                     MicOutline16,
                                     contentDescription = null,
                                     tint = Dsh.labelPrimary,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(DshIconSize.sm)
                                 )
                             }
                             else -> {
@@ -601,7 +603,7 @@ private fun ComposerModelSeat(
                 ChevronDownOutline14,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(DshIconSize.xs),
             )
         }
     }
@@ -650,7 +652,7 @@ private fun ComposerAccessSeat(
                 glyph,
                 contentDescription = null,
                 tint = contentTint,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
             if (!compact) {
                 Text(
@@ -727,7 +729,7 @@ private fun ComposerSetupRow(
             .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
+        Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
         Spacer(Modifier.width(10.dp))
         Text(
             label,
@@ -739,7 +741,7 @@ private fun ComposerSetupRow(
         )
         if (onClick != null) {
             Spacer(Modifier.width(DshSpace.s4))
-            Icon(ChevronDownOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(14.dp))
+            Icon(ChevronDownOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         }
     }
 }

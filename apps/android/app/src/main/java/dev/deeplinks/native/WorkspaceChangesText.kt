@@ -12,7 +12,7 @@ import dev.deeplinks.core.LocaleManager
 internal object ChangesL {
     private val zh = mapOf(
         "changes" to "改动",
-        "viewChanges" to "查看改动",
+        "viewChanges" to "查看改动 (%d)",
         "editedFile" to "已编辑 %s",
         "editedFiles" to "已编辑 %d 个文件",
         "moreFiles" to "还有 %d 个文件",
@@ -41,7 +41,7 @@ internal object ChangesL {
 
     private val en = mapOf(
         "changes" to "Changes",
-        "viewChanges" to "View changes",
+        "viewChanges" to "View changes (%d)",
         "editedFile" to "Edited %s",
         "editedFiles" to "Edited %d files",
         "moreFiles" to "%d more files",

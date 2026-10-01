@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
@@ -69,6 +70,8 @@ import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
 import dev.deeplinks.native.motionDuration
 import dev.deeplinks.native.rememberDshHaptic
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.selection.selectableGroup
 
 /**
  * DSH 设计系统语义组件（WI-005 / WI-006）—— 通用 filter chip、tag、badge、banner。
@@ -247,6 +250,64 @@ fun DshTextTabs(
     }
 }
 
+/**
+ * 顶栏用紧凑二段切换：视觉 32dp 高，触控 ≥48dp。
+ * 选中态颜色切换遵守减弱动画设置。
+ */
+@Composable
+fun DshSegmentedToggle(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    icons: List<ImageVector>? = null,
+) {
+    val safeIndex = selectedIndex.coerceIn(0, labels.lastIndex)
+    val selectedColor by animateColorAsState(
+        targetValue = if (safeIndex == selectedIndex) Dsh.labelPrimary else Dsh.labelTertiary,
+        animationSpec = tween(motionDuration(150)),
+    )
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(DshRadius.full))
+            .background(Dsh.bgSubtle)
+            .padding(DshSpace.s2)
+            .selectableGroup(),
+    ) {
+        labels.forEachIndexed { i, label ->
+            val selected = i == safeIndex
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(DshRadius.full))
+                    .background(if (selected) Dsh.bgCard else Color.Transparent)
+                    .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(i) })
+                    .padding(horizontal = DshSpace.s12),
+                contentAlignment = Alignment.Center,
+            ) {
+                val icon = icons?.getOrNull(i)
+                if (icon != null) {
+                    Icon(
+                        icon,
+                        contentDescription = label,
+                        tint = selectedColor,
+                        modifier = Modifier.size(DshIconSize.sm),
+                    )
+                } else {
+                    Text(
+                        label,
+                        style = DshType.caption,
+                        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                        color = selectedColor,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun DshSheetGrabber() {
     Box(
@@ -386,10 +447,10 @@ fun DshBanner(
             leading()
             Spacer(Modifier.width(DshSpace.s8))
         } else if (tone == DshBannerTone.Warn) {
-            Icon(WarningOutline16, contentDescription = null, tint = Dsh.warn, modifier = Modifier.size(18.dp))
+            Icon(WarningOutline16, contentDescription = null, tint = Dsh.warn, modifier = Modifier.size(DshIconSize.md))
             Spacer(Modifier.width(DshSpace.s8))
         } else if (tone == DshBannerTone.Success) {
-            Icon(CheckOutline16, contentDescription = null, tint = Dsh.successContent, modifier = Modifier.size(18.dp))
+            Icon(CheckOutline16, contentDescription = null, tint = Dsh.successContent, modifier = Modifier.size(DshIconSize.md))
             Spacer(Modifier.width(DshSpace.s8))
         }
         Text(
@@ -614,7 +675,7 @@ fun DshPrimaryAction(
         horizontalArrangement = Arrangement.Center,
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(DshIconSize.md))
             Spacer(Modifier.width(DshSpace.s8))
         }
         Text(label, color = content, style = DshType.labelLarge, maxLines = 1)

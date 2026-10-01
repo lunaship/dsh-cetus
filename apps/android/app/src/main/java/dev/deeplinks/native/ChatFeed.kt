@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.DshType
 
 import android.content.Context
@@ -25,6 +27,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshNotifier
@@ -35,6 +39,8 @@ import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.util.turnEndAssistantIds
 import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.goalRoundObjective
+import dev.deeplinks.native.util.foldToolCalls
+import dev.deeplinks.native.isTurnEnd
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +73,58 @@ internal data class TodoProgress(
     val total: Int = 0,
 ) {
     val hasActive: Boolean get() = pending > 0 || inProgress > 0
+}
+
+/** 吸顶摘要条：运行中时粘在消息流顶端，不随消息滚出视野。 */
+@Composable
+internal fun StickyTaskSummaryBar(
+    goalSummary: String?,
+    todoProgress: TodoProgress,
+    isRunning: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    StickyTaskSummaryCard(
+        goalSummary = goalSummary,
+        todoProgress = todoProgress,
+        isRunning = isRunning,
+        modifier = modifier,
+    )
+}
+
+/** 工具折叠摘要卡（对话视图下连续工具调用的收拢展示）。 */
+@Composable
+private fun ToolSummaryCard(summary: MessageGroup.ToolSummary) {
+    val toolText = when {
+        summary.toolNames.isEmpty() -> L.toolSummary.format(summary.count)
+        summary.toolNames.size == 1 -> L.toolRunning.format(summary.toolNames.first())
+        else -> summary.toolNames.take(2).joinToString(", ") + " +" + (summary.toolNames.size - 2)
+    }
+    val failedText = summary.failedCount.takeIf { it > 0 }?.let { " · ${L.toolSummaryFailed.format(it)}" }.orEmpty()
+    val durationText = summary.durationMs?.takeIf { it > 0 }?.let { " · ${formatTraceDuration(it)}" }.orEmpty()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(DshRadius.control))
+            .background(Dsh.bgSubtle)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            DocumentCheckOutline16,
+            contentDescription = null,
+            tint = Dsh.labelTertiary,
+            modifier = Modifier.size(DshIconSize.sm),
+        )
+        Spacer(Modifier.width(DshSpace.s8))
+        Text(
+            text = toolText + failedText + durationText,
+            color = Dsh.labelSecondary,
+            style = DshType.caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 internal fun latestTodoProgress(messages: List<MobileMessage>): TodoProgress {
@@ -131,7 +189,7 @@ internal fun StickyTaskSummaryCard(
                         GoalOutline16,
                         contentDescription = null,
                         tint = Dsh.labelSecondary,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(DshIconSize.sm),
                     )
                     Text(
                         text = L.goalRole,
@@ -397,22 +455,18 @@ internal fun LazyListScope.chatMessageItems(
         }
     }
     val turnEnds = turnEndAssistantIds(groups, isRunning)
-    // 任务摘要卡片：运行中且有内容时作为列表首项显示
-    if (isRunning && (!goalSummary.isNullOrBlank() || todoProgress.hasActive)) {
-        item(key = "sticky-task-summary") {
-            StickyTaskSummaryCard(
-                goalSummary = goalSummary,
-                todoProgress = todoProgress,
-                isRunning = isRunning,
-                modifier = Modifier.animateItem(),
-            )
-        }
-    }
+    val foldedGroups = foldToolCalls(groups, viewMode = "chat")
     items(
-        items = groups,
+        items = foldedGroups,
         key = { it.groupKey },
-        contentType = { group -> if (group is MessageGroup.ToolGroup) "toolgroup" else "single" },
-    ) { group ->
+        contentType = { group: MessageGroup ->
+            when (group) {
+                is MessageGroup.ToolGroup -> "toolgroup"
+                is MessageGroup.ToolSummary -> "toolsummary"
+                else -> "single"
+            }
+        },
+    ) { group: MessageGroup ->
         // 入场只交给 animateItem：AnimatedVisibility(visible = true) 首帧即可见，enter 永远不会播。
         // 仅本机刚收到的消息（entrance）淡入；历史分页、切会话载入的消息直接出现。
         val live = group is MessageGroup.Single && group.msg.entrance
@@ -423,27 +477,33 @@ internal fun LazyListScope.chatMessageItems(
             ),
         ) {
             when (group) {
-                is MessageGroup.Single -> MessageItem(
-                    msg = group.msg,
-                    running = sweepingId != null && group.msg.id == sweepingId,
-                    onAnswerApproval = actions.onAnswerApproval(),
-                    onAnswerQuestion = actions.onAnswerQuestion(),
-                    onCopy = actions.onCopy(group.msg),
-                    onQuote = actions.onQuote(group.msg),
-                    onFork = actions.onFork(),
-                    onRegenerate = actions.onRegenerate(group.msg),
-                    onFeedback = actions.onFeedback(group.msg),
-                    feedbackRating = actions.feedbackRating(group.msg),
-                    onRate = actions.onRate(group.msg),
-                    onRetract = actions.onRetract(group.msg),
-                    onFetchProducedFile = actions.onFetchProducedFile(group.msg),
-                    onOpenChanges = actions.openChanges,
-                    showActions = group.msg.id in turnEnds,
-                )
+                is MessageGroup.Single -> {
+                    val idx = foldedGroups.indexOf(group)
+                    MessageItem(
+                        msg = group.msg,
+                        running = sweepingId != null && group.msg.id == sweepingId,
+                        onAnswerApproval = actions.onAnswerApproval(),
+                        onAnswerQuestion = actions.onAnswerQuestion(),
+                        onCopy = actions.onCopy(group.msg),
+                        onQuote = actions.onQuote(group.msg),
+                        onFork = actions.onFork(),
+                        onRegenerate = actions.onRegenerate(group.msg),
+                        onFeedback = actions.onFeedback(group.msg),
+                        feedbackRating = actions.feedbackRating(group.msg),
+                        onRate = actions.onRate(group.msg),
+                        onRetract = actions.onRetract(group.msg),
+                        onFetchProducedFile = actions.onFetchProducedFile(group.msg),
+                        onOpenChanges = actions.openChanges,
+                        showActions = group.msg.id in turnEnds,
+                        isTurnEnd = isTurnEnd(foldedGroups, idx, isRunning),
+                    )
+                }
                 is MessageGroup.ToolGroup -> ToolGroupHeader(
                     group = group,
                     sweepingId = sweepingId,
+                    showActions = false,
                 )
+                is MessageGroup.ToolSummary -> ToolSummaryCard(summary = group)
             }
         }
     }

@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -77,8 +79,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.stateDescription
 import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshTextTabs
+import dev.deeplinks.native.ui.DshTag
+import dev.deeplinks.native.ui.HostStatusDot
+import dev.deeplinks.native.ui.DshSegmentedToggle
 import dev.deeplinks.native.util.StreamBannerKind
+import dev.deeplinks.native.NewChatOutline16
+import dev.deeplinks.native.ListPenOutline16
+import dev.deeplinks.native.AgentPresetOutline16
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.draw.shadow
 
@@ -479,6 +487,7 @@ internal fun exportSessionTranscript(client: MobileApiClient, sessionId: String,
 internal fun ToolGroupHeader(
     group: MessageGroup.ToolGroup,
     sweepingId: String?,
+    showActions: Boolean = false,
 ) {
     var expanded by remember(group.groupKey) { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
@@ -576,6 +585,8 @@ internal fun ToolGroupHeader(
                             onCopy = {},
                             onQuote = {},
                             onFork = {},
+                            showActions = false,
+                            isTurnEnd = showActions,
                         )
                     }
                 }
@@ -585,7 +596,7 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 会话顶栏：导航、会话名、对话/轨迹胶囊分段和溢出菜单。
+ * 会话顶栏：导航、会话名、对话/轨迹切换和溢出菜单。
  * 项目与连接状态在输入卡上方的上下文条（[ComposerContextStrip]），顶栏只放标题。
  * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
  */
@@ -603,7 +614,7 @@ internal fun WorkspaceTopBar(
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     menuItems: List<DshMenuItem>,
-    /** 子智能体入口（C1）：>0 时在 Tab 行最右侧显示「N 个子代理 ›」。 */
+    /** 子智能体入口：>0 时在「⋯」按钮右上角显示品牌色圆点，菜单第一项也显示数量。 */
     subagentCount: Int = 0,
     onOpenSubagents: () -> Unit = {},
 ) {
@@ -611,7 +622,7 @@ internal fun WorkspaceTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 52.dp)
+                .height(56.dp)
                 .padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -631,12 +642,11 @@ internal fun WorkspaceTopBar(
                     if (showBack) ArrowLeftOutline16 else PanelLeftOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(DshIconSize.md),
                 )
             }
 
             // 两行标题：会话名（粗）+ 工作区·电脑名 / 执行中状态（稿 03/10）。
-            // 分段控件从这一行挪到下面一行，成为「对话 / 轨迹」文字 Tab。
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -673,6 +683,17 @@ internal fun WorkspaceTopBar(
                 }
             }
 
+            if (showViewModeTabs) {
+                val narrow = LocalConfiguration.current.screenWidthDp < 360
+                DshSegmentedToggle(
+                    labels = listOf(L.tabChat, L.tabTrace),
+                    selectedIndex = if (viewMode == "trace") 1 else 0,
+                    onSelect = { onSelectViewMode(if (it == 1) "trace" else "chat") },
+                    icons = if (narrow) listOf(NewChatOutline16, ListPenOutline16) else null,
+                    modifier = Modifier.padding(end = DshSpace.s4),
+                )
+            }
+
             if (menuItems.isNotEmpty()) {
                 Box {
                     val moreInteraction = remember { MutableInteractionSource() }
@@ -687,47 +708,24 @@ internal fun WorkspaceTopBar(
                             EllipsisOutline16,
                             contentDescription = L.moreActions,
                             tint = Dsh.labelSecondary,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(DshIconSize.md),
                         )
+                        if (subagentCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Dsh.brand400)
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 4.dp, end = 4.dp),
+                            )
+                        }
                     }
                     DshMenu(
                         expanded = menuExpanded,
                         onDismiss = { onMenuExpandedChange(false) },
                         items = menuItems,
                     )
-                }
-            }
-        }
-
-        if (showViewModeTabs) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = DshSpace.s16),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                DshTextTabs(
-                    labels = listOf(L.tabChat, L.tabTrace),
-                    selectedIndex = if (viewMode == "trace") 1 else 0,
-                    onSelect = { index -> onSelectViewMode(if (index == 1) "trace" else "chat") },
-                    modifier = Modifier.padding(start = DshSpace.s16),
-                )
-                if (subagentCount > 0) {
-                    Spacer(Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .heightIn(min = DshTouch.min)
-                            .clickable(role = Role.Button, onClick = onOpenSubagents)
-                            .padding(horizontal = DshSpace.s8),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "${L.subagentCount.format(subagentCount)} ›",
-                            color = Dsh.labelSecondary,
-                            style = DshType.caption,
-                            maxLines = 1,
-                        )
-                    }
                 }
             }
         }
@@ -819,7 +817,7 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
                 ChevronDownOutline14,
                 contentDescription = null,
                 tint = Dsh.labelPrimary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(DshIconSize.md),
             )
         }
         if (unread > 0) {
@@ -856,91 +854,46 @@ internal fun sessionStatsSummary(stats: MobileSessionStats?): String? {
 }
 
 /**
- * 输入卡上方的上下文条（借 Lody 的两层输入区）：左边「● 工作区」+ 最近改动，
- * 右边会话累计用量。整条不加底色和描边——它是输入卡的页眉，不是第二张卡。
+ * 输入卡上方的上下文条：离线提示 + 最近改动入口。
  *
- * - 圆点表示这台电脑的实时连接（在线实心绿、否则空心灰），名字写进无障碍描述；
- * - 工作区点按浏览文件，改动点按打开改动面板，用量点按打开用量看板；
- * - 原先挂在输入卡下方的统计行收进这里，输入卡成为屏幕最底的元素。
+ * - 离线时显示「电脑离线」；
+ * - 有改动时显示改动数量标签。
+ * - 原先的会话用量统计、工作区名、浏览文件入口均已移除。
  */
 @Composable
 internal fun ComposerContextStrip(
-    modifier: Modifier = Modifier,
-    hostName: String,
     online: Boolean,
-    workspaceName: String?,
     changes: WorkspaceChangesSummary?,
-    stats: MobileSessionStats?,
-    onBrowseFiles: () -> Unit,
     onOpenChanges: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val strings = DshS
-    val summary = sessionStatsSummary(stats)
-    var detailOpen by remember { mutableStateOf(false) }
+    val showOffline = !online
+    val showChanges = changes != null && changes.total > 0
+    if (!showOffline && !showChanges) return
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE),
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 左组吃掉剩余宽度（工作区名优先截断）；右侧用量不加 weight，先按自身宽度量
-        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            // 一行小字：● 电脑名 在线（工作区名已挪到顶栏副标题，稿 03/10）。
-            // 文件入口不在这里——顶栏「更多」菜单里已有「浏览文件」。
-            val status = "$hostName ${if (online) strings.statusOnline else strings.statusOffline}".trim()
-            Box(
-                modifier = Modifier
-                    .size(DshSpace.s6)
-                    .clip(CircleShape)
-                    .then(
-                        if (online) Modifier.background(Dsh.success)
-                        else Modifier.border(1.dp, Dsh.labelTertiary, CircleShape)
-                    ),
-            )
-            Spacer(Modifier.width(DshSpace.s8))
+        if (showOffline) {
+            HostStatusDot(false)
+            Spacer(Modifier.width(DshSpace.s6))
             Text(
-                status,
+                text = L.hostOffline,
                 color = Dsh.labelSecondary,
                 style = DshType.label,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
-        if (changes != null) {
-            ContextStripSegment(
-                onClick = onOpenChanges,
-                description = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(changes)}",
-            ) {
-                Icon(
-                    EditOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(14.dp),
-                )
-                Spacer(Modifier.width(DshSpace.s4))
-                Text(
-                    ChangesL.viewChanges,
-                    color = Dsh.labelSecondary,
-                    style = DshType.label,
-                    maxLines = 1,
-                )
-            }
+        Spacer(Modifier.weight(1f))
+        if (showChanges) {
+            DshTag(
+                text = ChangesL.viewChanges.format(changes.total),
+                modifier = Modifier.clickable(role = Role.Button, onClick = onOpenChanges),
+            )
         }
-        if (summary != null && stats != null) {
-            ContextStripSegment(onClick = { detailOpen = true }, description = "${strings.statsViewDetails}: $summary") {
-                Text(
-                    summary,
-                    color = Dsh.labelTertiary,
-                    style = DshType.microRelaxed.tabularNums(),
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-
-    if (detailOpen && stats != null) {
-        SessionStatsDetailDialog(stats = stats, onDismiss = { detailOpen = false })
     }
 }
 

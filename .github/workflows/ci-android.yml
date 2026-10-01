@@ -45,7 +45,9 @@ jobs:
         run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Assemble release (R8, unsigned)
-        run: ./gradlew :app:assembleRelease --stacktrace
+        # CI 没有签名材料（维护者密钥只在本机），必须显式声明「只验 R8、不签名」，
+        # 否则 build.gradle.kts 的签名守卫会直接让 assembleRelease 失败。
+        run: ./gradlew :app:assembleRelease -PallowUnsignedRelease=true --stacktrace
 
       - name: Upload R8 mapping
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

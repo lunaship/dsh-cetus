@@ -1,9 +1,13 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.native.util.MessageGroup
+import dev.deeplinks.native.util.foldToolCalls
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * 消息流数据推导测试：这些规则原先内联在 WorkspaceScreen 的 LazyColumn 里，无法单测。
@@ -16,7 +20,20 @@ class ChatFeedDerivationTest {
         text: String = "text",
         running: Boolean? = null,
         toolName: String? = null,
-    ) = MobileMessage(id = id, role = role, text = text, running = running, toolName = toolName)
+        durationMs: Long? = null,
+        time: Long = 0L,
+    ) = MobileMessage(
+        id = id,
+        role = role,
+        text = text,
+        running = running,
+        toolName = toolName,
+        durationMs = durationMs,
+        time = time,
+    )
+
+    private fun toolGroupMsg(id: String, toolName: String?, text: String = "tool", time: Long = 0L) =
+        msg(id, "tool_call", text = text, toolName = toolName, time = time)
 
     @Test
     fun blankCompletedReasoningRowsAreDropped() {
@@ -141,5 +158,110 @@ class ChatFeedDerivationTest {
             msg("x", "assistant", text = "d"),
         )
         assertEquals(3, dedupeById(list).size)
+    }
+
+    // ---- shouldShowTurnStatus ----
+
+    @Test
+    fun `shouldShowTurnStatus returns false when not running`() {
+        assertFalse(shouldShowTurnStatus(emptyList(), running = false))
+    }
+
+    @Test
+    fun `shouldShowTurnStatus returns false when last item is running reasoning`() {
+        val items = listOf(msg("r1", "reasoning", text = "...", running = true))
+        assertFalse(shouldShowTurnStatus(items, running = true))
+    }
+
+    @Test
+    fun `shouldShowTurnStatus returns true when running but no live reasoning`() {
+        val items = listOf(msg("a1", "assistant", text = "ok", running = false))
+        assertTrue(shouldShowTurnStatus(items, running = true))
+    }
+
+    // ---- isTurnEnd ----
+
+    @Test
+    fun `isTurnEnd true when next is user message`() {
+        val groups = listOf(
+            MessageGroup.Single(msg("a1", "assistant", text = "a")),
+            MessageGroup.Single(msg("u1", "user", text = "b")),
+        )
+        assertTrue(isTurnEnd(groups, 0, running = true))
+    }
+
+    @Test
+    fun `isTurnEnd true when last and not running`() {
+        val groups = listOf(
+            MessageGroup.Single(msg("a1", "assistant", text = "a")),
+        )
+        assertTrue(isTurnEnd(groups, 0, running = false))
+    }
+
+    @Test
+    fun `isTurnEnd false when not assistant message`() {
+        val groups = listOf(
+            MessageGroup.Single(msg("u1", "user", text = "a")),
+        )
+        assertFalse(isTurnEnd(groups, 0, running = false))
+    }
+
+    @Test
+    fun `isTurnEnd false when running and not last`() {
+        val groups = listOf(
+            MessageGroup.Single(msg("a1", "assistant", text = "a")),
+            MessageGroup.Single(msg("r1", "reasoning", text = "...", running = true)),
+        )
+        assertFalse(isTurnEnd(groups, 0, running = true))
+    }
+
+    // ---- foldToolCalls ----
+
+    @Test
+    fun `foldToolCalls merges consecutive tools in chat mode`() {
+        val items = listOf(
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t1", "read_file", time = 1000))),
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t2", "write_file", time = 2000))),
+        )
+        val folded = foldToolCalls(items, viewMode = "chat")
+        assertEquals(1, folded.size)
+        val summary = folded[0] as MessageGroup.ToolSummary
+        assertEquals(2, summary.count)
+        assertEquals(listOf("read_file", "write_file"), summary.toolNames.sorted())
+    }
+
+    @Test
+    fun `foldToolCalls does not merge across approval cards`() {
+        val items = listOf(
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t1", "read_file", time = 1000))),
+            MessageGroup.Single(msg("ap1", "approval", text = "approve?")),
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t2", "write_file", time = 2000))),
+        )
+        val folded = foldToolCalls(items, viewMode = "chat")
+        assertEquals(3, folded.size)
+    }
+
+    @Test
+    fun `foldToolCalls does not change non chat viewMode`() {
+        val items = listOf(
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t1", "read_file"))),
+            MessageGroup.ToolGroup(listOf(toolGroupMsg("t2", "write_file"))),
+        )
+        val folded = foldToolCalls(items, viewMode = "trace")
+        assertEquals(2, folded.size)
+    }
+
+    // ---- Source scan tests ----
+
+    @Test
+    fun `WorkspaceActivity has no ChatGoalLine`() {
+        val text = File("/Volumes/Space/Dev/dsh-links/apps/android/app/src/main/java/dev/deeplinks/native/WorkspaceActivity.kt").readText()
+        assertFalse("WorkspaceActivity should not contain ChatGoalLine", text.contains("ChatGoalLine("))
+    }
+
+    @Test
+    fun `ChatFeed has no sticky-task-summary item key`() {
+        val text = File("/Volumes/Space/Dev/dsh-links/apps/android/app/src/main/java/dev/deeplinks/native/ChatFeed.kt").readText()
+        assertFalse("ChatFeed should not contain sticky-task-summary", text.contains("sticky-task-summary"))
     }
 }

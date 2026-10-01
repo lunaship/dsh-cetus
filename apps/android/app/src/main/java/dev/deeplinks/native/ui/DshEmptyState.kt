@@ -1,5 +1,7 @@
 package dev.deeplinks.native.ui
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -182,7 +184,7 @@ private fun DshErrorGraphic() {
             WarningOutline16,
             contentDescription = null,
             tint = Dsh.error,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(DshIconSize.md),
         )
     }
 }

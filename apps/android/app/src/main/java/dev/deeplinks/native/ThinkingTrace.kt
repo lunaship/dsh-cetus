@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.CubicBezierEasing
@@ -172,7 +174,7 @@ internal fun ThinkingStatusRow(
             StarFour16,
             contentDescription = null,
             tint = Dsh.brand400,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(DshIconSize.sm),
         )
         Spacer(Modifier.width(DshSpace.s8))
         ShimmerLabel(text = L.thinkingActive, working = true)

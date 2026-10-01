@@ -29,6 +29,7 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ArrowLeftOutline16
 import dev.deeplinks.native.DshSpace
+import dev.deeplinks.native.dshTranslucent
 
 /**
  * 一级页面统一骨架（docs/visual-rules.md 第一节）。
@@ -55,6 +56,8 @@ fun DshPageScaffold(
     onNavigateBack: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     maxContentWidth: Dp = 720.dp,
+    topBar: @Composable (() -> Unit)? = null,
+    bottomBar: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
@@ -71,12 +74,14 @@ fun DshPageScaffold(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
         ) {
-            // 标题为空（迁移期兼容包装）时不画导航区，由调用方自己的顶栏负责
-            if (title.isNotBlank()) {
+            if (topBar != null) {
+                topBar()
+            } else if (title.isNotBlank()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = PageNavHeight)
+                        .dshTranslucent(showDivider = false)
                         .padding(horizontal = DshSpace.s4),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -102,7 +107,16 @@ fun DshPageScaffold(
                     actions()
                 }
             }
-            content()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                content()
+            }
+            if (bottomBar != null) {
+                bottomBar()
+            }
         }
     }
 }

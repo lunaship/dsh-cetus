@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.persist
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
@@ -267,7 +269,6 @@ internal fun SettingsRoute(
                         appSettings = appSettings,
                         savingNs = savingNs,
                         saveErrors = saveErrors,
-                        onOpenDevices = onOpenDevices,
                         onSave = { ns, patch, onSuccess -> saveNamespace(ns, patch, onSuccess) },
                     )
                 }
@@ -403,8 +404,7 @@ internal fun SettingsHome(
     var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
     var quickApprove by remember { mutableStateOf(notifyPrefs.allowApproveFromNotification) }
     var autoLoadRemoteImages by remember { mutableStateOf(notifyPrefs.autoLoadRemoteImages) }
-    var alias by remember { mutableStateOf(notifyPrefs.hostAlias) }
-    var renameOpen by remember { mutableStateOf(false) }
+    val alias = notifyPrefs.hostAlias
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
         "dark" -> s.themeDark
@@ -412,7 +412,7 @@ internal fun SettingsHome(
     }
 
     // 设置页只用一种容器：扁平行 + 发丝分隔，已配对电脑也不另铺灰卡
-    DshListSection(header = s.sectionPairedComputer) {
+    DshListSection(header = s.sectionComputer) {
         if (host != null) {
             val address = hostDisplayName(host.baseUrl)
             // E4：状态点改用共享组件 HostStatusDot（此前的「●」是文字 glyph，颜色跟随
@@ -426,7 +426,7 @@ internal fun SettingsHome(
                 viaRemoteText = s.viaRemoteShort,
             )
             DshListRow(
-                title = host.name.ifBlank { address },
+                title = alias.ifBlank { host.name.ifBlank { address } },
                 subtitle = address,
                 subtitleMono = true,
                 icon = LaptopOutline16,
@@ -457,38 +457,15 @@ internal fun SettingsHome(
                 onClick = onOpenDevices,
             )
         }
-        // E3：没有配对电脑时，改名 / 连接方式 / 智能体权限 / 更换电脑 / 模型与余额
-        // 全都无意义（「智能体权限」还会显示一个具体值，容易被误导成已配置）。
-        // 未配对只留上面那一行配对入口。
-        if (host != null) {
-            // 方案 7 电脑卡三行：连接方式 / 智能体权限 / 更换电脑。前两者与「更换电脑」都进
-            // 既有设备页（那里本来就有换机与连线方式），这里只补入口，不新写流程
-            // 方案 7：电脑卡「重命名」。存本机别名（host 侧没有改名 API），只影响这台手机显示
-            DshListRow(
-                title = s.rename,
-                icon = EditOutline16,
-                value = alias.ifBlank { null },
-                onClick = { renameOpen = true },
-            )
-            DshListRow(
-                title = s.connectionMethod,
-                icon = LinkOutline16,
-                onClick = onOpenDevices,
-            )
-            // 方案 7：电脑卡里放「智能体权限」——原「通用设置」里的「对话」行撤销后，
-            // 这一行就是 settingsConversation 二级页（权限预设 + 执行中发消息）的唯一入口
+    }
+    if (host != null) {
+        DshListSection(header = s.sectionAgent) {
             DshListRow(
                 title = s.agentPermission,
                 icon = ShieldOutline16,
                 value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
                 onClick = { onOpen(SettingsDest.CONVERSATION) },
             )
-            DshListRow(
-                title = s.changeComputer,
-                icon = ScanOutline16,
-                onClick = onOpenDevices,
-            )
-            // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
             DshListRow(
                 title = s.modelsAndBalance,
                 icon = SparkleOutline16,
@@ -509,10 +486,7 @@ internal fun SettingsHome(
             value = themeLabel,
             onClick = { onOpen(SettingsDest.APPEARANCE) },
         )
-    }
-    // 方案 7：执行中发送行为（原「对话」页）挪到「通用设置」，取值仍写 ui-conversation 命名空间
-    val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
-    DshListSection(footer = s.busyEnterDesc) {
+        val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
         DshSelectRow(
             title = s.busyEnter,
             icon = SendOutline16,
@@ -527,6 +501,7 @@ internal fun SettingsHome(
             error = saveErrors["ui-conversation"],
             onRetry = { onSave("ui-conversation", org.json.JSONObject().put("busyEnter", busyEnterId), {}) },
             onSelect = { _, id -> onSave("ui-conversation", org.json.JSONObject().put("busyEnter", id), {}) },
+            description = s.busyEnterDesc,
         )
     }
     DshListSection(header = s.sectionNotifications, footer = s.notifyExplain) {
@@ -573,27 +548,6 @@ internal fun SettingsHome(
             onCheckedChange = { autoLoadRemoteImages = it; notifyPrefs.autoLoadRemoteImages = it },
         )
     }
-    if (renameOpen) {
-        DshRenameDialog(
-            currentName = alias.ifBlank { host?.name.orEmpty() },
-            title = s.rename,
-            message = s.renameComputerDesc,
-            onDismiss = { renameOpen = false },
-            onSave = { alias = it.trim(); notifyPrefs.hostAlias = it; renameOpen = false },
-        )
-    }
-    // 方案 7 第 5 条上半段：「解除配对」独立一块红字。
-    // 真实的吊销流程在 DevicesActivity（带确认弹窗与「离线时只能移除本机记录」分支），
-    // 这里只做入口、不重写逻辑——重写一遍吊销是最容易造成配对数据不一致的地方。
-    if (host != null) {
-        DshListSection {
-            DshListActionRow(
-                label = s.deleteDevice,
-                destructive = true,
-                onClick = onOpenDevices,
-            )
-        }
-    }
     // K0：有崩溃记录时多一行「上次崩溃」（没有记录则不渲染）
     CrashReportEntry()
     // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，
@@ -611,7 +565,6 @@ internal fun LanguageSettings(
     appSettings: AppSettings,
     savingNs: String?,
     saveErrors: Map<String, String>,
-    onOpenDevices: () -> Unit,
     onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -630,13 +583,6 @@ internal fun LanguageSettings(
                 LocaleManager.setLanguage(context, id)
                 onSave("locale", org.json.JSONObject().put("preference", id), {})
             },
-        )
-    }
-    DshListSection(footer = s.manageYourLinks) {
-        DshListRow(
-            title = s.pairingManage,
-            icon = LinkOutline16,
-            onClick = onOpenDevices,
         )
     }
 }
@@ -1047,7 +993,7 @@ private fun ManagedSessionRow(
             onClick = { menuOpen = true },
             trailing = DshListTrailing.None,
             trailingContent = {
-                Icon(EllipsisOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(20.dp))
+                Icon(EllipsisOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.md))
             },
         )
         Box(Modifier.align(Alignment.BottomEnd).padding(end = DshSpace.s16)) {

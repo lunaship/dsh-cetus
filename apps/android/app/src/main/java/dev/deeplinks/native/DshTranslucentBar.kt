@@ -1,0 +1,59 @@
+package dev.deeplinks.native
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import dev.deeplinks.core.Dsh
+
+/**
+ * 顶栏 / 底部输入区共用：省电或减弱动画时退化为不透明，否则 92 % 半透明。
+ * 可选的 0.5 dp 分隔线（顶栏画在顶部，输入区画在底部）。
+ */
+@Composable
+fun Modifier.dshTranslucent(
+    base: Color = Dsh.bgBase,
+    showDivider: Boolean = false,
+    dividerAtTop: Boolean = false,
+): Modifier = composed {
+    val context = LocalContext.current
+    var reduceTransparency by remember(context) { mutableStateOf(false) }
+
+    LaunchedEffect(context) {
+        val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as? PowerManager
+        val powerSave = powerManager?.isPowerSaveMode ?: false
+        val animatorScale = Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        )
+        reduceTransparency = powerSave || animatorScale == 0f
+    }
+
+    val alpha = if (reduceTransparency) 1f else 0.92f
+    val dividerColor = Dsh.borderSubtle
+
+    Modifier.drawBehind {
+        drawRect(base.copy(alpha = alpha))
+        if (showDivider) {
+            val y = if (dividerAtTop) 0f else size.height
+            drawLine(
+                color = dividerColor,
+                start = androidx.compose.ui.geometry.Offset(0f, y),
+                end = androidx.compose.ui.geometry.Offset(size.width, y),
+                strokeWidth = (1.dp / 2).toPx(),
+            )
+        }
+        (this as androidx.compose.ui.graphics.drawscope.ContentDrawScope).drawContent()
+    }
+}

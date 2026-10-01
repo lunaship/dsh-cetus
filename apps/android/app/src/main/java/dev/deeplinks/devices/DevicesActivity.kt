@@ -21,6 +21,9 @@ import dev.deeplinks.core.PairClient
 import dev.deeplinks.native.MobileApiClient
 import dev.deeplinks.native.shouldBlockLocalHostRemoval
 import dev.deeplinks.native.DshConfirmDialog
+import dev.deeplinks.native.DshRenameDialog
+import dev.deeplinks.native.EditOutline16
+import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshPageScaffold
@@ -101,6 +104,8 @@ fun DevicesScreen(
     /** 在工作区内以底部面板呈现：当前电脑的状态与操作就地完成，不再跳页再点一次电脑。 */
     sheet: Boolean = false,
     onDismissSheet: () -> Unit = {},
+    alias: String = "",
+    onAliasChanged: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
@@ -113,6 +118,16 @@ fun DevicesScreen(
     var unpairError by remember { mutableStateOf<String?>(null) }
     var unpairSaving by remember { mutableStateOf(false) }
     var offlineError by remember { mutableStateOf<String?>(null) }
+
+    val prefs = remember { dev.deeplinks.native.util.WorkspacePrefs(context) }
+    var alias by remember { mutableStateOf(prefs.hostAlias.ifBlank { device?.host?.name.orEmpty() }) }
+    var renameOpen by remember { mutableStateOf(false) }
+
+    fun applyRename(newAlias: String) {
+        prefs.hostAlias = newAlias.trim()
+        alias = newAlias.trim()
+        onAliasChanged()
+    }
 
     val scope = rememberCoroutineScope()
     var healthJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -206,6 +221,8 @@ fun DevicesScreen(
             onRecheck = { refreshHealth() },
             onReplace = { showPairingPanel = true },
             onUnpair = ::requestUnpair,
+            alias = alias,
+            onRename = onAliasChanged,
         )
     } else {
         DevicesPage(
@@ -217,6 +234,8 @@ fun DevicesScreen(
             onUnpair = ::requestUnpair,
             onRecheck = { refreshHealth() },
             onAddDevice = { showPairingPanel = true },
+            alias = alias,
+            onRename = { renameOpen = true },
         )
     }
 
@@ -324,6 +343,16 @@ fun DevicesScreen(
             },
         )
     }
+
+    if (renameOpen) {
+        DshRenameDialog(
+            currentName = alias.ifBlank { device?.host?.name.orEmpty() },
+            title = s.rename,
+            message = s.renameComputerDesc,
+            onDismiss = { renameOpen = false },
+            onSave = { newName -> applyRename(newName); renameOpen = false },
+        )
+    }
 }
 
 /**
@@ -341,6 +370,8 @@ private fun DevicesPage(
     onUnpair: (DeviceUi) -> Unit,
     onRecheck: () -> Unit,
     onAddDevice: () -> Unit,
+    alias: String = "",
+    onRename: () -> Unit = {},
 ) {
     val s = DshS
     DshPageScaffold(title = s.pairingManage) {
@@ -379,6 +410,8 @@ private fun DevicesPage(
                         onRecheck = onRecheck,
                         onReplace = onAddDevice,
                         onUnpair = { onUnpair(current) },
+                        alias = alias,
+                        onRename = onRename,
                     )
                 }
             }

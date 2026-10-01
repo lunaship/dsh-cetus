@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
@@ -214,7 +216,7 @@ internal fun ApprovalCard(
                                 CloseOutline16,
                                 contentDescription = null,
                                 tint = Dsh.labelTertiary,
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(DshIconSize.sm),
                             )
                         }
                     }
@@ -329,7 +331,7 @@ private fun ApprovalOptionRow(
                     CheckOutline14,
                     contentDescription = null,
                     tint = Dsh.bgSurface,
-                    modifier = Modifier.size(12.dp),
+                    modifier = Modifier.size(DshIconSize.xs),
                 )
             }
         }

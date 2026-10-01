@@ -32,7 +32,8 @@ internal fun LazyListLayoutInfo.tailOverflowPx(): Int? {
     if (total == 0) return 0
     val last = visibleItemsInfo.lastOrNull() ?: return null
     if (last.index != total - 1) return null
-    return (last.offset + last.size) - viewportEndOffset
+    // 底部输入区为半透明悬浮时最后一项需要在视口内留出输入区高度，这里仅做 0 判定
+    return (last.offset + last.size) - (viewportEndOffset - afterContentPadding)
 }
 
 /** 列表是否已贴底（空列表视为贴底）。 */

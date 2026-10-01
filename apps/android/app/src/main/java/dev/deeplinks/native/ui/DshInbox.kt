@@ -1,5 +1,7 @@
 package dev.deeplinks.native.ui
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -130,7 +132,7 @@ fun DshPillButton(
             horizontalArrangement = Arrangement.Center,
         ) {
             if (icon != null) {
-                Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(DshIconSize.md))
                 Spacer(Modifier.width(DshSpace.s8))
             }
             Text(label, color = content, style = DshType.title, maxLines = 1)
@@ -189,7 +191,7 @@ fun DshStatusChip(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
-            Icon(leading, contentDescription = null, tint = leadingTint, modifier = Modifier.size(14.dp))
+            Icon(leading, contentDescription = null, tint = leadingTint, modifier = Modifier.size(DshIconSize.sm))
             Spacer(Modifier.width(DshSpace.s6))
         }
         Text(text, color = Dsh.labelSecondary, style = DshType.captionMedium, maxLines = 1)
@@ -321,7 +323,7 @@ fun DshFloatingPill(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (icon != null) {
-                    Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+                    Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(DshIconSize.md))
                     Spacer(Modifier.width(DshSpace.s8))
                 }
                 Text(label, color = content, style = DshType.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1)

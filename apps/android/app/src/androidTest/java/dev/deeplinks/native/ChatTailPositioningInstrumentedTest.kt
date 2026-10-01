@@ -1,8 +1,10 @@
 package dev.deeplinks.native
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -29,9 +31,19 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
+ * 半透明顶栏/底栏高度：与 DshTranslucentBar.kt / WorkspaceActivity.kt 保持一致。
+ * 顶栏 56 dp，输入区 120 dp。
+ */
+private val TopBarHeightDp = 56.dp
+private val InputAreaHeightDp = 120.dp
+
+/**
  * 复现打开长会话落在顶部的时序：尾部请求先于数据发起（会话切换时自增 tailRequestId），
  * 列表此刻只有加载骨架 1 项；数据到达的同一刻头部「加载更早」一起插入。
  * 旧实现在数据提交后、布局更新前读 totalItemsCount(=1) → scrollToItem(0) → 停在顶部。
+ *
+ * 第 5 步改动：列表容器模拟 PullToRefreshBox 上下半透明栏的 padding，
+ * 让 viewportEndOffset 与真实聊天界面一致。
  */
 @RunWith(AndroidJUnit4::class)
 class ChatTailPositioningInstrumentedTest {
@@ -51,17 +63,28 @@ class ChatTailPositioningInstrumentedTest {
                 if (tailRequestId == 0) return@LaunchedEffect
                 lastResult = listState.positionAtTail(hasContent = { messages.isNotEmpty() })
             }
-            LazyColumn(state = listState, modifier = Modifier.size(360.dp, 640.dp)) {
-                if (messages.isEmpty()) {
-                    item(key = "chat-loading-skeleton") { Box(Modifier.fillMaxWidth().height(640.dp)) }
-                } else {
-                    if (hasMore) {
-                        item(key = "load-older") { Text("load older", Modifier.testTag("load-older")) }
-                    }
-                    items(messages, key = { it }) { id ->
-                        // 高低错落：模拟长回复与短消息混排
-                        val h = if (id % 5 == 0) 900.dp else 120.dp
-                        Text("m$id", Modifier.fillMaxWidth().height(h).testTag("m$id"))
+            // 半透明栏：顶栏 56 dp（top）+ 输入区 120 dp（bottom），
+            // 与 WorkspaceActivity 的 PullToRefreshBox padding 对齐。
+            Box(modifier = Modifier.size(360.dp, 640.dp)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = TopBarHeightDp, bottom = InputAreaHeightDp),
+                ) {
+                    if (messages.isEmpty()) {
+                        item(key = "chat-loading-skeleton") {
+                            Box(Modifier.fillMaxWidth().height(640.dp))
+                        }
+                    } else {
+                        if (hasMore) {
+                            item(key = "load-older") { Text("load older", Modifier.testTag("load-older")) }
+                        }
+                        items(messages, key = { it }) { id ->
+                            // 高低错落：模拟长回复与短消息混排
+                            val h = if (id % 5 == 0) 900.dp else 120.dp
+                            Text("m$id", Modifier.fillMaxWidth().height(h).testTag("m$id"))
+                        }
                     }
                 }
             }

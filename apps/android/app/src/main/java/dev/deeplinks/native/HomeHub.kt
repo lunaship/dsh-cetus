@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,112 +62,54 @@ import dev.deeplinks.native.DshTouch
  * 悬浮「新任务」是全 App 唯一带阴影的普通按钮（DshFloatingPill）。
  */
 
-/** 首页顶栏里那枚 40dp 的电脑图标块（白底、圆角 container，不加描边）。 */
-@Composable
-private fun HostBadge(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(DshTouch.compact)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgCard),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(LaptopOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(DshIconSize.md))
-    }
-}
-
 // E4：在线点改用共享组件 HostStatusDot（在线 successContent / 离线 labelTertiary），
 // 与设置页、设备页同一个组件同一组 token。
 
 /**
- * 顶栏：电脑图标块 + 电脑名（粗）⌄，下一行状态（在线 · 远程 / 离线 · 10 分钟前在线）；
- * 右侧搜索与设置两个圆钮（48dp 热区、40dp 视觉圆底）。
- *
- * 不显示延迟毫秒数（V5）：修好 keep-alive 之前它包含整条隧道的建立时间，不准；延迟在设置页电脑卡看。
+ * 顶栏：品牌名「DeepLinks」 + 在线状态点；右侧搜索与设置两个圆钮（48dp 热区、40dp 视觉圆底）。
+ * 顶栏整行不可点，状态描述由参数注入。
  */
 @Composable
 internal fun HomeHeader(
-    hostName: String,
     online: Boolean,
-    viaRemote: Boolean,
     offlineSinceLabel: String?,
     searchActive: Boolean,
-    onOpenDevice: () -> Unit,
     onToggleSearch: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val s = DshS
-    val deviceLabel = hostName.ifBlank { s.deviceAndPairing }
-    val status = if (online) {
-        listOfNotNull(s.statusOnline, if (viaRemote) s.viaRemote else s.viaLan)
-            .joinToString(" · ")
-    } else {
-        offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
-    }
+    val statusDesc = if (online) s.statusOnline
+        else offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = DrawerEdgePadding, end = DrawerEdgePadding),
+            .height(56.dp)
+            .padding(start = DrawerTextStart, end = DrawerEdgePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.container))
-                    .clickable(role = Role.Button, onClickLabel = s.deviceAndPairing, onClick = onOpenDevice)
-                    .semantics { heading() }
-                    .padding(horizontal = DrawerInnerPadding),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                HostBadge()
-                Spacer(Modifier.width(DshSpace.s12))
-                Column(Modifier.weight(1f, fill = false)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            deviceLabel,
-                            color = Dsh.labelPrimary,
-                            style = DshType.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        Spacer(Modifier.width(DshSpace.s4))
-                        Icon(
-                            ChevronDownOutline14,
-                            contentDescription = null,
-                            tint = Dsh.labelTertiary,
-                            modifier = Modifier.size(DshIconSize.xs),
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        HostStatusDot(online)
-                        Spacer(Modifier.width(DshSpace.s6))
-                        Text(
-                            status,
-                            color = Dsh.labelSecondary,
-                            style = DshType.captionRelaxed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) {
+                    heading()
+                    contentDescription = "DeepLinks, $statusDesc"
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "DeepLinks",
+                color = Dsh.labelPrimary,
+                style = DshType.titleLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Spacer(Modifier.width(DshSpace.s8))
+            HostStatusDot(online)
         }
-        DshIconAction(
-            icon = SearchOutline16,
-            contentDescription = s.searchSessions,
-            onClick = onToggleSearch,
-            active = searchActive,
-            visualSize = DshTouch.compact,
-        )
-        DshIconAction(
-            icon = SettingsOutline16,
-            contentDescription = s.settingsTitle,
-            onClick = onOpenSettings,
-            visualSize = DshTouch.compact,
-        )
+        DshIconAction(icon = SearchOutline16, contentDescription = s.searchSessions,
+            onClick = onToggleSearch, active = searchActive, visualSize = DshTouch.compact)
+        DshIconAction(icon = SettingsOutline16, contentDescription = s.settingsTitle,
+            onClick = onOpenSettings, visualSize = DshTouch.compact)
     }
 }
 
@@ -514,11 +457,10 @@ internal fun HomeWorkspaceEmpty(onCreate: () -> Unit, onShowAll: () -> Unit) {
 internal fun HomeNewTaskFab(
     onClick: () -> Unit,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = DshSpace.s12),
+        modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
         DshFloatingPill(

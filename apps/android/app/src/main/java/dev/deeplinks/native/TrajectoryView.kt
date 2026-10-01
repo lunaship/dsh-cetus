@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
@@ -233,7 +235,7 @@ internal fun TrajectoryView(
                         modifier = Modifier.size(40.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(SearchOutline16, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
+                        Icon(SearchOutline16, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
                     }
                 }
             }
@@ -332,7 +334,7 @@ private fun TraceEmptyState() {
                 .background(Dsh.brand400.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(ThinkOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(20.dp))
+            Icon(ThinkOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(DshIconSize.md))
         }
         Spacer(Modifier.height(14.dp))
         Text(L.noTrace, color = Dsh.labelPrimary, style = DshType.title, fontWeight = FontWeight(500))
@@ -374,7 +376,7 @@ private fun TraceToggle(icon: ImageVector, label: String, active: Boolean, onCli
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(12.dp))
+            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(DshIconSize.xs))
             Spacer(Modifier.width(5.dp))
             Text(label, color = fg, style = DshType.label, fontWeight = FontWeight(500))
         }
@@ -393,7 +395,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(12.dp))
+        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.xs))
         Spacer(Modifier.width(DshSpace.s6))
         BasicTextField(
             value = value,
@@ -424,7 +426,7 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
                     modifier = Modifier.size(32.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(12.dp))
+                    Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.xs))
                 }
             }
         }
@@ -536,7 +538,7 @@ private fun TraceTableRow(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(visual.icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
+            Icon(visual.icon, contentDescription = null, tint = accent, modifier = Modifier.size(DshIconSize.xs))
             Spacer(Modifier.width(DshSpace.s6))
             Text(
                 visual.label,

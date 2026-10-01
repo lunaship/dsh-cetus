@@ -1,5 +1,7 @@
 package dev.deeplinks.native.ui
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
@@ -558,6 +560,7 @@ fun DshSelectRow(
     saving: Boolean = false,
     error: String? = null,
     onRetry: (() -> Unit)? = null,
+    description: String? = null,
 ) {
     val s = DshS
     var expanded by remember { mutableStateOf(false) }
@@ -597,6 +600,7 @@ fun DshSelectRow(
                     expanded = false
                     onSelect(label, id)
                 },
+                description = description,
             )
         }
     }
@@ -610,6 +614,7 @@ fun DshOptionsMenu(
     options: List<Pair<String, String>>,
     selectedId: String?,
     onSelect: (label: String, id: String) -> Unit,
+    description: String? = null,
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -625,6 +630,14 @@ fun DshOptionsMenu(
                 .widthIn(min = 180.dp, max = 260.dp)
                 .padding(vertical = DshSpace.s4),
         ) {
+            if (description != null) {
+                Text(
+                    description,
+                    color = Dsh.labelTertiary,
+                    style = DshType.supporting,
+                    modifier = Modifier.padding(horizontal = DshSpace.s16, vertical = DshSpace.s4),
+                )
+            }
             options.forEach { (label, id) ->
                 val selected = id == selectedId
                 Row(
@@ -643,7 +656,7 @@ fun DshOptionsMenu(
                         modifier = Modifier.weight(1f),
                     )
                     if (selected) {
-                        Icon(CheckOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(18.dp))
+                        Icon(CheckOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(DshIconSize.md))
                     }
                 }
             }

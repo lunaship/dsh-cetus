@@ -25,6 +25,15 @@ interface MessageGroup {
     data class ToolGroup(val items: List<MobileMessage>) : MessageGroup {
         override val groupKey: String get() = items.first().id + "-group"
     }
+
+    data class ToolSummary(
+        val count: Int,
+        val failedCount: Int,
+        val durationMs: Long?,
+        val toolNames: List<String>,
+    ) : MessageGroup {
+        override val groupKey: String get() = "tool-summary-" + toolNames.sorted().joinToString("-")
+    }
 }
 
 /** 把消息列表按相邻 tool_call/tool_result 切分（≥2 聚合；其他退化为 Single）。 */
@@ -169,3 +178,36 @@ fun editedFileCount(items: List<MobileMessage>): Int? = items
     .distinct()
     .takeIf { it.isNotEmpty() }
     ?.size
+
+/**
+ * 对话视图下：把连续 [MessageGroup.ToolGroup] 合并为 [MessageGroup.ToolSummary]。
+ * 审批卡（ApprovalCard）等非 ToolGroup item 会打断连续序列。
+ */
+fun foldToolCalls(groups: List<MessageGroup>, viewMode: String): List<MessageGroup> {
+    if (viewMode != "chat") return groups
+    val out = mutableListOf<MessageGroup>()
+    var batch: MutableList<MessageGroup.ToolGroup> = mutableListOf()
+    fun flushBatch() {
+        if (batch.isEmpty()) return
+        val allItems = batch.flatMap { it.items }
+        val failedCount = allItems.count { it.role == "tool_result" && it.text.startsWith("error", ignoreCase = true) }
+        val durationMs = allItems.mapNotNull { it.durationMs }.takeIf { it.isNotEmpty() }?.sum()
+        out += MessageGroup.ToolSummary(
+            count = allItems.size,
+            failedCount = failedCount,
+            durationMs = durationMs,
+            toolNames = allItems.mapNotNull { it.toolName }.distinct(),
+        )
+        batch = mutableListOf()
+    }
+    for (g in groups) {
+        if (g is MessageGroup.ToolGroup) {
+            batch += g
+        } else {
+            flushBatch()
+            out += g
+        }
+    }
+    flushBatch()
+    return out
+}

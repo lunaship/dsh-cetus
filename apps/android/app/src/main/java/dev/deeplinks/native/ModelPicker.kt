@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
@@ -94,7 +96,7 @@ internal fun ModelPickerSheet(
                         .semantics { contentDescription = L.back },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(ChevronLeftOutline14, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(22.dp))
+                    Icon(ChevronLeftOutline14, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.lg))
                 }
             }
             Box(Modifier.weight(1f)) {

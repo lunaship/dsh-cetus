@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import dev.deeplinks.core.DshType
@@ -320,7 +322,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                     CopyOutline16,
                     contentDescription = L.copy,
                     tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(DshIconSize.xs)
                 )
                 Spacer(Modifier.width(DshSpace.s4))
                 Text(L.copy, color = Dsh.labelTertiary, style = DshType.microRelaxed,)

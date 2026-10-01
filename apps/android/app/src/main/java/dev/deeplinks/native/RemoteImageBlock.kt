@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -101,7 +103,7 @@ internal fun RemoteImageBlock(url: String, modifier: Modifier = Modifier) {
                     imageVector = ImageOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(DshIconSize.md),
                 )
                 Spacer(Modifier.width(DshSpace.s8))
                 Column(modifier = Modifier.weight(1f)) {
@@ -167,7 +169,7 @@ internal fun RemoteImageBlock(url: String, modifier: Modifier = Modifier) {
                                 imageVector = ImageOutline16,
                                 contentDescription = null,
                                 tint = Dsh.labelSecondary,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(DshIconSize.md),
                             )
                             Spacer(Modifier.width(DshSpace.s8))
                             Column(modifier = Modifier.weight(1f)) {

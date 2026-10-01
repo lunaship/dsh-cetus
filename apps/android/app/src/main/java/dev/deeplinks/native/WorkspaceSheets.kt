@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
@@ -103,7 +105,7 @@ internal fun AddWorkspaceSheet(
                 Icon(
                     ProjectAddOutline16,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(DshIconSize.sm),
                 )
             },
             isError = submitError != null,
@@ -282,7 +284,7 @@ internal fun SheetSearchField(
             .padding(start = DshSpace.s12),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         Spacer(Modifier.width(DshSpace.s8))
         BasicTextField(
             value = value,
@@ -311,7 +313,7 @@ internal fun SheetSearchField(
                     .clickable { onValueChange("") },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+                Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
             }
         }
     }
@@ -437,7 +439,7 @@ internal fun SubagentBottomSheet(
                                         strokeWidth = 1.5.dp,
                                     )
                                 } else {
-                                    Icon(BranchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(18.dp))
+                                    Icon(BranchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.md))
                                 }
                             },
                             onClick = {

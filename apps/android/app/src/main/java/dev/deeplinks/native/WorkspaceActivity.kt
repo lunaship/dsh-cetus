@@ -8,6 +8,8 @@ import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
+import dev.deeplinks.native.AgentPresetOutline16
+import dev.deeplinks.native.DshDimension
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
@@ -45,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onSizeChanged
@@ -521,6 +524,9 @@ fun WorkspaceScreen(
     }
     val listState = rememberLazyListState()
     var elapsedSec by remember { mutableStateOf(0L) }
+    // 第 5 步：底部输入区半透明悬浮，贴底容差随密度换算
+    val density = LocalDensity.current.density
+    var nearBottomPx by remember { mutableIntStateOf((120f * density).toInt()) }
     // WI-003：尾部定位请求（每次自增触发一次"等待布局后再滚底"）；0 表示无请求
     var tailRequestId by remember { mutableStateOf(0) }
     var lastTailRequestId by remember { mutableStateOf(0) }
@@ -922,10 +928,9 @@ fun WorkspaceScreen(
         if (total == 0) return true
         val lastVisible = info.visibleItemsInfo.lastOrNull() ?: return true
         if (lastVisible.index < total - 2) return false
-        // 最后一项很长时：只要其底部离视口底 ≤ 120px，仍算贴底（避免只露出开头就判定已离开）
         if (lastVisible.index >= total - 1) {
             val overflow = (lastVisible.offset + lastVisible.size) - info.viewportEndOffset
-            return overflow <= 120
+            return overflow <= nearBottomPx
         }
         return true
     }
@@ -2187,7 +2192,7 @@ fun WorkspaceScreen(
         } else Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Dsh.bgBase)
+                .dshTranslucent()
                 .statusBarsPadding()
         ) {
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
@@ -2246,8 +2251,24 @@ fun WorkspaceScreen(
                     },
                 )
             }
-            WorkspaceTopBar(
-                running = running,
+            val menuWithSubagents = remember(topBarMenuItems, activeSubagentCount) {
+                if (activeSubagentCount > 0) {
+                    listOf(DshMenuItem(
+                        icon = AgentPresetOutline16,
+                        label = L.subagentCount.format(activeSubagentCount),
+                        onClick = { headerMenuOpen = false; showSubagentSheet = true },
+                    )) + topBarMenuItems
+                } else topBarMenuItems
+            }
+            // ===== 顶栏（半透明悬浮） =====
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .dshTranslucent(showDivider = true, dividerAtTop = true)
+                    .padding(horizontal = DshSpace.s4, vertical = DshSpace.s2),
+            ) {
+                WorkspaceTopBar(
+                    running = running,
                 // 草稿态标题固定「新任务」；有会话显示会话名；无会话且非草稿留空（起始块已删）
                 title = when {
                     composeNewSession && currentSessionId == null -> L.homeNewTask
@@ -2276,8 +2297,9 @@ fun WorkspaceScreen(
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
                 // 草稿态不显示「⋯」菜单（N1）
-                menuItems = if (composeNewSession && currentSessionId == null) emptyList() else topBarMenuItems,
+                menuItems = if (composeNewSession && currentSessionId == null) emptyList() else menuWithSubagents,
             )
+            }
 
             // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
             DeviceUnreachableBanner(
@@ -2313,8 +2335,8 @@ fun WorkspaceScreen(
                     refreshMessages(replaceInFlight = true, onDone = { historyRefreshing = false })
                 },
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                    .fillMaxSize()
+                    .padding(top = DshDimension.TopBarHeight, bottom = DshDimension.InputAreaHeight),
             ) {
             // 对话与轨迹共用消息数据，只替换当前视图，避免同时测量和绘制两张长列表。
             ChangesSwipeArea(
@@ -2323,10 +2345,9 @@ fun WorkspaceScreen(
                 // 大屏（Medium / Expanded）把消息流封顶 760dp 居中，
                 // 而不是把手机布局无限拉宽；手机仍是全宽 16dp 边距。
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .fillMaxSize()
                     .widthIn(max = dshLayout.contentMaxWidthDp.dp)
-                    .fillMaxHeight()
-                    .fillMaxWidth(),
+                    .wrapContentWidth(Alignment.CenterHorizontally),
             ) {
             when (viewMode) {
             "trace" -> {
@@ -2405,6 +2426,8 @@ fun WorkspaceScreen(
             }
             // 列表高度随 IME/底栏变化时：贴底用户按变矮像素上推，跟手不跳
             var chatListHeightPx by remember { mutableIntStateOf(0) }
+            // 吸顶摘要条高度测量
+            var summaryHeightPx by remember { mutableIntStateOf(0) }
             // 第 2 步 B2：把会话级图片策略注进消息流（MarkdownContent 读 LocalRemoteImagePolicy）
             CompositionLocalProvider(LocalRemoteImagePolicy provides imagePolicy) {
             LazyColumn(
@@ -2476,8 +2499,14 @@ fun WorkspaceScreen(
                     }
                     // 只扫正在生成的工具/思考行；已定稿的「已思考」不能抢状态条
                     val sweepingId = resolveSweepingId(messages, running)
-                    // 稳定列表引用（内容不变时避免 LazyColumn 滚动状态失效）
+                    // 稳定列表引用（内容不变时避免 LazyColumn 滚动状态失效)
                     val messagesForSummary = messages
+                    // 吸顶摘要条：运行中且 chat 模式时作为首项 spacer 占位，内容不溢出到摘要下方
+                    if (viewMode == "chat") {
+                        item(key = "sticky-summary-spacer") {
+                            Spacer(Modifier.height(with(LocalDensity.current) { summaryHeightPx.toDp() }))
+                        }
+                    }
                     chatMessageItems(
                         visibleGroups = visibleGroups,
                         sweepingId = sweepingId,
@@ -2488,7 +2517,8 @@ fun WorkspaceScreen(
                         pinnedChangesSeq = pinnedChanges?.seq,
                     )
                     // 对齐网页 TurnStatus（Deep diving...）：整轮生成期间都在流尾显示思考中扫光
-                    if (running || isSending) {
+                    val hasLiveReasoning = messages.any { it.role == "reasoning" && it.running == true }
+                    if ((running || isSending) && !hasLiveReasoning) {
                         item(key = "turn-status") {
                             ThinkingStatusRow(elapsedSec)
                         }
@@ -2587,15 +2617,12 @@ fun WorkspaceScreen(
                     }
                 )
             }
-            val goalLine = workspaceViewModel.currentGoalSummary.value?.takeIf { it.isNotBlank() }
-            if (viewMode == "chat" && running && goalLine != null) {
-                ChatGoalLine(goalLine)
-            }
             // ===== bottom chrome（WI-006：发送队列/输入卡/统计栏同一容器，统一安全区与 IME） =====
             // 输入卡带 8dp 阴影悬浮，底部留 10dp 让影子完整落在手势条上方。
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .dshTranslucent(showDivider = true, dividerAtTop = false)
                     .navigationBarsPadding()
                     .imePadding()
                     .padding(bottom = 10.dp)
@@ -2609,12 +2636,8 @@ fun WorkspaceScreen(
                 if (currentSessionId != null) {
                     ComposerContextStrip(
                         modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
-                        hostName = hostLabel,
                         online = streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED,
-                        workspaceName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() },
                         changes = pinnedChanges,
-                        stats = sessionStats,
-                        onBrowseFiles = { showFileBrowser = true },
                         onOpenChanges = {
                             pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } }
                         },

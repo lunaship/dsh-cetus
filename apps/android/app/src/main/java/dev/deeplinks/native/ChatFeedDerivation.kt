@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.native.util.MessageGroup
+import dev.deeplinks.native.util.foldToolCalls
 import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.isGoalRoundText
@@ -64,4 +65,24 @@ internal fun resolveSweepingId(messages: List<MobileMessage>, running: Boolean):
         (it.role == "tool_call" || it.role == "tool_result" || it.role == "reasoning") &&
             it.running == true
     }?.id
+}
+
+/** 当 running 且最后一项是运行中的 Reasoning 时，不显示顶部的「思考中」行。 */
+internal fun shouldShowTurnStatus(items: List<MobileMessage>, running: Boolean): Boolean {
+    if (!running) return false
+    val last = items.lastOrNull()
+    return last !is MobileMessage || last.role != "reasoning" || last.running != true
+}
+
+/** 本条助手消息是否是一轮的末尾（下一条是用户消息，或是最后一条且已停止）。 */
+internal fun isTurnEnd(groups: List<MessageGroup>, index: Int, running: Boolean): Boolean {
+    val current = groups.getOrNull(index) ?: return false
+    val msg = (current as? MessageGroup.Single)?.msg ?: return false
+    if (msg.role != "assistant") return false
+    val next = groups.getOrNull(index + 1)
+    return when {
+        next is MessageGroup.Single && next.msg.role == "user" -> true
+        index == groups.lastIndex && !running -> true
+        else -> false
+    }
 }

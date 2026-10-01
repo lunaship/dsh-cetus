@@ -7,7 +7,7 @@ import dev.deeplinks.core.L
  *
  * 纯列表构建：只接收状态与回调，不持有业务逻辑、不做 IO。
  * 2026-09-30 C1 精简：最多 5 项——重命名 / 浏览文件（按能力）/ 分享 / 归档 / 删除。
- * 工具查找、跳转轮次、复制标题、设备入口、分叉都从溢出菜单移除（子智能体挪到 Tab 行右侧）。
+ * 工具查找、跳转轮次、复制标题、设备入口、分叉都从溢出菜单移除（子智能体入口移入溢出菜单第一项）。
  */
 internal fun workspaceHeaderMenuItems(
     canBrowseFiles: Boolean,

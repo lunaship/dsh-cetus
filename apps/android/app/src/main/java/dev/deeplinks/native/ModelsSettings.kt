@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.core.animateFloatAsState
@@ -464,7 +466,7 @@ private fun ProviderRows(
                 ChevronRightOutline14,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp).rotate(chevronTurn),
+                modifier = Modifier.size(DshIconSize.sm).rotate(chevronTurn),
             )
         },
     )
@@ -539,7 +541,7 @@ private fun RemoveModelButton(model: MobileModelOption, enabled: Boolean, onClic
             .semantics { contentDescription = "${s.removeModel} ${model.name ?: model.id}" },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(TrashOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+        Icon(TrashOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
     }
 }
 

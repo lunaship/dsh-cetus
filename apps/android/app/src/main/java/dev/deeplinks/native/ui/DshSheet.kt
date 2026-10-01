@@ -1,5 +1,7 @@
 package dev.deeplinks.native.ui
 
+
+import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.native.CloseOutline16
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -209,7 +211,7 @@ fun DshCloseButton(onClick: () -> Unit) {
                 .background(Dsh.bgSubtle),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(16.dp))
+            Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
         }
     }
 }

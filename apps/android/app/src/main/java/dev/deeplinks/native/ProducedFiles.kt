@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
@@ -160,7 +162,7 @@ internal fun ProducedFilesRow(
                 FileOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
             Spacer(Modifier.width(10.dp))
             Text(

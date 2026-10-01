@@ -1,7 +1,10 @@
 package dev.deeplinks.devices
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.DshSpace
+import dev.deeplinks.native.EditOutline16
 import dev.deeplinks.native.RefreshOutline16
 import dev.deeplinks.native.ScanOutline16
 import dev.deeplinks.native.SwapOutline16
@@ -13,6 +16,7 @@ import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
 import dev.deeplinks.native.ChevronRightOutline14
 import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListSection
@@ -70,9 +74,19 @@ internal fun DeviceDetailSections(
     onRecheck: () -> Unit,
     onReplace: () -> Unit,
     onUnpair: () -> Unit,
+    alias: String = "",
+    onRename: () -> Unit = {},
 ) {
     val s = DshS
     DshListSection { DeviceCard(device = device, onOpen = onOpen) }
+    if (alias.isNotBlank() || device.host.name.isNotBlank()) {
+        DshListRow(
+            title = s.rename,
+            icon = EditOutline16,
+            value = alias.ifBlank { null },
+            onClick = onRename,
+        )
+    }
     notice?.let { DevicesNotice(message = it, actionLabel = s.resync, onAction = onRecheck) }
     // 顺序：设备 → 操作 → 危险操作。状态已在设备卡里，操作行不再重复显示。
     DshListSection(footer = s.replaceDeviceHint) {
@@ -98,6 +112,8 @@ internal fun DeviceSheet(
     onRecheck: () -> Unit,
     onReplace: () -> Unit,
     onUnpair: (DeviceUi) -> Unit,
+    alias: String = "",
+    onRename: () -> Unit = {},
 ) {
     val s = DshS
     DshSheet(onDismiss = onDismiss, title = s.pairingManage, skipPartiallyExpanded = true) {
@@ -113,6 +129,8 @@ internal fun DeviceSheet(
                 onRecheck = onRecheck,
                 onReplace = onReplace,
                 onUnpair = { onUnpair(device) },
+                alias = alias,
+                onRename = onRename,
             )
         }
     }
@@ -217,7 +235,7 @@ internal fun DeviceCard(
         }
         if (onOpen != null) {
             Spacer(Modifier.width(DshSpace.s8))
-            Icon(ChevronRightOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+            Icon(ChevronRightOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         }
     }
 }

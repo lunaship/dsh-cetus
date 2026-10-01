@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.tabularNums
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -58,7 +60,7 @@ internal fun WorkspaceChangesCard(
                 .padding(horizontal = DshSpace.s12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(EditOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(16.dp))
+            Icon(EditOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
             Spacer(Modifier.width(10.dp))
             Text(
                 ChangesL.cardTitle(summary),
@@ -98,7 +100,7 @@ internal fun WorkspaceChangesCard(
                         ChevronRightOutline14,
                         contentDescription = null,
                         tint = Dsh.labelTertiary,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(DshIconSize.sm),
                     )
                 }
             }

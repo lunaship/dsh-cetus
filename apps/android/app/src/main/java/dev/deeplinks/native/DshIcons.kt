@@ -28,7 +28,7 @@ val AgentPresetOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -68,7 +68,7 @@ val AgentPresetOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -90,7 +90,7 @@ val AgentPresetOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -112,7 +112,7 @@ val AgentPresetOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -137,15 +137,15 @@ val ApiOutline14: ImageVector
         name = "ApiOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -207,7 +207,7 @@ val ApiOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -228,7 +228,7 @@ val ApiOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -256,7 +256,7 @@ val ArchiveOutline20: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -325,7 +325,7 @@ val ArchiveOutline20: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -353,7 +353,7 @@ val BranchOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -405,7 +405,7 @@ val BrowseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -422,7 +422,7 @@ val BrowseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -439,7 +439,7 @@ val BrowseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -504,15 +504,15 @@ val CheckOutline14: ImageVector
         name = "CheckOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -552,7 +552,7 @@ val CheckOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -588,15 +588,15 @@ val ChecklistOutline14: ImageVector
         name = "ChecklistOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -613,7 +613,7 @@ val ChecklistOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -630,7 +630,7 @@ val ChecklistOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -652,7 +652,7 @@ val ChecklistOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -677,15 +677,15 @@ val ChevronDownOutline14: ImageVector
         name = "ChevronDownOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -721,15 +721,15 @@ val ChevronLeftOutline14: ImageVector
         name = "ChevronLeftOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -765,15 +765,15 @@ val ChevronRightOutline14: ImageVector
         name = "ChevronRightOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -809,15 +809,15 @@ val ChevronUpOutline14: ImageVector
         name = "ChevronUpOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -853,15 +853,15 @@ val CloseFill14: ImageVector
         name = "CloseFill14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -897,7 +897,7 @@ val CloseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -914,7 +914,7 @@ val CloseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -942,7 +942,7 @@ val CodeOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -999,7 +999,7 @@ val CopyOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1079,15 +1079,15 @@ val CordisPluginOutline14: ImageVector
         name = "CordisPluginOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1138,7 +1138,7 @@ val DarkOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1179,7 +1179,7 @@ val DataOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1235,7 +1235,7 @@ val DataOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1298,7 +1298,7 @@ val DislikeFill16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1334,7 +1334,7 @@ val DislikeFill16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1365,7 +1365,7 @@ val DislikeOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1470,7 +1470,7 @@ val DownloadOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1523,7 +1523,7 @@ val EditOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1592,7 +1592,7 @@ val EllipsisOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1609,7 +1609,7 @@ val EllipsisOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1626,7 +1626,7 @@ val EllipsisOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1654,7 +1654,7 @@ val EnhanceOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1671,7 +1671,7 @@ val EnhanceOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1688,7 +1688,7 @@ val EnhanceOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1705,7 +1705,7 @@ val EnhanceOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1733,7 +1733,7 @@ val FolderClose16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1843,7 +1843,7 @@ val FolderOpen16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1891,7 +1891,7 @@ val FolderOpen16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1935,7 +1935,7 @@ val FolderOpenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -1994,7 +1994,7 @@ val FollowsystemOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2011,7 +2011,7 @@ val FollowsystemOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2080,7 +2080,7 @@ val FullscreenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2103,7 +2103,7 @@ val FullscreenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2129,15 +2129,15 @@ val GlobeOutline14: ImageVector
         name = "GlobeOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2201,7 +2201,7 @@ val GoalOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2235,7 +2235,7 @@ val GoalOutline16: ImageVector
             fillAlpha = 1f,
             stroke = SolidColor(Color.Black),
             strokeAlpha = 1f,
-            strokeLineWidth = 1.3f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2249,7 +2249,7 @@ val GoalOutline16: ImageVector
             fillAlpha = 1f,
             stroke = SolidColor(Color.Black),
             strokeAlpha = 1f,
-            strokeLineWidth = 1.3f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2285,7 +2285,7 @@ val InspectOutline12: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2327,7 +2327,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2349,7 +2349,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2366,7 +2366,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2383,7 +2383,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2400,7 +2400,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2417,7 +2417,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2434,7 +2434,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2451,7 +2451,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2468,7 +2468,7 @@ val LightOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2496,7 +2496,7 @@ val LikeFill16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2532,7 +2532,7 @@ val LikeFill16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2563,7 +2563,7 @@ val LikeOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2660,15 +2660,15 @@ val LinkOutline14: ImageVector
         name = "LinkOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2699,7 +2699,7 @@ val LinkOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2743,7 +2743,7 @@ val LinkOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2784,7 +2784,7 @@ val LinkOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2836,7 +2836,7 @@ val ListPenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2853,7 +2853,7 @@ val ListPenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2870,7 +2870,7 @@ val ListPenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2887,7 +2887,7 @@ val ListPenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2939,7 +2939,7 @@ val ListPenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2956,7 +2956,7 @@ val ListPenOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -2986,7 +2986,7 @@ val LoadingOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3018,7 +3018,7 @@ val NewChatOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3077,7 +3077,7 @@ val PanelLeftOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3155,7 +3155,7 @@ val PaperclipOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3201,7 +3201,7 @@ val PauseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3223,7 +3223,7 @@ val PauseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3240,7 +3240,7 @@ val PauseOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3268,7 +3268,7 @@ val PersonalizationOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3369,7 +3369,7 @@ val PlayOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3391,7 +3391,7 @@ val PlayOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3421,7 +3421,7 @@ val PlusOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3457,7 +3457,7 @@ val ProjectAddOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3482,7 +3482,7 @@ val ProjectAddOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3520,15 +3520,15 @@ val QuestionOutline14: ImageVector
         name = "QuestionOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3550,7 +3550,7 @@ val QuestionOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3579,7 +3579,7 @@ val QuestionOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3599,15 +3599,15 @@ val QueueOutline14: ImageVector
         name = "QueueOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3656,15 +3656,15 @@ val RefreshOutline14: ImageVector
         name = "RefreshOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3705,7 +3705,7 @@ val RefreshOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3731,21 +3731,21 @@ val RefreshOutline16: ImageVector
         }
     }.build()
 
-/** RightUpOutline14 */
-val RightUpOutline14: ImageVector
+/** ArrowUpRightOutline16 */
+val ArrowUpRightOutline16: ImageVector
     get() = ImageVector.Builder(
-        name = "RightUpOutline14",
+        name = "ArrowUpRightOutline16",
         defaultWidth = 8.0f.dp,
         defaultHeight = 8.dp,
         viewportWidth = 8.0f,
-        viewportHeight = 14.0f
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3786,7 +3786,7 @@ val RightUpOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3827,7 +3827,7 @@ val SearchOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3849,7 +3849,7 @@ val SearchOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3869,15 +3869,15 @@ val SendOutline14: ImageVector
         name = "SendOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3915,7 +3915,7 @@ val SendOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -3945,15 +3945,15 @@ val SettingsOutline14: ImageVector
         name = "SettingsOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4039,7 +4039,7 @@ val SettingsOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4072,7 +4072,7 @@ val SettingsOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4158,7 +4158,7 @@ val SettingsOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4191,7 +4191,7 @@ val ShareOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4241,7 +4241,7 @@ val SkillOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4270,7 +4270,7 @@ val SkillOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4344,7 +4344,7 @@ val Sparkle16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4361,7 +4361,7 @@ val Sparkle16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4378,7 +4378,7 @@ val Sparkle16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4406,7 +4406,7 @@ val StopFill16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4438,15 +4438,15 @@ val ThinkOutline14: ImageVector
         name = "ThinkOutline14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4463,7 +4463,7 @@ val ThinkOutline14: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4540,7 +4540,7 @@ val ThinkOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4557,7 +4557,7 @@ val ThinkOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4634,7 +4634,7 @@ val TrashOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4714,7 +4714,7 @@ val TreeCorner8x10: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4750,15 +4750,15 @@ val TriangleRightFill14: ImageVector
         name = "TriangleRightFill14",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4788,7 +4788,7 @@ val UserOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4810,7 +4810,7 @@ val UserOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4834,15 +4834,15 @@ val WarningOutline16: ImageVector
         name = "WarningOutline16",
         defaultWidth = 14.0f.dp,
         defaultHeight = 14.dp,
-        viewportWidth = 14.0f,
-        viewportHeight = 14.0f
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
     ).apply {
         path(
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4859,7 +4859,7 @@ val WarningOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4876,7 +4876,7 @@ val WarningOutline16: ImageVector
             fillAlpha = 1f,
             stroke = null,
             strokeAlpha = 1f,
-            strokeLineWidth = 1f,
+            strokeLineWidth = 1.25f,
             strokeLineJoin = StrokeJoin.Miter,
             strokeLineCap = StrokeCap.Butt,
             strokeLineMiter = 1f,
@@ -4909,4 +4909,249 @@ val FishLogo: ImageVector
             fill = SolidColor(Color.Black),
             fillAlpha = 1f,
         )
+    }.build()
+
+/** QrCodeOutline16 */
+val QrCodeOutline16: ImageVector
+    get() = ImageVector.Builder(
+        name = "QrCodeOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(3.5f, 2.5f)
+            lineTo(5.5f, 2.5f)
+            lineTo(5.5f, 4.5f)
+            lineTo(3.5f, 4.5f)
+            close()
+            moveTo(3.5f, 6.5f)
+            lineTo(5.5f, 6.5f)
+            lineTo(5.5f, 8.5f)
+            lineTo(3.5f, 8.5f)
+            close()
+            moveTo(7.5f, 2.5f)
+            lineTo(12.5f, 2.5f)
+            lineTo(12.5f, 4.5f)
+            lineTo(7.5f, 4.5f)
+            close()
+            moveTo(7.5f, 6.5f)
+            lineTo(9.5f, 6.5f)
+            lineTo(9.5f, 8.5f)
+            lineTo(7.5f, 8.5f)
+            close()
+            moveTo(10.5f, 7.5f)
+            lineTo(12.5f, 7.5f)
+            lineTo(12.5f, 12.5f)
+            lineTo(10.5f, 12.5f)
+            close()
+            moveTo(2.5f, 9.5f)
+            lineTo(4.5f, 9.5f)
+            lineTo(4.5f, 12.5f)
+            lineTo(2.5f, 12.5f)
+            close()
+            moveTo(5.5f, 10.5f)
+            lineTo(6.5f, 10.5f)
+            lineTo(6.5f, 12.5f)
+            lineTo(5.5f, 12.5f)
+            close()
+            moveTo(8.5f, 9.5f)
+            lineTo(9.5f, 9.5f)
+            lineTo(9.5f, 13.5f)
+            lineTo(8.5f, 13.5f)
+            close()
+            moveTo(11.5f, 10.5f)
+            lineTo(12.5f, 10.5f)
+            lineTo(12.5f, 13.5f)
+            lineTo(11.5f, 13.5f)
+            close()
+        }
+    }.build()
+
+    /** ArrowLeftRightOutline16 */
+val ArrowLeftRightOutline16: ImageVector
+    get() = ImageVector.Builder(
+        name = "ArrowLeftRightOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(10.5f, 4.5f)
+            lineTo(13.5f, 8.0f)
+            lineTo(10.5f, 11.5f)
+            lineTo(9.1f, 10.1f)
+            lineTo(10.9f, 8.0f)
+            lineTo(9.1f, 5.9f)
+            close()
+            moveTo(5.5f, 11.5f)
+            lineTo(2.5f, 8.0f)
+            lineTo(5.5f, 4.5f)
+            lineTo(6.9f, 5.9f)
+            lineTo(5.1f, 8.0f)
+            lineTo(6.9f, 10.1f)
+            close()
+        }
+    }.build()
+
+    /** ChatOutline16 */
+val ChatOutline16: ImageVector
+    get() = ImageVector.Builder(
+        name = "ChatOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(2.5f, 2.5f)
+            lineTo(13.5f, 2.5f)
+            lineTo(13.5f, 10.5f)
+            lineTo(5.5f, 10.5f)
+            lineTo(2.5f, 13.5f)
+            lineTo(2.5f, 10.5f)
+            close()
+            moveTo(13.5f, 1.5f)
+            lineTo(2.5f, 1.5f)
+            curveTo(1.67f, 1.5f, 1.0f, 2.17f, 1.0f, 3.0f)
+            lineTo(1.0f, 14.0f)
+            lineTo(4.5f, 10.5f)
+            lineTo(13.5f, 10.5f)
+            curveTo(14.33f, 10.5f, 15.0f, 9.83f, 15.0f, 9.0f)
+            lineTo(15.0f, 3.0f)
+            curveTo(15.0f, 2.17f, 14.33f, 1.5f, 13.5f, 1.5f)
+            close()
+        }
+    }.build()
+
+    /** ListTreeOutline16 */
+val ListTreeOutline16: ImageVector
+    get() = ImageVector.Builder(
+        name = "ListTreeOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(2.5f, 2.5f)
+            lineTo(6.5f, 2.5f)
+            lineTo(6.5f, 4.5f)
+            lineTo(2.5f, 4.5f)
+            close()
+            moveTo(9.5f, 2.5f)
+            lineTo(13.5f, 2.5f)
+            lineTo(13.5f, 4.5f)
+            lineTo(9.5f, 4.5f)
+            close()
+            moveTo(2.5f, 7.5f)
+            lineTo(6.5f, 7.5f)
+            lineTo(6.5f, 9.5f)
+            lineTo(2.5f, 9.5f)
+            close()
+            moveTo(9.5f, 7.5f)
+            lineTo(13.5f, 7.5f)
+            lineTo(13.5f, 9.5f)
+            lineTo(9.5f, 9.5f)
+            close()
+            moveTo(2.5f, 12.5f)
+            lineTo(6.5f, 12.5f)
+            lineTo(6.5f, 14.5f)
+            lineTo(2.5f, 14.5f)
+            close()
+            moveTo(9.5f, 12.5f)
+            lineTo(13.5f, 12.5f)
+            lineTo(13.5f, 14.5f)
+            lineTo(9.5f, 14.5f)
+            close()
+        }
+    }.build()
+
+    /** UsersOutline16 */
+val UsersOutline16: ImageVector
+    get() = ImageVector.Builder(
+        name = "UsersOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(6.0f, 5.5f)
+            curveTo(6.0f, 6.88f, 4.88f, 8.0f, 3.5f, 8.0f)
+            curveTo(2.12f, 8.0f, 1.0f, 6.88f, 1.0f, 5.5f)
+            curveTo(1.0f, 4.12f, 2.12f, 3.0f, 3.5f, 3.0f)
+            curveTo(4.88f, 3.0f, 6.0f, 4.12f, 6.0f, 5.5f)
+            close()
+            moveTo(10.5f, 8.5f)
+            curveTo(11.88f, 8.5f, 13.0f, 7.38f, 13.0f, 6.0f)
+            curveTo(13.0f, 4.62f, 11.88f, 3.5f, 10.5f, 3.5f)
+            curveTo(9.12f, 3.5f, 8.0f, 4.62f, 8.0f, 6.0f)
+            curveTo(8.0f, 7.38f, 9.12f, 8.5f, 10.5f, 8.5f)
+            close()
+            moveTo(3.5f, 9.5f)
+            curveTo(2.12f, 9.5f, 1.0f, 10.62f, 1.0f, 12.0f)
+            curveTo(1.0f, 13.38f, 2.12f, 14.5f, 3.5f, 14.5f)
+            curveTo(4.88f, 14.5f, 6.0f, 13.38f, 6.0f, 12.0f)
+            curveTo(6.0f, 10.62f, 4.88f, 9.5f, 3.5f, 9.5f)
+            close()
+            moveTo(10.5f, 9.5f)
+            curveTo(9.12f, 9.5f, 8.0f, 10.62f, 8.0f, 12.0f)
+            curveTo(8.0f, 13.38f, 9.12f, 14.5f, 10.5f, 14.5f)
+            curveTo(11.88f, 14.5f, 13.0f, 13.38f, 13.0f, 12.0f)
+            curveTo(13.0f, 10.62f, 11.88f, 9.5f, 10.5f, 9.5f)
+            close()
+        }
     }.build()

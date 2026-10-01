@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+
+import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
@@ -99,24 +101,36 @@ internal fun MessageItem(
     onOpenChanges: ((seq: Long, fileIndex: Int?) -> Unit)? = null,
     /** 复制 / 赞踩 / 时间一行：只在一轮的最后一条回复上显示。 */
     showActions: Boolean = true,
+    /** 本条是否是一轮末尾：控制操作行显示，也控制长按菜单。 */
+    isTurnEnd: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var selectOpen by remember { mutableStateOf(false) }
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val dshHaptic = rememberDshHaptic()
     val context = androidx.compose.ui.platform.LocalContext.current
-    // 已完成的文本消息：长按出菜单。选择文字走独立对话框，避免和列表滚动抢手势。
-    val canSelectText = (msg.role == "user" || msg.role == "assistant") &&
-        msg.running != true && !running && msg.text.isNotBlank()
+    // 文本消息长按出菜单；助手消息在 isTurnEnd 时也支持长按。
+    val canSelectText = (msg.role == "user" || (msg.role == "assistant" && isTurnEnd && msg.running != true && !running)) &&
+        msg.text.isNotBlank()
     val longPressModifier = if (canSelectText) {
         Modifier.combinedClickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
             onClick = {},
             onLongClick = {
-            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-            menuOpen = true
-        }
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                menuOpen = true
+            },
+        )
+    } else if (msg.role == "assistant" && isTurnEnd) {
+        Modifier.combinedClickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = {},
+            onLongClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                menuOpen = true
+            },
         )
     } else {
         Modifier
@@ -182,7 +196,7 @@ internal fun MessageItem(
                         )
                     }
                     // 助手消息底部：复制 / 赞踩 / 时间（流式结束后淡入，只挂在轮末）
-                    if (msg.role == "assistant" && showActions) {
+                    if (msg.role == "assistant" && showActions && isTurnEnd) {
                         AnimatedVisibility(
                             visible = msg.running != true,
                             enter = fadeIn(animationSpec = tween(motionDuration(400))),
@@ -320,7 +334,7 @@ private fun MessageActionIcon(
                 icon,
                 contentDescription = null,
                 tint = Dsh.labelSecondary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
         }
     }
@@ -423,7 +437,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
                     CompressOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(DshIconSize.xs)
                 )
             }
         }
@@ -505,7 +519,7 @@ private fun GoalRoundRow(text: String) {
                 GoalOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(DshIconSize.xs)
             )
             Spacer(Modifier.width(DshSpace.s6))
             Text(
@@ -617,7 +631,7 @@ private fun ContextInjectionRow(text: String) {
                 FileOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(DshIconSize.xs)
             )
             Spacer(Modifier.width(DshSpace.s6))
             Text(
@@ -701,7 +715,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                 ChecklistOutline14,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(DshIconSize.sm)
             )
             Spacer(Modifier.width(10.dp))
             Text(
@@ -765,7 +779,7 @@ private fun TodoGlyph(status: String) {
                 CheckOutline16,
                 contentDescription = null,
                 tint = Dsh.success,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(DshIconSize.sm)
             )
             "active", "progress", "in_progress", "running" -> {
                 val angle = rememberMotionSpin(750, label = "todo-spin")
@@ -773,7 +787,7 @@ private fun TodoGlyph(status: String) {
                     RefreshOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(14.dp).rotate(angle ?: 0f)
+                    modifier = Modifier.size(DshIconSize.sm).rotate(angle ?: 0f)
                 )
             }
             else -> Box(
@@ -813,7 +827,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
                 GoalOutline16,
                 contentDescription = null,
                 tint = Dsh.labelSecondary,
-                modifier = Modifier.size(15.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
             Text(
                 text = L.goalRole,
