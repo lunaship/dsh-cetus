@@ -193,35 +193,35 @@ object DshType {
             letterSpacing = 0.01.sp,
         )
 
-    /** 11/16：微标签（比 labelSmall 松两行）。 */
+    /** 12/16：微标签（比 caption 紧一行）。E7：原 11sp，正文辅助信息最小 12sp。 */
     val microRelaxed: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Normal,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             lineHeight = 16.sp,
             letterSpacing = 0.01.sp,
         )
 
-    /** 11/16 · Medium：微标签强调。 */
+    /** 12/16 · Medium：微标签强调。E7：原 11sp，正文辅助信息最小 12sp。 */
     val microMedium: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             lineHeight = 16.sp,
             letterSpacing = 0.01.sp,
         )
 
-    /** 11/16 · SemiBold：微标签强强调（徽章/计数）。 */
+    /** 12/16 · SemiBold：微标签强强调（徽章/计数）。E7：原 11sp，正文辅助信息最小 12sp。 */
     val microStrong: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             lineHeight = 16.sp,
             letterSpacing = 0.01.sp,
         )
