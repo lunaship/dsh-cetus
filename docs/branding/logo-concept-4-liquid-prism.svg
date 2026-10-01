@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="dl-glass-1" x1="20" y1="20" x2="65" y2="65" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#3F5BD6" stop-opacity="0.45"/>
+    </linearGradient>
+    <linearGradient id="dl-glass-2" x1="45" y1="45" x2="85" y2="85" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3F5BD6" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#8B9DFF" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="dl-specular" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Ambient Glow -->
+  <circle cx="50" cy="50" r="38" fill="#3F5BD6" fill-opacity="0.15"/>
+  
+  <!-- First Liquid Glass Plate (Desktop Terminal) -->
+  <rect x="22" y="22" width="40" height="40" rx="12" 
+        fill="url(#dl-glass-1)" 
+        stroke="url(#dl-specular)" stroke-width="1.5"/>
+        
+  <!-- Second Liquid Glass Plate (Mobile Node, Overlapping with Refraction) -->
+  <rect x="38" y="38" width="40" height="40" rx="12" 
+        fill="url(#dl-glass-2)" 
+        stroke="url(#dl-specular)" stroke-width="1.5"/>
+
+  <!-- Intersection Caustic Highlight -->
+  <rect x="38" y="38" width="24" height="24" rx="8" 
+        fill="#FFFFFF" fill-opacity="0.32" 
+        stroke="#FFFFFF" stroke-width="1"/>
+        
+  <!-- Connection Dot Matrix inside intersection -->
+  <circle cx="50" cy="50" r="4.5" fill="#FFFFFF"/>
+</svg>
