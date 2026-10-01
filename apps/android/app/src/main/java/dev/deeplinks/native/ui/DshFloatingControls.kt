@@ -82,7 +82,7 @@ private fun Modifier.dshGlassControlSurface(
     contentDescription: String? = null,
 ): Modifier {
     val pressed by interactionSource.collectIsPressedAsState()
-    return modifier
+    return this
         .dshGlassPressBounce(interactionSource)
         .dshGlass(
             tier = DshGlassTier.Control,
@@ -101,6 +101,7 @@ private fun Modifier.dshGlassControlSurface(
             role = Role.Button
             if (contentDescription != null) this.contentDescription = contentDescription
         }
+        .then(modifier)
 }
 
 /** 控件玻璃形状：DshRadius.full；满足 lens 的 CornerBasedShape 要求。 */

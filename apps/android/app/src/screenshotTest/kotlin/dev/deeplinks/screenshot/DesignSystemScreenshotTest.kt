@@ -10,14 +10,22 @@ import dev.deeplinks.native.HomeOfflineCard
 import dev.deeplinks.native.HomeSectionHeader
 import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.HomeBottomBar
+import dev.deeplinks.native.ComposerSuggestionsRow
+import dev.deeplinks.native.EllipsisOutline16
+import dev.deeplinks.native.ArrowLeftOutline16
+import dev.deeplinks.native.FilterLinesOutline16
+import dev.deeplinks.native.SettingsOutline16
+import dev.deeplinks.native.PlusOutline16
+import dev.deeplinks.native.ui.DshGlassCapsule
+import dev.deeplinks.native.ui.DshGlassCapsuleIcon
+import dev.deeplinks.native.ui.DshGlassCapsuleLabel
+import dev.deeplinks.native.ui.DshGlassCircle
+import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.SparkleOutline16
 import dev.deeplinks.native.ArchiveBoxOutline16
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
-import dev.deeplinks.native.SettingsOutline16
-import dev.deeplinks.native.PlusOutline16
 import dev.deeplinks.native.CloseOutline16
-import dev.deeplinks.native.EllipsisOutline16
 import dev.deeplinks.native.TrashOutline16
 import dev.deeplinks.native.ShareOutline16
 import dev.deeplinks.native.CopyOutline16
@@ -33,7 +41,6 @@ import dev.deeplinks.native.ChevronRightOutline16
 import dev.deeplinks.native.ChevronDownOutline16
 import dev.deeplinks.native.CheckOutline16
 import dev.deeplinks.native.WarningOutline16
-import dev.deeplinks.native.ArrowLeftOutline16
 import dev.deeplinks.native.CameraOutline16
 import dev.deeplinks.native.ClockOutline16
 import dev.deeplinks.native.CompressOutline16
@@ -67,6 +74,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1393,6 +1401,62 @@ internal fun HomeEmptyLightZh() {
 @Composable
 internal fun HomeEmptyDarkEn() {
     Wall(dark = true, english = true) { HomeEmptyWall() }
+}
+
+/** 2026-10-02 简化：悬浮玻璃控件 + 建议行（继续 / 复核 / 查看改动 (N)）+ 底部操作行。 */
+@Composable
+private fun GlassControlsWall(english: Boolean = false) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dsh.bgBase)
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SectionTitle(if (english) "Glass capsule / circle (fallback surface in baseline)" else "悬浮玻璃胶囊 / 圆钮（基线为回退实色面）")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            DshGlassCapsule(onClick = {}, backdrop = null) {
+                DshGlassCapsuleLabel("DeepLinks")
+                Spacer(Modifier.width(6.dp))
+                HostStatusDot(true)
+            }
+            DshGlassCapsule(onClick = {}, backdrop = null) {
+                DshGlassCapsuleIcon(FilterLinesOutline16, "filter", onClick = {}, enabled = false)
+                DshGlassCapsuleIcon(SettingsOutline16, DshS.settingsTitle, onClick = {})
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DshGlassCircle(icon = ArrowLeftOutline16, contentDescription = "back", onClick = {}, backdrop = null)
+            DshGlassCircle(icon = EllipsisOutline16, contentDescription = "more", onClick = {}, backdrop = null)
+            DshGlassCircle(icon = PlusOutline16, contentDescription = "add", onClick = {}, backdrop = null, iconTint = Dsh.accentIcon)
+            DshGlassCircle(icon = PlusOutline16, contentDescription = "disabled", onClick = {}, enabled = false, backdrop = null)
+        }
+        SectionTitle(if (english) "Composer suggestions (continue / review / view changes)" else "建议行（继续 / 复核 / 查看改动）")
+        ComposerSuggestionsRow(
+            online = true,
+            suggestionsVisible = true,
+            changesCount = 6,
+            onSuggestion = {},
+            onOpenChanges = {},
+        )
+        SectionTitle(if (english) "Home bottom bar (search capsule + accent plus)" else "首页底部操作行（搜索胶囊 + 强调色圆形 +）")
+        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
+        HomeBottomBar(online = false, onOpenSearch = {}, onNewTask = {}, backdrop = null)
+    }
+}
+
+@PreviewTest
+@Preview(name = "chat suggestions light zh", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun ChatSuggestionsLightZh() {
+    Wall(dark = false, english = false) { GlassControlsWall(english = false) }
+}
+
+@PreviewTest
+@Preview(name = "home bottom bar dark en", showBackground = true, widthDp = 412, heightDp = 620)
+@Composable
+internal fun HomeBottomBarDarkEn() {
+    Wall(dark = true, english = true) { GlassControlsWall(english = true) }
 }
 
 @PreviewTest

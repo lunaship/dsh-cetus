@@ -71,21 +71,25 @@ Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生�
 `#EBEDF1` 与冷灰画布 `#F3F4F7` 几乎无差，灰底会把气泡与思考下沉面糊在一起。
 首页、设置、设备及其二级页一律冷灰画布（`bgBase` 灰 + `bgCard` 白卡）。
 
-### 2.1 液态玻璃（2026-10-01 起，三种表面用途）
+### 2.1 液态玻璃（2026-10-02 Lody 简化修订：Control / Floating 两档 + 边缘渐隐）
 
 | 用途 | 规则 | 典型位置 |
 |---|---|---|
 | 清晰内容面 | 稳定底色，无玻璃、无折射 | 正文、代码、设置行、长菜单、设备信息 |
-| 导航玻璃 | 较浓底色、适量模糊、很弱的边缘分层；**全宽矩形不折射** | 页面顶栏与必要的导航操作区 |
-| 浮动玻璃 | 圆角浮岛：外圈边缘高光、轻折射与柔和阴影；**输入框本体用接近实色的面**（浅 0.92 / 深 0.94 alpha），保证输入文字不受背后内容干扰（R5） | 聊天输入区外圈、附件入口、发送按钮、少量浮动控件 |
+| Control 档玻璃 | 小尺寸圆角控件专用：折射（lens 12dp/24dp）+ 边缘高光（1dp，浅 0.55 / 深 0.28）+ 柔和阴影（16dp）+ **按压回弹 1.04 与高光增强、无涟漪**；表面浅 White@0.50 / 深 bgCard@0.55，输入胶囊等承载文字的面用 Strong 档（浅 0.72 / 深 0.74，L11 可读性下限：输入文字对比 ≥ 4.5:1，不达标提浓度） | 悬浮胶囊 / 圆钮（返回、⋯、圆形 +、搜索胶囊）、聊天输入胶囊 |
+| Floating 档玻璃 | 圆角浮层：边缘高光、轻折射与柔和阴影 | 改动面板等大浮层（首轮无新增用法） |
+| 边缘渐隐（`DshEdgeFade`） | 画布色 @0.94 的顶 / 底渐变带，替代全宽导航条（**L9：导航条下线**）；内容未滚入时（同色叠同色）不可见；渐隐不进采样源 | 页面顶 / 底部，控件与内容交界处 |
+
+- **全宽导航条不再存在**：顶部 chrome（标题 / 返回 / ⋯）悬浮在内容之上，内容滚动穿过；
+  页面滚动容器用 `LocalDshPageTopInset`（骨架实测高度）做顶部避让。
 
 - 材质与回退实现收敛在共用入口（`DshGlass` / `dshTranslucent`），页面不得自带一套效果参数。
 - 折射（lens）是共用开关，默认只在输入区外圈开轻档；导航永远不折射。
   实现约束：Backdrop 1.0.6 的 lens 参数单位为 **px**（在效果作用域内由 dp 换算）、仅 Android 13+、
   形状必须为圆角（`CornerBasedShape`），传 `RectangleShape` 会抛异常（R10）。
-- 回退阶梯：API 33+ 模糊 + 折射 → API 31–32 模糊（无折射）→ API 26–30 稳定表面 →
-  截图预览 / 省电 / 关动画用不透明或纯色半透明表面。回退不得留透明空洞或读不清的文字；
-  省电与动画设置变化要跟手（进前台与设置变化时更新，见 `DshTranslucentBar`）。
+- 回退阶梯（4.5.5）：API 33+ 全效 → API 31–32 无折射 → API 26–30 / 无采样源实色 0.96 +
+  0.5dp `borderSubtle` 描边 → 省电 / 预览实色 1.0 不缩放。回退不得留透明空洞或读不清的文字；
+  省电与动画设置变化要跟手（`rememberDshReduceTransparency`）。
 - 首轮调参起点（导航 / 浮动）：模糊 16dp / 12dp 起；底色浓度浅 0.84 / 0.88、外圈 0.68 / 0.76 起；
   折射高度 8dp、折射量 12dp 起（6–12 / 8–20 内调）；色散与深度效果关闭；高光、阴影克制。
   参数按角色定义在共用文件中，禁止页面单独调数字。
@@ -111,11 +115,13 @@ Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生�
 | `micro` | 2dp | 进度条、小色块 |
 | `control` | 8dp | 菜单行、小按钮、缩略图 |
 | `container` | 12dp | 普通卡片、状态面板、菜单 |
-| `composer` | 22dp | 聊天输入卡与任务入口（少量品牌特征） |
+| `card` | 20dp | 灰底上的白色分组卡（`DshSectionContainer.Card` / `DshCardRows`）——只允许共享组件引用 |
+| `composer` | 22dp | 聊天输入卡与输入胶囊（少量品牌特征） |
 | `modal` | 28dp | Dialog、Bottom sheet |
 | `full` | 999dp | Filter chip、状态 pill、圆形按钮、进度轨道 |
 
-- `group = 20dp` 的页面级语义已删除；页面文件不得直接使用。
+- `group` 页面级语义已删除；2026-10-02 以共享组件专用 `card = 20dp` 取代——页面文件出现
+  `DshRadius.card` 或显式 `DshSectionContainer.Flat` 即 `ComponentLanguageTest` 失败。
 - `xs/sm/md/lg/xl` 为弃用别名，先映射到新角色，再逐文件替换（`DesignTokenUsageTest` 管只降不升）。
 - `DshTileShape` 只允许头像和确实需要方形底板的设备图标。
 - 普通列表行禁止额外 clip；按压反馈由父级 Section 或 interaction indication 处理。
@@ -127,7 +133,7 @@ Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生�
 |---|---|
 | 页面标题 | 标准页 `headlineMedium`（20/26）；聊天顶栏紧凑档 `titleLarge`（17/24） |
 | Section 标题 | `titleSmall` |
-| 列表主标题 | `listTitle`（16/22 Medium，2026-10-01 R7） |
+| 列表主标题 | `listTitle`（16/24 Normal，2026-10-02 Lody 简化：Medium 只留给页面标题） |
 | 列表辅助文字 | `supporting` |
 | 工作台正文 | `body` |
 | 计数、时间、状态 | `captionRelaxed` 或 `label` |
@@ -156,21 +162,26 @@ Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生�
 | 类别 | 组件 | 规则 |
 |---|---|---|
 | 页面 | `DshPageScaffold` | 统一标题、inset、宽度和背景 |
-| Section | `DshSectionHeader`、`DshSection`、`DshSectionLabel` | 默认扁平；设置页不用 `tonal`。分区标题只有灰字，不挂计数；`DshSectionLabel` 是 13/Medium/次要色的分组标签 |
-| 列表 | `DshListRow`、`DshGroupCard`、`DshCardDivider`、`DshSwitchRow`、`DshSelectRow` | 设置、设备、Sheet、首页分组卡复用同一行骨架；`DshGroupCard` 是 `bgCard` + **`container` 12dp** 圆角 + 16 内边距的白色分组卡（2026-10-01 修正：普通分组卡不再映射 `composer` 22dp——22dp 只留聊天输入卡与任务入口这一品牌特征），行间只用 `DshCardDivider` 发丝线 |
+| Section | `DshSectionHeader`、`DshSection`、`DshSectionLabel`、`DshCardRows` | **页面内容面一律 `container = Card`**（2026-10-02：bgCard + card 20dp，首页分区 / 设置分组 / 设备信息同一承载面）；Flat 留给弹层内部、Tonal 留给警告 / 摘要；分区标题只有灰字，不挂计数；页脚长说明折叠为一行灰字摘要、点按展开 |
+| 列表 | `DshListRow`、`DshGroupCard`、`DshCardDivider`、`DshSwitchRow`、`DshSelectRow` | 设置、设备、Sheet、首页分组卡复用同一行骨架；`DshGroupCard` 是 `bgCard` + `card` 20dp 圆角 + 16 内边距；行首图标默认 `accentIcon`（危险行 error）；`dshSwitchColors` 开启轨 = `switchOnTrack`、拇指浅 bgCard / 深 onInk |
 | 筛选 | `DshFilterChip` | 工作区、模型、状态筛选统一使用 |
 | 状态 | `DshStatusBadge`、`DshStatusChip`、`DshStatusIcon`、`DshBanner` | 等待、运行、成功、错误语义固定；`DshStatusChip` 是收件箱的四种状态胶囊（等你批准 / 等你回答 / 在电脑上处理 / 完成），`DshStatusIcon` 是 32dp 列表行首状态圈 |
-| 操作 | `DshPrimaryAction`、`DshPillButton`、`DshFloatingPill`、`DshIconAction` | 一个表面最多一个实心主操作；`DshPillButton` 分 Accent（品牌蓝实心）/ Ink（墨色实心）/ Tonal 三种，视觉 44dp、热区 48dp；`DshFloatingPill` 是页面底部唯一的悬浮主按钮（唯一带阴影的普通按钮） |
+| 操作 | `DshPrimaryAction`、`DshPillButton`、`DshIconAction`、`DshGlassCapsule`、`DshGlassCircle` | 一个表面最多一个实心主操作；`DshPillButton` 分 Accent（品牌蓝实心）/ Ink（墨色实心）/ Tonal 三种，视觉 44dp、热区 48dp；**`DshGlassCapsule` / `DshGlassCircle` 是顶栏操作、首页底部操作、聊天返回 / ⋯、输入区「+」的唯一形态**（Control 档玻璃、48dp 热区、按压回弹、无涟漪；`DshFloatingPill` 已删除） |
 | 空态 | `DshEmptyState`、`DshErrorState` | 未配对与空数据用 `DshEmptyState`（标题、说明、文字动作），不挂品牌标志；空会话只留白 |
 | 浮层 | `DshSheet`、`DshDialog`、`DshMenu` | 统一 modal 形状、scrim、阴影和关闭按钮；浮层阴影 4dp（对话框 16dp 保留） |
 | 输入 | `ComposerBar` | 保留专用能力，内部按钮和菜单使用共享原语 |
 
 **密度**：空白留在组与组之间，不在每个元素周围均匀撒。
-- 助手消息的复制 / 赞踩 / 时间行只挂在每轮最后一条回复；过程说明靠长按菜单复制。
+- 助手消息的轮尾只留一行灰字元信息「[模型名 ·] 时间 · 耗时」（2026-10-02：模型名只认本轮
+  切换标记；复制 / 分支 / 赞踩收进行尾 ⋯ 菜单）。对话视图的过程收成**一行活动摘要**
+  （`activityLine`：思考时长 → 命令 → 阅读 → 编辑 → 搜索 → 获取，最多 3 类、其余并「+N」），
+  点按直达轨迹；轨迹视图组头同一口径（L7：编辑写「编辑 N 次」，文件数只认改动卡）。
 - 列表的分区标题与行标题对齐同一条左边线；会话行不加行尾 `›`。
-- 任务首页：顶栏是「DeepLinks + 连接状态点」品牌单行（2026-10-01 R1，不显示电脑名与下拉）；
-  筛选胶囊、分区标题、会话标题按两级对齐线落位（页面内容线 16dp / 容器内容线再进 16dp）。
-  会话时间放在标题行尾，副标题只写项目和状态。
+- 任务首页（2026-10-02 Lody 简化）：顶栏左「DeepLinks + 状态点」展示胶囊、右「筛选 + 设置」
+  合并胶囊（`DshGlassCapsule`）；底部操作行 = 搜索胶囊 + `accentIcon` 圆形 +
+  （黑色 FAB 已删除）；分区内容进白色分组卡；已筛选工作区以列表顶部灰字行 × 清除。
+  会话行两层文字：元信息行（6dp 状态点仅执行中脉冲 / 等你批准 + 工作区 · 状态 · 步数，时间右对齐）
+  + Normal 标题（最多 2 行）+ 结果一句话；前导状态圈不再使用。
 - 新会话（2026-09-30 N1）：点「+ 新任务」直接进对话页**草稿态**，复用对话页输入栏；草稿画布贴底三块
   （继续上次的任务 / 工作区胶囊 / 智能体预设），不放标语和品牌标志；系统分享进来的文本与图片直接落在草稿态输入框。
   旧的「新任务」底部面板已删除。工作区胶囊的「更多」入口常驻行尾、不随横向滚动滚走；同名末级目录在胶囊上
@@ -193,11 +204,16 @@ Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生�
    全 App 唯一高饱和强调色仍是品牌蓝（浅 `#3F5BD6` / 深 `#8B9DFF`）；批准、发送、链接用这一族。
    选中态、用户气泡和进行中状态用浅灰与正文色，不把品牌蓝铺进列表和消息流。
    Material You 动态取色只动表面 / 灰阶文字，**不得**用壁纸色替换品牌 token。
-   **发送槽规格（Mic / Send / Stop 同一槽）**：空态语音 = `bgTrack` 圆钮；可发送 / 运行 / 录音 = `brand500` 实心；
-   停止 = `inkFill` 实心、内部方块 `onInk`；禁用 = `bgSubtle` + `labelDimmed`；出错 = `error`。状态只换图标。
+   **发送槽规格（Mic / Send / Stop 同一槽，2026-10-02 改 accentIcon 圆底）**：空态语音 = `bgTrack` 圆钮；
+   可发送 / 运行 / 录音 = `accentIcon` 实心（= brand400）；停止 = `inkFill` 实心、内部方块 `onInk`；
+   禁用 = `bgSubtle` + `labelDimmed`；出错 = `error`。状态只换图标。
+   **2026-10-02 L4 强调范围放宽**：线性图标与主入口可用品牌蓝（`accentIcon`：设置分组图标、
+   圆形 +、发送钮底；开关开启轨 `switchOnTrack`）；用户气泡改 `userBubble`
+   （brand400 10%/14% 叠 bgCard 的预合成色，L5）；不用品牌蓝色块铺底，审批「允许一次」仍为描边。
 3. **过程按钮用 ink，不用于「需要你动手」**：这条取代 2026-09-27 的「禁墨色主轴」，并在 2026-09-30 把深色 ink 从白实心改成深灰。
    - **品牌蓝实心**只给需要用户决策的动作：批准、发送、确认。
-   - **ink 实心**（底 `inkFill`、内容 `onInk`）给过程控制：新任务悬浮按钮、停止、开关开启态。浅色 `#15171C` / 白字；深色 `#3A3C43` / `#ECEDF0`。
+   - **ink 实心**（底 `inkFill`、内容 `onInk`）给过程控制：停止。浅色 `#15171C` / 白字；深色 `#3A3C43` / `#ECEDF0`。
+     （2026-10-02：开关开启态改 `switchOnTrack` 品牌蓝轨；「+ 新任务」悬浮按钮删除。）
    - 禁用一律 `bgSubtle` + `labelDimmed`，不用品牌色降透明度。
    - 其余动作一律 tonal（底 `bgSubtle`）或文字按钮。
    - **语义色只做 6dp 圆点和文字**（警告 / 成功 / 错误）。容器底保持 `bgSubtle` 或 `bgCard`。不用侧边色条，也不再用 `warnContainer` / `successContainer`。
