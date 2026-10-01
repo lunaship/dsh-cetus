@@ -96,7 +96,7 @@ internal fun ModelPickerSheet(
                         .semantics { contentDescription = L.back },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(ChevronLeftOutline14, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.lg))
+                    Icon(ChevronLeftOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.lg))
                 }
             }
             Box(Modifier.weight(1f)) {

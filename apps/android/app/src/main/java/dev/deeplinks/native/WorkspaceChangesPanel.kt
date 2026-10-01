@@ -420,13 +420,13 @@ private fun TurnHeader(
             val older = summaries.getOrNull(position + 1)
             val newer = if (position > 0) summaries[position - 1] else null
             PanelIconButton(
-                ChevronLeftOutline14,
+                ChevronLeftOutline16,
                 ChangesL.olderTurn,
                 onClick = { older?.let { onSelectTurn(it.seq) } },
                 tint = if (older != null) Dsh.labelSecondary else Dsh.labelDimmed,
             )
             PanelIconButton(
-                ChevronRightOutline14,
+                ChevronRightOutline16,
                 ChangesL.newerTurn,
                 onClick = { newer?.let { onSelectTurn(it.seq) } },
                 tint = if (newer != null) Dsh.labelSecondary else Dsh.labelDimmed,
@@ -473,7 +473,7 @@ private fun FileHeader(
             .padding(horizontal = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PanelIconButton(ChevronLeftOutline14, ChangesL.backToFiles, onBack)
+        PanelIconButton(ChevronLeftOutline16, ChangesL.backToFiles, onBack)
         Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -525,18 +525,18 @@ private fun FileHeader(
                 WrapOutline16,
                 contentDescription = null,
                 tint = if (wrap) Dsh.brand500 else Dsh.labelSecondary,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
         }
         if (count > 1) {
             PanelIconButton(
-                ChevronUpOutline14,
+                ChevronUpOutline16,
                 ChangesL.previousFile,
                 onClick = { if (index > 0) onSelectFile(index - 1) },
                 tint = if (index > 0) Dsh.labelSecondary else Dsh.labelDimmed,
             )
             PanelIconButton(
-                ChevronDownOutline14,
+                ChevronDownOutline16,
                 ChangesL.nextFile,
                 onClick = { if (index < count - 1) onSelectFile(index + 1) },
                 tint = if (index < count - 1) Dsh.labelSecondary else Dsh.labelDimmed,

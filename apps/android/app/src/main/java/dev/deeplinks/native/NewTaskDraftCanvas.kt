@@ -144,7 +144,7 @@ private fun DraftLastTaskRow(task: DraftLastTask, onOpenLastTask: (String) -> Un
             )
         }
         Icon(
-            ChevronRightOutline14,
+            ChevronRightOutline16,
             contentDescription = null,
             tint = Dsh.labelTertiary,
             modifier = Modifier.size(DshIconSize.xs),
@@ -175,7 +175,7 @@ private fun DraftModeRow(label: String, onClick: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         Icon(
-            ChevronDownOutline14,
+            ChevronDownOutline16,
             contentDescription = null,
             tint = Dsh.labelTertiary,
             modifier = Modifier.size(DshIconSize.xs),

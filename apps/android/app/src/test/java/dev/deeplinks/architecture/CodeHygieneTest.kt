@@ -100,4 +100,49 @@ class CodeHygieneTest {
             violations.isEmpty(),
         )
     }
+
+    // ---- 图标规范（UI 精简整改第 6 步）----
+
+    /** Icon(...) 的尺寸只能用 DshIconSize 四档 token，不许写裸 dp。 */
+    @Test
+    fun iconSizesUseDshIconSizeTokens() {
+        val root = mainSourceRoot()
+        val pattern = Regex("""Icon\((?:[^()]|\([^()]*\))*?Modifier\s*\.size\(\s*\d+(\.\d+)?\.dp""", RegexOption.DOT_MATCHES_ALL)
+        val violations = mutableListOf<String>()
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val text = file.readText()
+            for (m in pattern.findAll(text)) {
+                val line = text.substring(0, m.range.first).count { it == '\n' } + 1
+                violations += relative(root, file) + ":" + line
+            }
+        }
+        assertTrue(
+            "Icon 尺寸必须用 DshIconSize.xs/sm/md/lg：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
+
+    /** 图标名末尾的数字必须等于视口；线宽统一 1.25（品牌 / 装饰件豁免）。 */
+    @Test
+    fun iconNamesMatchViewportAndStroke() {
+        val file = File(mainSourceRoot(), "dev/deeplinks/native/DshIcons.kt")
+        val text = file.readText()
+        val exempt = setOf("FishLogo", "TreeCorner8x10", "ArchiveOutline20")
+        val block = Regex("""val (\w+): ImageVector by lazy \{(.*?)\n\}""", RegexOption.DOT_MATCHES_ALL)
+        val violations = mutableListOf<String>()
+        for (m in block.findAll(text)) {
+            val name = m.groupValues[1]
+            if (name in exempt) continue
+            val body = m.groupValues[2]
+            val size = Regex("""(\d+)$""").find(name)?.groupValues?.get(1)
+            val viewport = Regex("""viewportWidth = ([\d.]+)f""").find(body)?.groupValues?.get(1)?.toFloat()
+            if (size == null || viewport == null || size.toFloat() != viewport) {
+                violations += "$name: 视口 $viewport 与名称不符"
+            }
+            Regex("""strokeLineWidth = ([\d.]+)f""").findAll(body).map { it.groupValues[1] }
+                .filter { it != "1.25" }
+                .forEach { violations += "$name: 线宽 $it（应为 1.25）" }
+        }
+        assertTrue("图标规范违规：\n" + violations.joinToString("\n"), violations.isEmpty())
+    }
 }

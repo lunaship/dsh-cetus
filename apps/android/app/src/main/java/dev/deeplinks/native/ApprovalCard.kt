@@ -328,7 +328,7 @@ private fun ApprovalOptionRow(
                 )
             } else if (selected) {
                 Icon(
-                    CheckOutline14,
+                    CheckOutline16,
                     contentDescription = null,
                     tint = Dsh.bgSurface,
                     modifier = Modifier.size(DshIconSize.xs),
@@ -359,7 +359,7 @@ private fun ApprovalSentBadge(choice: ApprovalChoice?, status: String? = null) {
     DshStatusChip(
         text = label,
         tone = DshChipTone.Remote,
-        leading = if (allowed) CheckOutline14 else CloseOutline16,
+        leading = if (allowed) CheckOutline16 else CloseOutline16,
         leadingTint = if (allowed) Dsh.successContent else Dsh.labelTertiary,
     )
 }

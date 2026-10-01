@@ -311,7 +311,7 @@ internal fun InputBar(
                             }
                             Spacer(Modifier.width(3.dp))
                             Icon(
-                                ChevronDownOutline14,
+                                ChevronDownOutline16,
                                 contentDescription = null,
                                 tint = Dsh.labelTertiary,
                                 modifier = Modifier.size(DshIconSize.xs),
@@ -463,7 +463,7 @@ internal fun InputBar(
                                     SendOutline16,
                                     contentDescription = null,
                                     tint = if (canSend) Dsh.onBrand else Dsh.labelDimmed,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(DshIconSize.sm)
                                 )
                             }
                         }
@@ -577,7 +577,7 @@ private fun ComposerModelSeat(
                     Sparkle16,
                     contentDescription = null,
                     tint = if (hasModel) Dsh.labelSecondary else Dsh.labelTertiary,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(DshIconSize.sm),
                 )
             } else {
                 Text(
@@ -600,7 +600,7 @@ private fun ComposerModelSeat(
                 }
             }
             Icon(
-                ChevronDownOutline14,
+                ChevronDownOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.xs),
@@ -697,7 +697,7 @@ internal fun RoundIconButton(
                 .clip(CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = if (pressed) Dsh.labelPrimary else tint, modifier = Modifier.size(16.dp))
+            Icon(icon, contentDescription = null, tint = if (pressed) Dsh.labelPrimary else tint, modifier = Modifier.size(DshIconSize.sm))
         }
     }
 }
@@ -741,7 +741,7 @@ private fun ComposerSetupRow(
         )
         if (onClick != null) {
             Spacer(Modifier.width(DshSpace.s4))
-            Icon(ChevronDownOutline14, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
+            Icon(ChevronDownOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         }
     }
 }

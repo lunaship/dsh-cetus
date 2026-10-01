@@ -97,7 +97,7 @@ internal fun WorkspaceChangesCard(
                         modifier = Modifier.weight(1f),
                     )
                     Icon(
-                        ChevronRightOutline14,
+                        ChevronRightOutline16,
                         contentDescription = null,
                         tint = Dsh.labelTertiary,
                         modifier = Modifier.size(DshIconSize.sm),

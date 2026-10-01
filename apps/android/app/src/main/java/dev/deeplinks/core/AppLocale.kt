@@ -78,8 +78,6 @@ class DshStrings(private val values: Map<String, String>) {
     val tabAbout: String get() = t("tabAbout")
     val sectionGeneral: String get() = t("sectionGeneral")
     val sectionAppearance: String get() = t("sectionAppearance")
-    val sectionMore: String get() = t("sectionMore")
-    val sectionWorkspace: String get() = t("sectionWorkspace")
     val settingsConversation: String get() = t("settingsConversation")
     val settingsTheme: String get() = t("settingsTheme")
     val settingsFontSize: String get() = t("settingsFontSize")
@@ -231,7 +229,6 @@ class DshStrings(private val values: Map<String, String>) {
     val newSession: String get() = t("newSession")
     val workspace: String get() = t("workspace")
     val searchSessions: String get() = t("searchSessions")
-    val filterSessions: String get() = t("filterSessions")
     val addWorkspace: String get() = t("addWorkspace")
     val searchSessionsPlaceholder: String get() = t("searchSessionsPlaceholder")
     val clearSearch: String get() = t("clearSearch")
@@ -686,6 +683,7 @@ class DshStrings(private val values: Map<String, String>) {
     val toolSummaryFailed: String get() = t("toolSummaryFailed")
     val toolRunning: String get() = t("toolRunning")
     val hostOffline: String get() = t("hostOffline")
+    val viewInTrace: String get() = t("viewInTrace")
 }
 
 /** Non-composable access; reading this observes LocaleManager.language. */

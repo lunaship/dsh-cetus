@@ -463,7 +463,7 @@ private fun ProviderRows(
         },
         trailingContent = {
             Icon(
-                ChevronRightOutline14,
+                ChevronRightOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.sm).rotate(chevronTurn),
@@ -519,7 +519,7 @@ private fun ProviderRows(
             if (row.canDiscover) {
                 DshListActionRow(
                     label = if (busy == "discover:${row.provider}") s.fetchingModels else s.fetchModels,
-                    icon = RefreshOutline14,
+                    icon = RefreshOutline16,
                     enabled = busy == null,
                     onClick = onDiscover,
                 )

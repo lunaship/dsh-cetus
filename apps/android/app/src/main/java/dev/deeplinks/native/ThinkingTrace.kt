@@ -234,7 +234,7 @@ private fun ThinkingHeader(
                 StarFour16,
                 contentDescription = null,
                 tint = if (working) Dsh.brand400 else Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(DshIconSize.sm),
             )
             Spacer(Modifier.width(DshSpace.s8))
             AnimatedContent(
@@ -258,11 +258,11 @@ private fun ThinkingHeader(
             }
             Spacer(Modifier.width(DshSpace.s6))
             Icon(
-                ChevronDownOutline14,
+                ChevronDownOutline16,
                 contentDescription = expandLabel,
                 tint = Dsh.labelTertiary,
                 modifier = Modifier
-                    .size(14.dp)
+                    .size(DshIconSize.sm)
                     .graphicsLayer { rotationZ = rotation },
             )
         }

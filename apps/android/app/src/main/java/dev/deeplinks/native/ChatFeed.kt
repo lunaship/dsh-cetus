@@ -8,6 +8,9 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,37 +79,40 @@ internal data class TodoProgress(
     val hasActive: Boolean get() = pending > 0 || inProgress > 0
 }
 
-/** 吸顶摘要条：运行中时粘在消息流顶端，不随消息滚出视野。 */
+/** 吸顶摘要条：执行中的目标 + todo 进度，悬浮在顶部 chrome 里，只出现这一处。 */
 @Composable
-internal fun StickyTaskSummaryBar(
-    goalSummary: String?,
-    todoProgress: TodoProgress,
+internal fun ChatStickySummary(
+    goalOverride: String?,
+    messages: List<MobileMessage>,
     isRunning: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val derivedGoal = remember(messages) { latestGoalSummary(messages) }
+    val todos = remember(messages) { latestTodoProgress(messages) }
     StickyTaskSummaryCard(
-        goalSummary = goalSummary,
-        todoProgress = todoProgress,
+        goalSummary = goalOverride?.takeIf { it.isNotBlank() } ?: derivedGoal,
+        todoProgress = todos,
         isRunning = isRunning,
         modifier = modifier,
     )
 }
 
-/** 工具折叠摘要卡（对话视图下连续工具调用的收拢展示）。 */
+/** 工具折叠摘要行（对话视图下一批工具调用的收拢展示）：点按跳到轨迹看明细。 */
 @Composable
-private fun ToolSummaryCard(summary: MessageGroup.ToolSummary) {
-    val toolText = when {
-        summary.toolNames.isEmpty() -> L.toolSummary.format(summary.count)
-        summary.toolNames.size == 1 -> L.toolRunning.format(summary.toolNames.first())
-        else -> summary.toolNames.take(2).joinToString(", ") + " +" + (summary.toolNames.size - 2)
+private fun ToolSummaryCard(summary: MessageGroup.ToolSummary, onOpenTrace: () -> Unit) {
+    val mainText = if (summary.running && summary.lastToolName != null) {
+        L.toolRunning.format(summary.lastToolName)
+    } else {
+        L.toolSummary.format(summary.count)
     }
     val failedText = summary.failedCount.takeIf { it > 0 }?.let { " · ${L.toolSummaryFailed.format(it)}" }.orEmpty()
-    val durationText = summary.durationMs?.takeIf { it > 0 }?.let { " · ${formatTraceDuration(it)}" }.orEmpty()
+    val durationText = summary.durationMs?.takeIf { it > 0 && !summary.running }?.let { " · ${formatTraceDuration(it)}" }.orEmpty()
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.control))
-            .background(Dsh.bgSubtle)
+            .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -117,12 +124,19 @@ private fun ToolSummaryCard(summary: MessageGroup.ToolSummary) {
         )
         Spacer(Modifier.width(DshSpace.s8))
         Text(
-            text = toolText + failedText + durationText,
+            text = mainText + failedText + durationText,
             color = Dsh.labelSecondary,
             style = DshType.caption,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(DshSpace.s8))
+        Text(
+            text = L.viewInTrace + " ›",
+            color = Dsh.labelTertiary,
+            style = DshType.caption,
+            maxLines = 1,
         )
     }
 }
@@ -279,6 +293,8 @@ internal class ChatFeedActions(
     private val fork: (String) -> Unit,
     /** 打开改动审查面：轮次 seq + 文件下标（null = 文件列表）。 */
     val openChanges: (Long, Int?) -> Unit = { _, _ -> },
+    /** 工具摘要行点按：切到轨迹视图看明细。 */
+    val openTrace: () -> Unit = {},
 ) {
     fun onAnswerApproval(): (String, String, (Boolean) -> Unit) -> Unit = { approvalId, outcome, onDone ->
         val sid = currentSessionId()
@@ -440,8 +456,6 @@ internal fun LazyListScope.chatMessageItems(
     visibleGroups: List<MessageGroup>,
     sweepingId: String?,
     actions: ChatFeedActions,
-    goalSummary: String? = null,
-    todoProgress: TodoProgress = TodoProgress(),
     isRunning: Boolean = false,
     pinnedChangesSeq: Long? = null,
 ) {
@@ -503,7 +517,7 @@ internal fun LazyListScope.chatMessageItems(
                     sweepingId = sweepingId,
                     showActions = false,
                 )
-                is MessageGroup.ToolSummary -> ToolSummaryCard(summary = group)
+                is MessageGroup.ToolSummary -> ToolSummaryCard(summary = group, onOpenTrace = actions.openTrace)
             }
         }
     }

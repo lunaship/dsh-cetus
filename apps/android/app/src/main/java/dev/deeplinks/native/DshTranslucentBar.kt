@@ -54,6 +54,5 @@ fun Modifier.dshTranslucent(
                 strokeWidth = (1.dp / 2).toPx(),
             )
         }
-        (this as androidx.compose.ui.graphics.drawscope.ContentDrawScope).drawContent()
     }
 }

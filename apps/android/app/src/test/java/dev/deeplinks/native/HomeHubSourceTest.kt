@@ -26,12 +26,12 @@ class HomeHubSourceTest {
     }
 
     @Test
-    fun `HomeHeader has no ChevronDownOutline14`() {
+    fun `HomeHeader has no ChevronDownOutline16`() {
         val text = file("HomeHub.kt").readText()
         val start = text.indexOf("internal fun HomeHeader(")
         val end = text.indexOf("\n}\n", start) + 3
         val body = text.substring(start, end)
-        assertFalse("HomeHeader should not contain ChevronDownOutline14", body.contains("ChevronDownOutline14"))
+        assertFalse("HomeHeader should not contain ChevronDownOutline16", body.contains("ChevronDownOutline16"))
     }
 
     @Test

@@ -101,7 +101,7 @@ internal fun MessageItem(
     onOpenChanges: ((seq: Long, fileIndex: Int?) -> Unit)? = null,
     /** 复制 / 赞踩 / 时间一行：只在一轮的最后一条回复上显示。 */
     showActions: Boolean = true,
-    /** 本条是否是一轮末尾：控制操作行显示，也控制长按菜单。 */
+    /** 本条是否是一轮末尾：只控制操作行显示；长按菜单对所有已完成文本消息开放。 */
     isTurnEnd: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -109,20 +109,11 @@ internal fun MessageItem(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val dshHaptic = rememberDshHaptic()
     val context = androidx.compose.ui.platform.LocalContext.current
-    // 文本消息长按出菜单；助手消息在 isTurnEnd 时也支持长按。
-    val canSelectText = (msg.role == "user" || (msg.role == "assistant" && isTurnEnd && msg.running != true && !running)) &&
-        msg.text.isNotBlank()
+    // 已完成的文本消息：长按出菜单（复制 / 分支 / 选择文字）。操作行只挂在轮末，
+    // 所以轮中的助手回复必须靠长按才能复制——这里不能再按 isTurnEnd 收窄。
+    val canSelectText = (msg.role == "user" || msg.role == "assistant") &&
+        msg.running != true && !running && msg.text.isNotBlank()
     val longPressModifier = if (canSelectText) {
-        Modifier.combinedClickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = {},
-            onLongClick = {
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                menuOpen = true
-            },
-        )
-    } else if (msg.role == "assistant" && isTurnEnd) {
         Modifier.combinedClickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
@@ -376,10 +367,10 @@ private fun RawMessageCard(msg: MobileMessage) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                if (expanded) ChevronDownOutline14 else ChevronRightOutline14,
+                if (expanded) ChevronDownOutline16 else ChevronRightOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(DshIconSize.xs)
             )
             Spacer(Modifier.width(DshSpace.s6))
             Text(
@@ -469,10 +460,10 @@ private fun CompactionRow(summary: String, running: Boolean) {
         }
         if (!running) {
             Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(DshIconSize.sm)
             )
         }
     }
@@ -538,10 +529,10 @@ private fun GoalRoundRow(text: String) {
             }
             Spacer(Modifier.weight(1f))
             Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                 contentDescription = if (expanded) L.collapseInjectionContent else L.expandInjectionContent,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(DshIconSize.sm)
             )
         }
         AnimatedVisibility(
@@ -655,10 +646,10 @@ private fun ContextInjectionRow(text: String) {
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                 contentDescription = if (expanded) L.collapseInjectionContent else L.expandInjectionContent,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(DshIconSize.sm)
             )
         }
         AnimatedVisibility(
@@ -712,7 +703,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                ChecklistOutline14,
+                ChecklistOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.sm)
@@ -735,10 +726,10 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                 contentDescription = null,
                 tint = Dsh.labelTertiary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(DshIconSize.sm)
             )
         }
         AnimatedVisibility(
@@ -1036,10 +1027,10 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
             }
             if (!body.isNullOrBlank()) {
                 Icon(
-                    if (expanded) ChevronUpOutline14 else ChevronDownOutline14,
+                    if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                     contentDescription = if (expanded) L.collapse else L.expand,
                     tint = Dsh.labelTertiary,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(DshIconSize.sm),
                 )
             }
         }
