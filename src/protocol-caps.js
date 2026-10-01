@@ -40,6 +40,8 @@ export function pluginCapabilities({ changes = false } = {}) {
       sha256: true,
       ...(changes ? { changes: true, diff: true, diffMaxLines: MAX_DIFF_LINES } : {}),
     },
+    // 连接诊断。旧 App 忽略未知字段；没声明时 App 不展示主机诊断报告。
+    diagnostics: { v: 1 },
   }
 }
 

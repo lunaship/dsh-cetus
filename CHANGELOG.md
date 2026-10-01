@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**连接诊断（P1.1）**
+
+- 插件：新增 `GET /dsh-link/mobile/diagnostics`（设备 token）和面板「一键检查」（回环 `GET /dsh-link/diagnostics`）。能力协商 `diagnostics: { v: 1 }`。结果只有状态码和枚举，不含 token、路径、地址或正文。关掉远程或本机接口超时会返回对应的 fail 和 code。
+
 **Android UI：Lody 风格简化（#18）**
 
 - 全宽导航条下线，顶部 / 底部改为边缘渐隐；返回、⋯、搜索、+ 等改为悬浮的液态玻璃控件（`DshGlassCapsule` / `DshGlassCircle`，Control 档：折射 + 边缘高光 + 柔阴影 + 按压回弹）。

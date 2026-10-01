@@ -9,6 +9,7 @@ import { deriveActivity, deriveAwaitingInput, deriveLastResult, deriveStoppedRea
 import { handleMobileModelsApi } from "./mobile-models.js"
 import { handleMobileSessionControlApi, queueItemsFromInbox } from "./mobile-session-control.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
+import { runDiagnostics } from "./diagnostics.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
 import { listWorkspaceDir, mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
@@ -301,10 +302,18 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     publicDevice,
     remoteForDevice,
     applyNewSessionSafety,
+    diagnosticsSource,
   } = deps
   try {
     if (req.method !== "GET" && req.method !== "HEAD") {
       if (!requireJsonWrite(req, res)) return
+    }
+    if (req.method === "GET" && pathname === "/dsh-link/mobile/diagnostics") {
+      const source = typeof diagnosticsSource === "function" ? diagnosticsSource(device) : null
+      if (!source) return json(res, 503, { error: "diagnostics_unavailable" })
+      const report = await runDiagnostics(source, { scope: "mobile" })
+      logger?.info?.(`dsh-links: diagnostics scope=mobile ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
+      return json(res, 200, report)
     }
     if (req.method === "GET" && pathname === "/dsh-link/mobile/bootstrap") {
       const { items, archivedSessionIds } = await mobileSessionList(targetPort)
