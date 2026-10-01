@@ -9,7 +9,6 @@ import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.AgentPresetOutline16
-import dev.deeplinks.native.DshDimension
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
@@ -40,6 +39,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -524,9 +525,6 @@ fun WorkspaceScreen(
     }
     val listState = rememberLazyListState()
     var elapsedSec by remember { mutableStateOf(0L) }
-    // 第 5 步：底部输入区半透明悬浮，贴底容差随密度换算
-    val density = LocalDensity.current.density
-    var nearBottomPx by remember { mutableIntStateOf((120f * density).toInt()) }
     // WI-003：尾部定位请求（每次自增触发一次"等待布局后再滚底"）；0 表示无请求
     var tailRequestId by remember { mutableStateOf(0) }
     var lastTailRequestId by remember { mutableStateOf(0) }
@@ -929,8 +927,9 @@ fun WorkspaceScreen(
         val lastVisible = info.visibleItemsInfo.lastOrNull() ?: return true
         if (lastVisible.index < total - 2) return false
         if (lastVisible.index >= total - 1) {
-            val overflow = (lastVisible.offset + lastVisible.size) - info.viewportEndOffset
-            return overflow <= nearBottomPx
+            // 叠层后视口末端包含底部 chrome 的 contentPadding，可见内容的下沿要减去它
+            val overflow = (lastVisible.offset + lastVisible.size) - (info.viewportEndOffset - info.afterContentPadding)
+            return overflow <= 120
         }
         return true
     }
@@ -1161,7 +1160,7 @@ fun WorkspaceScreen(
                         withFrameNanos { }
                         val info = listState.layoutInfo
                         val last = info.visibleItemsInfo.lastOrNull() ?: return@launch
-                        val overflow = (last.offset + last.size) - info.viewportEndOffset
+                        val overflow = (last.offset + last.size) - (info.viewportEndOffset - info.afterContentPadding)
                         if (overflow > 0) listState.scrollBy(overflow.toFloat())
                     } catch (_: Exception) { }
                 }
@@ -2189,12 +2188,13 @@ fun WorkspaceScreen(
                     actions = sidebarActions,
                 )
             }
-        } else Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .dshTranslucent()
-                .statusBarsPadding()
-        ) {
+        } else Box(Modifier.fillMaxSize().background(Dsh.bgBase)) {
+            // 第 5 步叠层：消息流铺满，上下 chrome 悬浮其上（见 OverlayChrome.kt）
+            val chrome = rememberOverlayChromeState()
+            val topChromeDp = chrome.topDp()
+            val bottomChromeDp = chrome.bottomDp()
+            val contentUnderTop by remember { derivedStateOf { listState.canScrollBackward } }
+            val contentUnderBottom by remember { derivedStateOf { listState.canScrollForward } }
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
             var showShareSheet by remember { mutableStateOf(false) }
@@ -2260,13 +2260,9 @@ fun WorkspaceScreen(
                     )) + topBarMenuItems
                 } else topBarMenuItems
             }
-            // ===== 顶栏（半透明悬浮） =====
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .dshTranslucent(showDivider = true, dividerAtTop = true)
-                    .padding(horizontal = DshSpace.s4, vertical = DshSpace.s2),
-            ) {
+            // ===== 顶部 chrome（半透明悬浮）：顶栏 + 横幅 + 吸顶摘要 =====
+            Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 WorkspaceTopBar(
                     running = running,
                 // 草稿态标题固定「新任务」；有会话显示会话名；无会话且非草稿留空（起始块已删）
@@ -2324,19 +2320,24 @@ fun WorkspaceScreen(
                 kind = streamBanner,
                 onRetry = { streamClient?.reconnect() },
             )
+            if (viewMode == "chat" && currentSessionId != null) {
+                ChatStickySummary(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp))
+            }
+            } // 顶部 chrome 结束
 
             // 消息流 + 悬浮「回到底部」：weight 加在容器（Column 直接子级）上，
             // 悬浮按钮盖在列表之上；框内 LazyColumn 用 fillMaxSize 填满 Box。
             // 下拉刷新（M3 PullToRefreshBox）：聊天/轨迹共用同一消息流数据。
+            val pullRefreshState = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = historyRefreshing,
                 onRefresh = {
                     historyRefreshing = true
                     refreshMessages(replaceInFlight = true, onDone = { historyRefreshing = false })
                 },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = DshDimension.TopBarHeight, bottom = DshDimension.InputAreaHeight),
+                state = pullRefreshState,
+                indicator = { ChromeAwareRefreshIndicator(pullRefreshState, historyRefreshing, topChromeDp) },
+                modifier = Modifier.fillMaxSize(),
             ) {
             // 对话与轨迹共用消息数据，只替换当前视图，避免同时测量和绘制两张长列表。
             ChangesSwipeArea(
@@ -2350,7 +2351,7 @@ fun WorkspaceScreen(
                     .wrapContentWidth(Alignment.CenterHorizontally),
             ) {
             when (viewMode) {
-            "trace" -> {
+            "trace" -> Box(Modifier.fillMaxSize().padding(top = topChromeDp, bottom = bottomChromeDp)) {
                 val traceKind = chatCanvasKind(
                     hasMessages = messages.isNotEmpty(),
                     initialLoadInFlight = initialLoadInFlight && sessionStats == null,
@@ -2415,6 +2416,7 @@ fun WorkspaceScreen(
                     refreshSessions = { refreshSessions() },
                     fork = { sid -> forkNow(sid) },
                     openChanges = { seq, fileIndex -> scope.launch { changesPanel.open(seq, fileIndex) } },
+                    openTrace = { selectViewMode("trace") },
                 )
             }
             // 消息列表进入组合（手机从首页点进会话、轨迹切回对话）时补一次贴底：
@@ -2426,8 +2428,7 @@ fun WorkspaceScreen(
             }
             // 列表高度随 IME/底栏变化时：贴底用户按变矮像素上推，跟手不跳
             var chatListHeightPx by remember { mutableIntStateOf(0) }
-            // 吸顶摘要条高度测量
-            var summaryHeightPx by remember { mutableIntStateOf(0) }
+            FollowBottomChromeGrowth(listState, chrome.bottomPx, stickToBottom && messages.isNotEmpty())
             // 第 2 步 B2：把会话级图片策略注进消息流（MarkdownContent 读 LocalRemoteImagePolicy）
             CompositionLocalProvider(LocalRemoteImagePolicy provides imagePolicy) {
             LazyColumn(
@@ -2450,8 +2451,10 @@ fun WorkspaceScreen(
                     },
                 verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
                 contentPadding = PaddingValues(
-                    horizontal = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
-                    vertical = 10.dp
+                    start = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
+                    end = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
+                    top = topChromeDp + DshSpace.s10,
+                    bottom = bottomChromeDp + DshSpace.s10,
                 )
             ) {
                 if (messages.isEmpty()) {
@@ -2499,26 +2502,15 @@ fun WorkspaceScreen(
                     }
                     // 只扫正在生成的工具/思考行；已定稿的「已思考」不能抢状态条
                     val sweepingId = resolveSweepingId(messages, running)
-                    // 稳定列表引用（内容不变时避免 LazyColumn 滚动状态失效)
-                    val messagesForSummary = messages
-                    // 吸顶摘要条：运行中且 chat 模式时作为首项 spacer 占位，内容不溢出到摘要下方
-                    if (viewMode == "chat") {
-                        item(key = "sticky-summary-spacer") {
-                            Spacer(Modifier.height(with(LocalDensity.current) { summaryHeightPx.toDp() }))
-                        }
-                    }
                     chatMessageItems(
                         visibleGroups = visibleGroups,
                         sweepingId = sweepingId,
                         actions = chatActions,
-                        goalSummary = latestGoalSummary(messagesForSummary),
-                        todoProgress = latestTodoProgress(messagesForSummary),
                         isRunning = running,
                         pinnedChangesSeq = pinnedChanges?.seq,
                     )
                     // 对齐网页 TurnStatus（Deep diving...）：整轮生成期间都在流尾显示思考中扫光
-                    val hasLiveReasoning = messages.any { it.role == "reasoning" && it.running == true }
-                    if ((running || isSending) && !hasLiveReasoning) {
+                    if (shouldShowTurnStatus(messages, running || isSending)) {
                         item(key = "turn-status") {
                             ThinkingStatusRow(elapsedSec)
                         }
@@ -2543,7 +2535,7 @@ fun WorkspaceScreen(
                 visible = showScrollToBottom && currentSessionId != null && messages.isNotEmpty(),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = COMPOSER_SIDE_CLEARANCE, bottom = DshSpace.s12),
+                    .padding(end = COMPOSER_SIDE_CLEARANCE, bottom = bottomChromeDp + DshSpace.s12),
                 enter = fadeIn(animationSpec = tween(motionDuration(150))) +
                     scaleIn(animationSpec = tween(motionDuration(180))),
                 exit = fadeOut(animationSpec = tween(motionDuration(120))) +
@@ -2560,6 +2552,8 @@ fun WorkspaceScreen(
             }
             } // Box 结束（消息流 + 悬浮层）
 
+            // ===== 底部 chrome 叠层：命令候选 + 输入区（命令候选最多长到顶部 chrome 下沿） =====
+            Column(Modifier.align(Alignment.BottomCenter).padding(top = topChromeDp).overlayBottomChrome(chrome)) {
             // 命令候选（输入以 / 开头时，DSH 命令/技能/子智能体/快捷操作）—— 悬浮在输入区上方
             // typed 处理：
             //   Completable  → 直接提交到服务端并清空输入框
@@ -2622,7 +2616,7 @@ fun WorkspaceScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .dshTranslucent(showDivider = true, dividerAtTop = false)
+                    .dshTranslucent(showDivider = viewMode == "chat" && contentUnderBottom, dividerAtTop = true)
                     .navigationBarsPadding()
                     .imePadding()
                     .padding(bottom = 10.dp)
@@ -2636,7 +2630,8 @@ fun WorkspaceScreen(
                 if (currentSessionId != null) {
                     ComposerContextStrip(
                         modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
-                        online = streamClient?.connectionState == SessionStreamClient.ConnectionState.CONNECTED,
+                        // 用电脑可达性而非 SSE 连接态：SSE 重连时已有重连横幅，不能再叠一条「电脑离线」
+                        online = hostReachable,
                         changes = pinnedChanges,
                         onOpenChanges = {
                             pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } }
@@ -2757,6 +2752,7 @@ fun WorkspaceScreen(
                 }
 
             } // bottom chrome 容器结束
+            } // 底部 chrome 叠层结束
         }
         }
     }
