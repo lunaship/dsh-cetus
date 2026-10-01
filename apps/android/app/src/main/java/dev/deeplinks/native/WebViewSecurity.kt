@@ -83,6 +83,11 @@ internal fun createOffscreenWebView(
     val wv = WebView(context)
     wv.hardenLocalBundleSettings()
     wv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+    // 离屏渲染必须用软件图层：硬件加速的 WebView 不挂到窗口树上时，draw(canvas)
+    // 在软件渲染环境（CI 模拟器的 swiftshader_indirect）下拿到的是全透明帧——
+    // drawWebViewToBitmap 连画几轮都检测不到不透明像素，返回 null，公式/图表静默失败。
+    // 只影响这个离屏渲染用的 WebView，App 内界面 WebView 不受影响。
+    wv.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
     wv.measure(
         android.view.View.MeasureSpec.makeMeasureSpec(width, android.view.View.MeasureSpec.EXACTLY),
         android.view.View.MeasureSpec.makeMeasureSpec(height, android.view.View.MeasureSpec.EXACTLY),

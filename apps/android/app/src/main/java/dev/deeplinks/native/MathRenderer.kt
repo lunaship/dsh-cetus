@@ -214,8 +214,14 @@ object MathRenderer {
                         val scale = wv.resources.displayMetrics.density
                         val offsetX = (result.optDouble("l", 0.0).toFloat() * scale).toInt()
                         val offsetY = (result.optDouble("t", 0.0).toFloat() * scale).toInt()
-                        drawWebViewToBitmap(wv, bitmapSize.width, bitmapSize.height, offsetX, offsetY)
-                            ?.let { Rendered(it.asImageBitmap(), cssW, cssH) }
+                        val bmp = drawWebViewToBitmap(wv, bitmapSize.width, bitmapSize.height, offsetX, offsetY)
+                        if (bmp == null) {
+                            // 之前这里是静默 null（只剩测试里的 AssertionError），补一行诊断：
+                            // layout/measure 出来的尺寸有了、JS 也渲染成功，但 draw() 拿不到不透明像素，
+                            // 基本就是离屏 WebView 的图层/合成问题。
+                            android.util.Log.w(TAG, "render: draw produced no opaque pixels w=${bitmapSize.width} h=${bitmapSize.height} attempts done")
+                        }
+                        bmp?.let { Rendered(it.asImageBitmap(), cssW, cssH) }
                     }
                 }
             }
