@@ -13,6 +13,7 @@ import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
 import dev.deeplinks.native.ChevronRightOutline14
 import dev.deeplinks.native.ui.DshListActionRow
+import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshSelectRow
@@ -186,12 +187,17 @@ internal fun DeviceCard(
             )
             Spacer(Modifier.height(DshSpace.s2))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(statusColor),
-                )
+                // E4：改用共享状态点。CONNECTING 仍保留品牌色（不是在线/离线二态）。
+                if (state == DeviceState.CONNECTING) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(Dsh.brand400),
+                    )
+                } else {
+                    HostStatusDot(state == DeviceState.ONLINE)
+                }
                 Spacer(Modifier.width(DshSpace.s6))
                 Text(
                     meta,

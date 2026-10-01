@@ -543,6 +543,8 @@ val DshStringsZh = DshStrings(
         put("allowApproveFromNotification", "允许在通知栏直接批准")
         put("allowApproveFromNotificationDesc", "不推荐。手机收不到完整参数，需要解锁后才能批准。")
         put("notifApprovalNeedsUnlock", "请解锁后在 App 内确认")
+        put("modelChangedFrom", "以上回复由 %s 生成")
+        put("modelChanged", "模型已切换")
         put("notifApprovalConfirmInApp", "请在 App 内确认")
         put("autoLoadRemoteImages", "自动加载对话中的网络图片")
         put("autoLoadRemoteImagesFooter", "对话里的网络图片可能被用来把内容发给第三方，也会暴露你的 IP。默认不自动加载，点按单张图片才会加载。")

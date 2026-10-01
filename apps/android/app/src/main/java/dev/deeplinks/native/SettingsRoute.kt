@@ -18,6 +18,7 @@ import dev.deeplinks.native.ui.DshListCaption
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListRetry
 import dev.deeplinks.native.ui.DshListRow
+import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshListTrailing
 import dev.deeplinks.native.ui.DshPageNavigation
@@ -52,6 +53,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
@@ -413,19 +415,39 @@ internal fun SettingsHome(
     DshListSection(header = s.sectionPairedComputer) {
         if (host != null) {
             val address = hostDisplayName(host.baseUrl)
+            // E4：状态点改用共享组件 HostStatusDot（此前的「●」是文字 glyph，颜色跟随
+            // value 文字色呈深灰，与首页/设备页的绿色点不一致）。点 + 文字放进 trailingContent，
+            // 保留 chevron。
+            val hostStatus = dev.deeplinks.native.util.hostStatusText(
+                online = connectivity?.online,
+                viaRemote = connectivity?.viaRemote == true,
+                onlineText = s.statusOnline,
+                offlineText = s.statusOffline,
+                viaRemoteText = s.viaRemoteShort,
+            )
             DshListRow(
                 title = host.name.ifBlank { address },
                 subtitle = address,
                 subtitleMono = true,
-                value = dev.deeplinks.native.util.hostStatusText(
-                    online = connectivity?.online,
-                    viaRemote = connectivity?.viaRemote == true,
-                    onlineText = s.statusOnline,
-                    offlineText = s.statusOffline,
-                    viaRemoteText = s.viaRemoteShort,
-                ),
                 icon = LaptopOutline16,
                 onClick = onOpenDevices,
+                trailingContent = if (hostStatus != null) {
+                    {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            HostStatusDot(connectivity?.online)
+                            Spacer(Modifier.width(DshSpace.s6))
+                            Text(
+                                hostStatus,
+                                color = Dsh.labelSecondary,
+                                style = DshType.supporting,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
             )
         } else {
             DshListRow(
@@ -435,39 +457,44 @@ internal fun SettingsHome(
                 onClick = onOpenDevices,
             )
         }
-        // 方案 7 电脑卡三行：连接方式 / 智能体权限 / 更换电脑。前两者与「更换电脑」都进
-        // 既有设备页（那里本来就有换机与连线方式），这里只补入口，不新写流程
-        // 方案 7：电脑卡「重命名」。存本机别名（host 侧没有改名 API），只影响这台手机显示
-        DshListRow(
-            title = s.rename,
-            icon = EditOutline16,
-            value = alias.ifBlank { null },
-            onClick = { renameOpen = true },
-        )
-        DshListRow(
-            title = s.connectionMethod,
-            icon = LinkOutline16,
-            onClick = onOpenDevices,
-        )
-        // 方案 7：电脑卡里放「智能体权限」——原「通用设置」里的「对话」行撤销后，
-        // 这一行就是 settingsConversation 二级页（权限预设 + 执行中发消息）的唯一入口
-        DshListRow(
-            title = s.agentPermission,
-            icon = ShieldOutline16,
-            value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
-            onClick = { onOpen(SettingsDest.CONVERSATION) },
-        )
-        DshListRow(
-            title = s.changeComputer,
-            icon = ScanOutline16,
-            onClick = onOpenDevices,
-        )
-        // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
-        DshListRow(
-            title = s.modelsAndBalance,
-            icon = SparkleOutline16,
-            onClick = { onOpen(SettingsDest.MODELS) },
-        )
+        // E3：没有配对电脑时，改名 / 连接方式 / 智能体权限 / 更换电脑 / 模型与余额
+        // 全都无意义（「智能体权限」还会显示一个具体值，容易被误导成已配置）。
+        // 未配对只留上面那一行配对入口。
+        if (host != null) {
+            // 方案 7 电脑卡三行：连接方式 / 智能体权限 / 更换电脑。前两者与「更换电脑」都进
+            // 既有设备页（那里本来就有换机与连线方式），这里只补入口，不新写流程
+            // 方案 7：电脑卡「重命名」。存本机别名（host 侧没有改名 API），只影响这台手机显示
+            DshListRow(
+                title = s.rename,
+                icon = EditOutline16,
+                value = alias.ifBlank { null },
+                onClick = { renameOpen = true },
+            )
+            DshListRow(
+                title = s.connectionMethod,
+                icon = LinkOutline16,
+                onClick = onOpenDevices,
+            )
+            // 方案 7：电脑卡里放「智能体权限」——原「通用设置」里的「对话」行撤销后，
+            // 这一行就是 settingsConversation 二级页（权限预设 + 执行中发消息）的唯一入口
+            DshListRow(
+                title = s.agentPermission,
+                icon = ShieldOutline16,
+                value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
+                onClick = { onOpen(SettingsDest.CONVERSATION) },
+            )
+            DshListRow(
+                title = s.changeComputer,
+                icon = ScanOutline16,
+                onClick = onOpenDevices,
+            )
+            // 方案 7：模型与余额并入电脑卡（余额区块是功能，不许删）；原「模型」分区里那一行随之撤销
+            DshListRow(
+                title = s.modelsAndBalance,
+                icon = SparkleOutline16,
+                onClick = { onOpen(SettingsDest.MODELS) },
+            )
+        }
     }
     DshListSection(header = s.sectionGeneral) {
         DshListRow(

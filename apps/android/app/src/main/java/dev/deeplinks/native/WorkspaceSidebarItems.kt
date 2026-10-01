@@ -395,9 +395,17 @@ internal fun homeRowSubtitle(session: MobileSession, goalSummary: String?, offli
         else -> {
             val result = session.lastResult
             val files = result?.files?.takeIf { it > 0 }?.let { s.homeFilesChanged.format(it) }
-            listOfNotNull(files, result?.text?.takeIf { it.isNotBlank() }).joinToString("，")
-                // 没有结果一句话时：已停止的写它是怎么停的，其余按方案回退「已完成」
-                .ifBlank { session.stoppedReason?.let(::stoppedReasonLabel) ?: s.homeDoneFallback }
+            val body = listOfNotNull(files, result?.text?.takeIf { it.isNotBlank() }).joinToString("，")
+            // E5：有结果一句话时也要把「怎么停的」带上。此前只看 lastResult.text，
+            // 「已完成但最后一轮被用户中断」的行只显示结果、配绿色完成图标，
+            // 与「已中断」行（灰色停止图标）自相矛盾——同样是被中断，图标却不同。
+            // 现在先说结果，再用「·」补上停止原因；stoppedReason 为空时才回退「已完成」。
+            val stop = session.stoppedReason?.let(::stoppedReasonLabel)
+            when {
+                body.isBlank() -> stop ?: s.homeDoneFallback
+                stop.isNullOrBlank() -> body
+                else -> "$body · $stop"
+            }
         }
     }
 }

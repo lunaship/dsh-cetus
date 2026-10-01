@@ -98,5 +98,8 @@ fun hostStatusText(
     if (!online) return offlineText
     val parts = mutableListOf(onlineText)
     if (viaRemote) parts += viaRemoteText
-    return "● " + parts.joinToString(" · ")
+    // E4：不再在这里塞「● 」字符。圆点改由共享组件 HostStatusDot 画，
+    // 否则首页会同时出现「真实圆点 + 文字里的 ●」两个点，设置页的点颜色也会
+    // 跟随 value 文字色（深灰）而不是成功色。
+    return parts.joinToString(" · ")
 }

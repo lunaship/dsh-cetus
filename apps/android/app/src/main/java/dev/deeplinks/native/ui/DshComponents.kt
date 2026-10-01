@@ -666,3 +666,22 @@ fun DshStatusBadge(
         Text(text, color = fg, style = DshType.captionRelaxed, maxLines = 1)
     }
 }
+
+/**
+ * E4：主机在线状态点。首页顶栏、设置页已配对电脑行、设备页三处共用同一个组件
+ * 与同一组颜色 token——此前首页/设备页用绿色实心点，设置页把「●」当成文字 glyph、
+ * 颜色跟随 value 文字色（深灰），同一状态三处不一致。
+ *
+ * 颜色：在线 = 成功色 [Dsh.successContent]；离线 = [Dsh.labelTertiary]。
+ * null = 还没探到，不画点（由调用方决定是否显示状态文字）。
+ */
+@Composable
+fun HostStatusDot(online: Boolean?, size: Dp = 7.dp) {
+    if (online == null) return
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(if (online) Dsh.successContent else Dsh.labelTertiary),
+    )
+}

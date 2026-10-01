@@ -40,6 +40,7 @@ import dev.deeplinks.core.DshType
 import dev.deeplinks.native.ui.DshEmptyState
 import dev.deeplinks.native.ui.DshFloatingPill
 import dev.deeplinks.native.ui.DshStatusChip
+import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.ui.DshGroupCard
 import dev.deeplinks.native.ui.DshChipTone
 import dev.deeplinks.native.ui.DshIconAction
@@ -74,16 +75,8 @@ private fun HostBadge(modifier: Modifier = Modifier) {
     }
 }
 
-/** 在线点：在线实心 success；离线空心灰（稿 08 的「空心灰点」）。 */
-@Composable
-private fun StatusDot(online: Boolean) {
-    Box(
-        modifier = Modifier
-            .size(7.dp)
-            .clip(CircleShape)
-            .background(if (online) Dsh.success else Dsh.labelDimmed),
-    )
-}
+// E4：在线点改用共享组件 HostStatusDot（在线 successContent / 离线 labelTertiary），
+// 与设置页、设备页同一个组件同一组 token。
 
 /**
  * 顶栏：电脑图标块 + 电脑名（粗）⌄，下一行状态（在线 · 远程 / 离线 · 10 分钟前在线）；
@@ -148,7 +141,7 @@ internal fun HomeHeader(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        StatusDot(online)
+                        HostStatusDot(online)
                         Spacer(Modifier.width(DshSpace.s6))
                         Text(
                             status,
