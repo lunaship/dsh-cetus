@@ -5,6 +5,11 @@ name: Regenerate screenshot baselines
 # 不会在 push 或 pull_request 时自动执行。
 on:
   workflow_dispatch:
+  # One-shot: this branch needs official ubuntu-latest + JDK 21 baselines.
+  # Removed in the follow-up commit that lands the reference images.
+  push:
+    branches:
+      - cursor/fix-android-screenshot-baselines-ce05
 
 jobs:
   regenerate:
