@@ -28,3 +28,4 @@ DSH 手机插件（本仓插件源码）：局域网配对 + 设备管理 + 1864
 | Android 协作规则 | `apps/android/CLAUDE.md` |
 | Android 视觉规则（间距、形状、排版、尺寸、强调色） | `apps/android/docs/visual-rules.md` |
 | RC1 内测计划与证据模板 | `docs/RC1_CLOSED_BETA_TEST_PLAN.md` |
+| 专注 DSH 五期执行方案（领取 PR 前必读） | `docs/proposals/002-dsh-focus-roadmap.md` |
