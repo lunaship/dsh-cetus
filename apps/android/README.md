@@ -4,13 +4,13 @@ DeepLinks Android 客户端。
 
 - 工程根：本目录（Android Studio 打开这里）
 - 应用模块：`app/`
-- 配对的电脑插件：同级目录 [`../docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)（插件源码 `dsh-links`）
-- 远程中继：公开仓 [`../relay/`](../relay/)
+- 配对的电脑插件：仓库根目录 `src/`（插件 `dsh-links`）
+- 远程中继：[`../../relay/`](../../relay/)
 
 版本基线、发布状态和已验证组合统一维护在
-[`dsh-links 的兼容矩阵`](https://github.com/lunaship/dsh-links/blob/main/docs/COMPATIBILITY.md)，本仓库不维护另一份版本表。当前源码 `versionName` 为 `0.5.0-beta.20`（versionCode 30），对应插件 `dsh-links 0.1.0-beta.18`；支持边界与已验证组合以兼容矩阵为准。
+[兼容矩阵](../../docs/COMPATIBILITY.md)，本目录不维护另一份版本表（当前源码版本见 `app/build.gradle.kts` 的 `versionName`）。
 
-支持边界：公开支持为可信局域网；Relay 为邀请制私测（自建用 admin 发码，托管由维护者开通租户后自行发码；App 与插件配对，不登录 Control）；
+支持边界：公开支持为可信局域网；远程连接走 DLP/1 中继（官方中继或自建，扫同一张配对二维码即可，无需接入码），仍为实验性功能；
 自管 Tailscale / Cloudflare Tunnel 仅为实验路径。
 
 

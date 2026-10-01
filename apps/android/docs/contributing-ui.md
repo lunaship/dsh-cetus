@@ -1,7 +1,6 @@
-# UI 贡献规则（对照 t3code 的工程门禁）
+# UI 贡献规则（工程门禁）
 
 > 目的：让「设计一致性」和「巨型文件」从**约定**变成**可执行的检查**。
-> 背景见 `docs/t3code-mobile-comparison.md`；执行进度见 `docs/t3code-improvement-execution-report.md`。
 >
 > **视觉合同以 `docs/visual-rules.md` 为准**（唯一方向、页面骨架、表面、形状、排版、组件族）。
 > 本文件只讲工程门禁怎么把这些合同变成机器检查。
@@ -86,7 +85,5 @@ CI（`.github/workflows/ci-android.yml`）按顺序跑：固定版本 ktlint →
 | 主题 | 文件 |
 |---|---|
 | 视觉合同（页面/表面/形状/排版/组件） | `docs/visual-rules.md` |
-| t3code 对照与差距 | `docs/t3code-mobile-comparison.md` |
-| 改造方案 | `docs/t3code-mobile-improvement-plan.md` |
-| 执行进度 | `docs/t3code-improvement-execution-report.md` |
-| 能力对照基线 | `docs/ui-parity.md` |
+| 截图基线重生成 | `../../.github/workflows/regen-screenshots.yml` |
+| 变更记录 | `../../CHANGELOG.md` |

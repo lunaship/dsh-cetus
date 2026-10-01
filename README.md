@@ -37,11 +37,8 @@
   </tr>
 </table>
 
-<p align="center"><sub>Android 重设计页面预览（14 个手机 / 平板、浅色 / 深色页面与状态）；图片来自 <code>docs/images/redesign/</code>。
-旧版「新任务」底部面板的历史截图（稿 02）已从本页移除，历史记录见
-<code>apps/android/docs/redesign-index.md</code>；现行流程是点「+ 新任务」进入对话页<b>草稿态</b>
-（继续上次 / 工作区胶囊 + 常驻「更多」/ 智能体预设，复用对话页输入栏发送），该形态尚无实拍图，
-以源码与截图测试为准。</sub></p>
+<p align="center"><sub>Android 页面预览（14 个手机 / 平板、浅色 / 深色页面与状态）；图片为重设计阶段的设计稿，来自 <code>docs/images/redesign/</code>，
+与现行界面（液态玻璃控件、边缘渐隐、对话页草稿态新任务）有出入，以源码与截图测试基线为准。</sub></p>
 
 <details>
   <summary>查看全部 14 个页面与状态</summary>
@@ -91,7 +88,7 @@
 
 | 发布物 | 位置 | 作用 | 分发 |
 |---|---|---|---|
-| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-links#v0.1.0-beta.19`） |
+| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-links`，固定版本见 [Releases](https://github.com/lunaship/dsh-links/releases)） |
 | **Android App** | [`apps/android/`](apps/android/) | 扫码配对、原生会话工作台、实时流、审批与提问 | 签名 APK，见 [Releases](https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true)（`app-v*`） |
 | **Relay** | [`relay/`](relay/) | 远程连接的哑管道中继（DLP/1，`cmd/dlp-relay`），只拼接两条 WSS | 源码公开；可用官方中继或自建，无需接入码 |
 
@@ -103,20 +100,6 @@
 - **原生，而不是套壳。** 工作台是 Jetpack Compose：Material 3 负责结构、导航、状态与无障碍，色值与节奏以 DSH Web 为唯一参照（[视觉合同](apps/android/docs/visual-rules.md)）。
 - **门禁即验收。** 设计 token、间距刻度、色源、文件与函数体量都有单测门禁，预算只降不升；UI 改动随 PR 提交截图基线。
 - **冒烟必须隔离。** 任何联调都用独立 `stateDir`，不碰真实配对——这条规则来自一次真实事故，写在 [`CLAUDE.md`](CLAUDE.md) 的红线里。
-
-## Android UI 精简整改（7 步）
-
-2026-10-01 完成，逐步提交，每步跑门禁：
-
-1. **设置页去重**：首页收成 5 个分区（电脑 / 智能体 / 通用 / 通知 / 隐私）；进入设备页的入口只剩电脑行一处，改名、连接方式、更换电脑、解除配对都在设备页；语言页不再放「配对管理」；「繁忙时发送」并入通用。
-2. **首页顶栏 DeepLinks**：单行「DeepLinks + 连接状态点 + 搜索 + 设置」，不再显示电脑名与下拉箭头；工作区筛选作为列表首项随列表滚动；「新任务」胶囊悬浮在列表底部。
-3. **对话 / 轨迹切换挪到顶栏右侧**：顶栏单行，右侧紧凑分段控件（窄屏显示图标）+「⋯」；子代理入口移入「⋯」菜单首项，有子代理时「⋯」带小圆点。
-4. **会话流去重**：执行中的目标与 todo 进度只在顶部吸顶摘要条出现；输入框上方仅在电脑离线或有改动时显示提示；思考指示只保留一个；操作行只挂在每轮最后一条回复上，其余消息长按可复制 / 分支；对话视图里工具调用按批折叠成一行，点按跳到轨迹。
-5. **悬浮半透明**：会话页与首页改为叠层布局，内容可滚到半透明（92%）顶栏和输入区下方；分隔线仅在内容滚到其下方时出现；省电 / 关闭动画时退化为不透明。
-6. **图标规范化**：图标统一 16 视口、线宽 1.25，名称与视口一致（14 号命名全部并入 16）；`Icon` 尺寸只用 `DshIconSize` 四档；图标向量改为惰性缓存，不再每次访问重建；新增单测门禁。
-7. **截图基线**：按新 UI 由 `regen-screenshots.yml` 重生成。
-
----
 
 ## 功能
 
@@ -229,11 +212,11 @@ dsh-links/
 1. **在运行 DSH 的电脑上安装插件**，并启动 DSH Web：
 
    ```bash
-   dsh plugin --profile web add github:lunaship/dsh-links#v0.1.0-beta.19
+   dsh plugin --profile web add github:lunaship/dsh-links
    dsh web
    ```
 
-   想跟最新开发版可以装 `github:lunaship/dsh-links`（main），不保证稳定。
+   上面装的是 `main`（当前 Beta 源）。要固定版本，在地址后加 [Releases](https://github.com/lunaship/dsh-links/releases) 里的插件 tag，例如 `#v0.1.0-beta.18`；插件与 App 的配套关系见 [兼容矩阵](docs/COMPATIBILITY.md)。
 
 2. **配对**：打开 DSH Web 设置 →「手机连接」，用 App「扫描二维码」或「从相册识别」（选择一张含连接二维码的截图）完成配对。
 
