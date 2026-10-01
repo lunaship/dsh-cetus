@@ -115,8 +115,8 @@ internal fun InputBar(
     ComposerFocusEffect(focusToken, composerFocusRequester)
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(start = COMPOSER_SIDE_CLEARANCE, end = COMPOSER_SIDE_CLEARANCE),
+            .fillMaxWidth(),
+        // R11：水平边距归浮岛所有（dshGlass Floating 外圈 + 岛内 8dp），卡片不再自带屏幕边距
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 输入卡主体：底部悬浮卡——6dp 阴影浮在消息流之上；

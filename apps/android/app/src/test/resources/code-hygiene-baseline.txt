@@ -5,7 +5,8 @@
 # ComposerTopRow 起始块等）后按方案「预算相应下调」，把各文件上限收到当前实际行数。
 # 2026-10-01 第 5 步半透明顶栏/底栏 + 底部输入区高度常量 + PullToRefreshBox padding + 顶栏悬浮 Box 后实际上调。
 # 2026-10-01 借鉴 dsh-mobile 一轮：assistant/chunk 处理抽到 StreamChunks.kt 后下调。
-dev/deeplinks/native/WorkspaceActivity.kt 2984
+# 2026-10-01 PR3 浮岛化（R11）：+12 行（浮岛 modifier 与注释）；拆解时回收。
+dev/deeplinks/native/WorkspaceActivity.kt 2996
 dev/deeplinks/native/DshIcons.kt 4820
 # 2026-09-27 设备页拆出 DeviceCard 分组段落后下调。
 dev/deeplinks/devices/DevicesActivity.kt 480

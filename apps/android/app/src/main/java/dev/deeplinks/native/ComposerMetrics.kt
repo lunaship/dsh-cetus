@@ -6,6 +6,9 @@ import androidx.compose.ui.unit.dp
 
 /** 输入条 / 消息列宽度。手机原生铺满，左右 12dp 让悬浮卡更贴边。 */
 internal val COMPOSER_SIDE_CLEARANCE = 12.dp
+
+/** R11 浮岛化（2026-10-01）：输入卡到浮岛内缘的间距（岛外缘另有 COMPOSER_SIDE_CLEARANCE）。 */
+internal val COMPOSER_ISLAND_INNER_CLEARANCE = 8.dp
 internal val COMPOSER_COMPACT_WIDTH = 360.dp
 internal val COMPOSER_MODEL_MAX_WIDTH = 132.dp
 
@@ -15,11 +18,13 @@ internal val COMPOSER_ACCESS_MAX_WIDTH = 124.dp
 fun composerIsCompact(widthDp: Float): Boolean = widthDp < COMPOSER_COMPACT_WIDTH.value
 
 /**
- * 输入卡实际可用宽度（容器宽 - 左右留白）是否进入紧凑档。
+ * 输入卡实际可用宽度（容器宽 - 岛外 12dp - 岛内 8dp 每侧）是否进入紧凑档。
  * 分屏/自由窗口下容器宽会变小，所以按容器宽推导，不看 screenWidthDp。
  */
 fun composerSeatsCompact(containerWidthDp: Float): Boolean =
-    composerIsCompact(containerWidthDp - 2 * COMPOSER_SIDE_CLEARANCE.value)
+    composerIsCompact(
+        containerWidthDp - 2 * (COMPOSER_SIDE_CLEARANCE + COMPOSER_ISLAND_INNER_CLEARANCE).value,
+    )
 
 /**
  * 模型座内容（DSH `conversation.input.model`）：名称与推理等级拆成两段，

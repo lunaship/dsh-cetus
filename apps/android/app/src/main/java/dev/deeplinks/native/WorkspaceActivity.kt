@@ -34,6 +34,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -62,6 +63,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
+import dev.deeplinks.native.ui.DshGlassTier
+import dev.deeplinks.native.ui.dshGlass
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
@@ -2114,7 +2117,6 @@ fun WorkspaceScreen(
             val topChromeDp = chrome.topDp()
             val bottomChromeDp = chrome.bottomDp()
             val contentUnderTop by remember { derivedStateOf { listState.canScrollBackward } }
-            val contentUnderBottom by remember { derivedStateOf { listState.canScrollForward } }
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
             var showShareSheet by remember { mutableStateOf(false) }
@@ -2534,14 +2536,22 @@ fun WorkspaceScreen(
                 )
             }
             // ===== bottom chrome（WI-006：发送队列/输入卡/统计栏同一容器，统一安全区与 IME） =====
-            // 输入卡带 8dp 阴影悬浮，底部留 10dp 让影子完整落在手势条上方。
+            // R11：通栏玻璃 → 留边距圆角浮岛（dshGlass Floating：轻折射/高光/柔和阴影），
+            // 输入卡本体保持实色（R5 近实色面）；岛尺寸经 overlayBottomChrome 实测回填。
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .dshTranslucent(showDivider = viewMode == "chat" && contentUnderBottom, dividerAtTop = true, backdrop = chrome.backdrop)
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(bottom = 10.dp)
+                    .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
+                    .padding(bottom = 8.dp)
+                    .dshGlass(
+                        tier = DshGlassTier.Floating,
+                        backdrop = chrome.backdrop,
+                        shape = RoundedCornerShape(DshRadius.modal),
+                    )
+                    .padding(horizontal = COMPOSER_ISLAND_INNER_CLEARANCE)
+                    .padding(top = DshSpace.s6)
                     // 键盘弹起时输入区上移，Snackbar 底部让位随之跟随
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
