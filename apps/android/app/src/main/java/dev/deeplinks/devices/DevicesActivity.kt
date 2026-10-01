@@ -3,13 +3,10 @@ package dev.deeplinks.devices
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.DshSpace
-import dev.deeplinks.native.ui.DshEmptyState
-import dev.deeplinks.native.ImageOutline16
-import dev.deeplinks.native.ScanOutline16
-import dev.deeplinks.core.DshType
 import dev.deeplinks.native.AppRoute
 import dev.deeplinks.native.MainActivity
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostLoadResult
 import dev.deeplinks.core.HostStore
@@ -23,11 +20,8 @@ import dev.deeplinks.native.shouldBlockLocalHostRemoval
 import dev.deeplinks.native.DshConfirmDialog
 import dev.deeplinks.native.DshRenameDialog
 import dev.deeplinks.native.util.WorkspacePrefs
-import dev.deeplinks.native.ui.DshListRow
-import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
-import dev.deeplinks.native.ui.DshSheet
 
 import androidx.activity.ComponentActivity
 import android.content.Intent
@@ -45,7 +39,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.URI
 
 private sealed class HostOpenResult {
     data class Ok(val host: Host) : HostOpenResult()
@@ -186,26 +179,9 @@ fun DevicesScreen(
         }
     }
 
-    // 每次回到前台重读设备并刷新健康状态
+    // 每次回到前台重读设备并刷新健康状态 + 首次装载 + 30 秒健康轮询
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) reload()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(Unit) { reload() }
-
-    LaunchedEffect(lifecycleOwner) {
-        while (true) {
-            delay(30_000)
-            if (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
-                refreshHealth()
-            }
-        }
-    }
+    DevicesForegroundRefresh(lifecycleOwner, reload = ::reload, refreshHealth = ::refreshHealth)
 
     fun requestUnpair(current: DeviceUi) {
         unpairTarget = current.host
@@ -431,62 +407,33 @@ private fun DevicesPage(
 
 // ---------- 空态 ----------
 
-@Composable
-private fun EmptyDevicesState(onAdd: () -> Unit) {
-    val s = DshS
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        // 未配对和空会话同一套留白：标题、说明、文字动作，不挂品牌标志。
-        DshEmptyState(
-            title = s.noDevicesYet,
-            message = s.noDevicesHint,
-            actionLabel = s.addDevice,
-            onAction = onAdd,
-            footnote = s.addDeviceScanOrCode,
-        )
-    }
-}
+// EmptyDevicesState / PairingPanel / hostDisplayName 已拆至 PairingPanel.kt
 
-// ---------- 配对面板（底部滑出） ----------
-
+/**
+ * 设备页的前台刷新节奏：回到前台重读设备、组合时首次装载、前台期间每 30 秒探测健康。
+ */
 @Composable
-private fun PairingPanel(
-    /** 已有配对设备：配对新电脑会替换它，标题与说明据此改写。 */
-    replacing: Boolean,
-    onDismiss: () -> Unit,
-    onScan: () -> Unit,
-    onAlbum: () -> Unit,
+private fun DevicesForegroundRefresh(
+    lifecycleOwner: androidx.lifecycle.LifecycleOwner,
+    reload: () -> Unit,
+    refreshHealth: () -> Unit,
 ) {
-    val s = DshS
-    DshSheet(
-        onDismiss = onDismiss,
-        title = if (replacing) s.replaceDevice else s.addDevice,
-        subtitle = if (replacing) s.replaceDeviceHint else s.pairChooseHint,
-        showClose = true,
-        skipPartiallyExpanded = true,
-    ) {
-        DshListSection {
-            DshListRow(
-                title = s.methodScan,
-                subtitle = s.methodScanDesc,
-                icon = ScanOutline16,
-                onClick = onScan,
-            )
-            DshListRow(
-                title = s.methodAlbum,
-                subtitle = s.methodAlbumDesc,
-                icon = ImageOutline16,
-                onClick = onAlbum,
-            )
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) reload()
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-}
 
-/** baseUrl → 展示名：去协议、去末尾斜杠。 */
-internal fun hostDisplayName(baseUrl: String): String {
-    return try {
-        val uri = URI(baseUrl.trimEnd('/'))
-        (uri.host ?: baseUrl) + (if (uri.port > 0) ":${uri.port}" else "")
-    } catch (e: Exception) {
-        baseUrl
+    LaunchedEffect(Unit) { reload() }
+
+    LaunchedEffect(lifecycleOwner) {
+        while (true) {
+            delay(30_000)
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                refreshHealth()
+            }
+        }
     }
 }
