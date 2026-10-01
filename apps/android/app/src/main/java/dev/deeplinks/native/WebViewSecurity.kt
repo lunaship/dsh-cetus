@@ -102,8 +102,24 @@ internal fun createOffscreenWebView(
             request: WebResourceRequest?,
         ): WebResourceResponse? {
             val url = request?.url?.toString() ?: return null
+            // loadDataWithBaseURL 的主文档是 data:（基址 file:///android_asset/）——
+            // 部分 Chromium 版本会把它送进拦截器，403 会把整页打成 chrome-error，
+            // 公式/图表全部静默失败（「合法公式应渲染成功」）。主框架 data: 放行，
+            // 子资源仍受页面 CSP（default-src 'none'）与本拦截器约束。
+            if (request.isForMainFrame && url.startsWith("data:")) return null
             return if (url.startsWith("file:///android_asset/")) null
             else WebResourceResponse("text/plain", "utf-8", 403, "blocked", emptyMap(), null)
+        }
+
+        override fun onReceivedError(
+            view: WebView?,
+            request: WebResourceRequest?,
+            error: android.webkit.WebResourceError?,
+        ) {
+            android.util.Log.w(
+                "MathRenderer",
+                "webview error: ${request?.url} code=${error?.errorCode} desc=${error?.description}",
+            )
         }
 
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?) = true
