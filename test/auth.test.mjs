@@ -490,6 +490,7 @@ test("带 token 的 GET/POST revoke、devices → 404", async () => {
     "/dsh-link/workspace-approvals",
     "/dsh-link/workspace-approve",
     "/dsh-link/workspace-reject",
+    "/dsh-link/diagnostics",
   ]) {
     for (const method of ["GET", "POST"]) {
       const r = await proxyFetch(`${path}`, {

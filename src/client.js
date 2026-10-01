@@ -204,6 +204,7 @@ const createPanelModule = (require) => {
     .dl-banner.is-danger { background: var(--dl-danger-hover); color: var(--dl-danger); }
 
     .dl-empty { padding: 18px 0; font-size: 12px; line-height: 18px; color: var(--dl-text-3); border-bottom: 0.5px solid var(--dl-line); }
+    .dl-code-tag { font-family: var(--dl-mono); font-size: 11px; line-height: 16px; color: var(--dl-caption); }
     .dl-status { padding: 12px 0; font-size: 13px; color: var(--dl-text-3); }
     .dl-status.is-error { color: var(--dl-danger); }
 
@@ -553,6 +554,212 @@ const createPanelModule = (require) => {
     )
   }
 
+  function panelLocale() {
+    try {
+      return /^zh/i.test(navigator.language || '') ? 'zh' : 'en'
+    } catch {
+      return 'zh'
+    }
+  }
+
+  const DIAG_COPY = {
+    zh: {
+      group: '连接诊断',
+      button: '一键检查',
+      running: '检查中…',
+      hint: '连不上时，点一次就能看到卡在哪一步。',
+      days: (n) => `剩余 ${n} 天`,
+      count: (n) => `${n} 台已配对`,
+      pending: (n) => `${n} 台待批准`,
+      on: '在',
+      off: '不在',
+      service: { workspaceChanges: '改动', typertGateway: '网关', sessions: '会话' },
+      listen: (d) => `私网 ${d.private} · Tailscale ${d.tailnet} · 其他 ${d.other}`,
+      check: {
+        'host.rpc': '本机接口',
+        'host.services': '本机服务',
+        'plugin.version': '插件版本',
+        'tls.cert': '连接证书',
+        'pairing.devices': '已配对手机',
+        'listen.addresses': '监听地址',
+        'remote.relay': '远程中继',
+        clock: '电脑时间',
+      },
+      code: {
+        HOST_RPC_OK: '本机接口正常',
+        HOST_RPC_SLOW: '本机接口偏慢',
+        HOST_RPC_TIMEOUT: '本机接口超时',
+        HOST_RPC_FAILED: '本机接口失败',
+        HOST_RPC_UNAVAILABLE: '本机接口不可用',
+        HOST_SERVICES_OK: '需要的服务都在',
+        HOST_SERVICES_PARTIAL: '改动服务没挂上，其余正常',
+        HOST_SERVICES_MISSING: '会话或网关服务没挂上',
+        HOST_SERVICES_UNAVAILABLE: '读不到本机服务',
+        PLUGIN_VERSION_OK: '插件版本正常',
+        PLUGIN_VERSION_UNKNOWN: '读到协议号，但没有版本字符串',
+        PLUGIN_VERSION_INVALID: '插件协议号无效',
+        TLS_CERT_OK: '证书有效',
+        TLS_CERT_EXPIRING: '证书不到 30 天就要过期',
+        TLS_CERT_EXPIRED: '证书已过期，需要重新配对',
+        TLS_CERT_MISSING: '还没有连接证书',
+        TLS_CERT_UNKNOWN_EXPIRY: '读不到证书到期时间',
+        PAIRING_OK: '有已配对的手机',
+        PAIRING_NONE: '还没有配对的手机',
+        PAIRING_UNAVAILABLE: '读不到配对列表',
+        PAIRING_SELF_OK: '这台设备有效',
+        PAIRING_SELF_INVALID: '这台设备无效',
+        PAIRING_SELF_LEGACY: '这台设备状态异常',
+        LISTEN_OK: '有手机能用的局域网或 Tailscale 地址',
+        LISTEN_NONE: '没有可用的监听地址',
+        LISTEN_NO_LAN: '只有本机地址，手机连不上',
+        LISTEN_UNTRUSTED: '只看到公网地址，确认网段可信再用',
+        LISTEN_UNAVAILABLE: '读不到监听地址',
+        REMOTE_DISABLED: '远程连接已关闭',
+        REMOTE_READY: '中继已连上',
+        REMOTE_CONNECTING: '正在连接中继',
+        REMOTE_REJECTED: '中继拒绝或连不上',
+        REMOTE_REPLACED: '中继被另一处同身份连接顶掉',
+        REMOTE_DOWN: '远程已开启，但中继没连上',
+        CLOCK_OK: '电脑时间正常',
+        CLOCK_UNREASONABLE: '电脑时间看起来不对',
+        CLOCK_INVALID: '读不到电脑时间',
+      },
+    },
+    en: {
+      group: 'Connection check',
+      button: 'Run check',
+      running: 'Checking…',
+      hint: 'When a phone cannot connect, run this once to see which step failed.',
+      days: (n) => `${n} days left`,
+      count: (n) => `${n} paired`,
+      pending: (n) => `${n} waiting`,
+      on: 'up',
+      off: 'down',
+      service: { workspaceChanges: 'changes', typertGateway: 'gateway', sessions: 'sessions' },
+      listen: (d) => `private ${d.private} · Tailscale ${d.tailnet} · other ${d.other}`,
+      check: {
+        'host.rpc': 'Host API',
+        'host.services': 'Host services',
+        'plugin.version': 'Plugin version',
+        'tls.cert': 'Certificate',
+        'pairing.devices': 'Paired phones',
+        'listen.addresses': 'Listen addresses',
+        'remote.relay': 'Remote relay',
+        clock: 'Host clock',
+      },
+      code: {
+        HOST_RPC_OK: 'Host API is responding',
+        HOST_RPC_SLOW: 'Host API is slow',
+        HOST_RPC_TIMEOUT: 'Host API timed out',
+        HOST_RPC_FAILED: 'Host API failed',
+        HOST_RPC_UNAVAILABLE: 'Host API is unavailable',
+        HOST_SERVICES_OK: 'Required services are mounted',
+        HOST_SERVICES_PARTIAL: 'Change tracking is missing; the rest is up',
+        HOST_SERVICES_MISSING: 'Sessions or the gateway is not mounted',
+        HOST_SERVICES_UNAVAILABLE: 'Could not read host services',
+        PLUGIN_VERSION_OK: 'Plugin version looks fine',
+        PLUGIN_VERSION_UNKNOWN: 'Protocol is present, version string is not',
+        PLUGIN_VERSION_INVALID: 'Plugin protocol is invalid',
+        TLS_CERT_OK: 'Certificate is valid',
+        TLS_CERT_EXPIRING: 'Certificate expires in under 30 days',
+        TLS_CERT_EXPIRED: 'Certificate has expired; pair again',
+        TLS_CERT_MISSING: 'No connection certificate yet',
+        TLS_CERT_UNKNOWN_EXPIRY: 'Could not read the certificate expiry',
+        PAIRING_OK: 'At least one phone is paired',
+        PAIRING_NONE: 'No phone is paired',
+        PAIRING_UNAVAILABLE: 'Could not read the pairing list',
+        PAIRING_SELF_OK: 'This device is valid',
+        PAIRING_SELF_INVALID: 'This device is not valid',
+        PAIRING_SELF_LEGACY: 'This device status is unusual',
+        LISTEN_OK: 'A LAN or Tailscale address is available',
+        LISTEN_NONE: 'No listen address is available',
+        LISTEN_NO_LAN: 'Only loopback is available; phones cannot connect',
+        LISTEN_UNTRUSTED: 'Only public addresses were found',
+        LISTEN_UNAVAILABLE: 'Could not read listen addresses',
+        REMOTE_DISABLED: 'Remote connection is off',
+        REMOTE_READY: 'Relay is connected',
+        REMOTE_CONNECTING: 'Connecting to the relay',
+        REMOTE_REJECTED: 'The relay refused the connection or is unreachable',
+        REMOTE_REPLACED: 'Another connection with the same host identity replaced this one',
+        REMOTE_DOWN: 'Remote is on, but the relay is not connected',
+        CLOCK_OK: 'Host clock looks fine',
+        CLOCK_UNREASONABLE: 'Host clock looks wrong',
+        CLOCK_INVALID: 'Could not read the host clock',
+      },
+    },
+  }
+
+  function diagTone(status) {
+    if (status === 'ok') return 'ok'
+    if (status === 'warn') return 'warn'
+    if (status === 'fail') return 'danger'
+    return undefined
+  }
+
+  function diagFacts(check, copy) {
+    const detail = check.detail || {}
+    const facts = []
+    if (typeof detail.ms === 'number') facts.push(`${detail.ms} ms`)
+    if (typeof detail.daysRemaining === 'number') facts.push(copy.days(detail.daysRemaining))
+    if (typeof detail.fingerprintPrefix === 'string') facts.push(detail.fingerprintPrefix)
+    if (typeof detail.version === 'string') facts.push(detail.version)
+    if (typeof detail.protocol === 'number') facts.push(`p${detail.protocol}`)
+    if (typeof detail.count === 'number') facts.push(copy.count(detail.count))
+    if (typeof detail.pending === 'number' && detail.pending > 0) facts.push(copy.pending(detail.pending))
+    if (typeof detail.total === 'number') facts.push(copy.listen(detail))
+    if (typeof detail.lastCode === 'string') facts.push(detail.lastCode)
+    const services = ['workspaceChanges', 'typertGateway', 'sessions'].filter((key) => typeof detail[key] === 'boolean')
+    if (services.length) {
+      facts.push(services.map((key) => `${copy.service[key]} ${detail[key] ? copy.on : copy.off}`).join(', '))
+    }
+    return facts
+  }
+
+  function DiagnosticsGroup() {
+    const copy = DIAG_COPY[panelLocale()] || DIAG_COPY.zh
+    const [phase, setPhase] = React.useState('idle')
+    const [report, setReport] = React.useState(null)
+    const [error, setError] = React.useState('')
+    const run = async () => {
+      setPhase('running')
+      setError('')
+      try {
+        const res = await fetch('/dsh-link/diagnostics')
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+        setReport(data)
+        setPhase('done')
+      } catch (err) {
+        setPhase('error')
+        setError(String(err?.message ?? err))
+      }
+    }
+    const checks = Array.isArray(report?.checks) ? report.checks : []
+    return h(Group, {
+      title: copy.group,
+      action: h('button', {
+        type: 'button',
+        className: 'dl-btn',
+        disabled: phase === 'running',
+        onClick: run,
+      }, phase === 'running' ? copy.running : copy.button),
+    },
+      phase === 'idle' ? h('div', { className: 'dl-empty' }, copy.hint) : null,
+      phase === 'error' ? h('p', { className: 'dl-banner is-danger', role: 'alert' }, error) : null,
+      checks.map((item) => h(Row, {
+        key: item.id,
+        title: copy.check[item.id] || item.id,
+        desc: joinParts([
+          copy.code[item.code] || item.code,
+          ...diagFacts(item, copy),
+          h('span', { className: 'dl-code-tag' }, item.code),
+        ]),
+        descTone: item.status === 'fail' ? 'danger' : item.status === 'warn' ? 'warn' : null,
+        actions: h(Dot, { tone: diagTone(item.status) }),
+      })),
+    )
+  }
+
   function ExposureNote({ exposure }) {
     if (exposure?.level !== 'untrusted' || !exposure.warning) return null
     return h('p', { className: 'dl-banner is-danger' }, exposure.warning)
@@ -649,6 +856,7 @@ const createPanelModule = (require) => {
       h(PairGroup, { info, remote, onExpired: load, onRequireConfirm: actions.setRequireConfirm }),
       h(RemoteGroup, { remote, actions }),
       h(DevicesGroup, { devices, remote, actions }),
+      h(DiagnosticsGroup, {}),
       h(ExposureNote, { exposure: info.exposure }),
     )
   }

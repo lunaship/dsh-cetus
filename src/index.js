@@ -53,6 +53,7 @@ import {
 import { createRemoteRuntime } from "./remote/runtime.js"
 
 import { applyMobileSessionSafety, handleMobileApi } from "./mobile-api.js"
+import { hostDiagnosticsSource, runDiagnostics } from "./diagnostics.js"
 
 export const name = "dsh-links"
 export const inject = ["webServer", "typertGateway"]
@@ -1246,6 +1247,7 @@ const PANEL_ONLY_PATHS = new Set([
   "/dsh-link/workspace-approvals",
   "/dsh-link/workspace-approve",
   "/dsh-link/workspace-reject",
+  "/dsh-link/diagnostics",
 ])
 
 function sessionEvents(session) {
@@ -1302,7 +1304,7 @@ export function apply(ctx, config) {
   if (!state.devices) state.devices = []
   if (!state.pairing) state.pairing = {}
   ensureTokenKey(state)
-  const tlsHolder = { fingerprint: "" }
+  const tlsHolder = { fingerprint: "", cert: "" }
   // 旧版设备（无 deviceId）一次性迁移：自动补发，手机无需重新配对（token 不变）
   let migrated = false
   for (const d of state.devices) {
@@ -1348,6 +1350,47 @@ export function apply(ctx, config) {
   })
   rt.remote = remote
 
+  // 诊断只读：workspace.list 已在白名单里。证书 PEM 留在 tlsHolder，不进入返回值。
+  function diagnosticsSource(device) {
+    let sessions = false
+    try {
+      const service = ctx.get("sessions")
+      sessions = Boolean(service && typeof service.get === "function")
+    } catch {
+      sessions = false
+    }
+    let listenHosts = []
+    try {
+      for (const list of Object.values(networkInterfaces() ?? {})) {
+        for (const iface of list ?? []) {
+          if (iface?.address) listenHosts.push(iface.address)
+        }
+      }
+    } catch {
+      listenHosts = null
+    }
+    const view = remote.status()
+    return hostDiagnosticsSource({
+      rpc: (method, params) => callLocalRpc(targetPort, method, params ?? {}),
+      services: {
+        workspaceChanges: Boolean(workspaceChangesService(rt.workspaceChanges)),
+        typertGateway: Boolean(gateway && typeof gateway.invoke === "function"),
+        sessions,
+      },
+      certPem: tlsHolder.cert,
+      fingerprint: tlsHolder.fingerprint,
+      devices: state.devices,
+      device,
+      listenHosts,
+      remote: {
+        enabled: Boolean(view.enabled),
+        state: view.state,
+        error: view.error,
+        replaced: Boolean(view.replaced),
+      },
+    })
+  }
+
   const mobileApiDeps = {
     json,
     requireJsonWrite,
@@ -1362,6 +1405,7 @@ export function apply(ctx, config) {
     filterSettingsPatch,
     publicDevice,
     remoteForDevice: remote.forDevice,
+    diagnosticsSource: (device) => diagnosticsSource(device),
     applyNewSessionSafety: async (sessionId) => {
       const sessions = ctx.get("sessions")
       const session = typeof sessions?.get === "function" ? await sessions.get(sessionId) : undefined
@@ -1495,6 +1539,18 @@ export function apply(ctx, config) {
         state.pairRequireConfirm = body.requireConfirm
         saveState(stateFile, state)
         json(res, 200, { ok: true, requireConfirm: pairRequireConfirm(config, state) })
+      },
+    }),
+    web.register({
+      kind: "exact",
+      path: "/dsh-link/diagnostics",
+      handler: async (req, res) => {
+        if (!requireLoopbackSameOrigin(req, res)) return
+        if (req.method !== "GET") return json(res, 405, { error: "method not allowed" })
+        if (readiness.phase !== "ready") return proxyPending(res)
+        const report = await runDiagnostics(diagnosticsSource(null), { scope: "panel" })
+        ctx.logger.info(`dsh-links: diagnostics scope=panel ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
+        json(res, 200, report)
       },
     }),
     web.register({
@@ -1763,6 +1819,7 @@ export function apply(ctx, config) {
   let muxBridge = null
   const ready = loadOrCreateTls(ensureStateDir(config)).then((tls) => {
     tlsHolder.fingerprint = tls.fingerprint
+    tlsHolder.cert = tls.cert
     proxy = createHttpsServer({ key: tls.key, cert: tls.cert, minVersion: "TLSv1.2" }, requestHandler)
     proxy.on("error", (err) => {
       ctx.logger.warn(`dsh-links: proxy error: ${err?.message ?? err}`)

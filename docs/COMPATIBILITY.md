@@ -18,6 +18,14 @@ published. Per-change details live in `CHANGELOG.md`.
 | Android `apps/android/` | `versionName 0.5.0-beta.24` on `main` (UI changes after it are listed under "Unreleased" in `CHANGELOG.md`) | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.23` |
 | Relay (`relay/`) | `dlp-relay` (DLP/1) from `main`; DLR/1 server removed | Official instance `wss://relay.dshlinks.com/ws`; self-hosting in `relay/README.md` |
 
+## Capability: connection diagnostics
+
+Unreleased plugin source on `main` declares `capabilities.diagnostics = { v: 1 }`
+and serves `GET /dsh-link/mobile/diagnostics`. `PLUGIN_PROTOCOL` stays `2`.
+Package and APK version numbers are unchanged. Android builds that do not
+know the field ignore it and keep working; a diagnostics screen is a later
+change and must hide the host report when the capability is absent.
+
 ## Verified combination and scope
 
 | DSH | Plugin | Android App | Relay | Verified path |

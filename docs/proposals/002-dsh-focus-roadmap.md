@@ -309,3 +309,4 @@
 
 | 子项 | PR | 结论 / 偏差 |
 |---|---|---|
+| P1.1 | #23 | 已按方案落地。未开启远程记为 `REMOTE_DISABLED` / fail，避免和「中继连不上」混成同一个 code。诊断里的 Tailscale 地址分类不改 `classifyUrl`，留给 P1.3。 |

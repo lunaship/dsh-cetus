@@ -23,6 +23,8 @@
 
 旧 App 忽略未知字段。旧插件忽略 `caps` 查询参数。
 
+`capabilities.diagnostics: { v: 1 }` 表示可以拉连接诊断，见下方「连接诊断」。旧 App 忽略该字段。
+
 `archivedSessionIds` 与 Web 的工作区归档集合保持一致；Web 恢复会话后，该 id 也必须从 App 的归档集合移除。App 的本机恢复仅是用户明确选择的临时覆盖，不能把服务端新归档的会话重新带回侧边栏。`sessions` 仍保留完整会话行，供设置页恢复；App 在冷启动选择会话前先应用该集合，因此已在 Web 删除的会话不会短暂出现在 App 侧边栏或被自动选中。该集合是快照字段，不代表底层会话日志已被物理删除。
 
 `GET /dsh-link/mobile/sessions` 也返回同名 `archivedSessionIds`。App 的后台会话刷新必须先应用该集合，再更新列表和当前选择，避免列表请求与工作区请求之间产生短暂不一致。
@@ -192,6 +194,29 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
   - `POST .../providers/add {provider, apiKey?}`：只接受 `addable` 里的目录供应商。自定义接口（协议 + baseURL）仍只在电脑端添加。
   - `POST .../providers/discover {provider}`：用已存 profile 的 `baseURL` / `api` 与已存密钥调 `llm/discoverModels`，忽略手机传来的路由字段；返回候选 `models`，由用户勾选后再走 `providers/models` 写入。
 - 所有写入带读到的 `expectedRevision`；电脑端同时修改时返回 409 `conflict`，App 刷新后重试。
+
+## 连接诊断（`capabilities.diagnostics`）
+
+`GET /dsh-link/mobile/diagnostics`（设备 token）在插件声明 `capabilities.diagnostics.v = 1` 时可用。回环面板走 `GET /dsh-link/diagnostics`（仅本机同源，不出现在 18640）。两边都是：
+
+```json
+{
+  "version": 1,
+  "generatedAt": 1730000000,
+  "checks": [
+    { "id": "host.rpc", "status": "ok", "code": "HOST_RPC_OK", "detail": { "ms": 12 } }
+  ]
+}
+```
+
+- `generatedAt` 是主机 Unix 秒，App 用它和本机时间算时钟偏差。
+- `status`：`ok` / `warn` / `fail` / `skip`。
+- `code` 是稳定枚举。文案由 App / 面板按 `code` 本地化，插件不返回自由文本。
+- `detail` 只含数字、布尔和短枚举（版本号、8 位指纹前缀、拒绝码）。不含 token、证书全文、绝对路径、IP 或消息正文。
+- 手机范围的检查：`host.rpc`、`host.services`、`plugin.version`、`tls.cert`、`pairing.devices`、`remote.relay`、`clock`。`pairing.devices` 只报告当前设备 `valid`，不给其他设备的数量或标识。
+- 面板额外有 `listen.addresses`（按 private / tailnet / other / loopback 计数，不回地址本身）。
+- `host.rpc` 只读调用已在白名单内的 `workspace.list`，超时预算 800ms。`remote.relay` 只读现有中继状态，不新发探测。未开启远程的 code 是 `REMOTE_DISABLED`（status `fail`）。证书剩余天数不足 30 为 `TLS_CERT_EXPIRING`（`warn`）。
+- 旧 App 不调用该路径也能正常使用其他接口。
 
 ## 错误与重试
 
