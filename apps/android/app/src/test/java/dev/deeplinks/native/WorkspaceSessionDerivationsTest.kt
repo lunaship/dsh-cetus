@@ -263,7 +263,6 @@ class WorkspaceSessionDerivationsTest {
         assertEquals(listOf("visible"), result.map { it.sessionId })
     }
 
-
     private fun session(
         id: String,
         running: Boolean = false,

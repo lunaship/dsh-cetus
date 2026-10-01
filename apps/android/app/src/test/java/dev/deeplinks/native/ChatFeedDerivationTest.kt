@@ -22,7 +22,6 @@ class ChatFeedDerivationTest {
 
     private fun source(name: String): File = mainRoot().resolve("dev/deeplinks/native/$name")
 
-
     private fun msg(
         id: String,
         role: String,

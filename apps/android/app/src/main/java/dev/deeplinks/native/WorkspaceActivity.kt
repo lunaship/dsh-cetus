@@ -10,7 +10,6 @@ import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.AgentPresetOutline16
 import dev.deeplinks.core.DshNotifier
-import dev.deeplinks.core.DshTheme
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.LastOnlineStore
 import dev.deeplinks.core.stableIdentity
@@ -62,7 +61,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
-import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
@@ -120,7 +118,6 @@ class WorkspaceActivity : ComponentActivity() {
         finish()
     }
 }
-
 
 /** 手机 / Medium 上的目的地。宽屏常驻侧栏时忽略，列表和聊天同时在。 */
 private enum class PhoneDest { Sessions, Chat }
@@ -1207,91 +1204,14 @@ fun WorkspaceScreen(
         appendStreamMessage(m)
     }
 
-    fun handleStreamChunk(item: SessionStreamClient.Item.Message) {
-        val chunk = item.data.optJSONObject("chunk") ?: return
-        val type = chunk.optString("type")
-        val turn = item.data.optInt("turn")
-        val index = chunk.optInt("index")
-        when (type) {
-            "reasoning-delta" -> {
-                val piece = chunk.optString("text")
-                val id = "reason-$turn-$index"
-                val i = messages.indexOfLast { it.id == id }
-                if (i >= 0) updateStreamMessage(id) { it.copy(text = it.text + piece) }
-                else appendStreamMessage(MobileMessage(id = id, role = "reasoning", text = piece, time = item.time, type = "reasoning", running = true))
-            }
-            "text-delta" -> {
-                val piece = chunk.optString("text")
-                val id = "msg-stream-$turn-$index"
-                val i = messages.indexOfLast { it.id == id }
-                if (i >= 0) updateStreamMessage(id) { it.copy(text = it.text + piece) }
-                else appendStreamMessage(MobileMessage(id = id, role = "assistant", text = piece, time = item.time, type = "text", running = true))
-            }
-            "tool-call-delta" -> {
-                val delta = chunk.optString("argumentsDelta")
-                val name = chunk.optString("name")
-                val callId = chunk.optString("id")
-                val id = "tool-stream-$turn-$index"
-                val i = messages.indexOfLast { it.id == id }
-                if (i >= 0) {
-                    updateStreamMessage(id) {
-                        it.copy(toolArgs = it.toolArgs + delta, toolName = name.ifBlank { it.toolName })
-                    }
-                } else {
-                    appendStreamMessage(MobileMessage(id = id, role = "tool_call", text = "", toolName = name.takeIf { it.isNotBlank() },
-                        toolArgs = delta, time = item.time, type = "tool_call", running = true))
-                }
-                if (callId.isNotBlank()) streamToolCallIds[id] = callId
-            }
-            "block-end" -> {
-                val block = chunk.optJSONObject("block") ?: return
-                when (val blockType = block.optString("type")) {
-                    "reasoning" -> {
-                        val id = "reason-$turn-$index"
-                        val text = block.optString("text")
-                        val i = messages.indexOfLast { it.id == id }
-                        if (i >= 0) updateStreamMessage(id) { it.copy(text = text.ifBlank { it.text }, running = false) }
-                        else if (text.isNotBlank()) {
-                            appendStreamMessage(MobileMessage(id = id, role = "reasoning", text = text, time = item.time, type = "reasoning"))
-                        }
-                    }
-                    "text" -> {
-                        val id = "msg-stream-$turn-$index"
-                        val i = messages.indexOfLast { it.id == id }
-                        if (i >= 0) updateStreamMessage(id) { it.copy(text = block.optString("text").ifBlank { it.text }, running = false) }
-                        else appendStreamMessage(MobileMessage(id = id, role = "assistant", text = block.optString("text"), time = item.time, type = "text"))
-                    }
-                    "tool-call" -> {
-                        val id = "tool-stream-$turn-$index"
-                        val callId = block.optString("id")
-                        val i = messages.indexOfLast { it.id == id }
-                        if (i >= 0) {
-                            updateStreamMessage(id) {
-                                it.copy(
-                                    toolName = block.optString("name").ifBlank { it.toolName },
-                                    toolArgs = block.optString("arguments").ifBlank { it.toolArgs },
-                                    running = false,
-                                )
-                            }
-                        } else {
-                            appendStreamMessage(MobileMessage(id = id, role = "tool_call", text = "",
-                                toolName = block.optString("name"), toolArgs = block.optString("arguments"), time = item.time, type = "tool_call"))
-                        }
-                        if (callId.isNotBlank()) streamToolCallIds[id] = callId
-                        toolCallTimes[callId] = item.time
-                    }
-                    else -> Log.i("SessionStream", "unhandled block-end type=$blockType turn=$turn index=$index keys=${block.keys().asSequence().toList()}")
-                }
-            }
-            else -> Log.i("SessionStream", "unhandled chunk type=$type turn=$turn index=$index keys=${chunk.keys().asSequence().toList()}")
-        }
-    }
+    fun handleStreamChunk(item: SessionStreamClient.Item.Message) =
+        applyStreamChunk(item, messages, ::appendStreamMessage, ::updateStreamMessage, streamToolCallIds, toolCallTimes)
 
     fun handleStreamMessage(item: SessionStreamClient.Item.Message) {
         val data = item.data
         when (item.type) {
             "turn/start" -> {
-                liveRunning = true
+                liveRunning = true; workspaceViewModel.sessionControl.refreshQueue()
                 stoppedReason = null
             }
             "turn/end" -> {
@@ -1497,7 +1417,7 @@ fun WorkspaceScreen(
             is SessionStreamClient.Item.Disconnected -> {}
             is SessionStreamClient.Item.Stats -> {
                 lastStreamEventAt = System.currentTimeMillis()
-                sessionStats = parseMobileSessionStats(item.projections)
+                sessionStats = parseMobileSessionStats(item.projections).also { workspaceViewModel.sessionControl.applyProjections(item.projections) }
             }
             is SessionStreamClient.Item.Question -> {
                 val questionsArr = item.data.optJSONArray("questions") ?: org.json.JSONArray()
@@ -1663,7 +1583,7 @@ fun WorkspaceScreen(
         // 新组合重新挂上收集器即可；生命周期的 ON_STOP/ON_START 负责前后台启停。
         val client = streamClient ?: return@LaunchedEffect
         client.start()
-        for (item in client.items) applyStreamItem(item)
+        client.items.forEachCoalesced(apply = ::applyStreamItem)
     }
 
     // WI-003：尾部定位必须在 Compose 提交新数据并完成布局之后执行。
@@ -1862,7 +1782,7 @@ fun WorkspaceScreen(
             )
             if (result == SnackbarResult.ActionPerformed) {
                 // 服务端无 unarchive：走设置页同一套本地恢复通路
-                //（restoredSessionIds 会豁免 archivedSessionIds 同步过滤，见 applySessionSnapshot）
+                // （restoredSessionIds 会豁免 archivedSessionIds 同步过滤，见 applySessionSnapshot）
                 localStore.restoreSession(sessionId)
                 refreshSessions()
             }
@@ -2049,7 +1969,7 @@ fun WorkspaceScreen(
                                 val promptMode = resolvePromptMode(!createdNow && running, appSettings.busyEnter)
                                 client.sendPrompt(sid, textToSend, mode = promptMode, images = images)
                                 withContext(Dispatchers.Main) {
-                                    refreshSessions()
+                                    refreshSessions(); if (promptMode == "queue" && running) workspaceViewModel.sessionControl.refreshQueue()
                                     // SSE 已连接时由流增量更新；立刻全量 refresh 容易在服务端
                                     // 尚未写入 history 时冲掉 local-pending，造成「已发送但本机空白」
                                     if (streamClient?.isConnected != true) {
@@ -2198,6 +2118,7 @@ fun WorkspaceScreen(
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
             var showShareSheet by remember { mutableStateOf(false) }
+            var showSchedules by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
             val topBarMenuItems = workspaceHeaderMenuItems(
                 canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
@@ -2205,6 +2126,7 @@ fun WorkspaceScreen(
                 onBrowseFiles = { showFileBrowser = true },
                 onRename = { currentSession?.let { openRename(it) } },
                 onShare = { showShareSheet = true },
+                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
                 onArchive = {
                     currentSession?.let { session ->
                         archiveSessionNow(session) { err ->
@@ -2218,6 +2140,7 @@ fun WorkspaceScreen(
                 },
                 onDelete = { currentSession?.let { openDeleteSession(it) } },
             )
+            ScheduledTasksSheet(showSchedules, workspaceViewModel.sessionControl, currentSessionId != null) { showSchedules = false }
             if (showShareSheet) {
                 val sid = currentSessionId
                 ConversationShareSheet(
@@ -2321,7 +2244,7 @@ fun WorkspaceScreen(
                 onRetry = { streamClient?.reconnect() },
             )
             if (viewMode == "chat" && currentSessionId != null) {
-                ChatStickySummary(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp))
+                ChatStickySummary(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl.goal.value, workspaceViewModel.sessionControl)
             }
             } // 顶部 chrome 结束
 
@@ -2337,7 +2260,7 @@ fun WorkspaceScreen(
                 },
                 state = pullRefreshState,
                 indicator = { ChromeAwareRefreshIndicator(pullRefreshState, historyRefreshing, topChromeDp) },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().overlayBackdropSource(chrome),
             ) {
             // 对话与轨迹共用消息数据，只替换当前视图，避免同时测量和绘制两张长列表。
             ChangesSwipeArea(
@@ -2525,7 +2448,6 @@ fun WorkspaceScreen(
                 }
             }
             } // CompositionLocalProvider(LocalRemoteImagePolicy) 结束
-
             } // else 分支结束
             } // when(viewMode) 结束
             } // Box 结束（viewMode 容器）
@@ -2616,7 +2538,7 @@ fun WorkspaceScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .dshTranslucent(showDivider = viewMode == "chat" && contentUnderBottom, dividerAtTop = true)
+                    .dshTranslucent(showDivider = viewMode == "chat" && contentUnderBottom, dividerAtTop = true, backdrop = chrome.backdrop)
                     .navigationBarsPadding()
                     .imePadding()
                     .padding(bottom = 10.dp)
@@ -2628,6 +2550,7 @@ fun WorkspaceScreen(
                 if (viewMode == "chat") {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
+                    QueuedPromptsStrip(workspaceViewModel.sessionControl, { restored -> inputText = if (inputText.isBlank()) restored else inputText + "\n" + restored }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
                     ComposerContextStrip(
                         modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                         // 用电脑可达性而非 SSE 连接态：SSE 重连时已有重连横幅，不能再叠一条「电脑离线」
@@ -2748,9 +2671,7 @@ fun WorkspaceScreen(
                     },
                 )
             }
-
                 }
-
             } // bottom chrome 容器结束
             } // 底部 chrome 叠层结束
         }

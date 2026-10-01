@@ -2,7 +2,6 @@ package dev.deeplinks.native
 
 import dev.deeplinks.native.util.normalizeWorkspacePath
 
-
 /** Installs a committed workspace.create echo without waiting for the next catalog poll. */
 internal fun upsertCreatedWorkspace(
     workspaces: List<MobileWorkspace>,

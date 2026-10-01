@@ -120,12 +120,16 @@ internal class WorkspaceViewModel(
     /** 当前会话的最新 goal 摘要（Compose 可观察状态，供顶栏与粘性摘要卡使用）。 */
     val currentGoalSummary = mutableStateOf<String?>(null)
 
+    /** 排队消息 / 结构化目标 / 定时任务（插件 capabilities.control）。 */
+    val sessionControl = SessionControlController(viewModelScope, { client }, { currentSessionId.value }) { refreshMessages() }
+
     init {
         // 监听会话切换：切换时清空旧 goal，等 refreshMessages 再填入
         viewModelScope.launch {
             snapshotFlow { currentSessionId.value }.collect { newSid ->
                 val goal = if (newSid == null) null else goalSummaries.value[newSid]
                 currentGoalSummary.value = goal
+                sessionControl.clear()
             }
         }
     }
@@ -404,6 +408,7 @@ internal class WorkspaceViewModel(
                 // 同步推导各会话的 goal 摘要（供侧栏 / 顶栏 / 粘性摘要卡消费）
                 recomputeGoalSummaries()
                 sessionStats.value = result.stats
+                sessionControl.applyHistory(result)
                 hasMoreMessages.value = result.hasMore
                 if (olderMessages.value.isEmpty()) {
                     nextBeforeSeq.value = result.nextBeforeSeq

@@ -15,6 +15,10 @@ export const RPC_METHOD_ALLOWLIST = Object.freeze([
   "agentPreset.list",
   "credentials.describe",
   "credentials.set",
+  "goals.clear",
+  "goals.edit",
+  "goals.pause",
+  "goals.resume",
   "llm.discoverModels",
   "llm.listConfigurableProviders",
   "llm.listProviders",
@@ -32,6 +36,12 @@ export const RPC_METHOD_ALLOWLIST = Object.freeze([
   "session.rename",
   "session.search",
   "session.selectModel",
+  "session.updateQueue",
+  "schedule.catalog",
+  "schedule.delete",
+  "schedule.history",
+  "schedule.list",
+  "schedule.update",
   "settings.describe",
   "settings.mutate",
   "settings.update",
@@ -151,6 +161,21 @@ function settingsMutateArgs(payload) {
   return args
 }
 
+/** goals/* 用 CAS 引用 `{ id, revision }`：过期 revision 由 DSH 拒绝，不会覆盖网页端更新。 */
+function goalRefArgs(payload) {
+  const src = asObject(payload)
+  const ref = asObject(src.ref)
+  return { agentId: src.sessionId, ref: { id: ref.id, revision: ref.revision } }
+}
+
+function goalEditArgs(payload) {
+  const src = asObject(payload)
+  const request = {}
+  if (typeof src.objective === "string") request.objective = src.objective
+  if (Number.isSafeInteger(src.maxGoalRounds) || src.maxGoalRounds === null) request.maxGoalRounds = src.maxGoalRounds
+  return { ...goalRefArgs(src), request }
+}
+
 /**
  * 插件面方法 → Typert Remote。session.history / workspace.list 在 callLocalRpc 里另走适配。
  * @type {Record<string, { namespace: string, method: string, args: (payload: object) => object }>}
@@ -168,6 +193,10 @@ const WIRE = Object.freeze({
     method: "set",
     args: (p) => ({ ref: asObject(p).ref, value: asObject(p).value }),
   },
+  "goals.edit": { namespace: "goals", method: "edit", args: goalEditArgs },
+  "goals.pause": { namespace: "goals", method: "pause", args: goalRefArgs },
+  "goals.resume": { namespace: "goals", method: "resume", args: goalRefArgs },
+  "goals.clear": { namespace: "goals", method: "clear", args: goalRefArgs },
   "llm.discoverModels": {
     namespace: "llm",
     method: "discoverModels",
@@ -188,6 +217,12 @@ const WIRE = Object.freeze({
   "session.rename": { namespace: "session", method: "rename", args: requestArgs },
   "session.search": { namespace: "session", method: "search", args: requestArgs },
   "session.selectModel": { namespace: "session", method: "selectModel", args: requestArgs },
+  "session.updateQueue": { namespace: "session", method: "updateQueue", args: requestArgs },
+  "schedule.catalog": { namespace: "schedule", method: "catalog", args: () => ({}) },
+  "schedule.list": { namespace: "schedule", method: "list", args: requestArgs },
+  "schedule.history": { namespace: "schedule", method: "history", args: requestArgs },
+  "schedule.update": { namespace: "schedule", method: "update", args: requestArgs },
+  "schedule.delete": { namespace: "schedule", method: "delete", args: requestArgs },
   "settings.describe": { namespace: "settings", method: "describe", args: () => ({}) },
   "settings.mutate": { namespace: "settings", method: "mutate", args: settingsMutateArgs },
   "settings.update": { namespace: "settings", method: "update", args: settingsUpdateArgs },

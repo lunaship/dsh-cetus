@@ -19,7 +19,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,7 +70,6 @@ import dev.deeplinks.core.L
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.ThemeManager
 import dev.deeplinks.core.dshRipple
-import dev.deeplinks.native.util.relativeTime
 
 /**
  * 抽屉（侧栏）原生行组件 —— 密度与颜色规格（2026-09-22 收紧版）：
@@ -366,7 +364,6 @@ private fun HomeRunningSpinner() {
     }
 }
 
-
 /**
  * 行副标题（稿 01/07）：
  * - 进行中：activity 推出来的「正在运行 go test ./... · 第 12 步」，没有就写「运行中」；
@@ -478,10 +475,8 @@ internal fun SidebarSearchField(
     }
 }
 
-
 /** 工作区组头：M3 抽屉条目形态。行内不再嵌「+」，新建会话进长按菜单。 */
 @OptIn(ExperimentalFoundationApi::class)
-
 
 /** 抽屉内的小图标按钮（overflow / 清除 / 主题），热区与图标分开。 */
 @Composable

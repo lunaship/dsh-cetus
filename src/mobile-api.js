@@ -1,12 +1,13 @@
 import { readFileSync, statSync } from "node:fs"
 import { readFile as readFileAsync } from "node:fs/promises"
 import { isAbsolute } from "node:path"
-import { randomBytes } from "node:crypto"
+import { createHash, randomBytes } from "node:crypto"
 import { hostname } from "node:os"
 import { callLocalRpc, LocalRpcError } from "./local-rpc.js"
 import { mobileSessionSummary } from "./mobile-session-summary.js"
 import { deriveActivity, deriveAwaitingInput, deriveLastResult, deriveStoppedReason } from "./mobile-session-activity.js"
 import { handleMobileModelsApi } from "./mobile-models.js"
+import { handleMobileSessionControlApi, queueItemsFromInbox } from "./mobile-session-control.js"
 import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
@@ -778,6 +779,8 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
           "cache-control": "private, max-age=60",
           "x-content-type-options": "nosniff",
           "x-dsh-link-filename": encodeURIComponent(resolved.name),
+          // 完整性校验：App 下载完按此 SHA-256 复核，传输被截断 / 篡改时拒收
+          "x-dsh-link-sha256": createHash("sha256").update(body).digest("hex"),
         }
         if (mime.startsWith("text/html") || mime === "image/svg+xml") {
           headers["content-disposition"] = `attachment; filename="${encodeURIComponent(resolved.name)}"`
@@ -876,6 +879,10 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         contextBreakdown: projValues.contextBreakdown ?? null,
         todos: projValues.todos ?? null,
       }
+      // 排队 / 引导中的消息（DSH durable inbox）；旧 Host 无此投影时为空表
+      const queue = queueItemsFromInbox(projValues.inbox)
+      // 结构化目标（含 CAS 引用 id / revision 与 phase），App 据此提供暂停 / 继续 / 编辑 / 清除
+      const goal = projValues.goal && typeof projValues.goal === "object" ? projValues.goal : null
       // 投影为稳定消息列表（WI-001）：reasoning 只合并到覆盖其 seq 窗口的页面，
       // 消息 id 以事件 seq 为键（跨页稳定），assistant/message 与同页 block-end 共享 id。
       const reasoningBySeq = pageNeedsReasoningFile(rawEvents)
@@ -901,6 +908,8 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         maxSeq: projected.maxSeq,
         stoppedReason: projected.stoppedReason,
         stats: statsPayload,
+        queue,
+        goal,
       })
     }
 
@@ -982,6 +991,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     }
 
     if (await handleMobileModelsApi(req, res, targetPort, state, device, pathname, rt, deps)) return
+    if (await handleMobileSessionControlApi(req, res, targetPort, state, device, pathname, rt, deps)) return
 
     return json(res, 404, { error: "mobile endpoint not found" })
   } catch (error) {

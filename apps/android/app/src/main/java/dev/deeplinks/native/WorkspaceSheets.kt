@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -42,7 +41,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L

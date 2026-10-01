@@ -17,6 +17,8 @@ mockwebserver = "5.5.0"
 json = "20260814"
 screenshot = "0.0.1-alpha16"
 navigationCompose = "2.10.1"
+# 毛玻璃顶栏 / 输入区（API 31+ RenderEffect 模糊；Apache-2.0）
+backdrop = "1.0.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +46,8 @@ mockwebserver3 = { group = "com.squareup.okhttp3", name = "mockwebserver3", vers
 org-json = { group = "org.json", name = "json", version.ref = "json" }
 screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+
+backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

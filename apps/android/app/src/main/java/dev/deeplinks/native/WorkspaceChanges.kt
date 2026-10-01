@@ -295,7 +295,6 @@ fun foldContextRows(rows: List<DiffRow>, expandedFolds: Set<Int> = emptySet()): 
     return out
 }
 
-
 private fun plainDiffRows(hunks: List<DiffHunk>): List<DiffRow> = buildList {
     for (hunk in hunks) {
         add(DiffRow(DiffRow.Kind.HUNK, null, null, "@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@"))

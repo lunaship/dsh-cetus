@@ -199,5 +199,4 @@ class RequestStateTest {
         )
         assertTrue("仅来自历史的审批不得标记为接管", !untouched.takenOverByPhone)
     }
-
 }
