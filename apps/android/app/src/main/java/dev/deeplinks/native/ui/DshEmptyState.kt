@@ -1,5 +1,7 @@
 package dev.deeplinks.native.ui
 
+import dev.deeplinks.native.dshReveal
+
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,6 +55,8 @@ private fun DshStateScaffold(
 ) {
     Column(
         modifier = modifier
+            // v3 入场揭示：空态 / 错误态出现时淡入上移（预览与 reduce-motion 直接终态）
+            .dshReveal()
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = if (compact) 16.dp else 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -276,9 +276,8 @@ private fun DshSectionRows(
         DshSectionContainer.Tonal -> Modifier
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgSubtle)
-        DshSectionContainer.Card -> Modifier
-            .clip(RoundedCornerShape(DshRadius.card))
-            .background(Dsh.bgCard)
+        // v3：白卡统一走 dshCardSurface（发丝边 + 一级柔阴影）
+        DshSectionContainer.Card -> Modifier.dshCardSurface()
         DshSectionContainer.Flat -> Modifier
     }
     Layout(

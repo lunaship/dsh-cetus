@@ -74,11 +74,59 @@ object DshDuration {
     const val fast = 100
     const val normal = 200
     const val slow = 300
+
+    /** 入场揭示（v3，借鉴 ChunUI reveal）：320ms，无回弹。 */
+    const val reveal = 320
+
+    /** 列表入场的逐项错峰步长。 */
+    const val revealStagger = 70
+
+    /** 错峰最多累计到第几项：再往后的项与它同时出现，长列表不拖尾。 */
+    const val revealStaggerMaxIndex = 5
 }
 
 object DshEasing {
     val inOut = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
     val out = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+
+    /** 入场揭示：快起缓停、不过冲（ChunUI `timingCurve(0.22, 0.8, 0.36, 1)`）。 */
+    val reveal = CubicBezierEasing(0.22f, 0.8f, 0.36f, 1f)
+}
+
+/** 入场揭示的位移距离：从下方 8dp 升到原位。 */
+private val RevealOffset = 8.dp
+
+/** 第 [index] 项的错峰延迟（ms），超过 [DshDuration.revealStaggerMaxIndex] 后不再累加。 */
+fun dshRevealDelayMs(index: Int): Int =
+    index.coerceIn(0, DshDuration.revealStaggerMaxIndex) * DshDuration.revealStagger
+
+/**
+ * 入场揭示（v3 动效 token）：首次进入组合时淡入 + 上移 [RevealOffset]，
+ * 只改渲染层（graphicsLayer），不触发布局。
+ *
+ * - 只用于「出现」这一刻：页面内容、建议 chip、新出现的提示行；不得做无限循环；
+ * - reduce-motion 与预览（截图基线）直接呈现终态；
+ * - LazyColumn 里的条目滚回视口会重新组合，**不要**给长列表条目逐个挂它。
+ */
+fun Modifier.dshReveal(index: Int = 0): Modifier = composed {
+    val skip = isReduceMotionEnabled() || androidx.compose.ui.platform.LocalInspectionMode.current
+    if (skip) return@composed this
+    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = DshDuration.reveal,
+                delayMillis = dshRevealDelayMs(index),
+                easing = DshEasing.reveal,
+            ),
+        )
+    }
+    graphicsLayer {
+        val p = progress.value
+        alpha = p
+        translationY = (1f - p) * RevealOffset.toPx()
+    }
 }
 
 /**

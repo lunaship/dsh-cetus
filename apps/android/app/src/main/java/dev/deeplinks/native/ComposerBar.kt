@@ -466,11 +466,14 @@ internal fun ComposerSeatsRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
     ) {
+        // v3：窄屏时模型座先让位（weight + fill=false：不撑满，只在放不下时收缩），
+        // 访问模式标签保持完整，不再出现「工作…」
         ComposerModelSeat(
             name = modelName,
             effort = modelEffort,
             compact = compact,
             onClick = onOpenModelPicker,
+            modifier = Modifier.weight(1f, fill = false),
         )
         ComposerAccessSeat(
             preset = permissionPreset,
@@ -491,6 +494,7 @@ private fun ComposerModelSeat(
     effort: String?,
     compact: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val hasModel = !name.isNullOrBlank()
@@ -501,7 +505,7 @@ private fun ComposerModelSeat(
     }
     // 视觉 28dp（DSH 规格），触摸区交给外层 48dp（与 + / 发送键同高，不改变行高）
     Box(
-        modifier = Modifier
+        modifier = modifier
             .height(48.dp)
             .semantics {
                 role = Role.Button
@@ -538,12 +542,14 @@ private fun ComposerModelSeat(
                     modifier = Modifier.widthIn(max = COMPOSER_MODEL_MAX_WIDTH),
                 )
                 if (!effort.isNullOrBlank()) {
+                    // 等级先被挤掉：weight 让它排在下拉箭头之后测量
                     Text(
                         text = formatEffortLabel(effort),
                         color = Dsh.labelTertiary,
                         style = DshType.body,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                 }
             }
@@ -740,15 +746,17 @@ internal fun ComposerSuggestionsRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
     ) {
+        // v3 入场揭示：一轮结束、建议出现时逐个错峰 70ms 淡入上移（DshMotion.dshReveal）
         if (suggestionsVisible) {
-            DshFilterChip(label = L.suggestContinue, selected = false, onClick = { onSuggestion(L.suggestContinueText) })
-            DshFilterChip(label = L.suggestReview, selected = false, onClick = { onSuggestion(L.suggestReviewText) })
+            DshFilterChip(label = L.suggestContinue, selected = false, onClick = { onSuggestion(L.suggestContinueText) }, modifier = Modifier.dshReveal(0))
+            DshFilterChip(label = L.suggestReview, selected = false, onClick = { onSuggestion(L.suggestReviewText) }, modifier = Modifier.dshReveal(1))
         }
         if (showChanges) {
             DshFilterChip(
                 label = L.viewChangesCount.format(changesCount),
                 selected = false,
                 onClick = onOpenChanges,
+                modifier = Modifier.dshReveal(if (suggestionsVisible) 2 else 0),
             )
         }
     }

@@ -46,7 +46,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -63,6 +62,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
+import dev.deeplinks.native.ui.DshEdgeFadeDefaults
+import dev.deeplinks.native.ui.DshEdgeFades
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
@@ -74,8 +75,6 @@ import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
 import dev.deeplinks.native.util.chatCanvasKind
-import dev.deeplinks.native.ui.dshEdgeFade
-import dev.deeplinks.native.ui.DshEdgeFadeEdge
 import dev.deeplinks.native.util.composerSuggestionVisible
 import dev.deeplinks.native.util.lastGroupEndedAssistant
 import dev.deeplinks.native.util.ChatCanvasKind
@@ -2252,7 +2251,7 @@ fun WorkspaceScreen(
                 ChatStickySummary(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl.goal.value, workspaceViewModel.sessionControl)
             }
             } // 顶部 chrome 结束
-            WorkspaceEdgeFades(topHeight = topChromeDp, bottomHeight = bottomChromeDp + DshSpace.s24)
+            DshEdgeFades(topChromeDp + DshEdgeFadeDefaults.overhang, bottomChromeDp + DshSpace.s24, viewMode != "chat" || contentUnderTop, viewMode != "chat" || listState.canScrollForward, Dsh.bgCard, chrome.backdrop)
 
             // 消息流 + 悬浮「回到底部」：weight 加在容器（Column 直接子级）上，
             // 悬浮按钮盖在列表之上；框内 LazyColumn 用 fillMaxSize 填满 Box。
@@ -3003,35 +3002,4 @@ fun WorkspaceScreen(
             onDismiss = { showFileBrowser = false },
         )
     }
-}
-
-/** 顶部 / 底部边缘渐隐（4.5.3）：聊天画布 bgCard，zIndex 低于悬浮 chrome、高于内容层。 */
-@Composable
-private fun androidx.compose.foundation.layout.BoxScope.WorkspaceEdgeFades(topHeight: androidx.compose.ui.unit.Dp, bottomHeight: androidx.compose.ui.unit.Dp) {
-    Box(
-        Modifier
-            .align(Alignment.TopCenter)
-            .fillMaxWidth()
-            .height(topHeight)
-            .zIndex(0.5f)
-            .dshEdgeFade(
-                edge = DshEdgeFadeEdge.Top,
-                visible = true,
-                canvasColor = Dsh.bgCard,
-                height = topHeight,
-            ),
-    )
-    Box(
-        Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .height(bottomHeight)
-            .zIndex(0.5f)
-            .dshEdgeFade(
-                edge = DshEdgeFadeEdge.Bottom,
-                visible = true,
-                canvasColor = Dsh.bgCard,
-                height = bottomHeight,
-            ),
-    )
 }
