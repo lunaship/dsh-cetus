@@ -40,7 +40,7 @@ class SettingsHomeEntriesTest {
         val homeStart = text.indexOf("internal fun SettingsHome(")
         val homeEnd = text.indexOf("\n}\n", homeStart) + 3
         val homeBody = text.substring(homeStart, homeEnd)
-        val sections = Regex("""DshListSection\(header\s*=""").findAll(homeBody).map { it.range.first }.toList()
+        val sections = Regex("""DshListSection\((container\s*=\s*DshSectionContainer\.Card,\s*)?header\s*=""").findAll(homeBody).map { it.range.first }.toList()
         assertEquals(5, sections.size)
     }
 }

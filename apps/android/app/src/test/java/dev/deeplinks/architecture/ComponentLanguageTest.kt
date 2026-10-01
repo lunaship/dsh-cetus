@@ -88,6 +88,8 @@ class ComponentLanguageTest {
 
         val PILL_SHAPE = Regex("""RoundedCornerShape\(\s*DshRadius\.full""")
         val GROUP_RADIUS = Regex("""DshRadius\.group""")
+        val CARD_RADIUS = Regex("""DshRadius\.card""")
+        val FLAT_SECTION = Regex("""DshSectionContainer\.Flat""")
         val CIRCLE_SHAPE = Regex("""CircleShape""")
         val DISPLAY_TYPE = Regex("""DshType\.display(Large)?""")
     }
@@ -136,6 +138,44 @@ class ComponentLanguageTest {
         }
         assertTrue(
             "页面级形状语义残留（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
+
+    @Test
+    fun pageFilesDoNotUseCardRadius() {
+        val root = mainSourceRoot()
+        val violations = mutableListOf<String>()
+        for (file in ktFiles(root)) {
+            val rel = relative(root, file)
+            if (!isPageFile(rel)) continue
+            val used = countMatches(file, CARD_RADIUS)
+            if (used > 0) {
+                violations += "$rel: DshRadius.card $used 处——20dp 分组卡圆角只允许共享组件" +
+                    "（DshSectionContainer.Card）引用，页面请改传 container = DshSectionContainer.Card"
+            }
+        }
+        assertTrue(
+            "分组卡圆角越界（docs/visual-rules.md 第三节）：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
+
+    @Test
+    fun pageFilesDoNotPassFlatSection() {
+        val root = mainSourceRoot()
+        val violations = mutableListOf<String>()
+        for (file in ktFiles(root)) {
+            val rel = relative(root, file)
+            if (!isPageFile(rel)) continue
+            val used = countMatches(file, FLAT_SECTION)
+            if (used > 0) {
+                violations += "$rel: 显式传 DshSectionContainer.Flat $used 处——Flat 是默认值，" +
+                    "页面不再声明容器策略；页面内容面一律 Card，Flat/Tonal 只留给弹层与警告"
+            }
+        }
+        assertTrue(
+            "页面显式声明 Flat 容器（2026-10-02 Lody 简化 7.2）：\n" + violations.joinToString("\n"),
             violations.isEmpty(),
         )
     }

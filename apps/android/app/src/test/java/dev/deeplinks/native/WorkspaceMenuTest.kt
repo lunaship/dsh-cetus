@@ -83,4 +83,11 @@ class WorkspaceMenuTest {
         assertEquals(listOf("close", "schedules"), ctx.log)
         assertTrue(menu(Ctx()).none { it.label == L.scheduledTasks })
     }
+
+/** 2026-10-02 L6：「⋯」菜单首项 = 查看轨迹 / 返回对话，文字随当前视图切换。 */
+@Test
+fun `menu first item follows view mode`() {
+    assertEquals("查看轨迹", dev.deeplinks.native.util.viewModeToggleLabel("chat", "查看轨迹", "返回对话"))
+    assertEquals("返回对话", dev.deeplinks.native.util.viewModeToggleLabel("trace", "查看轨迹", "返回对话"))
+}
 }

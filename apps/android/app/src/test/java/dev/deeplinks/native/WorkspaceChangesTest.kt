@@ -244,4 +244,23 @@ class WorkspaceChangesTest {
         assertEquals(listOf("ab"), splitHangingIndent("ab", maxChars = 2, indentChars = 2))
         assertEquals(listOf("abcd"), splitHangingIndent("abcd", maxChars = 0))
     }
+
+/** 4.4：path 不一致 = Host 返回的不是这份文件的对比（不可用，不写缓存）。 */
+@Test
+fun `diff path mismatch is unavailable`() {
+    val file = ChangedFile(path = "a/A.kt", display = "a/A.kt", added = 1, deleted = 0)
+    val wrong = WorkspaceFileDiff.Text(path = "b/B.kt", display = "b/B.kt", before = false, after = false, coarse = false, hunks = emptyList())
+    val right = wrong.copy(path = "a/A.kt")
+    org.junit.Assert.assertFalse(diffMatchesFile(wrong, file))
+    org.junit.Assert.assertTrue(diffMatchesFile(right, file))
+}
+
+/** 4.4：HTTP 404 + 服务端 error code "changes_unavailable" 才映射为不可用。 */
+@Test
+fun `changes_unavailable mapping`() {
+    org.junit.Assert.assertTrue(isChangesUnavailable(404, """{"error":"changes_unavailable"}"""))
+    org.junit.Assert.assertFalse(isChangesUnavailable(500, """{"error":"changes_unavailable"}"""))
+    org.junit.Assert.assertFalse(isChangesUnavailable(404, """{"error":"not_found"}"""))
+    org.junit.Assert.assertFalse(isChangesUnavailable(404, "not json"))
+}
 }

@@ -6,8 +6,10 @@
 # 2026-10-01 第 5 步半透明顶栏/底栏 + 底部输入区高度常量 + PullToRefreshBox padding + 顶栏悬浮 Box 后实际上调。
 # 2026-10-01 借鉴 dsh-mobile 一轮：assistant/chunk 处理抽到 StreamChunks.kt 后下调。
 # 2026-10-01 PR3 浮岛化（R11）：+12 行（浮岛 modifier 与注释）；拆解时回收。
-dev/deeplinks/native/WorkspaceActivity.kt 2996
-dev/deeplinks/native/DshIcons.kt 4820
+# 2026-10-02 Lody 简化：建议行 + 边缘渐隐 + 菜单首项（渐隐/菜单已抽子组件）后按实际上调。
+dev/deeplinks/native/WorkspaceActivity.kt 3038
+# 2026-10-02 Lody 简化：新增 FilterLinesOutline16（筛选进顶栏胶囊）后按实际上调。
+dev/deeplinks/native/DshIcons.kt 4874
 # 2026-09-27 设备页拆出 DeviceCard 分组段落后下调。
 dev/deeplinks/devices/DevicesActivity.kt 480
 # 2026-09-27 设置 UI 拆到 SettingsRoute.kt（批次 2），本文件只剩外部入口兼容壳。
@@ -16,5 +18,9 @@ dev/deeplinks/native/SettingsActivity.kt 34
 # 2026-09-30 第 4 步新增模型切换提示文案（modelChangedFrom / modelChanged）后按实际上调。
 # 2026-09-30 E1 新增 setLanguageForPreview（截图专用，只切内存态）后再上调。
 # 2026-09-30 E8 新增 contextUsedPercent 取值后按实际上调。
-dev/deeplinks/core/AppLocale.kt 690
-dev/deeplinks/native/WorkspaceSidebar.kt 312
+# 2026-10-02 Lody 简化：新增活动摘要行（activity* / secondsShort）取值后按实际上调。
+# 2026-10-02 Lody 简化：新增 homeFilterWorkspaces / homeClearFilter 后按实际上调。
+# 2026-10-02 Lody 简化：新增建议行 / 返回对话文案后按实际上调。
+dev/deeplinks/core/AppLocale.kt 708
+# 2026-10-02 Lody 简化（L9）：顶栏胶囊 + 分组卡 + 底部操作行 + 边缘渐隐；状态行抽 homeStatusItems 后按实际上调。
+dev/deeplinks/native/WorkspaceSidebar.kt 436

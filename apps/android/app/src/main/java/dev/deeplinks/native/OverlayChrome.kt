@@ -54,17 +54,29 @@ internal fun OverlayChromeState.topDp(): Dp = with(LocalDensity.current) { topPx
 @Composable
 internal fun OverlayChromeState.bottomDp(): Dp = with(LocalDensity.current) { bottomPx.toDp() }
 
-/** 顶部悬浮区：贴顶、压在内容之上、半透明（分隔线画在底边）、吃状态栏、回填高度。 */
+/**
+ * 顶部悬浮区：贴顶、压在内容之上、吃状态栏、回填高度。
+ * [paintGlass] = false 时不画全宽玻璃条（2026-10-02 L9：导航条下线，改用边缘渐隐），
+ * 过渡期给首页用；聊天顶栏迁移后玻璃绘制整体删除。
+ */
 @Composable
 internal fun Modifier.overlayTopChrome(
     state: OverlayChromeState,
     base: Color,
     showDivider: Boolean,
     consumeStatusBar: Boolean = true,
+    paintGlass: Boolean = true,
 ): Modifier = this
     .fillMaxWidth()
     .zIndex(1f)
-    .dshTranslucent(base = base, showDivider = showDivider, dividerAtTop = false, backdrop = state.backdrop)
+    .then(
+        if (paintGlass) {
+            @Suppress("DEPRECATION")
+            Modifier.dshTranslucent(base = base, showDivider = showDivider, dividerAtTop = false, backdrop = state.backdrop)
+        } else {
+            Modifier
+        },
+    )
     .then(if (consumeStatusBar) Modifier.statusBarsPadding() else Modifier)
     .onSizeChanged { state.topPx = it.height }
 

@@ -811,8 +811,14 @@ class MobileApiClient(private val host: Host) {
     /** 单个改动文件的对比（hunk 可达数千行，放宽 JSON 读取上限）。 */
     fun getWorkspaceChangeDiff(sessionId: String, seq: Long, index: Int): WorkspaceFileDiff {
         val sid = java.net.URLEncoder.encode(sessionId, "UTF-8")
-        val root = request("GET", "/dsh-link/mobile/sessions/$sid/changes/diff?seq=$seq&index=$index", maxBytes = DIFF_BODY_MAX_BYTES)
-        return parseWorkspaceFileDiff(root) ?: throw IllegalStateException(L.unknownError)
+        return try {
+            val root = request("GET", "/dsh-link/mobile/sessions/$sid/changes/diff?seq=$seq&index=$index", maxBytes = DIFF_BODY_MAX_BYTES)
+            parseWorkspaceFileDiff(root) ?: throw IllegalStateException(L.unknownError)
+        } catch (e: MobileApiHttpException) {
+            // 4.4：Host 已取不到这份对比（如会话被清 / 插件重启）→ 本地化提示，不透出服务端原文
+            if (isChangesUnavailable(e.httpCode, e.body)) throw ChangesUnavailableException()
+            throw e
+        }
     }
 
     fun createSession(agentPreset: String? = null, cwd: String? = null, workspaceId: String? = null): String {
@@ -1062,7 +1068,7 @@ class MobileApiClient(private val host: Host) {
                 if (code !in 200..299) {
                     val msg = parseMobileApiError(code, text)
                     if (code == 401 || code == 403) throw MobileAuthException(msg, code)
-                    throw IllegalStateException(msg)
+                    throw MobileApiHttpException(code, text, msg)
                 }
                 return JSONObject(text)
             }
@@ -1265,6 +1271,17 @@ internal fun MobileModelDraft.toJson(): JSONObject {
     if (inputModalities.isNotEmpty()) o.put("inputModalities", org.json.JSONArray(inputModalities))
     return o
 }
+
+/** 非 2xx 且非鉴权失败：携带 HTTP 状态码与原始响应体，供调用方按 code 细分处理。 */
+internal class MobileApiHttpException(val httpCode: Int, val body: String, message: String) : IllegalStateException(message)
+
+/** Host 端已取不到这份改动对比（4.4）：UI 映射为本地化「已不可用」+ 重试。 */
+internal class ChangesUnavailableException : IllegalStateException("changes_unavailable")
+
+/** HTTP 404 且服务端 error code == "changes_unavailable"（纯函数，便于单测）。 */
+internal fun isChangesUnavailable(httpCode: Int, body: String): Boolean =
+    httpCode == 404 &&
+        runCatching { JSONObject(body).optString("error") }.getOrNull() == "changes_unavailable"
 
 internal fun parseMobileApiError(code: Int, text: String): String {
     val fromJson = runCatching { JSONObject(text).optStringOrEmpty("error") }.getOrNull()?.takeIf { it.isNotBlank() }

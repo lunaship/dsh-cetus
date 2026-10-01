@@ -139,43 +139,23 @@ class MessageGroupingTest {
         assertEquals(emptyList<UserTurnJump>(), userTurnJumps(listOf(msg("u-1", "user", 1).copy(text = "  \n"))))
     }
 
-    @Test
-    fun `formatToolGroupSummary 测试单一与多工具摘要`() {
-        val msgs1 = listOf(
-            msg("tc-1", "tool_call", 1).copy(toolName = "Read"),
-            msg("tr-1", "tool_result", 2),
-            msg("tc-2", "tool_call", 3).copy(toolName = "Read"),
-        )
-        assertEquals("Read (2)", formatToolGroupSummary(msgs1))
-
-        val msgs2 = listOf(
-            msg("tc-1", "tool_call", 1).copy(toolName = "Read"),
-            msg("tc-2", "tool_call", 2).copy(toolName = "bash"),
-        )
-        assertEquals("Read, bash (2)", formatToolGroupSummary(msgs2))
-
-        val msgsEmpty = listOf(
-            msg("tc-1", "tool_call", 1),
-        )
-        assertEquals("1 tool calls", formatToolGroupSummary(msgsEmpty))
-    }
-
-    /** 过程折叠行（方案 5.2）：已结束写「已完成工作 · 摘要」，执行中写「◌ 正在运行 命令」。 */
+    /** 过程折叠行（2026-10-02 口径统一）：已结束与轨迹视图同一 activityLine；执行中写「◌ 命令」。 */
     @Test
     fun `toolGroupRowLabel 已结束与执行中两种口吻`() {
         val msgs = listOf(
             MobileMessage(id = "1", role = "tool_call", text = "", toolName = "Read"),
             MobileMessage(id = "2", role = "tool_call", text = "", toolName = "Read"),
         )
-        assertEquals("已完成工作 · Read (2)", toolGroupRowLabel(msgs, running = false))
+        // 阅读类工具参数里没有 path：按调用次数计（不丢调用）
+        assertEquals("阅读了 2 个文件", toolGroupRowLabel(msgs, running = false))
         assertEquals("◌ go test ./...", toolGroupRowLabel(msgs, running = true, runningCommand = "go test ./..."))
         // 拿不到命令（旧插件）时留空，由组头右侧的「执行中」标签说明，不编一个命令出来
         assertEquals("", toolGroupRowLabel(msgs, running = true, runningCommand = "  "))
     }
 
-    /** 过程折叠行：能数出改动文件时写「编辑了 N 个文件」（稿 03），数不出才退回工具名。 */
+    /** L7：编辑类写「编辑 N 次」（按调用次数），文件数只认改动卡，不再在这里数文件。 */
     @Test
-    fun `toolGroupRowLabel 优先写改动文件数`() {
+    fun `toolGroupRowLabel 编辑按调用次数`() {
         val edits = listOf(
             MobileMessage(id = "1", role = "tool_call", text = "", toolName = "edit",
                 toolArgs = """{"file_path":"/a/HomeHub.kt","old_str":"x","new_str":"y"}"""),
@@ -183,12 +163,47 @@ class MessageGroupingTest {
                 toolArgs = """{"file_path":"/a/HomeHub.kt","old_str":"x","new_str":"y"}"""),
             MobileMessage(id = "3", role = "tool_call", text = "", toolName = "write",
                 toolArgs = """{"file_path":"/a/Theme.kt","content":"..."}"""),
-            // 只读的工具不算改动
+            // 只读的工具不算编辑
             MobileMessage(id = "4", role = "tool_call", text = "", toolName = "Read"),
         )
-        assertEquals("已完成工作 · 已编辑 2 个文件", toolGroupRowLabel(edits, running = false))
-        // 参数不全（缺 old_str）不算改动，退回工具名摘要
-        val halfArgs = listOf(MobileMessage(id = "5", role = "tool_call", text = "", toolName = "edit", toolArgs = """{"file_path":"/a/x.kt"}"""))
-        assertEquals("已完成工作 · edit", toolGroupRowLabel(halfArgs, running = false))
+        assertEquals("阅读了 1 个文件 · 编辑 3 次", toolGroupRowLabel(edits, running = false))
+    }
+
+    /** 2026-10-02：同一段内相邻 reasoning 收进摘要（只留 thinkingMs）。 */
+    @Test
+    fun `foldToolCalls 把相邻 reasoning 收进摘要`() {
+        val msgs = listOf(
+            msg("u-1", "user", 1),
+            msg("r-1", "reasoning", 2).copy(durationMs = 4_000L),
+            msg("tc-1", "tool_call", 3).copy(toolName = "bash"),
+            msg("tr-1", "tool_result", 4),
+            msg("r-2", "reasoning", 5).copy(durationMs = 4_000L),
+            msg("a-1", "assistant", 6),
+        )
+        val folded = foldToolCalls(groupMessages(msgs), viewMode = "chat")
+        assertEquals(3, folded.size)
+        val summary = folded[1] as MessageGroup.ToolSummary
+        assertEquals(8_000L, summary.thinkingMs)
+        assertEquals(1, summary.activity.command)
+        // 摘要与轨迹组头同一口径
+        assertEquals(
+            activityLine(summary.activity).joinToString(" · "),
+            toolGroupRowLabel(msgs.filter { it.role == "tool_call" || it.role == "tool_result" || it.role == "reasoning" }, running = false),
+        )
+    }
+
+    /** 纯思考（无工具）也产出摘要行，对话视图不再渲染独立思考条。 */
+    @Test
+    fun `foldToolCalls 纯思考产出摘要行`() {
+        val msgs = listOf(
+            msg("u-1", "user", 1),
+            msg("r-1", "reasoning", 2).copy(durationMs = 2_500L),
+            msg("a-1", "assistant", 3),
+        )
+        val folded = foldToolCalls(groupMessages(msgs), viewMode = "chat")
+        assertEquals(3, folded.size)
+        val summary = folded[1] as MessageGroup.ToolSummary
+        assertEquals(0, summary.count)
+        assertEquals(2_500L, summary.thinkingMs)
     }
 }

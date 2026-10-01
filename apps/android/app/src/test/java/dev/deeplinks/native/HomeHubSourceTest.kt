@@ -43,15 +43,13 @@ class HomeHubSourceTest {
         assertFalse("HomeHeader should not have hostName parameter", body.contains("hostName"))
     }
 
+    /** 2026-10-02 Lody 简化 4.1：黑色「+ 新任务」FAB 由底部玻璃操作行（HomeBottomBar）取代。 */
     @Test
-    fun `HomeNewTaskFab is inside Box with BottomCenter alignment`() {
-        val text = file("WorkspaceSidebar.kt").readText()
-        val fabIndex = text.indexOf("HomeNewTaskFab(")
-        assertFalse("HomeNewTaskFab not found in WorkspaceSidebar", fabIndex < 0)
-        val beforeFab = text.substring(0, fabIndex)
+    fun `HomeNewTaskFab is gone`() {
         assertFalse(
-            "HomeNewTaskFab should be inside Box with align(Alignment.BottomCenter)",
-            !beforeFab.contains("align(Alignment.BottomCenter)")
+            "HomeNewTaskFab should no longer exist",
+            file("HomeHub.kt").readText().contains("HomeNewTaskFab") ||
+                file("WorkspaceSidebar.kt").readText().contains("HomeNewTaskFab"),
         )
     }
 }

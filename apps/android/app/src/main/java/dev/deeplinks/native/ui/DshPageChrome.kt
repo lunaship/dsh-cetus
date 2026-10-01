@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
@@ -32,6 +33,7 @@ import dev.deeplinks.native.DshSpace
  * 标题、副标题与页面动作由本组件统一布局，页面不得自定字号与顶栏高度；
  * 大字号允许增高（heightIn 下限，不裁字）。副标题 12/18，只放有用的电脑、
  * 工作区或状态信息。
+ * 2026-10-02 L9：返回钮改 [DshGlassCircle]（悬浮玻璃圆钮），不再画全宽条。
  */
 
 enum class DshPageChromeDensity(val minHeight: Dp) {
@@ -54,7 +56,9 @@ fun DshPageChrome(
     titleContentDescription: String? = null,
     /** 页面动作（搜索、设置、分段控件等），贴导航区行尾。 */
     actions: @Composable RowScope.() -> Unit = {},
-    horizontalPadding: Dp = DshSpace.s4,
+    /** Control 档玻璃采样源（返回圆钮用）；由页面骨架注入。 */
+    backdrop: LayerBackdrop? = null,
+    horizontalPadding: Dp = DshSpace.pageGutter,
 ) {
     Row(
         modifier = modifier
@@ -64,12 +68,13 @@ fun DshPageChrome(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (navigation == DshPageNavigation.Back) {
-            DshIconAction(
+            DshGlassCircle(
                 icon = ArrowLeftOutline16,
                 contentDescription = DshS.back,
                 onClick = onNavigateBack,
+                backdrop = backdrop,
             )
-            Spacer(Modifier.width(DshSpace.s4))
+            Spacer(Modifier.width(DshSpace.s8))
         }
         Row(
             modifier = Modifier

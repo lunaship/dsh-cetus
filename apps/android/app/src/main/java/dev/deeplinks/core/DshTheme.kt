@@ -98,6 +98,13 @@ data class DshColors(
     val successContent: Color = Color.Unspecified,
     val cloudContent: Color = Color.Unspecified,
     val cloudContainer: Color = Color.Unspecified,
+    // ===== 2026-10-02 Lody 简化（v2 方案 3.3，L4/L5）：强调范围放宽的三个角色 =====
+    /** 线性图标与主入口强调（设置分组图标、圆形 + 图标、发送钮底）：取 brand400。 */
+    val accentIcon: Color = Color.Unspecified,
+    /** 开关开启轨道：取 brand400；拇指浅色 bgCard / 深色 onInk（见 dshSwitchColors）。 */
+    val switchOnTrack: Color = Color.Unspecified,
+    /** 用户气泡底：品牌蓝低透明度叠在 bgCard 上的预合成色（避免叠层采样成本）。 */
+    val userBubble: Color = Color.Unspecified,
 )
 
 // ===== 色源：DeepSeek Harness（docs/visual-rules.md「色源」）=====
@@ -153,6 +160,9 @@ val DarkDshColors = DshColors(
     successContent = Color(0xFF5CC38A),      // 偏离 DSH：重设计稿完成图标 #5CC38A（DSH 没有深底绿字档）
     cloudContent = Dsw.deepseek300,
     cloudContainer = Dsw.deepseek800,        // alias-state-business-tertiary
+    accentIcon = Color(0xFF8B9DFF),          // 偏离 DSH：2026-10-02 L4，图标/入口强调与 brand400 同值
+    switchOnTrack = Color(0xFF8B9DFF),       // 偏离 DSH：2026-10-02 L4，开关开启轨与 brand400 同值
+    userBubble = Color(0xFF2C2F40),          // 偏离 DSH：2026-10-02 L5，brand400 @ 14% 叠 bgCard #1C1D21 的预合成色
 )
 
 val LightDshColors = DshColors(
@@ -203,6 +213,9 @@ val LightDshColors = DshColors(
     successContent = Color(0xFF17753F),      // 偏离 DSH：重设计稿完成图标 #17753F（DSH 绿色族白底不达 AA）
     cloudContent = Dsw.deepseek600,          // 在 deepseek-100 上 4.6:1
     cloudContainer = Dsw.deepseek100,        // alias-state-business-tertiary
+    accentIcon = Color(0xFF3F5BD6),          // 偏离 DSH：2026-10-02 L4，图标/入口强调与 brand400 同值
+    switchOnTrack = Color(0xFF3F5BD6),       // 偏离 DSH：2026-10-02 L4，开关开启轨与 brand400 同值
+    userBubble = Color(0xFFECEFFB),          // 偏离 DSH：2026-10-02 L5，brand400 @ 10% 叠 bgCard #FFFFFF 的预合成色
 )
 
 /**
@@ -769,4 +782,19 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.cloudContainer
+
+    val accentIcon: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.accentIcon
+
+    val switchOnTrack: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.switchOnTrack
+
+    val userBubble: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.userBubble
 }

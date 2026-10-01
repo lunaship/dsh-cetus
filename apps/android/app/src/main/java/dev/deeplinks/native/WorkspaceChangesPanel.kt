@@ -256,6 +256,8 @@ private suspend fun PointerInputScope.detectPanelSwipe(
 
 private sealed interface DiffLoad {
     data object Loading : DiffLoad
+    /** 4.4：这份对比已不可用（服务端 404 changes_unavailable，或返回 path 与请求文件不符）。 */
+    data object Unavailable : DiffLoad
     data class Ready(val diff: WorkspaceFileDiff) : DiffLoad
     data class Failed(val message: String) : DiffLoad
 }
@@ -567,8 +569,15 @@ private fun FileDiffBody(
         value = DiffLoad.Loading
         value = try {
             val diff = withContext(Dispatchers.IO) { loadDiff(seq, index) }
-            state.cacheDiff(seq, index, diff)
-            DiffLoad.Ready(diff)
+            // 4.4：path 不一致 = Host 返回的不是这份文件的对比（不可用），不写缓存
+            if (!diffMatchesFile(diff, file)) {
+                DiffLoad.Unavailable
+            } else {
+                state.cacheDiff(seq, index, diff)
+                DiffLoad.Ready(diff)
+            }
+        } catch (e: ChangesUnavailableException) {
+            DiffLoad.Unavailable
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -579,6 +588,14 @@ private fun FileDiffBody(
         DiffLoad.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Dsh.brand400)
         }
+        DiffLoad.Unavailable -> Column(
+            modifier = Modifier.fillMaxSize().padding(DshSpace.s24),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // 4.4：不显示旧内容，也不透出服务端原文；给重试
+            Text(ChangesL.unavailable, color = Dsh.labelPrimary, style = DshType.body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            DiffRetryText { attempt++ }
+        }
         is DiffLoad.Failed -> Column(
             modifier = Modifier.fillMaxSize().padding(DshSpace.s24),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -587,17 +604,7 @@ private fun FileDiffBody(
             if (current.message.isNotBlank()) {
                 Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = DshSpace.s4))
             }
-            Text(
-                L.retry,
-                color = Dsh.brand400,
-                style = DshType.title,
-                modifier = Modifier
-                    .padding(top = DshSpace.s12)
-                    .heightIn(min = DshTouch.min)
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .clickable(interactionSource = null, indication = dshRipple()) { attempt++ }
-                    .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
-            )
+            DiffRetryText { attempt++ }
         }
         is DiffLoad.Ready -> when (val diff = current.diff) {
             is WorkspaceFileDiff.Binary -> DiffNoteRow(ChangesL.binary)
@@ -605,6 +612,22 @@ private fun FileDiffBody(
             is WorkspaceFileDiff.Text -> DiffLines(diff, state.wrap)
         }
     }
+}
+
+/** 「重试」文字按钮（加载失败 / 对比已不可用共用，4.4）。 */
+@Composable
+private fun DiffRetryText(onClick: () -> Unit) {
+    Text(
+        L.retry,
+        color = Dsh.brand400,
+        style = DshType.title,
+        modifier = Modifier
+            .padding(top = DshSpace.s12)
+            .heightIn(min = DshTouch.min)
+            .clip(RoundedCornerShape(DshRadius.full))
+            .clickable(interactionSource = null, indication = dshRipple()) { onClick() }
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
+    )
 }
 
 @Composable

@@ -378,8 +378,10 @@ private fun DevicesPage(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        // 顶部避让悬浮 chrome（L9）：骨架实测高度经 LocalDshPageTopInset 注入
+                        .padding(top = dev.deeplinks.native.ui.LocalDshPageTopInset.current)
                         .padding(horizontal = DshSpace.s16)
-                        .padding(top = DshSpace.s4, bottom = DshSpace.s32),
+                        .padding(bottom = DshSpace.s32),
                 ) {
                     // 页首导语：副标题降为正文说明，与设置页同一字阶
                     Text(

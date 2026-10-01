@@ -44,6 +44,12 @@ object DshRadius {
     /** 容器（12dp）：普通卡片、状态面板、菜单。 */
     val container = 12.dp
 
+    /**
+     * 分组卡（20dp）：灰底上的白色分组卡（DshSectionContainer.Card，2026-10-02 Lody 简化 3.1）。
+     * 不复用已删除的 group 旧名；只允许共享组件（native/ui/）引用，页面文件出现即门禁失败。
+     */
+    val card = 20.dp
+
     /** Composer（22dp）：聊天输入卡与任务入口——少量品牌签名形状，普通卡片不得复制。 */
     val composer = 22.dp
 

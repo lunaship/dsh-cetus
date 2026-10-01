@@ -38,6 +38,10 @@ interface MessageGroup {
         val running: Boolean = false,
         /** 最后一个工具名（执行中时显示「正在 X…」）。 */
         val lastToolName: String? = null,
+        /** 本批相邻思考的累计时长（2026-10-02 Lody 简化：对话视图思考收进摘要行）。 */
+        val thinkingMs: Long? = null,
+        /** 分类计数（命令 / 阅读 / 编辑…）：对话与轨迹两个视图共用同一口径。 */
+        val activity: ActivityCounts = ActivityCounts(),
     ) : MessageGroup {
         override val groupKey: String get() = "$firstId-toolsummary"
     }
@@ -86,54 +90,27 @@ fun turnEndAssistantIds(groups: List<MessageGroup>, running: Boolean): Set<Strin
     return out
 }
 
-/** 智能格式化工具调用聚合摘要（如 "Read (3)"，"Read, bash (4)"，或回退到工具调用计数）。 */
-fun formatToolGroupSummary(
-    items: List<MobileMessage>,
-    fallbackCountText: (Int) -> String = { "$it tool calls" },
-): String {
-    val toolCalls = items.filter { it.role == "tool_call" }
-    val count = if (toolCalls.isNotEmpty()) toolCalls.size else items.size
-    val names = items.mapNotNull { it.toolName?.takeIf { n -> n.isNotBlank() } }.distinct()
-    return when {
-        names.isEmpty() -> fallbackCountText(count)
-        names.size == 1 -> {
-            val name = names.first()
-            if (count > 1) "$name ($count)" else name
-        }
-        names.size <= 2 -> "${names.joinToString(", ")} ($count)"
-        else -> "${names.take(2).joinToString(", ")} +${names.size - 2} ($count)"
-    }
-}
-
 /**
- * 过程折叠行的标题（2026-09-28 重设计 · 方案 5.2）。
+ * 过程折叠行的标题（2026-09-28 重设计 · 方案 5.2；2026-10-02 Lody 简化 4.3 口径统一）。
  *
- * 一轮里的工具调用不再逐条铺开，收成一行：
- * - 已结束：「已完成工作 · Read (2)」；
+ * 一轮里的工具调用收成一行，与对话视图的活动摘要行同一 [activityLine] 口径：
+ * - 已结束：「调用了 12 个命令 · 阅读了 38 个文件 · 编辑 4 次」——L7：编辑写次数，
+ *   文件数只认改动卡（git diff），不再在这里数「N 个文件」；
  * - 执行中：「◌ go test ./...」——命令来自插件下发的 activity；拿不到就留空，由组头右侧的
  *   「执行中」动效标签承担说明。
- *
- * 摘要本身仍由 [formatToolGroupSummary] 生成，这里只负责「这一行以什么口吻开头」。
  */
 fun toolGroupRowLabel(
     items: List<MobileMessage>,
     running: Boolean,
     runningCommand: String? = null,
-    donePrefix: String = "已完成工作",
-    runningPrefix: String = "正在运行",
 ): String {
-    // 稿 03 的过程折叠行写的是「完成了什么」而不是「调了几次工具」：能数出改动文件就写文件数。
-    if (!running) {
-        val edited = editedFileCount(items)
-        if (edited != null) return "$donePrefix · ${dev.deeplinks.native.ChangesL.editedFiles.format(edited)}"
-    }
     if (running) {
         // 只给命令本身：组头右侧本来就有「执行中」的动效标签，再写一遍「正在运行」会重复。
         // 拿不到命令（旧插件）时返回空串，那一行只显示「执行中」。
         val command = runningCommand?.trim()?.takeIf { it.isNotEmpty() }
         return command?.let { "◌ $it" } ?: ""
     }
-    return "$donePrefix · ${formatToolGroupSummary(items)}"
+    return activityLine(activityCounts(items)).joinToString(" · ")
 }
 
 data class UserTurnJump(
@@ -156,39 +133,12 @@ fun userTurnJumps(messages: List<MobileMessage>, maxPreviewChars: Int = 72): Lis
 }
 
 /**
- * 会改文件的工具名与它们的路径参数——与插件 `src/produced-files.js` 的 `mutationPath` 对齐。
- * 只在「确实是写操作」时返回路径：`edit` 要求带了 old_str，避免把空参数当成改动。
- */
-fun mutationPath(toolName: String?, toolArgs: String?): String? {
-    if (toolName == null || toolArgs.isNullOrBlank()) return null
-    val args = runCatching { org.json.JSONObject(toolArgs) }.getOrNull() ?: return null
-    val path = listOf("file_path", "path", "notebook_path")
-        .firstNotNullOfOrNull { key -> args.optString(key).takeIf { it.isNotBlank() } }
-        ?: return null
-    return when (toolName) {
-        "write" -> path.takeIf { args.has("content") }
-        "edit" -> path.takeIf { args.optString("old_str").isNotEmpty() }
-        "str_replace_editor" -> path.takeIf {
-            args.optString("command") in listOf("create", "str_replace", "insert") ||
-                args.has("file_text") || args.has("old_str") || args.has("insert_line")
-        }
-        else -> null
-    }
-}
-
-/**
- * 一组工具调用里被**改动**的文件数（去重）；一个都没有时返回 null，
- * 让 [toolGroupRowLabel] 退回到「工具名 + 次数」——不为了让文案好看而编一个 0。
- */
-fun editedFileCount(items: List<MobileMessage>): Int? = items
-    .mapNotNull { mutationPath(it.toolName, it.toolArgs) }
-    .distinct()
-    .takeIf { it.isNotEmpty() }
-    ?.size
-
-/**
  * 对话视图下：把连续 [MessageGroup.ToolGroup] 合并为 [MessageGroup.ToolSummary]。
  * 审批卡（ApprovalCard）等非 ToolGroup item 会打断连续序列。
+ *
+ * 2026-10-02 Lody 简化 4.3：同一段内相邻的 reasoning 也收进摘要（只留 thinkingMs，
+ * 思考正文在对话视图不再展开；轨迹视图保留逐条展开）。单独一段纯思考（无工具）
+ * 也产出摘要行，避免对话视图里冒出独立的思考条。
  */
 fun foldToolCalls(groups: List<MessageGroup>, viewMode: String): List<MessageGroup> {
     if (viewMode != "chat") return groups
@@ -198,30 +148,153 @@ fun foldToolCalls(groups: List<MessageGroup>, viewMode: String): List<MessageGro
         if (batch.isEmpty()) return
         val allItems = batch.flatMap { it.items }
         val calls = allItems.count { it.role == "tool_call" }
+        // 计数只认工具消息：reasoning 并进摘要但不冒充工具调用
+        val toolMsgCount = allItems.count { it.role == "tool_call" || it.role == "tool_result" }
         val failedCount = allItems.count { it.role == "tool_result" && it.text.startsWith("error", ignoreCase = true) }
         val durationMs = allItems.mapNotNull { it.durationMs }.takeIf { it.isNotEmpty() }?.sum()
+        val activity = activityCounts(allItems)
         out += MessageGroup.ToolSummary(
             firstId = allItems.first().id,
-            count = if (calls > 0) calls else allItems.size,
+            count = if (calls > 0) calls else toolMsgCount,
             failedCount = failedCount,
             durationMs = durationMs,
             toolNames = allItems.mapNotNull { it.toolName }.distinct(),
             running = allItems.any { it.running == true },
             lastToolName = allItems.lastOrNull { it.toolName != null }?.toolName,
+            thinkingMs = activity.thinkingMs,
+            activity = activity,
         )
         batch = mutableListOf()
     }
     for (g in groups) {
-        if (g is MessageGroup.ToolGroup) {
-            batch += g
-        } else if (g is MessageGroup.Single && (g.msg.role == "tool_call" || g.msg.role == "tool_result")) {
-            // 单条工具消息（groupMessages 不足 2 条不成组）也收进摘要，否则对话视图仍会冒出零散命令卡
-            batch += MessageGroup.ToolGroup(listOf(g.msg))
-        } else {
-            flushBatch()
-            out += g
+        when {
+            g is MessageGroup.ToolGroup -> batch += g
+            g is MessageGroup.Single && (g.msg.role == "tool_call" || g.msg.role == "tool_result") ->
+                // 单条工具消息（groupMessages 不足 2 条不成组）也收进摘要，否则对话视图仍会冒出零散命令卡
+                batch += MessageGroup.ToolGroup(listOf(g.msg))
+            g is MessageGroup.Single && g.msg.role == "reasoning" ->
+                batch += MessageGroup.ToolGroup(listOf(g.msg))
+            else -> {
+                flushBatch()
+                out += g
+            }
         }
     }
     flushBatch()
     return out
+}
+
+// ===== 工具活动分类计数（2026-10-02 Lody 简化 4.3）=====
+// 分类表参照 dsh-mobile ToolActivitySummary（MIT，已登记 THIRD_PARTY_NOTICES）。
+// 两个视图（对话摘要行 / 轨迹组头）共用同一 activityLine 口径，杜绝两个「N 个文件」。
+
+/** 工具大类。 */
+enum class ToolKind { Command, Search, Read, Edit, Fetch, Other }
+
+/** 工具名 → 大类；大小写不敏感，未知工具归 Other。 */
+fun classifyTool(name: String?): ToolKind {
+    val n = name?.trim()?.lowercase() ?: return ToolKind.Other
+    return when (n) {
+        "bash", "shell", "exec", "exec_command", "run_code", "terminal" -> ToolKind.Command
+        "grep", "glob", "search", "ripgrep", "find" -> ToolKind.Search
+        "read", "read_file", "readfile", "list", "ls", "list_directory" -> ToolKind.Read
+        "write", "write_file", "edit", "edit_file", "apply_patch", "str_replace_editor" -> ToolKind.Edit
+        "web_fetch", "webfetch", "fetch" -> ToolKind.Fetch
+        else -> ToolKind.Other
+    }
+}
+
+/** 一段工具活动的分类计数。 */
+data class ActivityCounts(
+    val command: Int = 0,
+    val search: Int = 0,
+    /** 阅读按 path 去重计文件数；参数解析不出 path 时按调用次数计。 */
+    val read: Int = 0,
+    /** 编辑按调用次数计（文件数只认改动卡，L7）。 */
+    val edit: Int = 0,
+    val fetch: Int = 0,
+    val other: Int = 0,
+    /** 相邻 reasoning 的累计思考时长；没有思考时为 null。 */
+    val thinkingMs: Long? = null,
+)
+
+/** 阅读类工具的路径参数（与插件 produced-files.js 的 mutation 路径键同一组）。 */
+private fun readPath(toolArgs: String?): String? {
+    if (toolArgs.isNullOrBlank()) return null
+    val args = runCatching { org.json.JSONObject(toolArgs) }.getOrNull() ?: return null
+    return listOf("file_path", "path", "notebook_path")
+        .firstNotNullOfOrNull { key -> args.optString(key).takeIf { it.isNotBlank() } }
+}
+
+/** 统计一段消息里的工具活动（tool_call 分类计数 + reasoning 思考时长）。 */
+fun activityCounts(items: List<MobileMessage>): ActivityCounts {
+    var command = 0
+    var search = 0
+    var edit = 0
+    var fetch = 0
+    var other = 0
+    var thinkingMs = 0L
+    var hasThinking = false
+    val readPaths = mutableSetOf<String>()
+    var readWithoutPath = 0
+    for (msg in items) {
+        when (msg.role) {
+            "tool_call" -> when (classifyTool(msg.toolName)) {
+                ToolKind.Command -> command++
+                ToolKind.Search -> search++
+                ToolKind.Read -> {
+                    val path = readPath(msg.toolArgs)
+                    if (path != null) readPaths += path else readWithoutPath++
+                }
+                ToolKind.Edit -> edit++
+                ToolKind.Fetch -> fetch++
+                ToolKind.Other -> other++
+            }
+            "reasoning" -> {
+                hasThinking = true
+                thinkingMs += msg.durationMs ?: 0L
+            }
+        }
+    }
+    return ActivityCounts(
+        command = command,
+        search = search,
+        read = readPaths.size + readWithoutPath,
+        edit = edit,
+        fetch = fetch,
+        other = other,
+        thinkingMs = if (hasThinking) thinkingMs else null,
+    )
+}
+
+/**
+ * 活动摘要文案片段（UI 用「 · 」拼接）。
+ * 顺序：思考时长 → 命令 → 阅读 → 编辑 → 搜索 → 获取 → 其他；最多 [maxKinds] 类，
+ * 其余并为「+N」（并进最后一个展示片段，例：「阅读了 38 个文件 +2」）。
+ * 全部为 Other 时自然退回「调用了 N 个工具」。
+ */
+fun activityLine(c: ActivityCounts, maxKinds: Int = 3): List<String> {
+    val s = dev.deeplinks.core.L
+    val fragments = buildList {
+        if (c.thinkingMs != null && c.thinkingMs > 0) {
+            add(s.activityThinking.format(thinkingSecondsLabel(c.thinkingMs)))
+        }
+        if (c.command > 0) add(s.activityCommands.format(c.command))
+        if (c.read > 0) add(s.activityReads.format(c.read))
+        if (c.edit > 0) add(s.activityEdits.format(c.edit))
+        if (c.search > 0) add(s.activitySearches.format(c.search))
+        if (c.fetch > 0) add(s.activityFetches.format(c.fetch))
+        if (c.other > 0) add(s.activityTools.format(c.other))
+    }
+    val limit = maxOf(1, maxKinds)
+    if (fragments.size <= limit) return fragments
+    val overflow = fragments.size - limit
+    return fragments.take(limit)
+        .mapIndexed { i, f -> if (i == limit - 1) "$f ${s.activityMore.format(overflow)}" else f }
+}
+
+/** 思考时长的秒数文案：<1s 也按 1 秒起算（不写 0 秒）。 */
+private fun thinkingSecondsLabel(ms: Long): String {
+    val seconds = (ms / 1000L).coerceAtLeast(1)
+    return dev.deeplinks.core.L.secondsShort.format(seconds)
 }
