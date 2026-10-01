@@ -104,14 +104,9 @@ jobs:
             # 第 5 步 D1：公式 / Mermaid 的离屏 WebView 渲染链路此前从未在 CI 真机验证（该 job 只 assemble 不执行）。
             # 按仓库约定走 debug 变体 + 手动 am instrument（AGP 设备测试收尾会卸载被测包，绝不跑 connectedRelease）。
             adb shell am instrument -w -r -e class dev.deeplinks.native.MathRendererInstrumentedTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee math-renderer-instrumentation.txt
-# 失败时把 MathRenderer 的诊断日志打出来（render: evaluate returned null / JS ok=false /
-# invalid size / ensureWebView returned null），否则只剩 AssertionError 没法定位。
-if ! grep -q 'OK (2 tests)' math-renderer-instrumentation.txt; then
-  echo '===== MathRenderer diagnostics ====='
-  adb logcat -d -s MathRenderer:W MathRenderer:E Chromium:W WebViewFactory:E
-  echo '===== startup-errors ====='; cat startup-errors.txt 2>/dev/null | tail -40
-  exit 1
-fi
+            # 失败时把 MathRenderer 的诊断日志打出来（render: evaluate returned null / JS ok=false / invalid size /
+            # ensureWebView returned null），否则只剩 AssertionError 没法定位。写成单行以保持本 step 逐行 scalar 合法。
+            if ! grep -q 'OK (2 tests)' math-renderer-instrumentation.txt; then echo '===== MathRenderer diagnostics ====='; adb logcat -d -s MathRenderer:W MathRenderer:E Chromium:W WebViewFactory:E; echo '===== startup-errors ====='; tail -40 startup-errors.txt 2>/dev/null; exit 1; fi
             grep -q 'OK (2 tests)' math-renderer-instrumentation.txt
             adb shell am instrument -w -r -e class dev.deeplinks.native.MermaidRendererInstrumentedTest dev.deeplinks.debug.test/androidx.test.runner.AndroidJUnitRunner | tee mermaid-renderer-instrumentation.txt
             grep -q 'OK (1 test)' mermaid-renderer-instrumentation.txt
