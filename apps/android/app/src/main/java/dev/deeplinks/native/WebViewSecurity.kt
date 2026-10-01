@@ -47,6 +47,24 @@ internal fun WebView.hardenUntrustedSettings() {
 }
 
 /**
+ * 本地可信 bundle（KaTeX / Mermaid 的离屏渲染页）用的设置。
+ *
+ * 与 [hardenUntrustedSettings] 的唯一区别是 `allowFileAccess = true`：页面以
+ * `file:///android_asset/` 为基址，要能加载 `katex.min.js` / `katex.min.css` /
+ * mermaid bundle 这些**我们自己的**本地资源。之前的「WebView 禁联网」加固把它
+ * 一并关掉，导致公式渲染在 CI 模拟器上直接失败（`合法公式应渲染成功` 断言红）。
+ *
+ * 联网边界不受影响，且比原来更严：
+ * - `blockNetworkLoads = true` + `shouldInterceptRequest` 只放行
+ *   `file:///android_assert 前缀`（其余 403）；
+ * - `allowUniversalAccessFromFileURLs = false`：file 页不能读网络（原有关键项保留）；
+ * - `allowFileAccessFromFileURLs = false`：file 页不能跨源读别的 file（原有关键项保留）。
+ */
+fun WebView.hardenLocalBundleSettings() {
+    hardenUntrustedSettings()
+    settings.allowFileAccess = true
+}
+/**
  * 建一个离屏 WebView（KaTeX / Mermaid 共用）：透明背景、收紧设置、给定初始尺寸。
  * 离屏 WebView 不参与布局树，不给初始尺寸时页面排版宽度为 0。
  */
@@ -63,7 +81,7 @@ internal fun createOffscreenWebView(
     val width = (cssWidth * density).toInt()
     val height = (cssHeight * density).toInt()
     val wv = WebView(context)
-    wv.hardenUntrustedSettings()
+    wv.hardenLocalBundleSettings()
     wv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
     wv.measure(
         android.view.View.MeasureSpec.makeMeasureSpec(width, android.view.View.MeasureSpec.EXACTLY),
