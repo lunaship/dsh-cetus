@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -18,7 +17,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -48,7 +46,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -103,6 +100,10 @@ internal fun MessageItem(
     showActions: Boolean = true,
     /** 本条是否是一轮末尾：只控制操作行显示；长按菜单对所有已完成文本消息开放。 */
     isTurnEnd: Boolean = false,
+    /** 长回复拆行后本行渲染的 Markdown 片段；null 表示整条。菜单 / 复制始终针对整条消息。 */
+    textPart: String? = null,
+    /** 拆行时只有最后一段带流式光标与操作行。 */
+    isLastPart: Boolean = true,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var selectOpen by remember { mutableStateOf(false) }
@@ -181,13 +182,13 @@ internal fun MessageItem(
                         RawMessageCard(msg)
                     } else {
                         AssistantMarkdown(
-                            text = msg.text,
+                            text = textPart ?: msg.text,
                             longPress = longPressModifier,
-                            streaming = msg.running == true,
+                            streaming = msg.running == true && isLastPart,
                         )
                     }
                     // 助手消息底部：复制 / 赞踩 / 时间（流式结束后淡入，只挂在轮末）
-                    if (msg.role == "assistant" && showActions && isTurnEnd) {
+                    if (msg.role == "assistant" && showActions && isTurnEnd && isLastPart) {
                         AnimatedVisibility(
                             visible = msg.running != true,
                             enter = fadeIn(animationSpec = tween(motionDuration(400))),

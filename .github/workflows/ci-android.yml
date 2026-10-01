@@ -35,6 +35,17 @@ jobs:
           cache: gradle
           cache-dependency-path: 'apps/android/**/*.gradle*'
 
+      - name: Kotlin lint (ktlint)
+        # 规则集见 apps/android/.editorconfig（先启用低噪声规则，逐步收紧）。固定版本 + 校验和。
+        env:
+          KTLINT_VERSION: 1.8.0
+          KTLINT_SHA256: a3fd620207d5c40da6ca789b95e7f823c54e854b7fade7f613e91096a3706d75
+        run: |
+          curl -sSLf -o "$RUNNER_TEMP/ktlint" "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint"
+          echo "${KTLINT_SHA256}  $RUNNER_TEMP/ktlint" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/ktlint"
+          "$RUNNER_TEMP/ktlint" "app/src/**/*.kt" "*.kts" "app/*.kts"
+
       - name: Run JVM tests and lint
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug --stacktrace
 

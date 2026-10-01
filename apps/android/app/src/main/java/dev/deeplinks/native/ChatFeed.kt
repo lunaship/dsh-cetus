@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-
 import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.DshType
 
@@ -44,6 +43,9 @@ import dev.deeplinks.native.util.turnEndAssistantIds
 import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.goalRoundObjective
 import dev.deeplinks.native.util.foldToolCalls
+import dev.deeplinks.native.util.MarkdownSplitCache
+import dev.deeplinks.native.util.isContextInjectionText
+import dev.deeplinks.native.util.isModelChangedNotice
 import dev.deeplinks.native.isTurnEnd
 
 import kotlinx.coroutines.CoroutineScope
@@ -51,7 +53,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-
 
 /** 从消息列表提取最上方（最新）的 goal 摘要文本。 */
 internal fun latestGoalSummary(messages: List<MobileMessage>): String? {
@@ -86,6 +87,9 @@ internal fun ChatStickySummary(
     messages: List<MobileMessage>,
     isRunning: Boolean,
     modifier: Modifier = Modifier,
+    /** 插件给了结构化目标（含 CAS 引用）时显示可操作的目标行，未执行（如已暂停）也常驻。 */
+    goal: SessionGoal? = null,
+    control: SessionControlController? = null,
 ) {
     val derivedGoal = remember(messages) { latestGoalSummary(messages) }
     val todos = remember(messages) { latestTodoProgress(messages) }
@@ -94,6 +98,8 @@ internal fun ChatStickySummary(
         todoProgress = todos,
         isRunning = isRunning,
         modifier = modifier,
+        goal = goal?.takeIf { it.manageable && control != null },
+        control = control,
     )
 }
 
@@ -177,11 +183,14 @@ internal fun StickyTaskSummaryCard(
     todoProgress: TodoProgress,
     isRunning: Boolean,
     modifier: Modifier = Modifier,
+    goal: SessionGoal? = null,
+    control: SessionControlController? = null,
 ) {
-    if (!isRunning) return
+    val managedGoal = goal?.takeIf { control != null }
+    if (!isRunning && managedGoal == null) return
     val hasGoal = !goalSummary.isNullOrBlank()
-    val hasTodos = todoProgress.hasActive
-    if (!hasGoal && !hasTodos) return
+    val hasTodos = isRunning && todoProgress.hasActive
+    if (!hasGoal && !hasTodos && managedGoal == null) return
 
     Box(
         modifier = modifier
@@ -192,8 +201,10 @@ internal fun StickyTaskSummaryCard(
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
-            // 目标行
-            if (hasGoal) {
+            // 目标行：结构化目标可操作（暂停 / 继续 / 编辑 / 清除），否则只读摘要
+            if (managedGoal != null && control != null) {
+                GoalControlRow(managedGoal, control)
+            } else if (hasGoal) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
@@ -230,7 +241,7 @@ internal fun StickyTaskSummaryCard(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text = "${todoProgress.done}/${total}",
+                            text = "${todoProgress.done}/$total",
                             color = Dsh.labelTertiary,
                             style = DshType.microRelaxed,
                             maxLines = 1,
@@ -470,17 +481,20 @@ internal fun LazyListScope.chatMessageItems(
     }
     val turnEnds = turnEndAssistantIds(groups, isRunning)
     val foldedGroups = foldToolCalls(groups, viewMode = "chat")
+    val rows = chatFeedRows(foldedGroups, isRunning)
     items(
-        items = foldedGroups,
-        key = { it.groupKey },
-        contentType = { group: MessageGroup ->
-            when (group) {
-                is MessageGroup.ToolGroup -> "toolgroup"
-                is MessageGroup.ToolSummary -> "toolsummary"
+        items = rows,
+        key = { it.key },
+        contentType = { row: ChatFeedRow ->
+            when {
+                row.group is MessageGroup.ToolGroup -> "toolgroup"
+                row.group is MessageGroup.ToolSummary -> "toolsummary"
+                row.partCount > 1 -> "assistant-part"
                 else -> "single"
             }
         },
-    ) { group: MessageGroup ->
+    ) { row: ChatFeedRow ->
+        val group = row.group
         // 入场只交给 animateItem：AnimatedVisibility(visible = true) 首帧即可见，enter 永远不会播。
         // 仅本机刚收到的消息（entrance）淡入；历史分页、切会话载入的消息直接出现。
         val live = group is MessageGroup.Single && group.msg.entrance
@@ -492,7 +506,6 @@ internal fun LazyListScope.chatMessageItems(
         ) {
             when (group) {
                 is MessageGroup.Single -> {
-                    val idx = foldedGroups.indexOf(group)
                     MessageItem(
                         msg = group.msg,
                         running = sweepingId != null && group.msg.id == sweepingId,
@@ -509,7 +522,9 @@ internal fun LazyListScope.chatMessageItems(
                         onFetchProducedFile = actions.onFetchProducedFile(group.msg),
                         onOpenChanges = actions.openChanges,
                         showActions = group.msg.id in turnEnds,
-                        isTurnEnd = isTurnEnd(foldedGroups, idx, isRunning),
+                        isTurnEnd = row.isTurnEnd,
+                        textPart = row.part,
+                        isLastPart = row.partIndex == row.partCount - 1,
                     )
                 }
                 is MessageGroup.ToolGroup -> ToolGroupHeader(
@@ -522,3 +537,37 @@ internal fun LazyListScope.chatMessageItems(
         }
     }
 }
+/** 消息流里的一行：普通分组原样一行；长助手回复按 Markdown 块拆成多行（各自独立测量）。 */
+internal data class ChatFeedRow(
+    val group: MessageGroup,
+    val key: String,
+    val isTurnEnd: Boolean,
+    val part: String? = null,
+    val partIndex: Int = 0,
+    val partCount: Int = 1,
+)
+
+private val chatSplitCache = MarkdownSplitCache()
+
+internal fun chatFeedRows(foldedGroups: List<MessageGroup>, isRunning: Boolean): List<ChatFeedRow> {
+    val rows = ArrayList<ChatFeedRow>(foldedGroups.size)
+    foldedGroups.forEachIndexed { idx, group ->
+        val turnEnd = isTurnEnd(foldedGroups, idx, isRunning)
+        val msg = (group as? MessageGroup.Single)?.msg
+        val parts = if (msg != null && splittableAssistant(msg)) chatSplitCache.parts(msg.id, msg.text) else null
+        if (parts == null || parts.size <= 1) {
+            rows += ChatFeedRow(group, group.groupKey, turnEnd)
+        } else {
+            parts.forEachIndexed { i, part ->
+                // 第 0 段沿用消息 id 作 key：滚动锚点 / 加载更早恢复仍能按 id 找到它
+                val key = if (i == 0) group.groupKey else "${group.groupKey}#p$i"
+                rows += ChatFeedRow(group, key, turnEnd, part, i, parts.size)
+            }
+        }
+    }
+    return rows
+}
+
+private fun splittableAssistant(msg: MobileMessage): Boolean =
+    msg.role == "assistant" && !isRawFallback(msg) &&
+        !isContextInjectionText(msg.text) && !isModelChangedNotice(msg.text)

@@ -241,6 +241,6 @@ fun insertFeedbackCommand(current: String): String {
     val leading = current.takeWhile { it.isWhitespace() }
     val rest = current.substring(leading.length)
     if (rest.startsWith("/feedback")) return current
-    if (rest.isEmpty()) return "${leading}/feedback "
-    return "${leading}/feedback $rest"
+    if (rest.isEmpty()) return "$leading/feedback "
+    return "$leading/feedback $rest"
 }

@@ -158,7 +158,7 @@ class ShareCatcherActivity : ComponentActivity() {
                         temp.delete()
                         null
                     } else {
-                        FileProvider.getUriForFile(this, "${packageName}.fileprovider", dest).toString()
+                        FileProvider.getUriForFile(this, "$packageName.fileprovider", dest).toString()
                     }
                 }.getOrNull()
             }

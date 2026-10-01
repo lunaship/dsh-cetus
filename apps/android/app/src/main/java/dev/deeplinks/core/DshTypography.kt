@@ -250,5 +250,4 @@ object DshType {
             lineHeight = 20.sp,
             letterSpacing = 0.01.sp,
         )
-
 }

@@ -17,7 +17,6 @@ import dev.deeplinks.core.DshSyntaxPalette
 /** Prism token 类型 → 配色（GitHub 调色板）。未知类型回退普通文本色。纯函数、可单测。 */
 fun tokenColor(type: String, isDark: Boolean): Color = DshSyntaxPalette.color(type, isDark)
 
-
 private fun keywordColor(isDark: Boolean) = tokenColor("keyword", isDark)
 private fun stringColor(isDark: Boolean) = tokenColor("string", isDark)
 private fun commentColor(isDark: Boolean) = tokenColor("comment", isDark)

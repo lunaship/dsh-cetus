@@ -640,7 +640,6 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.labelTertiary
 
-
     val labelDimmed: Color
         @Composable
         @ReadOnlyComposable
@@ -651,12 +650,10 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.borderSubtle
 
-
     val borderStrong: Color
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.borderStrong
-
 
     val pressed: Color
         @Composable
@@ -673,13 +670,10 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.brand400
 
-
     val brand500: Color
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.brand500
-
-
 
     val success: Color
         @Composable
@@ -721,13 +715,10 @@ object Dsh {
         @ReadOnlyComposable
         get() = LocalDshColors.current.bgSurface
 
-
     val shadowCard: Color
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.shadowCard
-
-
 
     val systemAccent: Color
         @Composable

@@ -232,12 +232,12 @@ object MermaidRenderer {
         val physW = (cssW * density).toInt().coerceAtLeast(1)
         val physH = (cssH * density).toInt().coerceAtLeast(1)
         if (physW > MAX_BITMAP_EDGE || physH > MAX_BITMAP_EDGE) {
-            android.util.Log.w(TAG, "render: bitmap too large ${physW}x${physH}")
+            android.util.Log.w(TAG, "render: bitmap too large ${physW}x$physH")
             return null
         }
         // 单图预算：超限不进缓存也不分配位图，直接降级为源码块。
         if (!mermaidBitmapWithinBudget(physW, physH)) {
-            android.util.Log.w(TAG, "render: bitmap exceeds pixel budget ${physW}x${physH}")
+            android.util.Log.w(TAG, "render: bitmap exceeds pixel budget ${physW}x$physH")
             return null
         }
         val offsetX = (result.optDouble("l", 0.0).toFloat() * density).toInt()
