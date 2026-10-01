@@ -250,4 +250,15 @@ object DshType {
             lineHeight = 20.sp,
             letterSpacing = 0.01.sp,
         )
+
+    /** 16/22 · Medium：列表主标题（2026-10-01 R7：26 是正文阅读行距，列表行用 22 收紧行距）。 */
+    val listTitle: TextStyle
+        @Composable @ReadOnlyComposable
+        get() = TextStyle(
+            fontFamily = LocalDshFontFamily.current,
+            fontWeight = FontWeight.Medium,
+            fontSize = 16.sp,
+            lineHeight = 22.sp,
+            letterSpacing = 0.01.sp,
+        )
 }

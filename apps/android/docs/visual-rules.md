@@ -127,7 +127,7 @@ Paseo / t3code 只能作为**问题样例**（说明某处为什么不像原生�
 |---|---|
 | 页面标题 | 标准页 `headlineMedium`（20/26）；聊天顶栏紧凑档 `titleLarge`（17/24） |
 | Section 标题 | `titleSmall` |
-| 列表主标题 | `bodyLarge` |
+| 列表主标题 | `listTitle`（16/22 Medium，2026-10-01 R7） |
 | 列表辅助文字 | `supporting` |
 | 工作台正文 | `body` |
 | 计数、时间、状态 | `captionRelaxed` 或 `label` |

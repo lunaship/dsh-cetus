@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="dl-grad-inf" x1="15" y1="50" x2="85" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#3F5BD6"/>
+      <stop offset="100%" stop-color="#8B9DFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Mobius Continuous Infinity Ribbon -->
+  <path d="M 32 36 
+           C 20 36 16 44 16 50 
+           C 16 56 20 64 32 64 
+           C 44 64 56 36 68 36 
+           C 80 36 84 44 84 50 
+           C 84 56 80 64 68 64 
+           C 56 64 44 36 32 36 Z" 
+        stroke="url(#dl-grad-inf)" 
+        stroke-width="8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        fill="none"/>
+        
+  <!-- Flow Sync Nodes -->
+  <circle cx="32" cy="50" r="5" fill="#38BDF8"/>
+  <circle cx="68" cy="50" r="5" fill="#8B9DFF"/>
+  <circle cx="50" cy="50" r="3" fill="#FFFFFF"/>
+</svg>

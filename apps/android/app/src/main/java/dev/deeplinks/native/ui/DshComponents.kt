@@ -45,6 +45,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +57,7 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.native.CheckOutline16
 import dev.deeplinks.native.WarningOutline16
 import dev.deeplinks.native.DshIconSize
+import dev.deeplinks.native.ChevronDownOutline16
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
@@ -69,20 +72,21 @@ import androidx.compose.foundation.selection.selectableGroup
  */
 
 // ============================================================
-// DshFilterChip —— 通用筛选/分段胶囊
-// 语义角色：Button；选中状态通过 [selected] 控制
+// 筛选 / 菜单胶囊（2026-10-01 F03/R7 统一）
+// 内核 DshChipSurface 只管尺寸（32dp 视觉 / 48dp 热区）、排版（14/20 Medium）、
+// 表面（选中 bgSubtle、未选中透明）；语义由外层组件决定——
+// 筛选用 [DshFilterChip]（选中语义，Role.Tab），菜单入口用 [DshMenuChip]
+// （Role.Button + 展开状态），不要把所有胶囊都标成 Tab。
 // ============================================================
+
 @Composable
-fun DshFilterChip(
+private fun DshChipSurface(
     label: String,
     selected: Boolean,
-    onClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
+    showChevron: Boolean = false,
     count: Int? = null,
-    enabled: Boolean = true,
-    contentDescription: String? = null,
-    /** 长按 extras（如工作区胶囊的「新建会话 / 移除」菜单）；为空时退化为普通点击。 */
-    onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     // 选中是浅灰底上的深字。品牌蓝不进筛选。按压反馈只留水波纹（P1：去掉手动叠底）
@@ -99,7 +103,60 @@ fun DshFilterChip(
     // 视觉 32dp 胶囊 / 外层 48dp 触摸热区：可点面积不缩，观感收紧
     Box(
         modifier = modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = 48.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier
+                .height(32.dp)
+                .clip(RoundedCornerShape(DshRadius.full))
+                .background(bg)
+                .padding(horizontal = DshSpace.s12),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                color = textColor,
+                style = DshType.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (count != null) {
+                Spacer(Modifier.width(DshSpace.s4))
+                Text(
+                    count.toString(),
+                    color = if (selected) Dsh.labelSecondary else Dsh.labelTertiary,
+                    style = DshType.captionRelaxed.tabularNums(),
+                )
+            }
+            if (showChevron) {
+                Spacer(Modifier.width(DshSpace.s4))
+                Icon(
+                    ChevronDownOutline16,
+                    contentDescription = null,
+                    tint = Dsh.labelTertiary,
+                    modifier = Modifier.size(DshIconSize.xs),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DshFilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    count: Int? = null,
+    enabled: Boolean = true,
+    contentDescription: String? = null,
+    /** 长按 extras（如工作区胶囊的「新建会话 / 移除」菜单）；为空时退化为普通点击。 */
+    onLongClick: (() -> Unit)? = null,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
             .then(
                 if (onLongClick != null) {
                     Modifier.combinedClickable(
@@ -126,32 +183,54 @@ fun DshFilterChip(
                     this.contentDescription = contentDescription
                 }
             },
-        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier
-                .height(32.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(bg)
-                .padding(horizontal = DshSpace.s12),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                label,
-                color = textColor,
-                style = DshType.title,
-                fontWeight = FontWeight(500),
-                lineHeight = 20.sp,
+        DshChipSurface(
+            label = label,
+            selected = selected,
+            enabled = enabled,
+            count = count,
+        )
+    }
+}
+
+/** 菜单入口胶囊（工作区筛选、选择器入口）：Button 语义并表达展开状态（3.6）。 */
+@Composable
+fun DshMenuChip(
+    label: String,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    /** 已筛选时选中底表达当前值（如选中某个工作区）；纯入口保持 false。 */
+    selected: Boolean = false,
+    showChevron: Boolean = true,
+    contentDescription: String? = null,
+) {
+    val s = DshS
+    Box(
+        modifier = modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = dshRipple(),
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
             )
-            if (count != null) {
-                Spacer(Modifier.width(DshSpace.s4))
-                Text(
-                    count.toString(),
-                    color = if (selected) Dsh.labelSecondary else Dsh.labelTertiary,
-                    style = DshType.captionRelaxed.tabularNums(),
-                )
-            }
-        }
+            .semantics {
+                // 展开状态走 stateDescription（读屏读「展开/收起」）——expandable 属性是
+                // Dismissible/Expandable 控件的契约，菜单入口不是
+                stateDescription = if (expanded) s.expand else s.collapse
+                if (contentDescription != null) {
+                    this.contentDescription = contentDescription
+                }
+            },
+    ) {
+        DshChipSurface(
+            label = label,
+            selected = selected,
+            enabled = enabled,
+            showChevron = showChevron,
+        )
     }
 }
 

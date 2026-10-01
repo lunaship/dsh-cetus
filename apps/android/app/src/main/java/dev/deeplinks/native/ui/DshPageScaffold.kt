@@ -4,33 +4,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshS
-import dev.deeplinks.core.DshType
-import dev.deeplinks.native.ArrowLeftOutline16
-import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.dshTranslucent
 
 /**
@@ -47,8 +34,6 @@ enum class DshPageNavigation {
     None,
     Back,
 }
-
-private val PageNavHeight = 56.dp
 
 @Composable
 fun DshPageScaffold(
@@ -82,35 +67,16 @@ fun DshPageScaffold(
             if (topBar != null) {
                 topBar()
             } else if (title.isNotBlank()) {
-                Row(
+                // 标准页 64dp 档（R2/R3）：标题、返回与页面动作统一由 DshPageChrome 布局
+                DshPageChrome(
+                    title = title,
+                    density = DshPageChromeDensity.Standard,
+                    navigation = navigation,
+                    onNavigateBack = onNavigateBack,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = PageNavHeight)
-                        .dshTranslucent(showDivider = false, backdrop = backdrop)
-                        .padding(horizontal = DshSpace.s4),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (navigation == DshPageNavigation.Back) {
-                        DshIconAction(
-                            icon = ArrowLeftOutline16,
-                            contentDescription = DshS.back,
-                            onClick = onNavigateBack,
-                        )
-                        Spacer(Modifier.width(DshSpace.s4))
-                    }
-                    Text(
-                        title,
-                        color = Dsh.labelPrimary,
-                        style = DshType.headlineMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = if (navigation == DshPageNavigation.None) 12.dp else 0.dp)
-                            .semantics { heading() },
-                    )
-                    actions()
-                }
+                        .dshTranslucent(showDivider = false, backdrop = backdrop),
+                    actions = actions,
+                )
             }
             Column(
                 modifier = Modifier

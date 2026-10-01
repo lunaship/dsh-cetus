@@ -43,7 +43,7 @@ class DshTypeScaleTest {
 
         /** 密集档白名单：次级文本专用，尺寸/行高受上面的规则约束。 */
         val DENSE_ROLES = setOf(
-            "captionRelaxed", "captionMedium", "supporting",
+            "captionRelaxed", "captionMedium", "supporting", "listTitle",
             "microRelaxed", "microMedium", "microStrong",
         )
     }
