@@ -49,6 +49,9 @@ data class DiffHunk(
     val lines: List<String>,
 )
 
+/** 4.4：Host 返回的对比必须是这份文件的（path 一致），否则视为不可用、不写缓存。 */
+internal fun diffMatchesFile(diff: WorkspaceFileDiff, file: ChangedFile): Boolean = diff.path == file.path
+
 sealed interface WorkspaceFileDiff {
     val path: String
     val display: String

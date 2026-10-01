@@ -20,6 +20,7 @@ internal object ChangesL {
         "expandHiddenRows" to "展开中间 %d 行",
         "askAboutFile" to "就这个文件的改动问智能体…",
         "askAboutFilePrefill" to "关于 %s 的改动：",
+        "unavailable" to "这份改动对比已不可用",
         "binary" to "二进制文件，无法显示改动",
         "oversized" to "文件过大，无法显示改动",
         "created" to "本轮新建的文件",
@@ -64,6 +65,7 @@ internal object ChangesL {
         "backToFiles" to "Back to files",
         "wrapLines" to "Wrap lines",
         "empty" to "No changes to review in this session yet",
+        "unavailable" to "This comparison is no longer available",
         "loadFailed" to "Couldn't load the comparison",
         "listPartial" to "File list incomplete: %s",
     )
@@ -95,6 +97,7 @@ internal object ChangesL {
     val wrapLines get() = t("wrapLines")
     val empty get() = t("empty")
     val loadFailed get() = t("loadFailed")
+    val unavailable get() = t("unavailable")
     val listPartial get() = t("listPartial")
 
     fun note(note: DiffNote, diff: WorkspaceFileDiff.Text): String = when (note) {
