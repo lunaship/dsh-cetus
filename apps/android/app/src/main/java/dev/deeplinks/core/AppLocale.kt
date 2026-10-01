@@ -682,6 +682,16 @@ class DshStrings(private val values: Map<String, String>) {
     val toolSummary: String get() = t("toolSummary")
     val toolSummaryFailed: String get() = t("toolSummaryFailed")
     val toolRunning: String get() = t("toolRunning")
+    // 活动摘要行（2026-10-02 Lody 简化 4.3）：对话与轨迹两个视图共用同一口径
+    val activityThinking: String get() = t("activityThinking")
+    val activityCommands: String get() = t("activityCommands")
+    val activityReads: String get() = t("activityReads")
+    val activityEdits: String get() = t("activityEdits")
+    val activitySearches: String get() = t("activitySearches")
+    val activityFetches: String get() = t("activityFetches")
+    val activityTools: String get() = t("activityTools")
+    val activityMore: String get() = t("activityMore")
+    val secondsShort: String get() = t("secondsShort")
     val hostOffline: String get() = t("hostOffline")
     val viewInTrace: String get() = t("viewInTrace")
 }

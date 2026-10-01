@@ -37,8 +37,10 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
+import dev.deeplinks.native.ui.DshCardDivider
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.util.MessageGroup
+import dev.deeplinks.native.util.activityLine
 import dev.deeplinks.native.util.turnEndAssistantIds
 import dev.deeplinks.native.util.copiedNeedsAppToast
 import dev.deeplinks.native.util.goalRoundObjective
@@ -103,47 +105,56 @@ internal fun ChatStickySummary(
     )
 }
 
-/** 工具折叠摘要行（对话视图下一批工具调用的收拢展示）：点按跳到轨迹看明细。 */
+/**
+ * 活动摘要行（2026-10-02 Lody 简化 4.3）：一批工具调用 + 相邻思考收成一行灰字，
+ * 下方一根发丝线；整行点按切到轨迹视图看明细。运行中显示「◌ 当前命令」。
+ * 与轨迹视图组头共用 [activityLine] 口径（两个视图不再各说各话）。
+ */
 @Composable
 private fun ToolSummaryCard(summary: MessageGroup.ToolSummary, onOpenTrace: () -> Unit) {
-    val mainText = if (summary.running && summary.lastToolName != null) {
-        L.toolRunning.format(summary.lastToolName)
-    } else {
-        L.toolSummary.format(summary.count)
-    }
-    val failedText = summary.failedCount.takeIf { it > 0 }?.let { " · ${L.toolSummaryFailed.format(it)}" }.orEmpty()
-    val durationText = summary.durationMs?.takeIf { it > 0 && !summary.running }?.let { " · ${formatTraceDuration(it)}" }.orEmpty()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = DshTouch.min)
-            .clip(RoundedCornerShape(DshRadius.control))
-            .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            DocumentCheckOutline16,
-            contentDescription = null,
-            tint = Dsh.labelTertiary,
-            modifier = Modifier.size(DshIconSize.sm),
-        )
-        Spacer(Modifier.width(DshSpace.s8))
-        Text(
-            text = mainText + failedText + durationText,
-            color = Dsh.labelSecondary,
-            style = DshType.caption,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(DshSpace.s8))
-        Text(
-            text = L.viewInTrace + " ›",
-            color = Dsh.labelTertiary,
-            style = DshType.caption,
-            maxLines = 1,
-        )
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = DshTouch.min)
+                .clip(RoundedCornerShape(DshRadius.control))
+                .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (summary.running) {
+                Text(
+                    text = "◌ ",
+                    color = Dsh.labelTertiary,
+                    style = DshType.captionRelaxed,
+                )
+                ShimmerLabel(
+                    text = summary.lastToolName ?: L.executing,
+                    working = true,
+                )
+            } else {
+                val line = activityLine(summary.activity).joinToString(" · ")
+                    .ifBlank { L.toolSummary.format(summary.count) }
+                Text(
+                    text = line,
+                    color = Dsh.labelTertiary,
+                    style = DshType.captionRelaxed,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (summary.failedCount > 0) {
+                    Spacer(Modifier.width(DshSpace.s6))
+                    Text(
+                        text = L.toolSummaryFailed.format(summary.failedCount),
+                        color = Dsh.error,
+                        style = DshType.captionRelaxed,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+        DshCardDivider(leadingInset = DshSpace.s12)
     }
 }
 

@@ -16,5 +16,6 @@ dev/deeplinks/native/SettingsActivity.kt 34
 # 2026-09-30 第 4 步新增模型切换提示文案（modelChangedFrom / modelChanged）后按实际上调。
 # 2026-09-30 E1 新增 setLanguageForPreview（截图专用，只切内存态）后再上调。
 # 2026-09-30 E8 新增 contextUsedPercent 取值后按实际上调。
-dev/deeplinks/core/AppLocale.kt 690
+# 2026-10-02 Lody 简化：新增活动摘要行（activity* / secondsShort）取值后按实际上调。
+dev/deeplinks/core/AppLocale.kt 700
 dev/deeplinks/native/WorkspaceSidebar.kt 312

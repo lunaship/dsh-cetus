@@ -491,8 +491,6 @@ internal fun ToolGroupHeader(
     val summaryTitle = dev.deeplinks.native.util.toolGroupRowLabel(
         items = group.items,
         running = groupRunning,
-        donePrefix = L.toolGroupDone,
-        runningPrefix = L.toolGroupRunning,
     )
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
