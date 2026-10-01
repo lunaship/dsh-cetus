@@ -37,15 +37,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
 import dev.deeplinks.native.ui.DshChipTone
+import dev.deeplinks.native.ui.DshPillButton
+import dev.deeplinks.native.ui.DshPillTone
 import dev.deeplinks.native.ui.DshStatusChip
 
 private enum class ApprovalChoice { AllowOnce, Reject }
@@ -137,11 +137,12 @@ internal fun ApprovalCard(
         return
     }
 
+    // C5.3：不再用 heightIn(min = 160.dp) 撑高——它让选项与底部之间空出约 60dp
+    // （截图 ChatApprovalsLightZh 的反馈）。卡片高度由内容决定。
     Column(
         modifier = Modifier
             .widthIn(max = 320.dp)
-            .fillMaxWidth()
-            .heightIn(min = 160.dp),
+            .fillMaxWidth(),
     ) {
         // 白卡片：需要处理的信号是标题旁的 6dp 琥珀点。不加描边、色边、阴影。
         Column(
@@ -180,17 +181,17 @@ internal fun ApprovalCard(
                             color = Dsh.labelSecondary,
                             style = DshType.titleSmall,
                         )
-                        msg.toolName?.takeIf { it.isNotBlank() }?.let { name ->
-                            Spacer(Modifier.height(DshSpace.s6))
-                            Text(
-                                name,
-                                color = Dsh.labelTertiary,
-                                style = DshType.microRelaxed,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        // C3：对话内审批卡同样收不到工具参数（bb058bd 只在首页卡加过），
+                        // 在工具名下方、选项上方补同一行说明，与首页审批卡共用一份文案。
+                        Spacer(Modifier.height(DshSpace.s6))
+                        Text(
+                            L.approvalArgsMissing,
+                            color = Dsh.labelSecondary,
+                            style = DshType.supporting,
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                        )
+                        // C4：工具名只出现一次——副标题（请求授权执行 <工具>）已经写了，
+                        // 这里不再重复一行灰色小字（截图 ChatApprovalsLightZh 的反馈）。
                     }
                     Spacer(Modifier.width(DshSpace.s8))
                     Box(
@@ -256,53 +257,25 @@ internal fun ApprovalCard(
                 )
             }
 
-            // footer：步骤点 + 上箭头提交。与提问卡一致，留在卡片同一层底色里——
-            // 单独铺 bgCard 在浅色下与页面白底连成一片，卡片看起来像被截断。
+            // C5：footer 只留提交按钮。审批永远只有一题，原来的 9dp 空心圆点
+            // （「当前步」指示）对用户没有意义，看起来像渲染残留；上箭头图标也更像
+            // 「收起」而不是「提交」——换成带文字的按钮，按所选项显示「拒绝 / 允许一次」，
+            // 与输入框发送按钮的语义区分开。留在卡片同一层底色里：单独铺 bgCard 在浅色下
+            // 与页面白底连成一片，卡片看起来像被截断。
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 单题：当前步空心粗环
-                    Box(
-                        modifier = Modifier
-                            .size(9.dp)
-                            .border(2.5.dp, Dsh.labelPrimary, CircleShape),
-                    )
-                }
                 val canSend = selected != null && !submitting
-                val sendInteraction = remember { MutableInteractionSource() }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .dshPressScale(sendInteraction)
-                        .clickable(interactionSource = sendInteraction, indication = dshRipple(), enabled = canSend) {
-                            selected?.let { submit(it) }
-                        }
-                        .semantics {
-                            role = Role.Button
-                            contentDescription = L.approvalSendAnswer
-                    },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(if (canSend) Dsh.labelPrimary else Dsh.bgTrack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            ChevronUpOutline14,
-                            contentDescription = null,
-                            tint = if (canSend) Dsh.bgSurface else Dsh.labelTertiary,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
-                }
+                DshPillButton(
+                    label = if (selected == ApprovalChoice.Reject) L.reject else L.allowOnce,
+                    onClick = { selected?.let { submit(it) } },
+                    enabled = canSend,
+                    tone = DshPillTone.Tonal,
+                )
             }
         }
     }

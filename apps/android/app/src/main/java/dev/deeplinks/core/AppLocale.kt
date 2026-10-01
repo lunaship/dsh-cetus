@@ -544,7 +544,7 @@ class DshStrings(private val values: Map<String, String>) {
     val shareConversation: String get() = t("shareConversation")
     val homeWantsCommand: String get() = t("homeWantsCommand")
     /** 首页审批卡：手机侧看不到工具参数的诚实说明。 */
-    val homeApprovalArgsMissing: String get() = t("homeApprovalArgsMissing")
+    val approvalArgsMissing: String get() = t("approvalArgsMissing")
     val homeRunningInline: String get() = t("homeRunningInline")
     /** 「第 %d 步」；`%d` 是步号。 */
     val homeStepLabel: String get() = t("homeStepLabel")

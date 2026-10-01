@@ -695,6 +695,42 @@ internal fun RemoteImagePlaceholderDarkEn() {
     }
 }
 
+// ---- 第 3 步：首页审批卡（C1 Outline 按钮）/ 设置隐私分组预览 ----
+
+@PreviewTest
+@Preview(name = "home approval card", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun HomeApprovalCardLight() {
+    ShotFrame(dark = false) {
+        HomeApprovalCard(
+            title = "任务首页改版",
+            workspaceLabel = "dsh-links",
+            timeLabel = "2 分钟前",
+            toolName = "./gradlew :app:connectedDebugAndroidTest",
+            chipText = DshS.homeChipWaitingApproval,
+            onReject = {},
+            onApprove = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "home approval card dark en", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun HomeApprovalCardDarkEn() {
+    ShotFrame(dark = true, english = true) {
+        HomeApprovalCard(
+            title = "Redesign home inbox",
+            workspaceLabel = "dsh-links",
+            timeLabel = "2 min ago",
+            toolName = "./gradlew :app:connectedDebugAndroidTest",
+            chipText = DshS.homeChipWaitingApproval,
+            onReject = {},
+            onApprove = {},
+        )
+    }
+}
+
 @PreviewTest
 @Preview(name = "settings privacy section", showBackground = true, widthDp = 412, heightDp = 260)
 @Composable

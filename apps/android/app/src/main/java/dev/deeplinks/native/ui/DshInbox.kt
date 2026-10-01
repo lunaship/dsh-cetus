@@ -1,6 +1,7 @@
 package dev.deeplinks.native.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -68,6 +69,12 @@ enum class DshPillTone {
 
     /** Tonal：次要动作（拒绝、取消）。 */
     Tonal,
+
+    /**
+     * 描边：需要确认但不应被视觉引导的动作（例如看不到参数时的批准）。
+     * 透明底 + labelPrimary 字 + 1dp 描边，与「拒绝」同权重，避免用户被主色牵着点。
+     */
+    Outline,
 }
 
 @Composable
@@ -88,6 +95,7 @@ fun DshPillButton(
         DshPillTone.Accent -> Dsh.brand500 to Dsh.onBrand
         DshPillTone.Ink -> Dsh.inkFill to Dsh.onInk
         DshPillTone.Tonal -> Dsh.bgSubtle to Dsh.labelPrimary
+        DshPillTone.Outline -> Color.Transparent to Dsh.labelPrimary
     }
     val bg = if (enabled && pressed) container.copy(alpha = 0.88f) else container
     // 与 DshFilterChip 同一手法：热区 48dp 挂在外层、胶囊视觉 44dp 画在内层，
@@ -110,6 +118,13 @@ fun DshPillButton(
                 .height(44.dp)
                 .clip(RoundedCornerShape(DshRadius.full))
                 .background(bg)
+                .then(
+                    if (enabled && tone == DshPillTone.Outline) {
+                        Modifier.border(1.dp, Dsh.borderStrong, RoundedCornerShape(DshRadius.full))
+                    } else {
+                        Modifier
+                    },
+                )
                 .padding(horizontal = DshSpace.s16),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,

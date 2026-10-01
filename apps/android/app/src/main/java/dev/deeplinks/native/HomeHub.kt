@@ -242,7 +242,7 @@ internal fun HomeApprovalCard(
         Spacer(Modifier.size(DshSpace.s6))
         // 数据边界（DSH 审批请求不带工具参数）：安静说明，不用警告容器制造恐慌
         Text(
-            s.homeApprovalArgsMissing,
+            s.approvalArgsMissing,
             color = Dsh.labelSecondary,
             style = DshType.supporting,
         )
@@ -255,10 +255,12 @@ internal fun HomeApprovalCard(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(DshSpace.s8))
+            // C1：手机收不到工具参数，批准等于盲批。改用 Outline（透明底 + 描边 +
+            // labelPrimary），与「拒绝」同权重，不靠品牌蓝引导用户点它。
             DshPillButton(
                 label = s.allowOnce,
                 onClick = onApprove,
-                tone = DshPillTone.Accent,
+                tone = DshPillTone.Outline,
                 modifier = Modifier.weight(1f),
             )
         }

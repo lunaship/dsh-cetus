@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
+import dev.deeplinks.native.ui.DshPillButton
+import dev.deeplinks.native.ui.DshPillTone
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -229,46 +231,29 @@ internal fun QuestionCard(
             )
             Spacer(Modifier.height(DshSpace.s8))
         }
+        // C5.4：提交按钮从「^」图标改为带文字按钮——图标更像「收起」而非「提交」，
+        // 与输入框发送按钮的向上箭头也容易混淆。无障碍描述与可见文字保持一致。
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val canSend = !submitting && rpcId.isNotBlank() && questionDraftComplete(displayQuestions, drafts)
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clickable(enabled = canSend) {
-                        val answer = buildQuestionAnswers(displayQuestions, drafts) ?: return@clickable
-                        submitting = true
-                        submitError = null
-                        onAnswer(rpcId, answer) { ok ->
-                            submitting = false
-                            if (ok) sent = true
-                            else submitError = strings.approvalNotAccepted
-                        }
+            DshPillButton(
+                label = strings.questionSubmitAnswer,
+                onClick = {
+                    val answer = buildQuestionAnswers(displayQuestions, drafts) ?: return@DshPillButton
+                    submitting = true
+                    submitError = null
+                    onAnswer(rpcId, answer) { ok ->
+                        submitting = false
+                        if (ok) sent = true
+                        else submitError = strings.approvalNotAccepted
                     }
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = strings.questionSubmitAnswer
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(if (canSend) Dsh.labelPrimary else Dsh.bgTrack),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        ChevronUpOutline14,
-                        contentDescription = null,
-                        tint = if (canSend) Dsh.bgSurface else Dsh.labelTertiary,
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
-            }
+                },
+                enabled = canSend,
+                tone = DshPillTone.Tonal,
+            )
         }
     }
 }
