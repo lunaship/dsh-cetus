@@ -13,6 +13,15 @@ import java.io.File
  * 消息流数据推导测试：这些规则原先内联在 WorkspaceScreen 的 LazyColumn 里，无法单测。
  */
 class ChatFeedDerivationTest {
+    /** 源码扫描测试的路径解析：从 user.dir 向上找 src/main/java，不写死开发机绝对路径。 */
+    private fun mainRoot(): File {
+        var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        while (dir != null && !File(dir, "src/main/java").isDirectory) dir = dir.parentFile
+        return File(requireNotNull(dir) { "找不到 src/main/java" }, "src/main/java")
+    }
+
+    private fun source(name: String): File = mainRoot().resolve("dev/deeplinks/native/$name")
+
 
     private fun msg(
         id: String,
@@ -255,13 +264,13 @@ class ChatFeedDerivationTest {
 
     @Test
     fun `WorkspaceActivity has no ChatGoalLine`() {
-        val text = File("/Volumes/Space/Dev/dsh-links/apps/android/app/src/main/java/dev/deeplinks/native/WorkspaceActivity.kt").readText()
+        val text = source("WorkspaceActivity.kt").readText()
         assertFalse("WorkspaceActivity should not contain ChatGoalLine", text.contains("ChatGoalLine("))
     }
 
     @Test
     fun `ChatFeed has no sticky-task-summary item key`() {
-        val text = File("/Volumes/Space/Dev/dsh-links/apps/android/app/src/main/java/dev/deeplinks/native/ChatFeed.kt").readText()
+        val text = source("ChatFeed.kt").readText()
         assertFalse("ChatFeed should not contain sticky-task-summary", text.contains("sticky-task-summary"))
     }
 }

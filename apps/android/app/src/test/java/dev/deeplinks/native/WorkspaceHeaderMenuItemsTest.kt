@@ -12,6 +12,15 @@ import java.io.File
  * C1 精简后最多 5 项；子代理入口挪进菜单第一项。
  */
 class WorkspaceHeaderMenuItemsTest {
+    /** 源码扫描测试的路径解析：从 user.dir 向上找 src/main/java，不写死开发机绝对路径。 */
+    private fun mainRoot(): File {
+        var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        while (dir != null && !File(dir, "src/main/java").isDirectory) dir = dir.parentFile
+        return File(requireNotNull(dir) { "找不到 src/main/java" }, "src/main/java")
+    }
+
+    private fun source(name: String): File = mainRoot().resolve("dev/deeplinks/native/$name")
+
 
     @Test
     fun `no subagent item when count is zero`() {
@@ -29,7 +38,7 @@ class WorkspaceHeaderMenuItemsTest {
 
     @Test
     fun `WorkspaceChrome has no DshTextTabs call`() {
-        val text = File("/Volumes/Space/Dev/dsh-links/apps/android/app/src/main/java/dev/deeplinks/native/WorkspaceChrome.kt").readText()
+        val text = source("WorkspaceChrome.kt").readText()
         assertFalse("WorkspaceChrome should not call DshTextTabs", text.contains("DshTextTabs("))
     }
 

@@ -477,21 +477,13 @@ private fun ChromeWall() {
     ContextMeterRow(label = "Messages", value = "18.7K", swatchColor = Dsh.brand400)
     SectionTitle("Composer context strip")
     ComposerContextStrip(
-        hostName = "dev-macbook",
         online = true,
-        workspaceName = "dsh-links",
         changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
-        stats = MobileSessionStats(turns = 7, steps = 223, uncachedInputTokens = 577_169, cacheReadTokens = 22_806_144, outputTokens = 163_167),
-        onBrowseFiles = {},
         onOpenChanges = {},
     )
     ComposerContextStrip(
-        hostName = "dev-macbook",
         online = false,
-        workspaceName = "a-very-long-workspace-name-for-truncation",
         changes = null,
-        stats = MobileSessionStats(turns = 1, steps = 4, outputTokens = 812),
-        onBrowseFiles = {},
         onOpenChanges = {},
     )
     SectionTitle("Composer seats")
@@ -561,12 +553,8 @@ private fun ChatComposerArea(modifier: Modifier = Modifier) {
     val stats = sampleSessionStats
     Column(modifier) {
         ComposerContextStrip(
-            hostName = "dev-macbook",
             online = true,
-            workspaceName = "dsh-links",
             changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
-            stats = stats,
-            onBrowseFiles = {},
             onOpenChanges = {},
         )
         InputBar(
@@ -1201,12 +1189,9 @@ private fun SidebarWall(english: Boolean = false) {
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         HomeHeader(
-            hostName = "MacBook Pro",
             online = true,
-            viaRemote = true,
             offlineSinceLabel = null,
             searchActive = false,
-            onOpenDevice = {},
             onToggleSearch = {},
             onOpenSettings = {},
         )
@@ -1268,12 +1253,9 @@ private fun HomeOfflineWall(english: Boolean = false) {
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         HomeHeader(
-            hostName = "Mac mini",
             online = false,
-            viaRemote = true,
             offlineSinceLabel = if (english) "10 min ago" else "10 分钟前",
             searchActive = false,
-            onOpenDevice = {},
             onToggleSearch = {},
             onOpenSettings = {},
         )
@@ -1306,12 +1288,9 @@ private fun HomeEmptyWall() {
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         HomeHeader(
-            hostName = "Mac mini",
             online = true,
-            viaRemote = true,
             offlineSinceLabel = null,
             searchActive = false,
-            onOpenDevice = {},
             onToggleSearch = {},
             onOpenSettings = {},
         )
