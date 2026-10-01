@@ -170,7 +170,13 @@ import dev.deeplinks.native.util.StreamBannerKind
 import dev.deeplinks.native.ui.DshBadge
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.DshBannerTone
+import dev.deeplinks.native.COMPOSER_ISLAND_INNER_CLEARANCE
+import dev.deeplinks.native.COMPOSER_SIDE_CLEARANCE
+import dev.deeplinks.native.DshRadius
+import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.ui.DshFilterChip
+import dev.deeplinks.native.ui.DshGlassTier
+import dev.deeplinks.native.ui.dshGlass
 import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.ui.DshTextTabs
 
@@ -541,14 +547,29 @@ private val sampleSessionStats = MobileSessionStats(
 )
 
 /**
- * 对话页输入区：上下文条 + 输入卡（两层输入区）。
+ * 对话页输入区：上下文条 + 输入卡（两层输入区），按生产结构包进浮岛（R11）。
+ * 预览不带采样源（backdrop = null），展示的正是 4.5 回退表「无背景源 → 普通表面」
+ * 的形态；玻璃折射/模糊的运行时效果由真机录屏验证（D04）。
  * 真机上「没有消息」的画布下方就是它——空会话的起点是输入框占位句。
  * ChatBottomWall 与空态画布帧共用，样例数据（含上下文占用）保持单一来源。
  */
 @Composable
 private fun ChatComposerArea(modifier: Modifier = Modifier) {
     val stats = sampleSessionStats
-    Column(modifier) {
+    Column(
+        modifier = modifier
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
+            .dshGlass(
+                tier = DshGlassTier.Floating,
+                backdrop = null,
+                shape = RoundedCornerShape(DshRadius.modal),
+            )
+            .padding(
+                start = COMPOSER_ISLAND_INNER_CLEARANCE,
+                end = COMPOSER_ISLAND_INNER_CLEARANCE,
+                top = DshSpace.s6,
+            ),
+    ) {
         ComposerContextStrip(
             online = true,
             changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),

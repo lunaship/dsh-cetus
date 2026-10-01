@@ -3,7 +3,9 @@
 # 冷启动分享丢字修复（shareConsumed/appliedShareOwner 守卫）后 +2 行。
 # 2026-10-01 第 5 步半透明顶栏/底栏 + nearBottomPx + PullToRefreshBox padding + 顶栏悬浮 Box 后实际上调。
 # 2026-10-01 借鉴 dsh-mobile 一轮：assistant/chunk 处理抽到 StreamChunks.kt 后下调。
-dev/deeplinks/native/WorkspaceActivity.kt::WorkspaceScreen 2858
+# 2026-10-01 PR3 浮岛化（R11）：bottom chrome 由通栏玻璃改圆角浮岛，+8 行；
+# 下调计划：bottom chrome 输入岛组装迁移到独立文件后回收（见 PR3 交付记录）。
+dev/deeplinks/native/WorkspaceActivity.kt::WorkspaceScreen 2866
 # 2026-09-27 设置子页拆成独立 composable 后下调。
 dev/deeplinks/native/SettingsActivity.kt::SettingsScreen 254
 dev/deeplinks/devices/DevicesActivity.kt::DevicesScreen 261
