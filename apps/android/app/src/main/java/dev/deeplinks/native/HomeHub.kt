@@ -222,11 +222,12 @@ internal fun HomeWorkspaceFilterRow(
 ) {
     val s = DshS
     var menuOpen by remember { mutableStateOf(false) }
+    // 点击层只有胶囊本体一处（F03）：外层再挂 clickable 会造出第二个同名按钮节点，
+    // 读屏重复朗读、视觉上出现两圈按压反馈。胶囊自带 48dp 热区。
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = DrawerTextStart, end = DrawerEdgePadding)
-            .clickable(role = Role.Button, onClick = { menuOpen = true }),
+            .padding(start = DrawerTextStart, end = DrawerEdgePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {

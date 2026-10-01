@@ -526,11 +526,13 @@ fun DshSwitchRow(
 
 @Composable
 fun dshSwitchColors(): SwitchColors = SwitchDefaults.colors(
-    // 开关开启态 = 墨色（2026-09-28 重设计 · 方案 2.2/7.3）：品牌蓝只给「需要你动手」的动作
-    // （批准、发送），开关是状态而不是动作
-    checkedThumbColor = Dsh.bgCard,
-    checkedTrackColor = Dsh.labelPrimary,
-    checkedBorderColor = Dsh.labelPrimary,
+    // 开关开启态 = 墨色（2026-09-28 重设计 · 方案 2.2/7.3；2026-10-01 R8 补齐拇指）：
+    // 品牌蓝只给「需要你动手」的动作（批准、发送），开关是状态而不是动作。
+    // 轨道 inkFill + 拇指 onInk 成对使用——深色里 labelPrimary 轨道曾接近纯白抢过批准蓝，
+    // 沿用 bgCard 拇指又会在 #3A3C43 轨道上几乎不可见。
+    checkedThumbColor = Dsh.onInk,
+    checkedTrackColor = Dsh.inkFill,
+    checkedBorderColor = Dsh.inkFill,
     uncheckedThumbColor = Dsh.labelSecondary,
     uncheckedTrackColor = Dsh.bgSubtle,
     uncheckedBorderColor = Dsh.borderStrong,

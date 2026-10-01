@@ -1,7 +1,16 @@
 package dev.deeplinks.native
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -10,13 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import android.os.PowerManager
-import android.provider.Settings
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import android.os.Build
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.LocalInspectionMode
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -40,17 +47,62 @@ fun Modifier.dshTranslucent(
     backdrop: LayerBackdrop? = null,
 ): Modifier = composed {
     val context = LocalContext.current
-    var reduceTransparency by remember(context) { mutableStateOf(false) }
+    var reduceTransparency by remember { mutableStateOf(false) }
 
-    LaunchedEffect(context) {
-        val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as? PowerManager
-        val powerSave = powerManager?.isPowerSaveMode ?: false
-        val animatorScale = Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f,
-        )
-        reduceTransparency = powerSave || animatorScale == 0f
+    // D01：回退状态要跟手——只在组合时读一次会滞后到下次重建。
+    // ON_RESUME 重读覆盖「去设置改完回来」；电源节省广播与动画时长 ContentObserver
+    // 覆盖分屏 / 小窗等不离开前台的修改。预览（layoutlib）不注册。
+    if (!LocalInspectionMode.current) {
+        val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+        DisposableEffect(context, lifecycleOwner) {
+            val resolver = context.contentResolver
+            fun read(): Boolean {
+                val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as? PowerManager
+                val powerSave = powerManager?.isPowerSaveMode ?: false
+                val animatorScale = Settings.Global.getFloat(
+                    resolver,
+                    Settings.Global.ANIMATOR_DURATION_SCALE,
+                    1f,
+                )
+                return powerSave || animatorScale == 0f
+            }
+
+            val lifecycleObserver = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) reduceTransparency = read()
+            }
+            lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
+
+            val powerSaveReceiver = object : BroadcastReceiver() {
+                override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                    reduceTransparency = read()
+                }
+            }
+            val powerFilter = IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(powerSaveReceiver, powerFilter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                context.registerReceiver(powerSaveReceiver, powerFilter)
+            }
+
+            val animatorObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    reduceTransparency = read()
+                }
+            }
+            resolver.registerContentObserver(
+                Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE),
+                false,
+                animatorObserver,
+            )
+
+            reduceTransparency = read()
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
+                context.unregisterReceiver(powerSaveReceiver)
+                resolver.unregisterContentObserver(animatorObserver)
+            }
+        }
     }
 
     val alpha = if (reduceTransparency) 1f else 0.92f

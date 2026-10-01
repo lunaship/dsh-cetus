@@ -191,9 +191,13 @@ internal fun AppNavHost(
         },
     ) {
         composable(AppRoute.DEVICES) {
+            // F04：从设置等有前页的入口进入时显示返回；根页面（首次配对）与凭据失效
+            // （popUpTo 清栈后重进）previousBackStackEntry 为空，不提供虚假返回。
             DevicesScreen(
                 hostNotice = hostNotice,
                 onHostNotice = onHostNotice,
+                showsBack = navController.previousBackStackEntry != null,
+                onNavigateBack = { navController.popBackStack() },
                 onOpenHost = { host, onDone ->
                     // 可达性与会话加载交给 Workspace 的 bootstrap。
                     val saved = HostStore.upsert(context, host)

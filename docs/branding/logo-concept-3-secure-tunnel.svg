@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="dl-grad-3" x1="10" y1="50" x2="90" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#3F5BD6"/>
+      <stop offset="100%" stop-color="#8B9DFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer orbital shield ring -->
+  <circle cx="50" cy="50" r="36" stroke="url(#dl-grad-3)" stroke-width="4" stroke-dasharray="14 8" opacity="0.6"/>
+  
+  <!-- Core tunnel lens (DLP/1 encrypted pipe) -->
+  <rect x="26" y="26" width="48" height="48" rx="14" transform="rotate(45 50 50)" stroke="url(#dl-grad-3)" stroke-width="6" fill="#3F5BD6" fill-opacity="0.12"/>
+  
+  <!-- Central secure bridge beam -->
+  <line x1="22" y1="50" x2="78" y2="50" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Mobile Node (Left) and Host Node (Right) -->
+  <circle cx="22" cy="50" r="6" fill="#38BDF8"/>
+  <circle cx="78" cy="50" r="6" fill="#8B9DFF"/>
+  <circle cx="50" cy="50" r="5" fill="#FFFFFF"/>
+</svg>
