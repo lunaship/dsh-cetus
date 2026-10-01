@@ -529,16 +529,19 @@ internal fun WorkspaceChromeLight() {
     Wall(dark = false, english = false) { ChromeWall() }
 }
 
-/** 对话页底部整体：上下文条 + 输入卡（两层输入区）。 */
+/**
+ * 对话页输入区：上下文条 + 输入卡（两层输入区）。
+ * 真机上「没有消息」的画布下方就是它——空会话的起点是输入框占位句。
+ * ChatBottomWall 与空态画布帧共用，样例数据（含上下文占用）保持单一来源。
+ */
 @Composable
-internal fun ChatBottomWall(capWidth: Boolean = false) {
+private fun ChatComposerArea(modifier: Modifier = Modifier) {
     val stats = MobileSessionStats(
         turns = 3, steps = 421, uncachedInputTokens = 2_100_000, cacheReadTokens = 126_000_000, outputTokens = 1_000_000,
         contextPressureTokens = 60_000, contextWindow = 128_000,
     )
-    Column(Modifier.fillMaxWidth()) {
+    Column(modifier) {
         ComposerContextStrip(
-            modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
             hostName = "dev-macbook",
             online = true,
             workspaceName = "dsh-links",
@@ -548,7 +551,6 @@ internal fun ChatBottomWall(capWidth: Boolean = false) {
             onOpenChanges = {},
         )
         InputBar(
-            modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
             inputText = "",
             onInputChange = {},
             isListening = false,
@@ -567,6 +569,14 @@ internal fun ChatBottomWall(capWidth: Boolean = false) {
             onSend = {},
         )
     }
+}
+
+/** 对话页底部整体（方案 9：宽屏时输入区封顶 760dp 居中）。 */
+@Composable
+internal fun ChatBottomWall(capWidth: Boolean = false) {
+    ChatComposerArea(
+        modifier = if (capWidth) Modifier.widthIn(max = 760.dp).wrapContentWidth(Alignment.CenterHorizontally) else Modifier,
+    )
 }
 
 @PreviewTest
@@ -667,8 +677,15 @@ private fun ChatCanvasFrame(
     error: String? = null,
 ) {
     ShotFrame(dark = dark, english = english) {
-        LazyColumn(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
-            chatEmptyCanvas(kind = kind, elapsedSec = elapsedSec, historyLoadError = error, onRetry = {})
+        // E6：ChatCanvasKind.Empty 按设计「空会话只留白」（WorkspaceChrome 里就是一个
+        // 空的 fillParentMaxSize Box，没有任何入场动画），所以只截画布必然是全空白图。
+        // 真机上这一屏真正的起点是下方的输入框占位句，把输入区一起入镜：既还原空会话
+        // 的真实长相，也让基线能守住输入区回归。
+        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                chatEmptyCanvas(kind = kind, elapsedSec = elapsedSec, historyLoadError = error, onRetry = {})
+            }
+            ChatComposerArea()
         }
     }
 }
