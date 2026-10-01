@@ -460,6 +460,8 @@ val DshStringsEn = DshStrings(
         put("homeRecent", "Recent")
         put("timeYesterday", "Yesterday")
         put("homeAllWorkspaces", "All workspaces")
+        put("homeFilterWorkspaces", "Filter by workspace")
+        put("homeClearFilter", "Clear workspace filter")
         put("homeNewTask", "New task")
         put("homeEmptyTitle", "Nothing needs you right now")
         put("homeEmptyHint", "Tasks you start on the computer show up here too.")

@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -237,7 +236,7 @@ fun DshGroupCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.composer))
+            .clip(RoundedCornerShape(DshRadius.card))
             .background(Dsh.bgCard)
             .padding(contentPadding),
         content = content,
@@ -259,6 +258,9 @@ fun DshCardDivider(
     )
 }
 
+// （DshFloatingPill 已删除：黑色「+ 新任务」悬浮胶囊由 2026-10-02 Lody 简化 4.1 的
+// 底部玻璃操作行（DshGlassCapsule + DshGlassCircle）取代。）
+
 // ============================================================
 // DshSectionLabel —— 分组标签（13 / Medium / 次要色）
 // 只有灰字，不挂计数（visual-rules 第五节）
@@ -277,56 +279,4 @@ fun DshSectionLabel(
         fontWeight = FontWeight.Medium,
         maxLines = 1,
     )
-}
-
-// ============================================================
-// DshFloatingPill —— 页面底部居中的悬浮主按钮（「+ 新任务」）
-// 全 App 唯一带阴影的普通按钮，语义同 FAB（visual-rules 第二节的浮层例外）
-// ============================================================
-
-@Composable
-fun DshFloatingPill(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    icon: ImageVector? = null,
-) {
-    // 启用 = inkFill / onInk；置灰 = bgSubtle + labelDimmed，与 DshPillButton 同一种写法。
-    val container = if (enabled) Dsh.inkFill else Dsh.bgSubtle
-    val content = if (enabled) Dsh.onInk else Dsh.labelDimmed
-    Box(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = dshRipple(),
-                enabled = enabled,
-                role = Role.Button,
-                onClick = onClick,
-            )
-            .semantics { role = Role.Button },
-        contentAlignment = Alignment.Center,
-    ) {
-        // 阴影走 M3 Surface 的 shadowElevation（浮层语义），不用 Modifier.shadow：
-        // 后者在 DshSurfaceRoleTest 里按文件计入「行内阴影」预算，而 FAB 属于允许的浮层。
-        Surface(
-            shape = RoundedCornerShape(DshRadius.full),
-            color = container,
-            shadowElevation = if (enabled) 4.dp else 0.dp,
-        ) {
-            Row(
-                modifier = Modifier
-                    .height(52.dp)
-                    .padding(start = DshSpace.s20, end = DshSpace.s24),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (icon != null) {
-                    Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(DshIconSize.md))
-                    Spacer(Modifier.width(DshSpace.s8))
-                }
-                Text(label, color = content, style = DshType.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1)
-            }
-        }
-    }
 }

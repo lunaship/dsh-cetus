@@ -252,13 +252,17 @@ object DshType {
         )
 
     /** 16/22 · Medium：列表主标题（2026-10-01 R7：26 是正文阅读行距，列表行用 22 收紧行距）。 */
+    /**
+     * 16/24 · Normal：列表主标题（2026-10-02 Lody 简化 3.2/3.4：两层文字行——元信息 +
+     * Normal 标题；Medium 只留给页面标题，22 的 Medium 旧规格由本角色取代）。
+     */
     val listTitle: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
             fontFamily = LocalDshFontFamily.current,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
-            lineHeight = 22.sp,
+            lineHeight = 24.sp,
             letterSpacing = 0.01.sp,
         )
 }

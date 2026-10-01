@@ -459,6 +459,8 @@ val DshStringsZh = DshStrings(
         put("homeRecent", "最近")
         put("timeYesterday", "昨天")
         put("homeAllWorkspaces", "全部工作区")
+        put("homeFilterWorkspaces", "按工作区筛选")
+        put("homeClearFilter", "清除工作区筛选")
         put("homeNewTask", "新任务")
         put("homeEmptyTitle", "没有要你处理的事")
         put("homeEmptyHint", "在电脑上开的任务也会出现在这里。")

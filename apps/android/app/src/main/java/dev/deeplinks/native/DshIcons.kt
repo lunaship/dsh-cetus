@@ -4818,3 +4818,57 @@ val UsersOutline16: ImageVector by lazy {
         }
     }.build()
 }
+
+/** FilterLinesOutline16 —— 工作区筛选（2026-10-02 Lody 简化：筛选进顶栏胶囊）。 */
+val FilterLinesOutline16: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "FilterLinesOutline16",
+        defaultWidth = 16.0f.dp,
+        defaultHeight = 16.dp,
+        viewportWidth = 16.0f,
+        viewportHeight = 16.0f
+    ).apply {
+        path(
+            fill = null,
+            fillAlpha = 1f,
+            stroke = SolidColor(Color.Black),
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(2.0f, 4.0f)
+            lineTo(14.0f, 4.0f)
+        }
+        path(
+            fill = null,
+            fillAlpha = 1f,
+            stroke = SolidColor(Color.Black),
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(4.667f, 8.0f)
+            lineTo(11.333f, 8.0f)
+        }
+        path(
+            fill = null,
+            fillAlpha = 1f,
+            stroke = SolidColor(Color.Black),
+            strokeAlpha = 1f,
+            strokeLineWidth = 1.25f,
+            strokeLineJoin = StrokeJoin.Miter,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.NonZero
+        ) {
+            moveTo(6.667f, 12.0f)
+            lineTo(9.333f, 12.0f)
+        }
+    }.build()
+}

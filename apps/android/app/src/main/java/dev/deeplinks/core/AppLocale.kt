@@ -521,6 +521,8 @@ class DshStrings(private val values: Map<String, String>) {
     val homeRecent: String get() = t("homeRecent")
     val timeYesterday: String get() = t("timeYesterday")
     val homeAllWorkspaces: String get() = t("homeAllWorkspaces")
+    val homeFilterWorkspaces: String get() = t("homeFilterWorkspaces")
+    val homeClearFilter: String get() = t("homeClearFilter")
     val homeNewTask: String get() = t("homeNewTask")
     val homeEmptyTitle: String get() = t("homeEmptyTitle")
     val homeEmptyHint: String get() = t("homeEmptyHint")

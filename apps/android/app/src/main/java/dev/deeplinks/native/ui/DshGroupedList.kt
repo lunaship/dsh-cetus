@@ -301,6 +301,16 @@ private fun DshSectionRows(
 enum class DshListTrailing { None, Chevron, Check, Select }
 
 /**
+ * 白色分组卡行容器（[DshSectionContainer.Card] 的直接形态，2026-10-02 Lody 简化 3.1）：
+ * 首页等自排行页面把行作直接子节点放进来——bgCard + card 20dp 圆角由这里负责，
+ * 行间发丝线自动画（未声明分隔线起点的子节点默认从 16dp 文字起点起算）。
+ */
+@Composable
+fun DshCardRows(content: @Composable () -> Unit) {
+    DshSectionRows(container = DshSectionContainer.Card, content = content)
+}
+
+/**
  * 分组行骨架。[onClick] 为空即只读行；[value] 是右侧当前值（灰字）；
  * [error] 显示在副标题下方，带 [onRetry] 时给出行内重试。
  */

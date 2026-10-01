@@ -144,11 +144,12 @@ fun DshGlassCircle(
 
 /**
  * 48dp 高全圆玻璃胶囊：顶栏身份 / 操作组、首页搜索等悬浮操作的唯一形态。
+ * [onClick] 为 null 时是纯展示胶囊（品牌位）：无点击语义，只剩玻璃表面。
  * [content] 里放 1–2 个 48dp 热区的图标（[DshGlassCapsuleIcon]）或「图标 + 文字」。
  */
 @Composable
 fun DshGlassCapsule(
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     contentDescription: String? = null,
@@ -159,12 +160,22 @@ fun DshGlassCapsule(
     Row(
         modifier = modifier
             .heightIn(min = DshTouch.min)
-            .dshGlassControlSurface(
-                backdrop = backdrop,
-                interactionSource = interactionSource,
-                onClick = onClick,
-                enabled = enabled,
-                contentDescription = contentDescription,
+            .then(
+                if (onClick != null) {
+                    Modifier.dshGlassControlSurface(
+                        backdrop = backdrop,
+                        interactionSource = interactionSource,
+                        onClick = onClick,
+                        enabled = enabled,
+                        contentDescription = contentDescription,
+                    )
+                } else {
+                    Modifier.dshGlass(
+                        tier = DshGlassTier.Control,
+                        backdrop = backdrop,
+                        shape = DshControlGlassShape,
+                    )
+                },
             )
             .padding(horizontal = DshSpace.s16),
         verticalAlignment = Alignment.CenterVertically,
