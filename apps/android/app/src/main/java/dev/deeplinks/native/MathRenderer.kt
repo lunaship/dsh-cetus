@@ -66,6 +66,11 @@ object MathRenderer {
     private const val MAX_FAILURE_ENTRIES = 256
     private const val MAX_LATEX_CHARS = 32_000
     private const val RENDER_TIMEOUT_MS = 6_000L
+    // KaTeX 页面冷加载单独计时：CI 模拟器（swiftshader、2 核）上 WebView 首启 +
+    // katex.min.js 解析远超 6s，此前与单次渲染共用 RENDER_TIMEOUT_MS，超时静默返回
+    // null 且无任何 MathRenderer:W 日志（smoke 的「合法公式应渲染成功」红、
+    // 非法公式用例假绿）。页面只加载一次（pageReady 缓存），真机不受影响。
+    private const val PAGE_LOAD_TIMEOUT_MS = 20_000L
     private const val TAG = "MathRenderer"
 
     /** 行内/块级公式字号（CSS px，与正文 16sp、块级 20sp 对齐）。 */
@@ -192,8 +197,14 @@ object MathRenderer {
             return@withContext null
         }
         try {
+            // 页面冷加载不挤占单次渲染预算（CI 模拟器首启可远超 6s）；超时补日志——
+            // 此前这是唯一不打日志的 null 路径，失败只剩测试断言可看。
+            val pageLoaded = withTimeoutOrNull(PAGE_LOAD_TIMEOUT_MS) { pageReady?.await() }
+            if (pageLoaded == null && pageReady?.isCompleted != true) {
+                android.util.Log.w(TAG, "render: page load timeout after ${PAGE_LOAD_TIMEOUT_MS}ms")
+                return@withContext null
+            }
             withTimeoutOrNull(RENDER_TIMEOUT_MS) {
-                pageReady?.await()
                 val result = evaluate(wv, latex, cssFontPx, colorArgb, displayMode)
                 if (result == null) {
                     android.util.Log.w(TAG, "render: evaluate returned null")
