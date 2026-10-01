@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,12 +74,11 @@ import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
 import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.ui.HostStatusDot
-import dev.deeplinks.native.ui.DshSegmentedToggle
+import dev.deeplinks.native.ui.DshGlassCircle
 import dev.deeplinks.native.util.StreamBannerKind
 import dev.deeplinks.native.NewChatOutline16
 import dev.deeplinks.native.ListPenOutline16
 import dev.deeplinks.native.AgentPresetOutline16
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.draw.shadow
 
@@ -598,15 +596,14 @@ internal fun WorkspaceTopBar(
     subtitle: String? = null,
     showBack: Boolean,
     onNavigate: () -> Unit,
-    viewMode: String,
-    showViewModeTabs: Boolean,
-    onSelectViewMode: (String) -> Unit,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     menuItems: List<DshMenuItem>,
     /** 子智能体入口：>0 时在「⋯」按钮右上角显示品牌色圆点，菜单第一项也显示数量。 */
     subagentCount: Int = 0,
     onOpenSubagents: () -> Unit = {},
+    /** Control 档玻璃采样源（返回 / ⋯ 圆钮）；由页面骨架注入。 */
+    backdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -617,25 +614,14 @@ internal fun WorkspaceTopBar(
                 .padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val navInteraction = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .clickable(interactionSource = navInteraction, indication = dshRipple()) { onNavigate() }
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = if (showBack) L.back else L.sessionList
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (showBack) ArrowLeftOutline16 else PanelLeftOutline16,
-                    contentDescription = null,
-                    tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(DshIconSize.md),
-                )
-            }
+            // L9：返回 / 会话列表改悬浮玻璃圆钮（Control 档）
+            DshGlassCircle(
+                icon = if (showBack) ArrowLeftOutline16 else PanelLeftOutline16,
+                contentDescription = if (showBack) L.back else L.sessionList,
+                onClick = onNavigate,
+                backdrop = backdrop,
+                iconTint = Dsh.labelSecondary,
+            )
 
             // 两行标题：会话名（粗）+ 工作区·电脑名 / 执行中状态（稿 03/10）。
             Row(
@@ -674,44 +660,25 @@ internal fun WorkspaceTopBar(
                 }
             }
 
-            if (showViewModeTabs) {
-                val narrow = LocalConfiguration.current.screenWidthDp < 360
-                DshSegmentedToggle(
-                    labels = listOf(L.tabChat, L.tabTrace),
-                    selectedIndex = if (viewMode == "trace") 1 else 0,
-                    onSelect = { onSelectViewMode(if (it == 1) "trace" else "chat") },
-                    icons = if (narrow) listOf(NewChatOutline16, ListPenOutline16) else null,
-                    modifier = Modifier.padding(end = DshSpace.s4),
-                )
-            }
-
             if (menuItems.isNotEmpty()) {
                 Box {
-                    val moreInteraction = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable(interactionSource = moreInteraction, indication = dshRipple()) { onMenuExpandedChange(true) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            EllipsisOutline16,
-                            contentDescription = L.moreActions,
-                            tint = Dsh.labelSecondary,
-                            modifier = Modifier.size(DshIconSize.md),
+                    DshGlassCircle(
+                        icon = EllipsisOutline16,
+                        contentDescription = L.moreActions,
+                        onClick = { onMenuExpandedChange(true) },
+                        backdrop = backdrop,
+                        iconTint = Dsh.labelSecondary,
+                    )
+                    if (subagentCount > 0) {
+                        // 圆点贴在 20dp 图标右上角，而不是 48dp 触控区的角上
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(end = DshSpace.s8, top = DshSpace.s8)
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Dsh.brand400),
                         )
-                        if (subagentCount > 0) {
-                            // 圆点贴在 20dp 图标右上角，而不是 48dp 触控区的角上
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .offset(x = DshSpace.s8, y = -DshSpace.s8)
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(Dsh.brand400),
-                            )
-                        }
                     }
                     DshMenu(
                         expanded = menuExpanded,

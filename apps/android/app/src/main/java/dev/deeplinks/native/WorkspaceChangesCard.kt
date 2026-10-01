@@ -4,7 +4,6 @@ import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.tabularNums
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,69 +40,39 @@ internal fun WorkspaceChangesCard(
     onOpen: (fileIndex: Int?) -> Unit,
 ) {
     val shape = RoundedCornerShape(DshRadius.container)
-    Column(
+    // 2026-10-02 Lody 简化 4.3：收成一行「已编辑 N 个文件  +148 −37  ›」，
+    // 文件列表在改动面板里看（A10：面板文件数与卡片一致）
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Dsh.bgInput),
+            .background(Dsh.bgInput)
+            .heightIn(min = 52.dp)
+            .clickable(indication = dshRipple(), interactionSource = null) { onOpen(null) }
+            .semantics {
+                role = Role.Button
+                contentDescription = ChangesL.cardTitle(summary)
+            }
+            .padding(horizontal = DshSpace.s12),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clickable(indication = dshRipple(), interactionSource = null) { onOpen(null) }
-                .semantics {
-                    role = Role.Button
-                    contentDescription = "${ChangesL.viewChanges}: ${ChangesL.cardTitle(summary)}"
-                }
-                .padding(horizontal = DshSpace.s12),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(EditOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
-            Spacer(Modifier.width(10.dp))
-            Text(
-                ChangesL.cardTitle(summary),
-                color = Dsh.labelPrimary,
-                style = DshType.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(DshSpace.s8))
-            DiffStat(summary.added, summary.deleted)
-        }
-        val visible = summary.files.take(CHANGES_CARD_VISIBLE_FILES)
-        // 单文件卡片标题已写明文件名，不再重复一行
-        if (summary.total > 1 || summary.files.size > 1) {
-            visible.forEachIndexed { index, file ->
-                ChangedFileRow(file = file, onClick = { onOpen(index) })
-            }
-            // 方案 5.3：底部是「查看全部 N 个 ›」，给总数而不是「还有几个」——
-            // 用户要的是「一共改了多少」，而 `hidden` 只有列表被截断时才 > 0
-            if (summary.total > visible.size) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = DshTouch.min)
-                        .clickable(indication = dshRipple(), interactionSource = null) { onOpen(null) }
-                        .padding(start = 38.dp, end = DshSpace.s12, top = DshSpace.s12, bottom = DshSpace.s12),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        ChangesL.viewAllFiles.format(summary.total),
-                        color = Dsh.labelPrimary,
-                        style = DshType.label,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        ChevronRightOutline16,
-                        contentDescription = null,
-                        tint = Dsh.labelTertiary,
-                        modifier = Modifier.size(DshIconSize.sm),
-                    )
-                }
-            }
-        }
+        Text(
+            ChangesL.editedFiles.format(summary.total),
+            color = Dsh.labelPrimary,
+            style = DshType.body,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(DshSpace.s8))
+        DiffStat(summary.added, summary.deleted)
+        Spacer(Modifier.width(DshSpace.s6))
+        Icon(
+            ChevronRightOutline16,
+            contentDescription = null,
+            tint = Dsh.labelTertiary,
+            modifier = Modifier.size(DshIconSize.sm),
+        )
     }
 }
 

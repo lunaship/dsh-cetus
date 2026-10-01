@@ -34,7 +34,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -63,8 +62,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.ui.DshGlassTier
-import dev.deeplinks.native.ui.dshGlass
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
@@ -76,6 +73,10 @@ import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
 import dev.deeplinks.native.util.chatCanvasKind
+import dev.deeplinks.native.ui.dshEdgeFade
+import dev.deeplinks.native.ui.DshEdgeFadeEdge
+import dev.deeplinks.native.util.composerSuggestionVisible
+import dev.deeplinks.native.util.lastGroupEndedAssistant
 import dev.deeplinks.native.util.ChatCanvasKind
 import dev.deeplinks.native.util.localHideAfterRemote
 import dev.deeplinks.native.util.forkAccepted
@@ -2176,17 +2177,21 @@ fun WorkspaceScreen(
                     },
                 )
             }
-            val menuWithSubagents = remember(topBarMenuItems, activeSubagentCount) {
-                if (activeSubagentCount > 0) {
-                    listOf(DshMenuItem(
-                        icon = AgentPresetOutline16,
-                        label = L.subagentCount.format(activeSubagentCount),
-                        onClick = { headerMenuOpen = false; showSubagentSheet = true },
-                    )) + topBarMenuItems
-                } else topBarMenuItems
+            // L6：菜单首项 = 查看轨迹 / 返回对话（随视图切换），其后是子智能体与既有条目
+            val menuWithSubagents = remember(topBarMenuItems, activeSubagentCount, viewMode) {
+                buildTopBarMenu(
+                    viewMode = viewMode,
+                    topBarMenuItems = topBarMenuItems,
+                    activeSubagentCount = activeSubagentCount,
+                    onToggleViewMode = {
+                        headerMenuOpen = false
+                        selectViewMode(if (viewMode == "trace") "chat" else "trace")
+                    },
+                    onOpenSubagents = { headerMenuOpen = false; showSubagentSheet = true },
+                )
             }
-            // ===== 顶部 chrome（半透明悬浮）：顶栏 + 横幅 + 吸顶摘要 =====
-            Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
+            // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
+            Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop, paintGlass = false)) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 WorkspaceTopBar(
                     running = running,
@@ -2210,9 +2215,6 @@ fun WorkspaceScreen(
                         showPhoneSessions()
                     }
                 },
-                viewMode = viewMode,
-                showViewModeTabs = currentSessionId != null,
-                onSelectViewMode = ::selectViewMode,
                 subagentCount = activeSubagentCount,
                 onOpenSubagents = { showSubagentSheet = true },
                 menuExpanded = headerMenuOpen,
@@ -2249,6 +2251,7 @@ fun WorkspaceScreen(
                 ChatStickySummary(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl.goal.value, workspaceViewModel.sessionControl)
             }
             } // 顶部 chrome 结束
+            WorkspaceEdgeFades(topHeight = topChromeDp, bottomHeight = bottomChromeDp + DshSpace.s24)
 
             // 消息流 + 悬浮「回到底部」：weight 加在容器（Column 直接子级）上，
             // 悬浮按钮盖在列表之上；框内 LazyColumn 用 fillMaxSize 填满 Box。
@@ -2545,14 +2548,8 @@ fun WorkspaceScreen(
                     .imePadding()
                     .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
                     .padding(bottom = 8.dp)
-                    .dshGlass(
-                        tier = DshGlassTier.Floating,
-                        backdrop = chrome.backdrop,
-                        shape = RoundedCornerShape(DshRadius.modal),
-                    )
-                    .padding(horizontal = COMPOSER_ISLAND_INNER_CLEARANCE)
-                    .padding(top = DshSpace.s6)
-                    // 键盘弹起时输入区上移，Snackbar 底部让位随之跟随
+                    // L12：输入行是两块独立玻璃（InputBar 内部）；座位行 / 建议行直接浮在内容上，
+                    // 由底部渐隐托底——PR3 的整块浮岛外圈玻璃取消
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
@@ -2561,14 +2558,27 @@ fun WorkspaceScreen(
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
                     QueuedPromptsStrip(workspaceViewModel.sessionControl, { restored -> inputText = if (inputText.isBlank()) restored else inputText + "\n" + restored }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
-                    ComposerContextStrip(
-                        modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
-                        // 用电脑可达性而非 SSE 连接态：SSE 重连时已有重连横幅，不能再叠一条「电脑离线」
+                    // 建议行（4.3）：继续 / 复核 / 查看改动 (N)；离线时此处显示「电脑离线」灰字。
+                    // 快捷胶囊只预填、不发送（L8）。
+                    ComposerSuggestionsRow(
                         online = hostReachable,
-                        changes = pinnedChanges,
+                        suggestionsVisible = composerSuggestionVisible(
+                            viewMode = viewMode,
+                            running = running,
+                            lastGroupEndedAssistant = lastGroupEndedAssistant(messages, running),
+                            inputBlank = inputText.isBlank() && pendingImages.isEmpty(),
+                            pendingBlocked = homePendingApproval != null,
+                            online = hostReachable,
+                        ),
+                        changesCount = pinnedChanges?.total?.takeIf { it > 0 },
+                        onSuggestion = { text ->
+                            inputText = text
+                            if (composerFocusShouldEmit(ComposerFocusSource.CommandInsert)) composerFocusToken++
+                        },
                         onOpenChanges = {
                             pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } }
                         },
+                        modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                     )
                 }
                 // 发送主体在 WorkspaceScreen 顶层赋值（新任务面板与输入卡共用同一条路径）。
@@ -2654,6 +2664,7 @@ fun WorkspaceScreen(
                 actionError = composerActionError,
                 composerFocusRequester = composerFocusRequester,
                 focusToken = composerFocusToken,
+                backdrop = chrome.backdrop,
                 onSend = {
                     // 不可逆权限升级：无论从哪个入口触发，都不直发，先走二次确认。
                     if (isDangerPermissionCommand(inputText)) {
@@ -2991,4 +3002,35 @@ fun WorkspaceScreen(
             onDismiss = { showFileBrowser = false },
         )
     }
+}
+
+/** 顶部 / 底部边缘渐隐（4.5.3）：聊天画布 bgCard，zIndex 低于悬浮 chrome、高于内容层。 */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.WorkspaceEdgeFades(topHeight: androidx.compose.ui.unit.Dp, bottomHeight: androidx.compose.ui.unit.Dp) {
+    Box(
+        Modifier
+            .align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .height(topHeight)
+            .zIndex(0.5f)
+            .dshEdgeFade(
+                edge = DshEdgeFadeEdge.Top,
+                visible = true,
+                canvasColor = Dsh.bgCard,
+                height = topHeight,
+            ),
+    )
+    Box(
+        Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .height(bottomHeight)
+            .zIndex(0.5f)
+            .dshEdgeFade(
+                edge = DshEdgeFadeEdge.Bottom,
+                visible = true,
+                canvasColor = Dsh.bgCard,
+                height = bottomHeight,
+            ),
+    )
 }

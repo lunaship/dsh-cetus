@@ -492,6 +492,8 @@ internal fun LazyListScope.chatMessageItems(
     }
     val turnEnds = turnEndAssistantIds(groups, isRunning)
     val foldedGroups = foldToolCalls(groups, viewMode = "chat")
+    // 轮尾元信息的模型名（4.3）：只认本轮出现过的模型切换标记，不伪造逐条模型字段
+    val turnModelById = turnEndModelLabels(foldedGroups, turnEnds)
     val rows = chatFeedRows(foldedGroups, isRunning)
     items(
         items = rows,
@@ -533,6 +535,7 @@ internal fun LazyListScope.chatMessageItems(
                         onFetchProducedFile = actions.onFetchProducedFile(group.msg),
                         onOpenChanges = actions.openChanges,
                         showActions = group.msg.id in turnEnds,
+                        turnModelLabel = turnModelById[group.msg.id],
                         isTurnEnd = row.isTurnEnd,
                         textPart = row.part,
                         isLastPart = row.partIndex == row.partCount - 1,
@@ -582,3 +585,24 @@ internal fun chatFeedRows(foldedGroups: List<MessageGroup>, isRunning: Boolean):
 private fun splittableAssistant(msg: MobileMessage): Boolean =
     msg.role == "assistant" && !isRawFallback(msg) &&
         !isContextInjectionText(msg.text) && !isModelChangedNotice(msg.text)
+
+/** 每条轮末助手回复 → 本轮最近一次模型切换的模型名（util.isModelChangedNotice 口径）。 */
+internal fun turnEndModelLabels(
+    foldedGroups: List<MessageGroup>,
+    turnEnds: Set<String>,
+): Map<String, String> {
+    if (turnEnds.isEmpty()) return emptyMap()
+    val out = mutableMapOf<String, String>()
+    var current: String? = null
+    for (group in foldedGroups) {
+        val msg = (group as? MessageGroup.Single)?.msg ?: continue
+        when {
+            msg.role == "user" -> current = null
+            msg.role == "system_notice" || isModelChangedNotice(msg.text) ->
+                current = dev.deeplinks.native.util.modelChangedFrom(msg.text) ?: current
+            msg.role == "assistant" && msg.id in turnEnds ->
+                current?.let { out[msg.id] = it }
+        }
+    }
+    return out
+}

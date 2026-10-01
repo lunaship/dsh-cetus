@@ -32,3 +32,33 @@ internal fun workspaceHeaderMenuItems(
     // 危险操作放最底一行，前面加分隔线
     add(DshMenuItem(TrashOutline16, L.deleteSession, danger = true, dividerBefore = true) { onCloseMenu(); onDelete() })
 }
+
+/**
+ * 顶栏「⋯」菜单（2026-10-02 L6）：首项 = 查看轨迹 / 返回对话（文字随当前视图切换），
+ * 有子智能体时第二项是子智能体入口（小圆点提示在按钮上），其后是既有条目。
+ */
+internal fun buildTopBarMenu(
+    viewMode: String,
+    topBarMenuItems: List<DshMenuItem>,
+    activeSubagentCount: Int,
+    onToggleViewMode: () -> Unit,
+    onOpenSubagents: () -> Unit,
+): List<DshMenuItem> = buildList {
+    add(
+        DshMenuItem(
+            icon = ListPenOutline16,
+            label = dev.deeplinks.native.util.viewModeToggleLabel(viewMode, L.viewInTrace, L.showChat),
+            onClick = onToggleViewMode,
+        ),
+    )
+    if (activeSubagentCount > 0) {
+        add(
+            DshMenuItem(
+                icon = AgentPresetOutline16,
+                label = L.subagentCount.format(activeSubagentCount),
+                onClick = onOpenSubagents,
+            ),
+        )
+    }
+    addAll(topBarMenuItems)
+}

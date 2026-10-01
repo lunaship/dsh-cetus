@@ -98,6 +98,8 @@ internal fun MessageItem(
     onOpenChanges: ((seq: Long, fileIndex: Int?) -> Unit)? = null,
     /** 复制 / 赞踩 / 时间一行：只在一轮的最后一条回复上显示。 */
     showActions: Boolean = true,
+    /** 本轮发生过模型切换时，轮尾元信息行前缀的模型名（不伪造逐条模型字段）。 */
+    turnModelLabel: String? = null,
     /** 本条是否是一轮末尾：只控制操作行显示；长按菜单对所有已完成文本消息开放。 */
     isTurnEnd: Boolean = false,
     /** 长回复拆行后本行渲染的 Markdown 片段；null 表示整条。菜单 / 复制始终针对整条消息。 */
@@ -194,43 +196,42 @@ internal fun MessageItem(
                             enter = fadeIn(animationSpec = tween(motionDuration(400))),
                             exit = fadeOut(animationSpec = tween(motionDuration(150))),
                         ) {
+                            // 2026-10-02 Lody 简化 4.3：轮尾一行灰字元信息「[模型名 ·] 时间 · 耗时」，
+                            // 复制 / 分支 / 赞踩收进行尾 ⋯ 菜单（沿用既有长按菜单锚点）。
                             val meta = remember(msg.durationMs) {
                                 buildAnswerMeta(msg.durationMs)
                             }
+                            val clock = formatClockTime(msg.time)
+                            val tail = listOfNotNull(
+                                turnModelLabel?.takeIf { it.isNotBlank() },
+                                clock.takeIf { it.isNotBlank() },
+                                meta?.let { answerMetaSummary(it) }?.takeIf { it.isNotBlank() },
+                            ).joinToString(" · ")
                             Row(
-                                modifier = Modifier.padding(top = DshSpace.s6),
+                                modifier = Modifier
+                                    .padding(top = DshSpace.s6)
+                                    .fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
                             ) {
-                                    MessageActionIcon(
-                                        icon = CopyOutline16,
-                                        contentDescription = L.copy,
-                                        onClick = onCopy,
+                                if (tail.isNotBlank()) {
+                                    Text(
+                                        tail,
+                                        color = Dsh.labelTertiary,
+                                        style = DshType.microRelaxed,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f),
                                     )
-                                    // 方案 5.2：轮末行只留复制与分叉；赞踩移入长按菜单
-                                    MessageActionIcon(
-                                        icon = BranchOutline16,
-                                        contentDescription = L.forkSession,
-                                        onClick = onFork,
-                                    )
-                                    // 行尾轻量 meta：钟点时间 + 这条回复自己的耗时（对齐 Web 助手行末尾）；
-                                    // 会话累计用量只在输入卡上方的上下文条，不在每条回复里重复。
-                                    val clock = formatClockTime(msg.time)
-                                    val tail = listOfNotNull(
-                                        clock.takeIf { it.isNotBlank() },
-                                        meta?.let { answerMetaSummary(it) }?.takeIf { it.isNotBlank() },
-                                    ).joinToString(" · ")
-                                    if (tail.isNotBlank()) {
-                                        Text(
-                                            tail,
-                                            color = Dsh.labelTertiary,
-                                            style = DshType.microRelaxed,
-                                            maxLines = 1,
-                                            modifier = Modifier.padding(start = DshSpace.s6),
-                                        )
-                                    }
+                                } else {
+                                    Spacer(Modifier.weight(1f))
                                 }
+                                MessageActionIcon(
+                                    icon = EllipsisOutline16,
+                                    contentDescription = L.moreActions,
+                                    onClick = { menuOpen = true },
+                                )
                             }
+                        }
                     }
                 }
             }
@@ -957,7 +958,8 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
                     bottomStart = DshRadius.composer,
                     bottomEnd = DshRadius.control
                 ))
-                .background(Dsh.bgSubtle)
+                // L5：用户气泡改浅品牌蓝（brand400 低透明度叠 bgCard 的预合成色）
+                .background(Dsh.userBubble)
                 .padding(horizontal = DshSpace.s16, vertical = 10.dp)
         ) {
             Text(
