@@ -104,6 +104,7 @@ internal fun InputBar(
     modelName: String?,
     modelEffort: String?,
     sessionStats: MobileSessionStats?,
+    onOpenUsage: (() -> Unit)? = null,
     permissionPreset: String,
     permissionLabel: String,
     compact: Boolean = false,
@@ -154,7 +155,7 @@ internal fun InputBar(
             }
             val meterStats = sessionStats
             if (!compact && meterStats != null && meterStats.contextWindow > 0) {
-                ContextMeterButton(stats = meterStats, running = running)
+                ContextMeterButton(stats = meterStats, running = running, onOpenUsage = onOpenUsage)
             }
         }
 

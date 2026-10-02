@@ -7,7 +7,7 @@ import dev.deeplinks.core.scheduledTasks
  * 顶栏「更多操作」菜单项（从 WorkspaceScreen 抽出，COM-001 拆解）。
  *
  * 纯列表构建：只接收状态与回调，不持有业务逻辑、不做 IO。
- * 2026-09-30 C1 精简：最多 5 项——重命名 / 浏览文件（按能力）/ 分享 / 归档 / 删除。
+ * 2026-09-30 C1 精简后加上用量：重命名 / 用量 / 浏览文件（按能力）/ 分享 / 归档 / 删除。
  * 工具查找、跳转轮次、复制标题、设备入口、分叉都从溢出菜单移除（子智能体入口移入溢出菜单第一项）。
  * 插件支持会话控制（capabilities.control）时多一项「定时任务」。
  */
@@ -17,12 +17,14 @@ internal fun workspaceHeaderMenuItems(
     onBrowseFiles: () -> Unit,
     onRename: () -> Unit,
     onShare: () -> Unit,
+    onUsage: () -> Unit = {},
     onArchive: () -> Unit,
     canSchedules: Boolean = false,
     onSchedules: () -> Unit = {},
     onDelete: () -> Unit,
 ): List<DshMenuItem> = buildList {
     add(DshMenuItem(EditOutline16, L.renameSession) { onCloseMenu(); onRename() })
+    add(DshMenuItem(DataOutline16, L.translation("usageOpen")) { onCloseMenu(); onUsage() })
     if (canBrowseFiles) {
         add(DshMenuItem(FolderOpenOutline16, L.browseFiles) { onCloseMenu(); onBrowseFiles() })
     }

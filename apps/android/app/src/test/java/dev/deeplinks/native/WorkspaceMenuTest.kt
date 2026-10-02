@@ -9,7 +9,7 @@ import org.junit.Test
 /**
  * 顶栏「更多操作」菜单的纯逻辑测试。
  *
- * C1（2026-09-30）把菜单精简到最多 5 项：重命名 / 浏览文件（按能力）/ 分享 / 归档 / 删除。
+ * C1（2026-09-30）精简后加上用量：重命名 / 用量 / 浏览文件（按能力）/ 分享 / 归档 / 删除。
  * 工具查找、跳转轮次、复制标题、设备入口、分叉都移除；子智能体挪到 Tab 行右侧。
  */
 class WorkspaceMenuTest {
@@ -28,6 +28,7 @@ class WorkspaceMenuTest {
         onBrowseFiles = { ctx.log += "browseFiles" },
         onRename = { ctx.log += "rename" },
         onShare = { ctx.log += "share" },
+        onUsage = { ctx.log += "usage" },
         onArchive = { ctx.log += "archive" },
         canSchedules = schedules,
         onSchedules = { ctx.log += "schedules" },
@@ -35,17 +36,20 @@ class WorkspaceMenuTest {
     )
 
     @Test
-    fun baseMenuHasFourActionsWithoutFileBrowsing() {
-        assertEquals(4, menu(Ctx()).size)
+    fun baseMenuHasFiveActionsWithoutFileBrowsing() {
+        val items = menu(Ctx())
+        assertEquals(5, items.size)
+        assertEquals(L.translation("usageOpen"), items[1].label)
     }
 
     @Test
     fun browseFilesAppearsOnlyWhenPluginSupportsTree() {
-        assertEquals(5, menu(Ctx(), browseFiles = true).size)
+        assertEquals(6, menu(Ctx(), browseFiles = true).size)
         val items = menu(Ctx(), browseFiles = true)
         assertEquals(L.renameSession, items[0].label)
-        assertEquals(L.browseFiles, items[1].label)
-        assertEquals(L.shareConversation, items[2].label)
+        assertEquals(L.translation("usageOpen"), items[1].label)
+        assertEquals(L.browseFiles, items[2].label)
+        assertEquals(L.shareConversation, items[3].label)
     }
 
     @Test
@@ -77,7 +81,7 @@ class WorkspaceMenuTest {
     fun scheduledTasksAppearOnlyWithSessionControl() {
         val ctx = Ctx()
         val items = menu(ctx, schedules = true)
-        assertEquals(5, items.size)
+        assertEquals(6, items.size)
         val entry = items.first { it.label == dev.deeplinks.core.L.scheduledTasks }
         entry.onClick()
         assertEquals(listOf("close", "schedules"), ctx.log)
