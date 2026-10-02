@@ -765,6 +765,60 @@ const createPanelModule = (require) => {
     )
   }
 
+  function PreviewGroup({ previews, actions }) {
+    const [port, setPort] = React.useState('')
+    const [label, setLabel] = React.useState('')
+    const [error, setError] = React.useState('')
+    const [busy, setBusy] = React.useState(false)
+    const rows = previews ?? []
+    const now = useNow(rows.length > 0)
+    const submit = (e) => {
+      e.preventDefault()
+      setBusy(true)
+      setError('')
+      actions.approvePreview({ port: Number(port), label: label.trim() })
+        .then(() => { setPort(''); setLabel('') })
+        .catch((err) => setError(String(err?.message ?? err)))
+        .finally(() => setBusy(false))
+    }
+    return h(Group, { title: '预览端口' },
+      h('form', { className: 'dl-form', onSubmit: submit },
+        h('label', { className: 'dl-field-label', htmlFor: 'dl-preview-port' }, '端口'),
+        h('input', {
+          id: 'dl-preview-port', className: 'dl-field', inputMode: 'numeric', value: port, autoComplete: 'off',
+          placeholder: '5173', onChange: (e) => setPort(e.target.value),
+        }),
+        h('label', { className: 'dl-field-label', htmlFor: 'dl-preview-label' }, '名称'),
+        h('input', {
+          id: 'dl-preview-label', className: 'dl-field', value: label, maxLength: 80, autoComplete: 'off',
+          placeholder: '例如 Vite', onChange: (e) => setLabel(e.target.value),
+        }),
+        error ? h('p', { className: 'dl-form-error', role: 'alert' }, error) : null,
+        h('div', { className: 'dl-form-actions' },
+          h('button', {
+            type: 'submit', className: 'dl-btn is-primary',
+            disabled: busy || !port.trim() || !label.trim(),
+          }, busy ? '正在添加…' : '添加'),
+        ),
+        h('p', { className: 'dl-note' }, '只转发到本机 127.0.0.1，默认 2 小时后失效。SSH 和数据库端口不能添加。手机上不能批准。'),
+      ),
+      rows.length === 0
+        ? h('div', { className: 'dl-empty' }, '还没有批准的预览端口。')
+        : rows.map((item) => h(Row, {
+          key: item.previewId,
+          title: item.label,
+          desc: joinParts([
+            `127.0.0.1:${item.port}`,
+            `剩余 ${formatCountdown((item.expiresAt ?? now) - now)}`,
+          ]),
+          actions: h('button', {
+            type: 'button', className: 'dl-btn is-revoke',
+            onClick: () => actions.revokePreview(item.previewId),
+          }, '撤销'),
+        })),
+    )
+  }
+
   function ExposureNote({ exposure }) {
     if (exposure?.level !== 'untrusted' || !exposure.warning) return null
     return h('p', { className: 'dl-banner is-danger' }, exposure.warning)
@@ -780,7 +834,7 @@ const createPanelModule = (require) => {
   }
 
   function usePanelData(active) {
-    const [data, setData] = React.useState({ info: null, devices: [], workspaceApprovals: [], remote: null })
+    const [data, setData] = React.useState({ info: null, devices: [], workspaceApprovals: [], remote: null, previews: [] })
     const [err, setErr] = React.useState('')
     // pair-info 503(proxy_not_ready) = HTTPS 还没 listen；有限重试后给出明确失败
     const [starting, setStarting] = React.useState(false)
@@ -802,14 +856,14 @@ const createPanelModule = (require) => {
         }
         if (!resInfo.ok) throw new Error(`HTTP ${resInfo.status}`)
         startRetries.current = 0
-        const [resDevices, resApprovals, resRemote] = await Promise.all([
-          fetch('/dsh-link/devices'), fetch('/dsh-link/workspace-approvals'), fetch('/dsh-link/remote-status'),
+        const [resDevices, resApprovals, resRemote, resPreviews] = await Promise.all([
+          fetch('/dsh-link/devices'), fetch('/dsh-link/workspace-approvals'), fetch('/dsh-link/remote-status'), fetch('/dsh-link/previews'),
         ])
-        if (!resDevices.ok || !resApprovals.ok) throw new Error(`HTTP ${resDevices.status}/${resApprovals.status}`)
-        const [info, devices, approvals, remote] = await Promise.all([
-          resInfo.json(), resDevices.json(), resApprovals.json(), resRemote.ok ? resRemote.json() : null,
+        if (!resDevices.ok || !resApprovals.ok || !resPreviews.ok) throw new Error(`HTTP ${resDevices.status}/${resApprovals.status}`)
+        const [info, devices, approvals, remote, previewBody] = await Promise.all([
+          resInfo.json(), resDevices.json(), resApprovals.json(), resRemote.ok ? resRemote.json() : null, resPreviews.json(),
         ])
-        setData({ info, devices: devices.devices ?? [], workspaceApprovals: approvals.approvals ?? [], remote })
+        setData({ info, devices: devices.devices ?? [], workspaceApprovals: approvals.approvals ?? [], remote, previews: previewBody.previews ?? [] })
         setStarting(false)
         setErr('')
       } catch (e) {
@@ -845,6 +899,8 @@ const createPanelModule = (require) => {
       remoteDisable: () => after(postJson('/dsh-link/remote-disable', {})),
       remoteTest: () => postJson('/dsh-link/remote-test', {}),
       remoteReset: () => after(postJson('/dsh-link/remote-reset-identity', { confirm: true })),
+      approvePreview: (body) => postJson('/dsh-link/previews', body).finally(load),
+      revokePreview: (previewId) => after(postJson('/dsh-link/previews/revoke', { previewId }).catch(() => {})),
     }
     return { ...data, err, starting, load, actions }
   }
@@ -852,7 +908,7 @@ const createPanelModule = (require) => {
   // ─── 组装 ────────────────────────────────────────────────────────────────
 
   function PanelBody(pair) {
-    const { info, devices, workspaceApprovals, remote, err, starting, load, actions } = pair
+    const { info, devices, workspaceApprovals, remote, previews, err, starting, load, actions } = pair
     if (starting) return h('div', { className: 'dl-status' }, '手机连接正在启动…')
     if (err) return h('div', { className: 'dl-status is-error' }, `加载失败：${err}`)
     if (!info) return h('div', { className: 'dl-status' }, '加载中…')
@@ -861,6 +917,7 @@ const createPanelModule = (require) => {
       h(PairGroup, { info, remote, onExpired: load, onRequireConfirm: actions.setRequireConfirm }),
       h(RemoteGroup, { remote, actions }),
       h(DevicesGroup, { devices, remote, actions }),
+      h(PreviewGroup, { previews, actions }),
       h(DiagnosticsGroup, {}),
       h(ExposureNote, { exposure: info.exposure }),
     )

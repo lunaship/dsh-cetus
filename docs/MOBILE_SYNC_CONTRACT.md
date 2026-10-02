@@ -27,6 +27,8 @@
 
 `capabilities.events: { host: true }` 表示可以订阅 `GET /dsh-link/mobile/events`（设备 token，SSE）。事件只有会话级状态，不包含消息正文和工具参数：`id` 为单调 seq，`event: session/state`，正文 `{ type, sessionId, state, title, origin, seq }`。`state` 为 `running` / `awaitingApproval` / `awaitingInput` / `completed` / `failed` / `stopped`，`origin` 为 `user` / `subagent` / `schedule`。DSH 没有全局会话事件时，插件只在有订阅者的情况下每 5 秒对 `session.list` 做差分。心跳为 25 秒的 `event: heartbeat`。请求带 `Last-Event-ID`：缓冲里接得上就补发，接不上发 `event: resync-required`。旧 App 忽略该能力。
 
+`capabilities.preview: { v: 1 }` 表示可以列已批准的本机预览，见下方「开发服务器预览」。旧 App 忽略该字段。手机不能批准端口。
+
 `archivedSessionIds` 与 Web 的工作区归档集合保持一致；Web 恢复会话后，该 id 也必须从 App 的归档集合移除。App 的本机恢复仅是用户明确选择的临时覆盖，不能把服务端新归档的会话重新带回侧边栏。`sessions` 仍保留完整会话行，供设置页恢复；App 在冷启动选择会话前先应用该集合，因此已在 Web 删除的会话不会短暂出现在 App 侧边栏或被自动选中。该集合是快照字段，不代表底层会话日志已被物理删除。
 
 `GET /dsh-link/mobile/sessions` 也返回同名 `archivedSessionIds`。App 的后台会话刷新必须先应用该集合，再更新列表和当前选择，避免列表请求与工作区请求之间产生短暂不一致。
@@ -223,6 +225,18 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 - 面板额外有 `listen.addresses`（按 private / tailnet / other / loopback 计数，不回地址本身）。
 - `host.rpc` 只读调用已在白名单内的 `workspace.list`，超时预算 800ms。`remote.relay` 只读现有中继状态，不新发探测。未开启远程的 code 是 `REMOTE_DISABLED`（status `fail`）。证书剩余天数不足 30 为 `TLS_CERT_EXPIRING`（`warn`）。
 - 旧 App 不调用该路径也能正常使用其他接口。
+
+## 开发服务器预览（`capabilities.preview`）
+
+批准只在电脑的回环面板完成：`POST /dsh-link/previews`（端口和名称），`POST /dsh-link/previews/revoke`。这两条不出现在 18640。手机 API 没有批准端口的接口。
+
+`GET /dsh-link/mobile/previews`（设备 token）返回未过期的 `{ previewId, label, port, expiresAt }`。默认 2 小时过期。
+
+`/dsh-link/mobile/preview/:previewId/*`（设备 token）把 HTTP 和 WebSocket 转到 `127.0.0.1:<port>`。`previewId` 是随机 id，不是端口号。转发时改写 `Host` / `Origin` 为 `localhost:<port>`，去掉 hop-by-hop 头和设备 token。单次响应超过 50 MB 截断。空闲 60 秒断开。插件不记录路径和正文，只计访问次数。
+
+即使记录里有这个端口，下列端口也会被拒绝：22、3306、5432、6379、11211、27017、9200，以及插件端口和 DSH Host 端口。撤销会立刻断开已经打开的连接。
+
+页面里写死的 `http://localhost:<port>` 绝对地址不会被改写成预览路径。Vite / Next 的热更新如果使用当前页面的 host，走的是这条预览连接。
 
 ## 错误与重试
 

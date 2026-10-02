@@ -44,6 +44,8 @@ export function pluginCapabilities({ changes = false } = {}) {
     diagnostics: { v: 1 },
     // 主机级会话状态流。旧 App 忽略未知字段，仍只订阅单个会话。
     events: { host: true },
+    // 已批准的本机预览端口。旧 App 忽略未知字段。手机不能批准端口。
+    preview: { v: 1 },
   }
 }
 
