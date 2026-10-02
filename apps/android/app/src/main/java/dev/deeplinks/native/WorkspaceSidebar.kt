@@ -224,7 +224,6 @@ internal fun WorkspaceSidebar(
                     }
             }
 
-            // 顶部 / 底部渐隐（4.5.3；v3 渐进模糊）：内容滚到边缘下方才出现；不进采样源
             DshEdgeFades(topFadeHeight, bottomFadeHeight, homeScrolled, homeNotAtBottom, containerColor, chrome.backdrop)
 
             // 顶部悬浮区（无玻璃条）：顶栏胶囊 + 崩溃横幅 + 搜索框 + 离线卡
@@ -316,6 +315,7 @@ private fun HomeTopChrome(
                 )
                 HomeCrashBanner()
             }
+            HomeBalanceBanner(onOpenSettings = onOpenSettings)
             AnimatedVisibility(
                 visible = sidebarSearchOpen,
                 enter = fadeIn(tween(motionDuration(150))) + expandVertically(tween(motionDuration(180), easing = FastOutSlowInEasing)),

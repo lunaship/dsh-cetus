@@ -153,7 +153,11 @@ internal fun ModelsSettingsPage(
         launch(Dispatchers.IO) {
             val result = runCatching { client.getBalance(locale) }
             withContext(Dispatchers.Main) {
-                result.onSuccess { balance = it; balanceError = null }
+                result.onSuccess {
+                    balance = it
+                    balanceError = null
+                    BalanceSnapshot.put(dev.deeplinks.core.appSettingsHostCacheId(host), it)
+                }
                     .onFailure { e ->
                         balanceError = if (isPluginTooOld(e)) s.pluginTooOld else e.message?.takeIf { it.isNotBlank() } ?: s.loadFailed
                     }
@@ -231,6 +235,7 @@ internal fun ModelsSettingsPage(
             onClick = if (host != null) ({ showDefaultPicker = true }) else null,
         )
     }
+    ModelTierSettings(host, llmGroups)
 
     // ── 余额 ──
     DshListSection(
@@ -259,6 +264,7 @@ internal fun ModelsSettingsPage(
             else -> DshListNote(s.balanceHostTooOld)
         }
     }
+    BalanceAlertSettings(host)
 
     // ── 供应商 ──
     val dir = directory
