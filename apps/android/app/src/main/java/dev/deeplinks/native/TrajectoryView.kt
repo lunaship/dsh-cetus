@@ -4,14 +4,6 @@ import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
-
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -33,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,15 +44,31 @@ import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
 import java.util.Locale
-
-// ---------- 轨迹视图（对齐 DSH Web 轨迹：工具栏 + 时间线 + 表格式行） ----------
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import dev.deeplinks.core.traceCalls
+import dev.deeplinks.core.traceEditKind
+import dev.deeplinks.core.traceErrorKind
+import dev.deeplinks.core.traceFilterAll
+import dev.deeplinks.core.traceFilterError
+import dev.deeplinks.core.traceMinutes
+import dev.deeplinks.core.traceRound
+import dev.deeplinks.core.traceRounds
+import dev.deeplinks.core.traceRunning
+import dev.deeplinks.core.traceSeconds
+import dev.deeplinks.native.ui.v4.DlChip
+import dev.deeplinks.native.ui.v4.DlChipStyle
+import dev.deeplinks.native.ui.v4.DlLabelStrong
+import dev.deeplinks.native.ui.v4.DlSpinner
+import java.text.SimpleDateFormat
+import java.util.Date
 
 internal fun formatTraceDuration(ms: Long): String = when {
     ms >= 1000 -> String.format(Locale.US, "+%.1fs", ms / 1000.0)
     else -> "+" + ms + "ms"
 }
 
-private fun traceIsError(msg: MobileMessage): Boolean {
+internal fun traceIsError(msg: MobileMessage): Boolean {
     val outcome = msg.outcome
     if (outcome != null && outcome != "ok" && outcome != "completed" && outcome != "accepted") return true
     return msg.text.contains("\"isError\":true")
@@ -96,13 +102,13 @@ private fun traceRoleVisual(role: String): TraceRoleVisual = when (role) {
 }
 
 /** 一行 = 一次工具调用（+ 紧随其后的结果）或一条独立消息。 */
-private data class TraceRow(
+internal data class TraceRow(
     val key: String,
     val primary: MobileMessage,
     val result: MobileMessage?,
 )
 
-private fun buildTraceRows(steps: List<MobileMessage>): List<TraceRow> {
+internal fun buildTraceRows(steps: List<MobileMessage>): List<TraceRow> {
     val out = mutableListOf<TraceRow>()
     var i = 0
     while (i < steps.size) {
@@ -121,7 +127,7 @@ private fun buildTraceRows(steps: List<MobileMessage>): List<TraceRow> {
     return out
 }
 
-private data class TraceTurn(
+internal data class TraceTurn(
     val index: Int,
     val header: MobileMessage?,
     val steps: List<MobileMessage>,
@@ -131,7 +137,7 @@ private data class TraceTurn(
 internal fun isTraceTurnStart(msg: MobileMessage): Boolean =
     msg.role == "user" && traceDisplayRole(msg) == "user"
 
-private fun groupTraceTurns(messages: List<MobileMessage>): List<TraceTurn> {
+internal fun groupTraceTurns(messages: List<MobileMessage>): List<TraceTurn> {
     if (messages.isEmpty()) return emptyList()
     val turns = mutableListOf<TraceTurn>()
     var current = mutableListOf<MobileMessage>()
@@ -158,6 +164,61 @@ private fun traceDurations(messages: List<MobileMessage>): Map<String, Long?> {
     return out
 }
 
+/** 轨迹页的筛选 chip（v4 4.7）。 */
+internal enum class TraceFilter { All, Tool, Thinking, Result, Error }
+
+internal fun traceRowIsError(row: TraceRow): Boolean =
+    traceIsError(row.primary) || (row.result?.let { traceIsError(it) } == true)
+
+internal fun traceRowMatches(row: TraceRow, filter: TraceFilter, query: String): Boolean {
+    val kindOk = when (filter) {
+        TraceFilter.All -> true
+        TraceFilter.Tool -> row.primary.role == "tool_call"
+        TraceFilter.Thinking -> row.primary.role == "reasoning"
+        TraceFilter.Result -> row.primary.role in TRACE_RESULT_ROLES
+        TraceFilter.Error -> traceRowIsError(row)
+    }
+    if (!kindOk) return false
+    if (query.isBlank()) return true
+    return listOfNotNull(row.primary.text, row.primary.toolName, row.primary.toolArgs, row.result?.text)
+        .any { it.contains(query, ignoreCase = true) }
+}
+
+private val TRACE_RESULT_ROLES = setOf("assistant", "tool_result", "produced_files", ROLE_WORKSPACE_CHANGES)
+
+/** 顶栏第二行：「12 轮 · 86 次调用 · 14 分钟」。没有时间戳就不写分钟。 */
+internal fun traceSummaryLine(messages: List<MobileMessage>): String {
+    val rounds = groupTraceTurns(messages).size
+    val calls = messages.count { it.role == "tool_call" }
+    val times = messages.map { it.time }.filter { it > 0 }
+    val minutes = if (times.size >= 2) ((times.max() - times.min()) / 60_000L).toInt() else null
+    return listOfNotNull(
+        L.traceRounds.format(rounds),
+        L.traceCalls.format(calls),
+        minutes?.let { L.traceMinutes.format(it) },
+    ).joinToString(" · ")
+}
+
+/** 工具调用行的标题：命令 / 路径 / 关键词，拿不到就用工具名。 */
+internal fun traceToolTitle(msg: MobileMessage): String {
+    approvalCommand(msg.toolArgs)?.let { return it }
+    val args = msg.toolArgs?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
+    val hint = listOf("file_path", "path", "pattern", "query", "url")
+        .firstNotNullOfOrNull { key -> args?.optString(key)?.takeIf { it.isNotBlank() } }
+    return hint ?: msg.toolName ?: L.toolFallbackName
+}
+
+private fun firstLine(text: String): String = text.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+
+private fun isEditTool(name: String?): Boolean {
+    val n = name?.lowercase() ?: return false
+    return "edit" in n || "write" in n || "patch" in n
+}
+
+/**
+ * v4 4.7 轨迹二级页：搜索 + 筛选 chip + 按轮分组（新的在上）。
+ * 每行是图标 + 标题 + 「类别 · 摘要」，点开看参数与结果。
+ */
 @Composable
 internal fun TrajectoryView(
     messages: List<MobileMessage>,
@@ -165,122 +226,28 @@ internal fun TrajectoryView(
     elapsedSec: Long,
     modifier: Modifier = Modifier,
 ) {
-    var actualDuration by remember { mutableStateOf(true) }
-    var searchOpen by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
-    // 全局开关 + 单项覆盖：会话流式增长时 turns/rows 会变化，
-    // 用布尔开关承载「全部收起/展开」，避免集合比较随列表变化而失效。
-    var allTurnsCollapsed by remember { mutableStateOf(false) }
-    var turnOverrides by remember { mutableStateOf(emptyMap<String, Boolean>()) }
-    var allCallsExpanded by remember { mutableStateOf(false) }
-    var rowOverrides by remember { mutableStateOf(emptyMap<String, Boolean>()) }
-    var focusKey by remember { mutableStateOf<String?>(null) }
-
-    val visible = remember(messages, query) {
-        if (query.isBlank()) messages
-        else messages.filter { m ->
-            m.text.contains(query, ignoreCase = true) ||
-                (m.toolName?.contains(query, ignoreCase = true) == true) ||
-                (m.toolArgs?.contains(query, ignoreCase = true) == true)
-        }
-    }
-    val turns = remember(visible) { groupTraceTurns(visible) }
-    val turnRows = remember(turns) { turns.map { it to buildTraceRows(it.steps) } }
+    var query by rememberSaveable { mutableStateOf("") }
+    var filter by rememberSaveable { mutableStateOf(TraceFilter.All) }
+    var expanded by remember { mutableStateOf(emptySet<String>()) }
+    val turns = remember(messages) { groupTraceTurns(messages).map { it to buildTraceRows(it.steps) } }
     val durations = remember(messages) { traceDurations(messages) }
-    // 收起/展开按回合首条消息 id 存，不用位置序号：搜索会重排回合编号，
-    // 位置序号会让「第 2 回合」的收起状态落到另一个回合上。
-    val isTurnCollapsed: (String) -> Boolean = { turnOverrides[it] ?: allTurnsCollapsed }
-    val isRowExpanded: (String) -> Boolean = { rowOverrides[it] ?: allCallsExpanded }
+    val errorCount = remember(turns) { turns.sumOf { (_, rows) -> rows.count(::traceRowIsError) } }
+    val lastRowKey = turns.lastOrNull()?.second?.lastOrNull()?.key
+    val visibleTurns = remember(turns, query, filter) {
+        turns.map { (turn, rows) -> turn to rows.filter { traceRowMatches(it, filter, query) } }
+            .filter { it.second.isNotEmpty() }
+            .asReversed()
+    }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxWidth()
-    ) {
-        item(key = "trace-toolbar") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = DshSpace.s12, end = DshSpace.s8, top = DshSpace.s8, bottom = DshSpace.s4),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
-            ) {
-                TraceToggle(
-                    icon = ClockOutline16,
-                    label = L.traceToolbarDuration,
-                    active = !actualDuration,
-                    onClick = { actualDuration = !actualDuration },
-                )
-                TraceToggle(
-                    icon = ChecklistOutline16,
-                    label = L.traceToolbarTurns,
-                    active = allTurnsCollapsed,
-                    onClick = {
-                        allTurnsCollapsed = !allTurnsCollapsed
-                        turnOverrides = emptyMap()
-                    },
-                )
-                TraceToggle(
-                    icon = CodeOutline16,
-                    label = L.traceToolbarCalls,
-                    active = allCallsExpanded,
-                    onClick = {
-                        allCallsExpanded = !allCallsExpanded
-                        rowOverrides = emptyMap()
-                    },
-                )
-                Spacer(Modifier.weight(1f))
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .widthIn(min = 48.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            searchOpen = !searchOpen
-                            // 收起搜索即清空关键词：不留「看不见的筛选」，列表回到全部步骤
-                            if (!searchOpen && query.isNotEmpty()) query = ""
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier.size(40.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(SearchOutline16, contentDescription = L.traceSearchPlaceholder, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
-                    }
-                }
-            }
-        }
-
-        item(key = "trace-search") {
-            AnimatedVisibility(
-                visible = searchOpen,
-                enter = expandVertically(animationSpec = tween(motionDuration(180))) + fadeIn(),
-                exit = shrinkVertically(animationSpec = tween(motionDuration(140))) + fadeOut(),
-            ) {
-                TraceSearchField(value = query, onValueChange = { query = it })
-            }
-        }
-
-        if (visible.isNotEmpty()) {
-            item(key = "trace-timeline") {
-                TraceTimeline(
-                    messages = visible,
-                    durations = durations,
-                    actualDuration = actualDuration,
-                    focusKey = focusKey,
-                    onFocus = { focusKey = if (focusKey == it) null else it },
-                )
-            }
-        }
-
-        if (messages.isEmpty()) {
-            item(key = "trace-empty") { TraceEmptyState() }
-        } else if (visible.isEmpty()) {
-            // 有轨迹但搜索没命中：说清楚是「没匹配」而不是「没轨迹」
-            item(key = "trace-filter-empty") {
+    LazyColumn(modifier = modifier.fillMaxWidth()) {
+        item(key = "trace-search") { TraceSearchField(value = query, onValueChange = { query = it }) }
+        item(key = "trace-filters") { TraceFilterChips(filter, errorCount) { filter = it } }
+        when {
+            messages.isEmpty() -> item(key = "trace-empty") { TraceEmptyState() }
+            visibleTurns.isEmpty() -> item(key = "trace-filter-empty") {
                 Text(
                     L.noTraceFilterEmpty,
-                    color = Dsh.labelTertiary,
+                    color = Dsh.labelSecondary,
                     style = DshType.body,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier
@@ -288,43 +255,145 @@ internal fun TrajectoryView(
                         .padding(horizontal = DshSpace.s24, vertical = DshSpace.s32),
                 )
             }
-        } else {
-            if (running) {
-                item(key = "trace-running") {
-                    Column(modifier = Modifier.padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)) {
-                        ThinkingStatusRow(elapsedSec)
+            else -> {
+                if (running) {
+                    item(key = "trace-running") {
+                        Column(Modifier.padding(horizontal = DshSpace.s16, vertical = DshSpace.s4)) { ThinkingStatusRow(elapsedSec) }
                     }
                 }
-            }
-
-            turnRows.forEach { (turn, rows) ->
-                val turnKey = turn.steps.firstOrNull()?.id ?: "turn-" + turn.index
-                val collapsed = isTurnCollapsed(turnKey)
-                item(key = "trace-turn-" + turn.index) {
-                    TraceTurnHeader(
-                        turn = turn,
-                        collapsed = collapsed,
-                        onToggle = { turnOverrides = turnOverrides + (turnKey to !collapsed) },
-                    )
-                }
-                if (!collapsed) {
-                    items(
-                        items = rows,
-                        key = { it.key },
-                        contentType = { "trace-row" },
-                    ) { row ->
-                        TraceTableRow(
+                visibleTurns.forEach { (turn, rows) ->
+                    item(key = "trace-turn-" + turn.index) { TraceRoundHeader(turn) }
+                    items(items = rows.asReversed(), key = { it.key }, contentType = { "trace-row" }) { row ->
+                        val open = row.key in expanded
+                        TraceListRow(
                             row = row,
                             durationMs = durations[row.primary.id],
-                            running = running,
-                            expanded = isRowExpanded(row.key),
-                            focused = focusKey == row.key,
-                            onToggle = { rowOverrides = rowOverrides + (row.key to !isRowExpanded(row.key)) },
+                            running = running && row.key == lastRowKey && row.result == null,
+                            expanded = open,
+                            onToggle = { expanded = if (open) expanded - row.key else expanded + row.key },
                         )
                     }
                 }
+                item(key = "trace-bottom-space") { Spacer(Modifier.height(DshSpace.s24)) }
             }
-            item(key = "trace-bottom-space") { Spacer(Modifier.height(DshSpace.s24)) }
+        }
+    }
+}
+
+@Composable
+private fun TraceFilterChips(selected: TraceFilter, errorCount: Int, onSelect: (TraceFilter) -> Unit) {
+    val chips = listOf(
+        TraceFilter.All to L.traceFilterAll,
+        TraceFilter.Tool to L.traceKindTool,
+        TraceFilter.Thinking to L.traceKindReasoning,
+        TraceFilter.Result to L.traceKindResult,
+        TraceFilter.Error to L.traceFilterError.format(errorCount),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s8),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+    ) {
+        chips.forEach { (filter, label) ->
+            DlChip(
+                label = label,
+                onClick = { onSelect(filter) },
+                selected = filter == selected,
+                style = if (filter == selected) DlChipStyle.Filled else DlChipStyle.Outlined,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TraceRoundHeader(turn: TraceTurn) {
+    val start = turn.steps.firstOrNull { it.time > 0 }?.time
+    val time = start?.let { remember(it) { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it)) } }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = DshSpace.s20, end = DshSpace.s20, top = DshSpace.s20, bottom = DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(L.traceRound.format(turn.index), style = DlLabelStrong, color = Dsh.labelSecondary, modifier = Modifier.weight(1f))
+        if (time != null) Text(time, style = DshType.supporting, color = Dsh.labelSecondary)
+    }
+}
+
+@Composable
+private fun TraceListRow(
+    row: TraceRow,
+    durationMs: Long?,
+    running: Boolean,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val primary = row.primary
+    val error = traceRowIsError(row)
+    val role = traceDisplayRole(primary)
+    val visual = traceRoleVisual(role)
+    val isTool = primary.role == "tool_call"
+    val title = when {
+        isTool -> traceToolTitle(primary)
+        else -> firstLine(primary.text).ifEmpty { primary.toolName ?: visual.label }
+    }
+    val kind = when {
+        error -> L.traceErrorKind
+        isTool && isEditTool(primary.toolName) -> L.traceEditKind
+        else -> visual.label
+    }
+    val detail = when {
+        running -> L.traceRunning
+        error -> firstLine(row.result?.text ?: primary.text).take(80).ifEmpty { null }
+        primary.role == "reasoning" -> (primary.durationMs ?: durationMs)?.let { L.traceSeconds.format((it / 1000).coerceAtLeast(1)) }
+        row.result != null -> firstLine(row.result.text).take(80).ifEmpty { null }
+        else -> null
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onToggle),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = DshTouch.min)
+                .padding(horizontal = DshSpace.s16, vertical = DshSpace.s8),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(DshIconSize.md), contentAlignment = Alignment.Center) {
+                Icon(
+                    if (error) WarningOutline16 else visual.icon,
+                    contentDescription = null,
+                    tint = if (error) Dsh.err else Dsh.labelSecondary,
+                    modifier = Modifier.size(DshIconSize.sm),
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = Dsh.labelPrimary,
+                    style = if (isTool) DshType.supporting.copy(fontFamily = FontFamily.Monospace) else DshType.body,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    listOfNotNull(kind, detail).joinToString(" · "),
+                    color = if (error) Dsh.err else Dsh.labelSecondary,
+                    style = DshType.supporting,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (running) DlSpinner()
+        }
+        if (expanded) {
+            Column(Modifier.padding(start = DshSpace.s16 + DshIconSize.md + DshSpace.s12, end = DshSpace.s16, bottom = DshSpace.s12)) {
+                TraceRowBody(primary = primary, result = row.result, running = running, expanded = true)
+            }
         }
     }
 }
@@ -356,40 +425,6 @@ private fun TraceEmptyState() {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = DshSpace.s24)
         )
-    }
-}
-
-@Composable
-private fun TraceToggle(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
-    val bg by animateColorAsState(
-        targetValue = if (active) Dsh.brand400.copy(alpha = 0.14f) else Dsh.bgCard,
-        animationSpec = tween(motionDuration(180)),
-        label = "traceToggleBg",
-    )
-    val fg by animateColorAsState(
-        targetValue = if (active) Dsh.brand400 else Dsh.labelSecondary,
-        animationSpec = tween(motionDuration(180)),
-        label = "traceToggleFg",
-    )
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(DshRadius.full))
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier
-                .height(40.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(bg)
-                .padding(horizontal = DshSpace.s12),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(DshIconSize.xs))
-            Spacer(Modifier.width(DshSpace.s4))
-            Text(label, color = fg, style = DshType.label, fontWeight = FontWeight(500))
-        }
     }
 }
 
@@ -440,154 +475,6 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TraceTimeline(
-    messages: List<MobileMessage>,
-    durations: Map<String, Long?>,
-    actualDuration: Boolean,
-    focusKey: String?,
-    onFocus: (String) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(30.dp)
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        messages.forEach { m ->
-            val visual = traceRoleVisual(traceDisplayRole(m))
-            val key = "row-" + m.id
-            val weight = if (actualDuration) {
-                (durations[m.id] ?: 120L).coerceIn(60L, 6000L).toFloat()
-            } else {
-                1f
-            }
-            val alpha = if (focusKey == null || focusKey == key) 0.8f else 0.25f
-            Box(
-                modifier = Modifier
-                    .weight(weight)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(DshRadius.control))
-                    .background(visual.color.copy(alpha = alpha))
-                    .clickable { onFocus(key) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun TraceTurnHeader(turn: TraceTurn, collapsed: Boolean, onToggle: () -> Unit) {
-    val preview = turn.header?.text?.lineSequence()?.firstOrNull()?.trim().orEmpty()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onToggle)
-            .padding(start = DshSpace.s12, end = DshSpace.s12, top = DshSpace.s16, bottom = DshSpace.s8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            L.traceTurnLabel.format(turn.index),
-            color = Dsh.labelTertiary,
-            style = DshType.microStrong,
-            fontWeight = FontWeight(600),
-            fontFamily = FontFamily.Monospace,
-        )
-        if (preview.isNotBlank()) {
-            Spacer(Modifier.width(DshSpace.s8))
-            Text(
-                preview,
-                color = Dsh.labelSecondary,
-                style = DshType.caption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            Spacer(Modifier.weight(1f))
-        }
-        Text(
-            if (collapsed) L.stepsCount.format(turn.steps.size) else L.collapse,
-            color = Dsh.labelTertiary,
-            style = DshType.microRelaxed,
-        )
-    }
-    HorizontalDivider(color = Dsh.borderSubtle, thickness = 0.5.dp)
-}
-
-@Composable
-private fun TraceTableRow(
-    row: TraceRow,
-    durationMs: Long?,
-    running: Boolean,
-    expanded: Boolean,
-    focused: Boolean,
-    onToggle: () -> Unit,
-) {
-    val primary = row.primary
-    val error = traceIsError(primary) || (row.result?.let { traceIsError(it) } == true)
-    val visual = traceRoleVisual(traceDisplayRole(primary))
-    val accent = if (error) Dsh.error else visual.color
-    val bg = when {
-        focused -> accent.copy(alpha = 0.10f)
-        else -> Color.Transparent
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bg)
-            .clickable(onClick = onToggle)
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
-    ) {
-        val name = primary.toolName ?: if (primary.role == "tool_result") L.executionResultRole else null
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(visual.icon, contentDescription = null, tint = accent, modifier = Modifier.size(DshIconSize.xs))
-            Spacer(Modifier.width(DshSpace.s8))
-            Text(
-                visual.label,
-                color = accent,
-                style = DshType.microMedium,
-                fontWeight = FontWeight(600),
-            )
-            if (name != null) {
-                Text(
-                    " · ",
-                    color = Dsh.labelTertiary,
-                    style = DshType.microMedium,
-                )
-                Text(
-                    name,
-                    color = Dsh.labelPrimary,
-                    style = DshType.titleSmall,
-                    fontWeight = FontWeight(500),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            if (durationMs != null && primary.role != "user") {
-                Spacer(Modifier.width(DshSpace.s8))
-                Text(
-                    formatTraceDuration(durationMs),
-                    color = accent.copy(alpha = 0.85f),
-                    style = DshType.microRelaxed,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-        }
-        Spacer(Modifier.height(DshSpace.s4))
-        TraceRowBody(primary = primary, result = row.result, running = running, expanded = expanded)
-        Spacer(Modifier.height(DshSpace.s8))
-        HorizontalDivider(color = Dsh.borderSubtle, thickness = 0.5.dp)
     }
 }
 

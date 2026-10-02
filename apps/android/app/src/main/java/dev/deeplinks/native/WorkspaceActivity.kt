@@ -404,14 +404,10 @@ fun WorkspaceScreen(
         renameTarget = session
     }
     // viewMode：chat / trace（全局；持久化，仅 tab 切回记忆上次）
-    var viewMode by remember {
-        val saved = localStore.viewMode
-        mutableStateOf(if (saved in setOf("chat", "trace")) saved else "chat")
-    }
+    // v4 4.7：轨迹是 ⋯ 菜单进入的二级页，每次打开都从对话开始，不再记住上次的视图
+    var viewMode by remember { mutableStateOf("chat") }
     fun selectViewMode(mode: String) {
-        val next = if (mode in setOf("chat", "trace")) mode else "chat"
-        viewMode = next
-        localStore.viewMode = next
+        viewMode = if (mode == "trace") "trace" else "chat"
     }
     // searchQuery：侧边栏搜索文本（持久化文本，不持久化结果）
     var searchQuery by remember { mutableStateOf(localStore.historyQuery) }
@@ -2180,21 +2176,28 @@ fun WorkspaceScreen(
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
             Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
             Box(modifier = Modifier.fillMaxWidth()) {
+                val traceOpen = viewMode == "trace"
+                BackHandler(enabled = traceOpen) { selectViewMode("chat") }
                 WorkspaceTopBar(
                 // 草稿态标题固定「新任务」；有会话显示会话名；无会话且非草稿留空（起始块已删）
                 title = when {
+                    traceOpen -> MenuL.menuTrace
                     composeNewSession && currentSessionId == null -> L.homeNewTask
                     currentSessionId == null -> ""
                     else -> currentSession?.title?.let(::displaySessionTitle) ?: L.newSession
                 },
                 // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」；草稿态不显示
-                subtitle = if (composeNewSession && currentSessionId == null) {
+                subtitle = if (traceOpen) {
+                    remember(messages) { traceSummaryLine(messages) }
+                } else if (composeNewSession && currentSessionId == null) {
                     null
                 } else {
                     chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec)
                 },
                 onNavigate = {
-                    if (dshLayout.persistentSidebar) {
+                    if (traceOpen) {
+                        selectViewMode("chat")
+                    } else if (dshLayout.persistentSidebar) {
                         sidebarCollapsed = !sidebarCollapsed
                     } else {
                         showPhoneSessions()
@@ -2202,8 +2205,8 @@ fun WorkspaceScreen(
                 },
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
-                menu = sessionMenu,
-                diff = pinnedChanges?.takeIf { it.total > 0 }?.let { c -> DlDiffStat(c.added, c.deleted) { scope.launch { changesPanel.open(c.seq, null) } } },
+                menu = if (traceOpen) SessionMenu.Empty else sessionMenu,
+                diff = if (traceOpen) null else pinnedChanges?.takeIf { it.total > 0 }?.let { c -> DlDiffStat(c.added, c.deleted) { scope.launch { changesPanel.open(c.seq, null) } } },
             )
             }
 
@@ -2536,6 +2539,16 @@ fun WorkspaceScreen(
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
                 // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
+                // v4 4.3 / 4.4：待你拍板的审批 / 提问替换输入区
+                val decision = remember(messages, currentSessionId) { currentSessionId?.let { pendingDecision(messages) } }
+                if (decision != null) {
+                    DecisionBarHost(
+                        decision = decision,
+                        onAnswerApproval = { id, outcome, done -> currentSessionId?.let { workspaceViewModel.answerApproval(it, id, outcome, done) } ?: done(false) },
+                        onAnswerQuestion = { id, answer, done -> currentSessionId?.let { workspaceViewModel.answerQuestion(it, id, answer, done) } ?: done(false) },
+                        modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
+                    )
+                } else {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
                     QueuedPromptsStrip(workspaceViewModel.sessionControl, { restored -> inputText = if (inputText.isBlank()) restored else inputText + "\n" + restored }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
@@ -2669,6 +2682,7 @@ fun WorkspaceScreen(
                     },
                 )
             }
+                } // 决策栏 / 输入区
                 }
             } // bottom chrome 容器结束
             } // 底部 chrome 叠层结束

@@ -284,4 +284,6 @@
 | R2.3 | #48 | 新增字段是加法，`PLUGIN_PROTOCOL` 保持 2（未按计划 +1）；同 PR 带入 main 上 R0.1 / R0.2 的文本改动 |
 | R2.4 | 见 PR | 首页余额横幅 `HomeBalanceBanner` 未删，挪到 R3.2 收件箱重做时改成收件箱条目；旧 `tier_custom` 偏好在读取时清掉 |
 | R3.1a | #50 | R3.1 拆成 4 个 PR（a 消息流 / 输入区 / 顶栏 / ⋯ 菜单；b 状态槽；c 决策栏；d 轨迹二级页）。`DlComposer` 加了 field / controls / sendButton / footer 插槽，保住原生 EditText 输入法；输入区去掉上下文计量；建议行不再放「查看改动」 |
-| R3.1b | 见 PR | `SessionStatusSlot` 合并目标 / 计划 / 吸顶摘要 / 断线 / 电脑不可达 / 预览；`DlStatusSlot` 加 trailing 插槽。待处理（审批 / 提问）走 R3.1c 的决策栏，不进状态槽。断线时**不禁用发送**：发送走 HTTP，与 SSE 是否连着无关，禁用会在 SSE 抖动时误伤；4.8 的「已放回输入框」Snackbar 未做 |
+| R3.1b | #51 | `SessionStatusSlot` 合并目标 / 计划 / 吸顶摘要 / 断线 / 电脑不可达 / 预览；`DlStatusSlot` 加 trailing 插槽。待处理（审批 / 提问）走 R3.1c 的决策栏，不进状态槽。断线时**不禁用发送**：发送走 HTTP，与 SSE 是否连着无关，禁用会在 SSE 抖动时误伤；4.8 的「已放回输入框」Snackbar 未做 |
+| R3.1c | 见 PR（与 R3.1d 同一个） | 审批 / 提问进 `DlDecisionBar`（加 extra 插槽），只挑手机能处理的最新一条：审批要已被手机接管，提问要有 rpc id、题型手机能答、之后没发过新消息。提问第一题的次按钮是「上一题」（禁用），可选题才是「跳过」——协议没有跳过必答题的语义。多选题仍用单选样式的选项行 |
+| R3.1d | 见 PR（与 R3.1c 同一个） | 轨迹二级页复用对话页的顶栏位（标题换成「轨迹」，⋯ 与 diff 角标隐藏，系统返回回对话），不另开 Activity。删掉轨迹工具栏的三个开关和时间线（稿里没有）；新增 TrajectoryScreenshotTest。组头时间取该轮第一条消息的本地时间 |

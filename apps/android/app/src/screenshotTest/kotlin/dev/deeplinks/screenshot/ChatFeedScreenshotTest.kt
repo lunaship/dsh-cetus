@@ -37,6 +37,8 @@ import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.ToolGroupHeader
 import dev.deeplinks.native.MobileMessage
+import dev.deeplinks.native.ApprovalDecisionBar
+import dev.deeplinks.native.QuestionDecisionBar
 
 /**
  * 对话流：一轮完整回复、流式进行中、审批卡、提问卡。
@@ -286,28 +288,37 @@ internal fun ChatStreamingDark() {
 @Preview(name = "chat approvals light zh", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun ChatApprovalsLightZh() {
-    ChatFrame(dark = false) { Messages(approvals) }
+    ChatFrame(dark = false) { DecisionPage(approvals) { ApprovalDecisionBar(approvals[0], { _, _, _ -> }) } }
 }
 
 @PreviewTest
 @Preview(name = "chat approvals dark en", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun ChatApprovalsDarkEn() {
-    ChatFrame(dark = true, english = true) { Messages(approvals) }
+    ChatFrame(dark = true, english = true) { DecisionPage(approvals) { ApprovalDecisionBar(approvals[0], { _, _, _ -> }) } }
 }
 
 @PreviewTest
 @Preview(name = "chat question light en", showBackground = true, widthDp = 412, heightDp = 640)
 @Composable
 internal fun ChatQuestionLightEn() {
-    ChatFrame(dark = false, english = true) { Messages(listOf(question)) }
+    ChatFrame(dark = false, english = true) { DecisionPage(listOf(question)) { QuestionDecisionBar(question, { _, _, _ -> }) } }
 }
 
 @PreviewTest
 @Preview(name = "chat question dark zh", showBackground = true, widthDp = 412, heightDp = 640)
 @Composable
 internal fun ChatQuestionDarkZh() {
-    ChatFrame(dark = true) { Messages(listOf(question)) }
+    ChatFrame(dark = true) { DecisionPage(listOf(question)) { QuestionDecisionBar(question, { _, _, _ -> }) } }
+}
+
+/** v4 4.3 / 4.4：消息流里只留一行状态，决策栏替换输入区贴在底部。 */
+@Composable
+private fun DecisionPage(messages: List<MobileMessage>, bar: @Composable () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { Messages(messages) }
+        bar()
+    }
 }
 
 /**

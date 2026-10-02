@@ -72,7 +72,6 @@ import dev.deeplinks.native.util.goalRoundObjective
 import dev.deeplinks.native.util.goalRoundProgress
 import dev.deeplinks.native.util.MessageKind
 import dev.deeplinks.native.util.resolvedMessageKind
-import org.json.JSONObject
 
 // ---------- 消息渲染 ----------
 
@@ -81,8 +80,6 @@ import org.json.JSONObject
 internal fun MessageItem(
     msg: MobileMessage,
     running: Boolean = false,
-    onAnswerApproval: ((String, String, (Boolean) -> Unit) -> Unit)? = null,
-    onAnswerQuestion: ((String, org.json.JSONObject, (Boolean) -> Unit) -> Unit)? = null,
     onCopy: () -> Unit = {},
     onQuote: () -> Unit = {},
     onFork: () -> Unit = {},
@@ -145,18 +142,8 @@ internal fun MessageItem(
                 }
             }
             msg.role == "reasoning" -> ReasoningRow(msg.text, running || msg.running == true, msg.durationMs)
-            msg.role == "approval" -> ApprovalCard(
-                msg = msg,
-                onAnswer = { approvalId, outcome, onDone ->
-                    onAnswerApproval?.invoke(approvalId, outcome, onDone) ?: onDone(false)
-                }
-            )
-            msg.role == "question" -> QuestionCard(
-                msg = msg,
-                onAnswer = { rpcId, answer, onDone ->
-                    onAnswerQuestion?.invoke(rpcId, answer, onDone) ?: onDone(false)
-                }
-            )
+            msg.role == "approval" -> ApprovalCard(msg)
+            msg.role == "question" -> QuestionCard(msg)
             msg.role == "tool_call" -> CommandCard(msg.toolName ?: L.toolCallRole, msg.toolArgs, running)
             msg.role == "tool_result" -> CommandCard(
                 title = L.executionResultRole + (msg.durationMs?.let { " · ${formatTraceDuration(it)}" } ?: ""),
