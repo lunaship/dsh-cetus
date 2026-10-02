@@ -1,8 +1,9 @@
 package dev.deeplinks.native.util
 
 /**
- * 识别 DSH 注入到会话里的 system-reminder / runtime context / skill catalog，
- * 对齐 Web「上下文注入 · skill-catalog」折叠行，避免首条消息把整段目录铺开。
+ * 识别 DSH 注入到会话里的上下文快照，与插件 `src/context-injection.js` 对齐。
+ * 只认结构性标记，以及以 runtime context / file policy 开头的整段文本。
+ * 正文里提到 CLAUDE.md、AGENTS.md 或 “Instructions from:” 不算注入。
  */
 fun isContextInjectionText(text: String): Boolean {
     if (text.isBlank()) return false
@@ -11,15 +12,12 @@ fun isContextInjectionText(text: String): Boolean {
         text.contains("&lt;system-reminder&gt;", ignoreCase = true) ||
         text.contains("<available_skills>", ignoreCase = true) ||
         text.contains("&lt;available_skills&gt;", ignoreCase = true) ||
-        text.contains("available skill catalog", ignoreCase = true) ||
-        text.contains("available-skills", ignoreCase = true) ||
-        text.contains("Current runtime context", ignoreCase = true) ||
-        text.contains("Current DSH file policy", ignoreCase = true) ||
-        text.contains("Approval prompts are disabled", ignoreCase = true) ||
-        text.contains("Instructions from:", ignoreCase = true) ||
-        Regex("""\bAGENTS\.md\b""").containsMatchIn(text) ||
-        Regex("""\bCLAUDE\.md\b""").containsMatchIn(text)
+        anchoredRuntimePreface.containsMatchIn(text) ||
+        anchoredFilePolicyPreface.containsMatchIn(text)
 }
+
+private val anchoredRuntimePreface = Regex("""(?i)^\s*Current runtime context""")
+private val anchoredFilePolicyPreface = Regex("""(?i)^\s*Current DSH file policy""")
 
 /**
  * 识别 goal 模式每轮注入的续跑提示（`<goal_round>` 包装的系统指令）。
