@@ -76,9 +76,7 @@ internal fun UsagePanel(stats: MobileSessionStats?) {
 
 @Composable
 private fun ContextUsageBlock(figures: UsageFigures) {
-    val percent = ((figures.contextUsedTokens * 100.0) / figures.contextWindowTokens.toDouble())
-        .roundToInt()
-        .coerceIn(0, 100)
+    val percent = contextUsedPercent(figures.contextUsedTokens, figures.contextWindowTokens) ?: return
     Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
         UsageLine(
             DshS.statsContextWindow,

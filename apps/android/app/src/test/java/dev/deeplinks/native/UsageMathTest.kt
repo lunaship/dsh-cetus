@@ -69,6 +69,14 @@ class UsageMathTest {
     }
 
     @Test
+    fun `context percent truncates the same way as the composer ring`() {
+        assertEquals(46, contextUsedPercent(60_000, 128_000))
+        assertEquals(0, contextUsedPercent(0, 128_000))
+        assertEquals(100, contextUsedPercent(200, 100))
+        assertNull(contextUsedPercent(10, 0))
+    }
+
+    @Test
     fun `breakdown keeps only positive slices`() {
         val figures = usageFigures(
             MobileSessionStats(

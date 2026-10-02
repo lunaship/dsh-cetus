@@ -75,6 +75,17 @@ internal fun outputTokensPerSec(decodeTokens: Long, decodeMs: Long): Double? {
     return value.takeIf { it.isFinite() }
 }
 
+/**
+ * 上下文占用百分比。与输入区圆环同一口径：正数按比例截断，不四舍五入。
+ * 窗口为 0 时没有百分比。
+ */
+internal fun contextUsedPercent(used: Long, window: Long): Int? {
+    if (window <= 0) return null
+    val value = used.coerceAtLeast(0).toDouble() * 100.0 / window.toDouble()
+    if (!value.isFinite()) return null
+    return value.toInt().coerceIn(0, 100)
+}
+
 internal fun saturatingTokenSum(vararg parts: Long): Long {
     var acc = 0.0
     for (part in parts) {
