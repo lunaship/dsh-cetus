@@ -12,6 +12,10 @@ val DshStrings.taskProgressCompleted: String get() = translation("taskProgressCo
 val DshStrings.taskProgressStep: String get() = translation("taskProgressStep")
 val DshStrings.taskProgressElapsed: String get() = translation("taskProgressElapsed")
 val DshStrings.taskProgressPublic: String get() = translation("taskProgressPublic")
+val DshStrings.taskElsewhereTitle: String get() = translation("taskElsewhereTitle")
+val DshStrings.taskElsewhereBody: String get() = translation("taskElsewhereBody")
+val DshStrings.backgroundTakeoverHint: String get() = translation("backgroundTakeoverHint")
+val DshStrings.backgroundTakeoverDoc: String get() = translation("backgroundTakeoverDoc")
 
 /** 设置「通知」里的后台接管开关（默认关闭，见 WorkspacePrefs.backgroundTakeover）。 */
 val DshStrings.backgroundTakeover: String get() = translation("backgroundTakeover")

@@ -9,9 +9,16 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import dev.deeplinks.core.ConnectivitySignals
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.ApprovalActionReceiver
 import dev.deeplinks.core.Host
+import dev.deeplinks.core.HOST_MONITOR_IDLE_MS
+import dev.deeplinks.core.HostLink
+import dev.deeplinks.core.NetworkChangeAction
+import dev.deeplinks.core.hostMonitorShouldReconnect
+import dev.deeplinks.core.isHostSessionActive
+import dev.deeplinks.core.stepHostMonitor
 import dev.deeplinks.core.TASK_PROGRESS_MIN_INTERVAL_MS
 import dev.deeplinks.core.TaskProgressEvent
 import dev.deeplinks.core.TaskProgressState
@@ -49,7 +56,12 @@ class SessionBackgroundMonitorService : Service() {
     private var sessionTitle: String = ""
     private var background = false
     private var stream: SessionStreamClient? = null
+    private var hostEvents: HostEventClient? = null
     private var streamJob: Job? = null
+    private var networkJob: Job? = null
+    private val sessionStates = mutableMapOf<String, String>()
+    private var idleSince = emptyMap<String, Long>()
+    private var idleStop: Job? = null
     private var terminalCheck: Job? = null
     private var generation = 0L
     private var progress = TaskProgressState(title = "")
@@ -167,11 +179,13 @@ class SessionBackgroundMonitorService : Service() {
         val currentHost = host ?: return
         val sid = sessionId ?: return
         background = true
-        val startingAt = maxOf(afterSeq, SessionMonitorCursors.get(sid))
-        val client = SessionStreamClient(currentHost, sid, serviceScope)
-        client.applySnapshotCursor(startingAt)
-        stream = client
+        // 后台不再订阅单会话 SSE，改听这台电脑的主机事件。会话页自己的流在离开时已经停掉。
+        stream?.stop()
+        stream = null
+        val client = HostEventClient(currentHost, serviceScope)
+        hostEvents = client
         streamJob?.cancel()
+        networkJob?.cancel()
         generation++
         val readerGeneration = generation
         streamJob = serviceScope.launch {
@@ -179,21 +193,85 @@ class SessionBackgroundMonitorService : Service() {
             for (item in client.items) {
                 if (!isActive || readerGeneration != generation) break
                 when (item) {
-                    is SessionStreamClient.Item.Ready -> {
-                        recordSequence(client, sid, item.resumeSeq)
-                        reconcilePendingApproval(currentHost, sid)
-                        seedTaskProgress(currentHost, sid)
-                    }
-                    is SessionStreamClient.Item.Message -> handleMessage(currentHost, sid, client, item)
-                    is SessionStreamClient.Item.Question -> onProgressEvent(TaskProgressEvent.QuestionAsked)
-                    is SessionStreamClient.Item.QuestionResolved -> onProgressEvent(TaskProgressEvent.QuestionResolved)
-                    is SessionStreamClient.Item.ResyncRequired -> resync(currentHost, sid, client, readerGeneration)
-                    SessionStreamClient.Item.Disconnected -> {
+                    is HostEventClient.Item.State -> onHostState(currentHost, sid, item)
+                    HostEventClient.Item.Resync -> sessionStates.clear()
+                    HostEventClient.Item.Disconnected -> {
                         if (client.lastFailure == StreamFailure.AUTH) stopMonitoring()
                     }
-                    else -> Unit
                 }
             }
+        }
+        networkJob = serviceScope.launch {
+            ConnectivitySignals.probeNow.collect {
+                if (!isActive || readerGeneration != generation || !background) return@collect
+                if (hostMonitorShouldReconnect(NetworkChangeAction.ResetPool)) {
+                    client.reconnect()
+                }
+            }
+        }
+        if (afterSeq > 0) client.noteEventId(afterSeq)
+    }
+
+    private fun onHostState(host: Host, takeoverId: String, item: HostEventClient.Item.State) {
+        sessionStates[item.sessionId] = item.state
+        val active = sessionStates.values.any(::isHostSessionActive)
+        val decision = stepHostMonitor(
+            nowMs = System.currentTimeMillis(),
+            links = listOf(HostLink(host.slotKey, active)),
+            idleSince = idleSince,
+        )
+        idleSince = decision.idleSince
+        if (host.slotKey !in decision.connect) {
+            stopMonitoring()
+            return
+        }
+        scheduleIdleStop(host.slotKey)
+        if (item.sessionId != takeoverId) {
+            if (item.state == "awaitingApproval") {
+                DshNotifier.notifyHandleOnComputer(this, host, item.sessionId, item.title.ifBlank { sessionTitle })
+            }
+            return
+        }
+        if (item.title.isNotBlank()) {
+            sessionTitle = item.title
+            progress = progress.copy(title = item.title)
+        }
+        when (item.state) {
+            "awaitingApproval" -> {
+                onProgressEvent(TaskProgressEvent.ApprovalAsked)
+                reconcilePendingApproval(host, item.sessionId)
+            }
+            "awaitingInput" -> onProgressEvent(TaskProgressEvent.QuestionAsked)
+            "running" -> onProgressEvent(TaskProgressEvent.ApprovalDecided)
+            "completed" -> {
+                onProgressEvent(TaskProgressEvent.TurnEnded)
+                if (item.sessionId == takeoverId) DshNotifier.notifyTaskDone(this, host, item.sessionId, item.title)
+            }
+            "failed", "stopped" -> {
+                onProgressEvent(TaskProgressEvent.TurnEnded)
+                if (item.sessionId == takeoverId) {
+                    DshNotifier.notifyTaskFailed(this, host, item.sessionId, item.title, item.state)
+                }
+            }
+        }
+    }
+
+    private fun scheduleIdleStop(hostKey: String) {
+        val since = idleSince[hostKey] ?: run {
+            idleStop?.cancel()
+            return
+        }
+        idleStop?.cancel()
+        val wait = (since + HOST_MONITOR_IDLE_MS - System.currentTimeMillis()).coerceAtLeast(0L)
+        idleStop = serviceScope.launch {
+            delay(wait)
+            val still = stepHostMonitor(
+                nowMs = System.currentTimeMillis(),
+                links = listOf(HostLink(hostKey, sessionStates.values.any(::isHostSessionActive))),
+                idleSince = idleSince,
+            )
+            idleSince = still.idleSince
+            if (hostKey !in still.connect) stopMonitoring()
         }
     }
 
@@ -389,8 +467,14 @@ class SessionBackgroundMonitorService : Service() {
         generation++
         streamJob?.cancel()
         streamJob = null
+        networkJob?.cancel()
+        networkJob = null
+        idleStop?.cancel()
+        idleStop = null
         stream?.stop()
         stream = null
+        hostEvents?.stop()
+        hostEvents = null
     }
 
     private fun beginBackground(sid: String, afterSeq: Long) {

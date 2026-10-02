@@ -35,10 +35,12 @@ internal object SessionMonitorLifecycle {
     }
 
     fun onBackground(context: Context, host: Host, sessionId: String?, sessions: List<MobileSession>, stream: SessionStreamClient?) {
-        val sid = sessionId
-        // 开关关闭（默认）：与重设计前一致，离开 App 即断流，审批交给电脑网页
-        if (sid != null && WorkspacePrefs(context).backgroundTakeover) {
-            SessionBackgroundMonitorService.background(context, host, sid, sessions.firstOrNull { it.sessionId == sid }?.title.orEmpty(), stream?.lastSeq ?: 0L)
+        val anyActive = sessions.any { it.running || it.awaitingInput }
+        val sid = sessionId ?: sessions.firstOrNull { it.running || it.awaitingInput }?.sessionId
+        // 开关关闭（默认）：离开 App 即断流。打开后，只要这台电脑还有进行中的会话就保持一条主机事件连接。
+        if (sid != null && anyActive && WorkspacePrefs(context).backgroundTakeover) {
+            val title = sessions.firstOrNull { it.sessionId == sid }?.title.orEmpty()
+            SessionBackgroundMonitorService.background(context, host, sid, title, 0L)
         }
         stream?.stop()
     }

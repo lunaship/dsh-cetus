@@ -111,6 +111,22 @@ object DshNotifier {
         return this
     }
 
+    /** 别的会话在等审批，手机没有接管，不带操作按钮。 */
+    fun notifyHandleOnComputer(context: Context, host: Host, sessionId: String, title: String) {
+        if (!WorkspacePrefs(context).notifyOnApproval) return
+        val builder = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+            .setContentTitle(L.taskElsewhereTitle)
+            .setContentText(L.taskElsewhereBody.format(title))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+        val publicNotification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
+            .setContentTitle(L.taskElsewhereTitle)
+            .setContentText(L.notifNeedApprovalPublicBody)
+            .build()
+        builder.setPublicVersion(publicNotification)
+        postNotification(context, notificationId(host, sessionId, 1), builder.build())
+    }
+
     fun cancelTaskMonitor(context: Context, host: Host, sessionId: String) {
         NotificationManagerCompat.from(context).cancel(TASK_MONITOR_NOTIFICATION_ID)
     }

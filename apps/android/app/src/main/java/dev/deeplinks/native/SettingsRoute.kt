@@ -7,6 +7,8 @@ import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.backgroundTakeover
+import dev.deeplinks.core.backgroundTakeoverDoc
+import dev.deeplinks.core.backgroundTakeoverHint
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.FontScaleManager
 import dev.deeplinks.core.ThemeManager
@@ -524,6 +526,7 @@ internal fun SettingsHome(
         // 关闭时立刻停服务并收回它发出的可操作审批通知，之后的审批回到电脑网页。
         DshSwitchRow(
             title = s.backgroundTakeover,
+            subtitle = if (backgroundTakeover) s.backgroundTakeoverHint else null,
             checked = backgroundTakeover,
             onCheckedChange = {
                 backgroundTakeover = it
@@ -531,6 +534,17 @@ internal fun SettingsHome(
                 if (!it) SessionBackgroundMonitorService.stopAll(notifyContext)
             },
         )
+        if (backgroundTakeover) {
+            DshListNote(
+                text = s.backgroundTakeoverDoc,
+                onClick = {
+                    openReleasePage(
+                        notifyContext,
+                        "https://github.com/lunaship/dsh-links/blob/main/docs/android-background.md",
+                    )
+                },
+            )
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             DshSwitchRow(
                 title = s.allowApproveFromNotification,
