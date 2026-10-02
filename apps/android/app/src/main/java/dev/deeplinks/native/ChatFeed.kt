@@ -11,10 +11,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
@@ -23,11 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,42 +65,6 @@ internal fun latestGoalSummary(messages: List<MobileMessage>): String? {
         }
     }
     return null
-}
-
-/** todo 进度统计。 */
-internal data class TodoProgress(
-    val pending: Int = 0,
-    val inProgress: Int = 0,
-    val done: Int = 0,
-    val total: Int = 0,
-) {
-    val hasActive: Boolean get() = pending > 0 || inProgress > 0
-}
-
-/** 吸顶摘要条：执行中的目标 + todo 进度，悬浮在顶部 chrome 里，只出现这一处。 */
-@Composable
-internal fun ChatStickySummary(
-    goalOverride: String?,
-    messages: List<MobileMessage>,
-    isRunning: Boolean,
-    modifier: Modifier = Modifier,
-    /** 插件给了结构化目标（含 CAS 引用）时显示可操作的目标行，未执行（如已暂停）也常驻。 */
-    goal: SessionGoal? = null,
-    control: SessionControlController? = null,
-    /** 结构化目标已经画在顶栏下方的目标卡里时，吸顶条只留待办，避免同一段目标出现两次。 */
-    suppressGoalText: Boolean = false,
-) {
-    val derivedGoal = remember(messages) { latestGoalSummary(messages) }
-    val todos = remember(messages) { latestTodoProgress(messages) }
-    val summary = if (suppressGoalText) null else goalOverride?.takeIf { it.isNotBlank() } ?: derivedGoal
-    StickyTaskSummaryCard(
-        goalSummary = summary,
-        todoProgress = todos,
-        isRunning = isRunning,
-        modifier = modifier,
-        goal = if (suppressGoalText) null else goal?.takeIf { it.manageable && control != null },
-        control = if (suppressGoalText) null else control,
-    )
 }
 
 /**
@@ -168,135 +128,6 @@ private fun ToolSummaryCard(summary: MessageGroup.ToolSummary, onOpenTrace: () -
                 )
             }
             Icon(ChevronRightOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.xs))
-        }
-    }
-}
-
-internal fun latestTodoProgress(messages: List<MobileMessage>): TodoProgress {
-    var pending = 0
-    var inProgress = 0
-    var done = 0
-    var latestTodoMsg: MobileMessage? = null
-    for (msg in messages.asReversed()) {
-        if (msg.role == "todo") { latestTodoMsg = msg; break }
-    }
-    if (latestTodoMsg != null) {
-        for (t in latestTodoMsg.todos) {
-            when (t.status) {
-                "pending", "todo" -> pending++
-                "in_progress", "inprogress", "running" -> inProgress++
-                "done", "completed", "complete" -> done++
-            }
-        }
-    }
-    return TodoProgress(pending, inProgress, done, pending + inProgress + done)
-}
-
-/**
- * 粘性任务摘要卡片：在消息列表顶端粘住，始终可见（不随消息滚出视野）。
- * 生产打磨参考：hermes-mobile #943（TaskProgressChip 模式）、AgenticX StickyTaskBar。
- *
- * 显示内容：
- * - 活动目标（goal_round objective 或显式 goal 消息）
- * - todo 进度（pending / in_progress / done 计数条）
- *
- * 条件：仅在 isRunning == true 且存在可显示内容时出现。
- */
-@Composable
-internal fun StickyTaskSummaryCard(
-    goalSummary: String?,
-    todoProgress: TodoProgress,
-    isRunning: Boolean,
-    modifier: Modifier = Modifier,
-    goal: SessionGoal? = null,
-    control: SessionControlController? = null,
-) {
-    val managedGoal = goal?.takeIf { control != null }
-    if (!isRunning && managedGoal == null) return
-    val hasGoal = !goalSummary.isNullOrBlank()
-    val hasTodos = isRunning && todoProgress.hasActive
-    if (!hasGoal && !hasTodos && managedGoal == null) return
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .clip(RoundedCornerShape(DshRadius.block))
-            .background(Dsh.surface1)
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
-            // 目标行：结构化目标可操作（暂停 / 继续 / 编辑 / 清除），否则只读摘要
-            if (managedGoal != null && control != null) {
-                GoalControlRow(managedGoal, control)
-            } else if (hasGoal) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        GoalOutline16,
-                        contentDescription = null,
-                        tint = Dsh.labelSecondary,
-                        modifier = Modifier.size(DshIconSize.sm),
-                    )
-                    Text(
-                        text = L.goalRole,
-                        color = Dsh.labelSecondary,
-                        style = DshType.microMedium,
-                    )
-                    Text(
-                        text = goalSummary.take(60) + if (goalSummary.length > 60) "…" else "",
-                        color = Dsh.labelPrimary,
-                        style = DshType.caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-            // todo 进度条
-            if (hasTodos) {
-                val total = todoProgress.total
-                if (total > 0) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = "${todoProgress.done}/$total",
-                            color = Dsh.labelTertiary,
-                            style = DshType.microRelaxed,
-                            maxLines = 1,
-                        )
-                        val segments = buildList {
-                            repeat(todoProgress.done) { add(Dsh.success) }
-                            repeat(todoProgress.inProgress) { add(Dsh.labelSecondary) }
-                            repeat(todoProgress.pending) { add(Dsh.labelTertiary) }
-                        }
-                        if (segments.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(DshRadius.full)),
-                                horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
-                            ) {
-                                segments.forEach { color ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(1f / segments.size)
-                                            .height(4.dp)
-                                            .background(color),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

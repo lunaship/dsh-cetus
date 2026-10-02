@@ -2207,15 +2207,7 @@ fun WorkspaceScreen(
             )
             }
 
-            // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
-            DeviceUnreachableBanner(
-                hostName = hostLabel,
-                visible = !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty(),
-                onRetry = { refreshSessions(reportFailure = true) },
-                onOpenDevice = { onOpenDevice(null) },
-            )
-
-            // ===== 断线重连横幅（SSE 断开时提示；客户端自动退避重连；复用 DshBanner） =====
+            // ===== 状态槽（v4 4.1 / 4.5 / 4.8）：断线 > 目标 + 计划 > 预览，一次只显示一条 =====
             val streamState = streamClient?.connectionState
             val streamBanner = streamBannerKind(
                 hasSession = currentSessionId != null,
@@ -2226,14 +2218,25 @@ fun WorkspaceScreen(
                 everConnected = streamEverConnected,
                 quietElapsed = streamQuietElapsed,
             )
-            StreamReconnectBanner(
-                kind = streamBanner,
-                onRetry = { streamClient?.reconnect() },
+            val inChat = viewMode == "chat" && currentSessionId != null
+            val previewPorts = rememberPreviewDetections(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
+            val planItems = remember(messages) { latestPlanItems(messages) }
+            SessionStatusSlot(
+                status = sessionStatus(
+                    stream = streamBanner,
+                    unreachableHost = hostLabel.takeIf { !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty() },
+                    goal = workspaceViewModel.sessionControl.goal.value.takeIf { inChat },
+                    goalSummary = workspaceViewModel.currentGoalSummary.value.takeIf { inChat },
+                    plan = if (inChat) planItems else emptyList(),
+                    running = running,
+                    previewPorts = previewPorts,
+                    onRetryStream = { streamClient?.reconnect() },
+                    onRetryHost = { refreshSessions(reportFailure = true) },
+                    onOpenDevice = { onOpenDevice(null) },
+                ),
+                control = workspaceViewModel.sessionControl,
+                modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp),
             )
-            PreviewDetectBanner(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
-            if (viewMode == "chat" && currentSessionId != null) {
-                SessionChromeGoals(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl)
-            }
             } // 顶部 chrome 结束
             // 方案 A（2026-10-02）：顶 / 底 chrome 实底，不再叠边缘渐隐（实底与渐隐色不一致会出现白雾）。
 
