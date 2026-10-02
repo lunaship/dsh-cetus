@@ -69,7 +69,7 @@ internal val BOTTOM_CHROME_FADE = 16.dp
  * - 实底从屏幕顶端（含状态栏）画到顶栏下沿；内容滚到下面时只在下沿画一条细分隔线（[showDivider]）。
  * - **回填高度必须包含状态栏**：`onSizeChanged` 要放在 `statusBarsPadding()` 之前，
  *   否则测到的是去掉状态栏后的内高，内容区少让出一整条状态栏（小米 15 上轨迹工具条被压在标题下）。
- *   `OverlayChromeMeasureTest` 守着这个顺序。
+ *   `ChromeAndMotionContractTest` 守着这个顺序。
  */
 @Composable
 internal fun Modifier.overlayTopChrome(

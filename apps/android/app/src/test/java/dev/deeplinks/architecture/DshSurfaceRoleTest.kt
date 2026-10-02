@@ -128,4 +128,23 @@ class DshSurfaceRoleTest {
             violations.isEmpty(),
         )
     }
+
+    @Test
+    fun noBlurRenderEffectOrHaze() {
+        val root = mainSourceRoot()
+        val effect = Regex("""\bblur\s*\(|\bRenderEffect\b|\brenderEffect\b|\bhaze\b""")
+        val violations = mutableListOf<String>()
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val rel = relative(root, file)
+            if (V4MigrationAllowlist.allows(rel)) continue
+            val hits = V4MigrationAllowlist.codeLines(file).count { effect.containsMatchIn(it) }
+            if (hits > 0) {
+                violations += "$rel: $hits 处模糊 / RenderEffect / haze。v4 用实底，禁止这些调用"
+            }
+        }
+        assertTrue(
+            "实底门禁（docs/visual-rules.md §8）：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
 }

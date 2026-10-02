@@ -3,6 +3,7 @@
 **重设计 v4**
 
 - 设计稿、页面截图和执行方案放在 `docs/redesign-v4/`。proposal 002 的「自行合并到 main」自 v4 起作废，见该目录 `PLAN.md` 第 1 节。
+- Android 视觉规则换成 v4。架构测试按实底、v4 色表、4 档圆角和 4 的倍数间距执行；还没迁移的文件在 `V4MigrationAllowlist`，迁完一个模块就删一条。
 
 **界面修正（小米 15 / Android 16 真机反馈，方案 A）**
 
