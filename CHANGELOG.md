@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**上下文注入**
+
+- 用户消息里提到 CLAUDE.md、AGENTS.md，或正文中间出现 “Instructions from:”，不再被折叠成上下文注入。只认结构性标记（system-reminder、available_skills、goal_round 及其 HTML 转义），以及以 “Current runtime context” / “Current DSH file policy” 开头的文本。插件与 App 共用 `testdata/context-injection-cases.json`。
+
 **重设计 v4**
 
 - 设计稿、页面截图和执行方案放在 `docs/redesign-v4/`。proposal 002 的「自行合并到 main」自 v4 起作废，见该目录 `PLAN.md` 第 1 节。
