@@ -228,6 +228,7 @@ internal fun SessionChromeGoals(
 ) {
     val goal = control.goal.value
     if (goal != null) SessionGoalCard(goal, control, modifier)
+    SessionPlanChecklist(messages, modifier)
     ChatStickySummary(
         goalOverride = goalSummary,
         messages = messages,
