@@ -18,6 +18,7 @@ import z from "@deepseek-ai/schemastery"
 import QRCode from "qrcode"
 
 import { createPreviewService, rejectUpgrade, matchPreviewPath } from "./preview-proxy.js"
+import { createPreviewDetector, publicDetections, refreshPreviewDetections, DETECT_HISTORY_MESSAGES } from "./preview-detect.js"
 import { workspaceChangesService } from "./workspace-changes.js"
 import { resolveSessionLogPath, sessionDirFor } from "./session-log-path.js"
 
@@ -1388,6 +1389,30 @@ export function apply(ctx, config) {
     hostPort: targetPort,
     logger: ctx.logger,
   })
+  rt.previewDetect = createPreviewDetector({
+    pluginPort: config.port,
+    hostPort: targetPort,
+  })
+  async function currentDetections() {
+    const rows = await refreshPreviewDetections({
+      detector: rt.previewDetect,
+      listSessions: async () => {
+        const [sessions, workspace] = await Promise.all([
+          callLocalRpc(targetPort, "session.list", {}),
+          callLocalRpc(targetPort, "workspace.list", {}),
+        ])
+        return {
+          items: sessions?.items ?? [],
+          archivedSessionIds: workspace?.archivedSessionIds ?? [],
+        }
+      },
+      history: (sessionId) => callLocalRpc(targetPort, "session.history", {
+        sessionId,
+        maxMessages: DETECT_HISTORY_MESSAGES,
+      }),
+    })
+    return publicDetections(rows, previews.listPublic().map((item) => item.port))
+  }
 
   // 诊断只读：workspace.list 已在白名单里。证书 PEM 留在 tlsHolder，不进入返回值。
   function diagnosticsSource(device) {
@@ -1597,7 +1622,11 @@ export function apply(ctx, config) {
       path: "/dsh-link/previews",
       handler: async (req, res) => {
         if (!requireLoopbackSameOrigin(req, res)) return
-        if (req.method === "GET") return json(res, 200, { previews: previews.listPanel() })
+        if (req.method === "GET") {
+          let detected = []
+          try { detected = await currentDetections() } catch { detected = [] }
+          return json(res, 200, { previews: previews.listPanel(), detected })
+        }
         if (req.method !== "POST") return json(res, 405, { error: "method not allowed" })
         const body = await readLoopbackPost(req, res)
         if (!body) return
@@ -1892,6 +1921,11 @@ export function apply(ctx, config) {
         }
         if (req.method === "GET" && pathname === "/dsh-link/mobile/previews") {
           return json(res, 200, { previews: previews.listPublic() })
+        }
+        if (req.method === "GET" && pathname === "/dsh-link/mobile/preview-detections") {
+          let detections = []
+          try { detections = await currentDetections() } catch { detections = [] }
+          return json(res, 200, { detections })
         }
         if (previews.handleHttp(req, res)) return
         const streamMatch = pathname.match(/^\/dsh-link\/mobile\/sessions\/([^/]+)\/stream$/)

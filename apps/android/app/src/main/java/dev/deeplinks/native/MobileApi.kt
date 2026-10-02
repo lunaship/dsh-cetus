@@ -158,6 +158,8 @@ data class MobileBootstrap(
     val sessionControl: Boolean = false,
     /** 插件可以列出已批准的本机预览（capabilities.preview.v = 1）。 */
     val preview: Boolean = false,
+    /** 插件可以从工具输出里看到本机端口（capabilities.preview.detect = 1）。手机不能批准。 */
+    val previewDetect: Boolean = false,
 )
 
 data class SessionRequestState(
@@ -715,8 +717,22 @@ class MobileApiClient(private val host: Host) {
             filesTree = root.optJSONObject("capabilities")?.optJSONObject("files")?.optBoolean("tree") == true,
             sessionControl = root.optJSONObject("capabilities")?.optJSONObject("control")?.optBoolean("queue") == true,
             preview = root.optJSONObject("capabilities")?.optJSONObject("preview")?.optInt("v") == 1,
+            previewDetect = root.optJSONObject("capabilities")?.optJSONObject("preview")?.optInt("detect") == 1,
         )
         return info to applyBootstrapRemote(host, root)
+    }
+
+    fun listPreviewDetections(sessionId: String): List<Int> {
+        val root = request("GET", "/dsh-link/mobile/preview-detections")
+        val array = root.optJSONArray("detections") ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                if (item.optString("sessionId") != sessionId) continue
+                val port = item.optInt("port")
+                if (port > 0) add(port)
+            }
+        }
     }
 
     fun listPreviews(): List<MobilePreview> {

@@ -27,7 +27,7 @@
 
 `capabilities.events: { host: true }` 表示可以订阅 `GET /dsh-link/mobile/events`（设备 token，SSE）。事件只有会话级状态，不包含消息正文和工具参数：`id` 为单调 seq，`event: session/state`，正文 `{ type, sessionId, state, title, origin, seq }`。`state` 为 `running` / `awaitingApproval` / `awaitingInput` / `completed` / `failed` / `stopped`，`origin` 为 `user` / `subagent` / `schedule`。DSH 没有全局会话事件时，插件只在有订阅者的情况下每 5 秒对 `session.list` 做差分。心跳为 25 秒的 `event: heartbeat`。请求带 `Last-Event-ID`：缓冲里接得上就补发，接不上发 `event: resync-required`。旧 App 忽略该能力。
 
-`capabilities.preview: { v: 1 }` 表示可以列已批准的本机预览，见下方「开发服务器预览」。旧 App 忽略该字段。手机不能批准端口。
+`capabilities.preview: { v: 1, detect: 1 }` 表示可以列已批准的本机预览，并且可以列出工具输出里看到的端口。`v` 仍是 1，旧 App 只认 `v` 时预览入口不变。`detect` 是新增字段，旧 App 忽略。手机不能批准端口。
 
 `archivedSessionIds` 与 Web 的工作区归档集合保持一致；Web 恢复会话后，该 id 也必须从 App 的归档集合移除。App 的本机恢复仅是用户明确选择的临时覆盖，不能把服务端新归档的会话重新带回侧边栏。`sessions` 仍保留完整会话行，供设置页恢复；App 在冷启动选择会话前先应用该集合，因此已在 Web 删除的会话不会短暂出现在 App 侧边栏或被自动选中。该集合是快照字段，不代表底层会话日志已被物理删除。
 
@@ -237,6 +237,8 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 即使记录里有这个端口，下列端口也会被拒绝：22、3306、5432、6379、11211、27017、9200，以及插件端口和 DSH Host 端口。撤销会立刻断开已经打开的连接。
 
 页面里写死的 `http://localhost:<port>` 绝对地址不会被改写成预览路径。Vite / Next 的热更新如果使用当前页面的 host，走的是这条预览连接。
+
+`GET /dsh-link/mobile/preview-detections`（设备 token）返回 `{ detections: [{ port, sessionId }] }`。只含端口和会话 id，没有工具输出。已经批准的端口不在这里。插件从 `tool/result` 的文本里识别 `http://localhost`、`http://127.0.0.1`、`http://0.0.0.0` 加端口。示例句里的地址（例如、e.g.、example）不算。会话从列表消失或被归档后，这些记录删掉。这条接口不能批准端口。
 
 ## 错误与重试
 

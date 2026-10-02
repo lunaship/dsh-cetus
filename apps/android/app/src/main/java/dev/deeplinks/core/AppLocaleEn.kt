@@ -277,6 +277,7 @@ val DshStringsEn = DshStrings(
         put("previewOpenBrowser", "Open in browser")
         put("previewCopied", "Address copied. Paste it into the system browser.")
         put("previewExit", "Exit")
+        put("previewDetected", "Dev server :%d detected — approve it on the computer")
         put("runningStatus", "Running")
         put("returnToParentSession", "Return to parent session")
         put("renameSessionDesc", "Set a name that is easy to recognize.")

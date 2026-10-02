@@ -61,7 +61,9 @@ function parseSseBlocks(buf, onBlock) {
 function handleSessionEvent(payload, rt, requestPoll) {
   const sessionId = payload.sessionId
   const event = payload.event
-  if (!sessionId || !event || typeof event.seq !== "number") return
+  if (!sessionId || !event) return
+  try { rt.previewDetect?.observe(sessionId, event) } catch {}
+  if (typeof event.seq !== "number") return
   const writers = rt.sessionStreams.get(sessionId)
   if (!writers || writers.size === 0) return
   let needsPoll = false
