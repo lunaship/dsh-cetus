@@ -74,6 +74,7 @@ import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
 import dev.deeplinks.native.util.chatCanvasKind
+import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.util.composerSuggestionVisible
 import dev.deeplinks.native.util.lastGroupEndedAssistant
 import dev.deeplinks.native.util.ChatCanvasKind
@@ -2123,27 +2124,6 @@ fun WorkspaceScreen(
             var showSchedules by remember { mutableStateOf(false) }
             var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
-            val topBarMenuItems = workspaceHeaderMenuItems(
-                canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
-                onCloseMenu = { headerMenuOpen = false },
-                onBrowseFiles = { showFileBrowser = true },
-                onRename = { currentSession?.let { openRename(it) } },
-                onShare = { showShareSheet = true },
-                onUsage = { showUsage = true },
-                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
-                onArchive = {
-                    currentSession?.let { session ->
-                        archiveSessionNow(session) { err ->
-                            if (err == null) {
-                                showArchiveUndo(session.sessionId)
-                            } else {
-                                sessionsLoadError = err
-                            }
-                        }
-                    }
-                },
-                onDelete = { currentSession?.let { openDeleteSession(it) } },
-            )
             ScheduledTasksSheet(showSchedules, workspaceViewModel.sessionControl, currentSessionId != null) { showSchedules = false }
             if (showUsage) UsageSheet(sessionStats) { showUsage = false }
             if (showShareSheet) {
@@ -2181,17 +2161,26 @@ fun WorkspaceScreen(
             }
             var showPreviewSheet by remember { mutableStateOf(false) }
             if (showPreviewSheet) PreviewEntrySheet(client, host) { showPreviewSheet = false }
-            val menuWithSubagents = rememberWorkspaceOverflowMenu(
-                topBarMenuItems, activeSubagentCount, viewMode, workspaceViewModel.previewSupported.value,
-                onToggleViewMode = { headerMenuOpen = false; selectViewMode(if (viewMode == "trace") "chat" else "trace") },
-                onOpenSubagents = { headerMenuOpen = false; showSubagentSheet = true },
-                onOpenPreview = { headerMenuOpen = false; showPreviewSheet = true },
+            var showGoalEdit by remember { mutableStateOf(false) }
+            GoalEditHost(showGoalEdit, workspaceViewModel.sessionControl) { showGoalEdit = false }
+            val sessionMenu = if (composeNewSession && currentSessionId == null) SessionMenu.Empty else sessionMenu(
+                onClose = { headerMenuOpen = false },
+                changes = pinnedChanges, onChanges = { pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } } },
+                canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null, onBrowseFiles = { showFileBrowser = true },
+                viewMode = viewMode, onToggleViewMode = { selectViewMode(if (viewMode == "trace") "chat" else "trace") },
+                subagentCount = activeSubagentCount, onSubagents = { showSubagentSheet = true },
+                onUsage = { showUsage = true },
+                previewSupported = workspaceViewModel.previewSupported.value, onPreview = { showPreviewSheet = true },
+                canGoal = workspaceViewModel.sessionControl.goal.value?.manageable == true, onGoal = { showGoalEdit = true },
+                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
+                onRename = { currentSession?.let { openRename(it) } },
+                onFork = { currentSessionId?.let { forkNow(it) } },
+                onShare = { showShareSheet = true },
             )
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
             Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 WorkspaceTopBar(
-                    running = running,
                 // 草稿态标题固定「新任务」；有会话显示会话名；无会话且非草稿留空（起始块已删）
                 title = when {
                     composeNewSession && currentSessionId == null -> L.homeNewTask
@@ -2204,7 +2193,6 @@ fun WorkspaceScreen(
                 } else {
                     chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec)
                 },
-                showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
                     if (dshLayout.persistentSidebar) {
                         sidebarCollapsed = !sidebarCollapsed
@@ -2212,12 +2200,10 @@ fun WorkspaceScreen(
                         showPhoneSessions()
                     }
                 },
-                subagentCount = activeSubagentCount,
-                onOpenSubagents = { showSubagentSheet = true },
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
-                // 草稿态不显示「⋯」菜单（N1）
-                menuItems = if (composeNewSession && currentSessionId == null) emptyList() else menuWithSubagents,
+                menu = sessionMenu,
+                diff = pinnedChanges?.takeIf { it.total > 0 }?.let { c -> DlDiffStat(c.added, c.deleted) { scope.launch { changesPanel.open(c.seq, null) } } },
             )
             }
 
@@ -2379,8 +2365,8 @@ fun WorkspaceScreen(
                 contentPadding = PaddingValues(
                     start = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
                     end = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
-                    top = topChromeDp + DshSpace.s10,
-                    bottom = bottomChromeDp + DshSpace.s10,
+                    top = topChromeDp + DshSpace.s12,
+                    bottom = bottomChromeDp + DshSpace.s12,
                 )
             ) {
                 if (messages.isEmpty()) {
@@ -2433,7 +2419,6 @@ fun WorkspaceScreen(
                         sweepingId = sweepingId,
                         actions = chatActions,
                         isRunning = running,
-                        pinnedChangesSeq = pinnedChanges?.seq,
                     )
                     // 对齐网页 TurnStatus（Deep diving...）：整轮生成期间都在流尾显示思考中扫光
                     if (shouldShowTurnStatus(messages, running || isSending)) {
@@ -2537,17 +2522,12 @@ fun WorkspaceScreen(
                 )
             }
             // ===== bottom chrome（WI-006：发送队列/输入卡/统计栏同一容器，统一安全区与 IME） =====
-            // R11：通栏玻璃 → 留边距圆角浮岛（dshGlass Floating：轻折射/高光/柔和阴影），
-            // 输入卡本体保持实色（R5 近实色面）；岛尺寸经 overlayBottomChrome 实测回填。
+            // v4：输入区是实底容器（DlComposer 自带边距），建议行 / 队列在其上方
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
-                    .padding(bottom = 8.dp)
-                    // L12：输入行是两块独立玻璃（InputBar 内部）；座位行 / 建议行直接浮在内容上，
-                    // 由底部渐隐托底——PR3 的整块浮岛外圈玻璃取消
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
@@ -2568,7 +2548,7 @@ fun WorkspaceScreen(
                             pendingBlocked = homePendingApproval != null,
                             online = hostReachable,
                         ),
-                        changesCount = pinnedChanges?.total?.takeIf { it > 0 },
+                        changesCount = null,
                         onSuggestion = { text ->
                             inputText = text
                             if (composerFocusShouldEmit(ComposerFocusSource.CommandInsert)) composerFocusToken++
@@ -2659,8 +2639,6 @@ fun WorkspaceScreen(
                 actionError = composerActionError,
                 composerFocusRequester = composerFocusRequester,
                 focusToken = composerFocusToken,
-                // 方案 A：输入区坐在实底上，不再采样背后内容（采样会让被实底挡住的正文从胶囊里透出来）
-                backdrop = null,
                 onSend = {
                     // 不可逆权限升级：无论从哪个入口触发，都不直发，先走二次确认。
                     if (isDangerPermissionCommand(inputText)) {

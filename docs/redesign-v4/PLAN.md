@@ -283,3 +283,4 @@
 | R2.2 | #47 | ktlint 未用 import 修复；20 张基线重生成并人工过目。遗留：分段控件长标签（「跟随系统」）截断、重连状态槽红色浅底，R3.6 / R3.1 处理 |
 | R2.3 | #48 | 新增字段是加法，`PLUGIN_PROTOCOL` 保持 2（未按计划 +1）；同 PR 带入 main 上 R0.1 / R0.2 的文本改动 |
 | R2.4 | 见 PR | 首页余额横幅 `HomeBalanceBanner` 未删，挪到 R3.2 收件箱重做时改成收件箱条目；旧 `tier_custom` 偏好在读取时清掉 |
+| R3.1a | 见 PR | R3.1 拆成 4 个 PR（a 消息流 / 输入区 / 顶栏 / ⋯ 菜单；b 状态槽；c 决策栏；d 轨迹二级页）。`DlComposer` 加了 field / controls / sendButton / footer 插槽，保住原生 EditText 输入法；输入区去掉上下文计量；建议行不再放「查看改动」 |

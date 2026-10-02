@@ -15,6 +15,8 @@ internal object ChangesL {
         "viewChanges" to "查看改动 (%d)",
         "editedFile" to "已编辑 %s",
         "editedFiles" to "已编辑 %d 个文件",
+        "changedFiles" to "改了 %d 个文件",
+        "viewAllChanges" to "查看全部改动",
         "moreFiles" to "还有 %d 个文件",
         "viewAllFiles" to "查看全部 %d 个",
         "expandHiddenRows" to "展开中间 %d 行",
@@ -45,6 +47,8 @@ internal object ChangesL {
         "viewChanges" to "View changes (%d)",
         "editedFile" to "Edited %s",
         "editedFiles" to "Edited %d files",
+        "changedFiles" to "Changed %d files",
+        "viewAllChanges" to "View all changes",
         "moreFiles" to "%d more files",
         "viewAllFiles" to "View all %d",
         "expandHiddenRows" to "Show %d hidden lines",
@@ -76,6 +80,8 @@ internal object ChangesL {
     val viewChanges get() = t("viewChanges")
     val editedFile get() = t("editedFile")
     val editedFiles get() = t("editedFiles")
+    val changedFiles get() = t("changedFiles")
+    val viewAllChanges get() = t("viewAllChanges")
     val moreFiles get() = t("moreFiles")
     val viewAllFiles get() = t("viewAllFiles")
     val expandHiddenRows get() = t("expandHiddenRows")

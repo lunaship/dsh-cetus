@@ -78,7 +78,7 @@ internal fun GoalCard(
             Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
                 ) {
                     Icon(
                         GoalOutline16,
@@ -135,7 +135,7 @@ private fun GoalCardActions(
         CircularProgressIndicator(
             modifier = Modifier.size(DshIconSize.sm),
             color = Dsh.labelSecondary,
-            strokeWidth = DshSpace.s2,
+            strokeWidth = DshSpace.s4,
         )
         return
     }

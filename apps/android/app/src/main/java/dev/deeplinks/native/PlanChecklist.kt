@@ -81,7 +81,7 @@ internal fun PlanChecklist(
             Text(L.planEmpty, color = Dsh.labelSecondary, style = DshType.caption)
             return@Column
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
             Text(
                 planCollapsedText(items, L.planCollapsed, L.planCollapsedCurrent),
                 color = Dsh.labelPrimary,

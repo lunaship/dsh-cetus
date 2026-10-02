@@ -200,9 +200,9 @@ internal fun TrajectoryView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = DshSpace.s12, end = DshSpace.s6, top = DshSpace.s8, bottom = DshSpace.s2),
+                    .padding(start = DshSpace.s12, end = DshSpace.s8, top = DshSpace.s8, bottom = DshSpace.s4),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
             ) {
                 TraceToggle(
                     icon = ClockOutline16,
@@ -334,7 +334,7 @@ private fun TraceEmptyState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp),
+            .padding(vertical = DshSpace.s32),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -346,9 +346,9 @@ private fun TraceEmptyState() {
         ) {
             Icon(ThinkOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(DshIconSize.md))
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(DshSpace.s16))
         Text(L.noTrace, color = Dsh.labelPrimary, style = DshType.title, fontWeight = FontWeight(500))
-        Spacer(Modifier.height(DshSpace.s6))
+        Spacer(Modifier.height(DshSpace.s8))
         Text(
             L.noTraceEmpty,
             color = Dsh.labelTertiary,
@@ -383,11 +383,11 @@ private fun TraceToggle(icon: ImageVector, label: String, active: Boolean, onCli
                 .height(40.dp)
                 .clip(RoundedCornerShape(DshRadius.full))
                 .background(bg)
-                .padding(horizontal = 10.dp),
+                .padding(horizontal = DshSpace.s12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(DshIconSize.xs))
-            Spacer(Modifier.width(5.dp))
+            Spacer(Modifier.width(DshSpace.s4))
             Text(label, color = fg, style = DshType.label, fontWeight = FontWeight(500))
         }
     }
@@ -402,11 +402,11 @@ private fun TraceSearchField(value: String, onValueChange: (String) -> Unit) {
             .heightIn(min = DshTouch.min)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = DshSpace.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.xs))
-        Spacer(Modifier.width(DshSpace.s6))
+        Spacer(Modifier.width(DshSpace.s8))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -456,7 +456,7 @@ private fun TraceTimeline(
             .fillMaxWidth()
             .height(30.dp)
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
-        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         messages.forEach { m ->
@@ -472,7 +472,7 @@ private fun TraceTimeline(
                 modifier = Modifier
                     .weight(weight)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(DshRadius.micro))
+                    .clip(RoundedCornerShape(DshRadius.control))
                     .background(visual.color.copy(alpha = alpha))
                     .clickable { onFocus(key) },
             )
@@ -487,7 +487,7 @@ private fun TraceTurnHeader(turn: TraceTurn, collapsed: Boolean, onToggle: () ->
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(start = DshSpace.s12, end = DshSpace.s12, top = 14.dp, bottom = DshSpace.s6),
+            .padding(start = DshSpace.s12, end = DshSpace.s12, top = DshSpace.s16, bottom = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -549,7 +549,7 @@ private fun TraceTableRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(visual.icon, contentDescription = null, tint = accent, modifier = Modifier.size(DshIconSize.xs))
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 visual.label,
                 color = accent,
@@ -586,7 +586,7 @@ private fun TraceTableRow(
         }
         Spacer(Modifier.height(DshSpace.s4))
         TraceRowBody(primary = primary, result = row.result, running = running, expanded = expanded)
-        Spacer(Modifier.height(DshSpace.s6))
+        Spacer(Modifier.height(DshSpace.s8))
         HorizontalDivider(color = Dsh.borderSubtle, thickness = 0.5.dp)
     }
 }
@@ -642,7 +642,7 @@ private fun TraceCodeBlock(text: String, running: Boolean, expanded: Boolean) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgCode)
-            .padding(horizontal = 10.dp, vertical = DshSpace.s8)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
     ) {
         TraceExpandableText(text, maxLines = 5, mono = true, forceExpanded = expanded)
     }
@@ -674,7 +674,7 @@ private fun TraceExpandableText(
                 style = DshType.microRelaxed,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .padding(top = DshSpace.s2)
+                    .padding(top = DshSpace.s4)
                     .clip(RoundedCornerShape(DshRadius.control))
                     .clickable { localExpanded = !localExpanded }
                     .padding(horizontal = DshSpace.s4)

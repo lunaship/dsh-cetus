@@ -5,20 +5,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -43,21 +36,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
@@ -111,25 +98,21 @@ internal fun ThinkingTrace(
     modifier: Modifier = Modifier,
     body: @Composable ColumnScope.() -> Unit,
 ) {
-    val rail = Dsh.brand500
-    val panelShape = RoundedCornerShape(DshRadius.container)
+    // v4 4.6：展开后是一条细竖线串起正文，不做凹进面板 / 品牌色竖条
+    val rail = Dsh.outline
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(panelShape)
-            .background(if (expanded) Dsh.bgRecessed else Color.Transparent)
             .drawBehind {
                 if (expanded) {
                     drawLine(
                         color = rail,
-                        start = Offset(2.dp.toPx(), 6.dp.toPx()),
-                        end = Offset(2.dp.toPx(), size.height - 6.dp.toPx()),
-                        strokeWidth = 2.dp.toPx(),
-                        cap = StrokeCap.Round,
+                        start = Offset(8.dp.toPx(), 40.dp.toPx()),
+                        end = Offset(8.dp.toPx(), size.height - 8.dp.toPx()),
+                        strokeWidth = 1.dp.toPx(),
                     )
                 }
-            }
-            .padding(start = if (expanded) 10.dp else 0.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+            },
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             ThinkingHeader(
@@ -149,7 +132,7 @@ internal fun ThinkingTrace(
                 ) + fadeOut(animationSpec = tween(motionDuration(180))),
             ) {
                 Column(
-                    modifier = Modifier.padding(start = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s6),
+                    modifier = Modifier.padding(start = DshSpace.s20, top = DshSpace.s4, bottom = DshSpace.s8),
                     content = body,
                 )
             }
@@ -224,13 +207,13 @@ private fun ThinkingHeader(
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4),
+                .padding(vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 StarFour16,
                 contentDescription = null,
-                tint = if (working) Dsh.brand400 else Dsh.labelTertiary,
+                tint = Dsh.labelSecondary,
                 modifier = Modifier.size(DshIconSize.sm),
             )
             Spacer(Modifier.width(DshSpace.s8))
@@ -246,21 +229,20 @@ private fun ThinkingHeader(
                 } else {
                     Text(
                         doneLabel,
-                        style = DshType.title,
-                        fontWeight = FontWeight(600),
-                        color = Dsh.labelPrimary,
+                        style = DshType.supporting,
+                        color = Dsh.labelSecondary,
                         maxLines = 1,
                     )
                 }
             }
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Icon(
-                ChevronDownOutline16,
+                ChevronRightOutline16,
                 contentDescription = expandLabel,
-                tint = Dsh.labelTertiary,
+                tint = Dsh.labelSecondary,
                 modifier = Modifier
-                    .size(DshIconSize.sm)
-                    .graphicsLayer { rotationZ = rotation },
+                    .size(DshIconSize.xs)
+                    .graphicsLayer { rotationZ = rotation / 2 },
             )
         }
     }
@@ -270,45 +252,10 @@ private fun ThinkingHeader(
  * 文字扫光：动画值只在 Canvas 绘制阶段读取，避免每帧重组。
  * reduce-motion 时退化为静态次要色文本。
  */
+/** 进行中的标签：v4 不做高光扫过，静态正文色 13sp；[working] 为假时次要色。 */
 @Composable
 internal fun ShimmerLabel(text: String, working: Boolean) {
-    val style = DshType.title
-    if (!working || isReduceMotionEnabled()) {
-        Text(text, style = style, color = Dsh.labelSecondary, maxLines = 1)
-        return
-    }
-    val transition = rememberInfiniteTransition(label = "thinkingShimmer")
-    val offset = transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "thinkingShimmerOffset",
-    )
-    val textMeasurer = rememberTextMeasurer()
-    val ink = Dsh.labelPrimary
-    val muted = Dsh.labelTertiary
-    val textLayout = remember(text, style) { textMeasurer.measure(text, style) }
-    Canvas(
-        modifier = Modifier
-            .width(with(LocalDensity.current) { textLayout.size.width.toDp() })
-            .height(with(LocalDensity.current) { textLayout.size.height.toDp() }),
-    ) {
-        drawText(
-            textLayout,
-            brush = Brush.linearGradient(
-                colorStops = arrayOf(
-                    0.35f to muted,
-                    0.50f to ink,
-                    0.65f to muted,
-                ),
-                start = Offset(offset.value * size.width, 0f),
-                end = Offset(offset.value * size.width + size.width, 0f),
-            ),
-        )
-    }
+    Text(text, style = DshType.supporting, color = if (working) Dsh.labelPrimary else Dsh.labelSecondary, maxLines = 1)
 }
 
 internal fun thoughtDoneLabel(durationMs: Long?, elapsedSec: Long?): String {

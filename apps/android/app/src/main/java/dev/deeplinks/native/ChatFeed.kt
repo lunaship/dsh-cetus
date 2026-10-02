@@ -30,14 +30,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.font.FontFamily
 
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshCardDivider
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.util.activityLine
@@ -115,49 +114,61 @@ internal fun ChatStickySummary(
  */
 @Composable
 private fun ToolSummaryCard(summary: MessageGroup.ToolSummary, onOpenTrace: () -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = DshTouch.min)
-                .clip(RoundedCornerShape(DshRadius.control))
-                .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (summary.running) {
+    // v4 4.1：过程收成灰色单行（图标 + 摘要 + ›），运行中是转圈 + 等宽命令；不画分隔线、不做卡片
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = DshTouch.min)
+            .clip(RoundedCornerShape(DshRadius.control))
+            .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
+            .padding(vertical = DshSpace.s4),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (summary.running) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(DshIconSize.sm),
+                color = Dsh.brand400,
+                trackColor = Dsh.primarySoft,
+                strokeWidth = 2.dp,
+            )
+            val label = if (summary.lastToolName == null) L.thinkingActive else L.executing
+            Text(label.trimEnd('…', '.', '。'), color = Dsh.labelPrimary, style = DshType.supporting, maxLines = 1)
+            Text(
+                text = summary.lastToolName.orEmpty(),
+                color = Dsh.tertiaryText,
+                style = DshType.supporting.copy(fontFamily = FontFamily.Monospace),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Icon(
+                if (summary.activity.thinkingMs != null) SparkleOutline16 else CodeOutline16,
+                contentDescription = null,
+                tint = Dsh.labelSecondary,
+                modifier = Modifier.size(DshIconSize.sm),
+            )
+            val line = activityLine(summary.activity).joinToString(" · ")
+                .ifBlank { L.toolSummary.format(summary.count) }
+            Text(
+                text = line,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (summary.failedCount > 0) {
                 Text(
-                    text = "◌ ",
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                )
-                ShimmerLabel(
-                    text = summary.lastToolName ?: L.executing,
-                    working = true,
-                )
-            } else {
-                val line = activityLine(summary.activity).joinToString(" · ")
-                    .ifBlank { L.toolSummary.format(summary.count) }
-                Text(
-                    text = line,
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
+                    text = L.toolSummaryFailed.format(summary.failedCount),
+                    color = Dsh.err,
+                    style = DshType.supporting,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
                 )
-                if (summary.failedCount > 0) {
-                    Spacer(Modifier.width(DshSpace.s6))
-                    Text(
-                        text = L.toolSummaryFailed.format(summary.failedCount),
-                        color = Dsh.error,
-                        style = DshType.captionRelaxed,
-                        maxLines = 1,
-                    )
-                }
             }
+            Icon(ChevronRightOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.xs))
         }
-        DshCardDivider(leadingInset = DshSpace.s12)
     }
 }
 
@@ -210,8 +221,8 @@ internal fun StickyTaskSummaryCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgInput.copy(alpha = 0.92f))
+            .clip(RoundedCornerShape(DshRadius.block))
+            .background(Dsh.surface1)
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
@@ -221,7 +232,7 @@ internal fun StickyTaskSummaryCard(
             } else if (hasGoal) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(
@@ -251,7 +262,7 @@ internal fun StickyTaskSummaryCard(
                 if (total > 0) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
@@ -271,7 +282,7 @@ internal fun StickyTaskSummaryCard(
                                     .fillMaxWidth()
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(DshRadius.full)),
-                                horizontalArrangement = Arrangement.spacedBy(1.dp),
+                                horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
                             ) {
                                 segments.forEach { color ->
                                     Box(
@@ -494,7 +505,11 @@ internal fun LazyListScope.chatMessageItems(
         }
     }
     val turnEnds = turnEndAssistantIds(groups, isRunning)
-    val foldedGroups = foldToolCalls(groups, viewMode = "chat")
+    val folded = foldToolCalls(groups, viewMode = "chat")
+    // v4 4.2：本轮改动卡挂到轮末回复下面（改动 → 元信息 → 按钮），不再单独成行
+    val turnChanges = turnChangesByAssistant(folded, turnEnds)
+    val attached = turnChanges.values.mapTo(HashSet()) { it.id }
+    val foldedGroups = if (attached.isEmpty()) folded else folded.filterNot { (it as? MessageGroup.Single)?.msg?.id in attached }
     // 轮尾元信息的模型名（4.3）：只认本轮出现过的模型切换标记，不伪造逐条模型字段
     val turnModelById = turnEndModelLabels(foldedGroups, turnEnds)
     val rows = chatFeedRows(foldedGroups, isRunning)
@@ -542,6 +557,7 @@ internal fun LazyListScope.chatMessageItems(
                         isTurnEnd = row.isTurnEnd,
                         textPart = row.part,
                         isLastPart = row.partIndex == row.partCount - 1,
+                        turnChanges = turnChanges[group.msg.id],
                     )
                 }
                 is MessageGroup.ToolGroup -> ToolGroupHeader(
@@ -605,6 +621,22 @@ internal fun turnEndModelLabels(
                 current = dev.deeplinks.native.util.modelChangedFrom(msg.text) ?: current
             msg.role == "assistant" && msg.id in turnEnds ->
                 current?.let { out[msg.id] = it }
+        }
+    }
+    return out
+}
+
+/** 轮末回复 id → 同一轮里紧随其后的改动摘要（中间没有新的用户消息）。 */
+internal fun turnChangesByAssistant(foldedGroups: List<MessageGroup>, turnEnds: Set<String>): Map<String, MobileMessage> {
+    if (turnEnds.isEmpty()) return emptyMap()
+    val out = mutableMapOf<String, MobileMessage>()
+    var lastEnd: String? = null
+    for (group in foldedGroups) {
+        val msg = (group as? MessageGroup.Single)?.msg ?: continue
+        when {
+            msg.role == "user" -> lastEnd = null
+            msg.role == "assistant" && msg.id in turnEnds -> lastEnd = msg.id
+            msg.role == ROLE_WORKSPACE_CHANGES && msg.changes != null -> lastEnd?.let { if (it !in out) out[it] = msg }
         }
     }
     return out

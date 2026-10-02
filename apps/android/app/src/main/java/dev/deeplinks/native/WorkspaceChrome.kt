@@ -7,7 +7,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.ui.DshErrorState
-import dev.deeplinks.native.ui.DshPageChromeDensity
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.DshS
@@ -69,7 +68,10 @@ import dev.deeplinks.native.util.compactTokens
 import dev.deeplinks.core.L
 import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.ui.HostStatusDot
-import dev.deeplinks.native.ui.DshGlassCircle
+import dev.deeplinks.native.ui.v4.DlDiffStat
+import dev.deeplinks.native.ui.v4.DlTopBar
+import dev.deeplinks.native.ui.v4.DlTopBarAction
+import dev.deeplinks.native.ui.v4.DlTopBarNav
 import dev.deeplinks.native.util.StreamBannerKind
 import dev.deeplinks.native.NewChatOutline16
 import dev.deeplinks.native.ListPenOutline16
@@ -150,7 +152,7 @@ private fun QuietStatusLine(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s2)
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s4)
             .semantics { this.contentDescription = contentDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -303,10 +305,10 @@ internal fun ContextMeterRow(label: String, value: String, swatchColor: Color) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .clip(RoundedCornerShape(DshRadius.micro))
+                .clip(RoundedCornerShape(DshRadius.control))
                 .background(swatchColor)
         )
-        Spacer(Modifier.width(DshSpace.s6))
+        Spacer(Modifier.width(DshSpace.s8))
         Text(label, color = Dsh.labelSecondary, style = DshType.captionRelaxed, modifier = Modifier.weight(1f))
         Text(value, color = Dsh.labelPrimary, style = DshType.captionRelaxed.tabularNums(),)
     }
@@ -358,7 +360,7 @@ internal fun CommandSuggestions(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s6),
+            .padding(horizontal = COMPOSER_SIDE_CLEARANCE, vertical = DshSpace.s8),
     ) {
         Column(
             modifier = Modifier
@@ -368,7 +370,7 @@ internal fun CommandSuggestions(
                 .clip(RoundedCornerShape(DshRadius.container))
                 .background(Dsh.bgCard)
                 .verticalScroll(rememberScrollState())
-                .padding(DshSpace.s6),
+                .padding(DshSpace.s8),
         ) {
             grouped.forEach { (group, entries) ->
                 if (!filtering) {
@@ -376,7 +378,7 @@ internal fun CommandSuggestions(
                         group.displayName,
                         color = Dsh.labelTertiary,
                         style = DshType.microMedium,
-                        modifier = Modifier.padding(start = 10.dp, top = DshSpace.s8, bottom = DshSpace.s4),
+                        modifier = Modifier.padding(start = DshSpace.s12, top = DshSpace.s8, bottom = DshSpace.s4),
                     )
                 }
                 entries.forEach { entry ->
@@ -400,7 +402,7 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
             .clip(RoundedCornerShape(DshRadius.container))
             .background(if (highlighted) Dsh.bgSubtle else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s6),
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -421,7 +423,7 @@ private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: (
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(command.title, color = Dsh.labelPrimary, style = DshType.body, maxLines = 1)
-                Spacer(Modifier.width(DshSpace.s6))
+                Spacer(Modifier.width(DshSpace.s8))
                 Text(
                     command.trigger,
                     color = Dsh.labelTertiary,
@@ -499,14 +501,14 @@ internal fun ToolGroupHeader(
                     contentDescription = summaryTitle.ifBlank { L.executing }
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
-                .padding(horizontal = DshSpace.s6),
+                .padding(horizontal = DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (groupRunning) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(DshIconSize.xs),
-                    // 进行中转圈用墨色（2026-09-28 重设计：品牌蓝只给需要你动手的动作）
-                    color = Dsh.labelPrimary,
+                    color = Dsh.brand400,
+                    trackColor = Dsh.primarySoft,
                     strokeWidth = 1.5.dp,
                 )
                 Spacer(Modifier.width(DshSpace.s8))
@@ -516,15 +518,15 @@ internal fun ToolGroupHeader(
                 Icon(
                     DocumentCheckOutline16,
                     contentDescription = null,
-                    tint = Dsh.labelTertiary,
+                    tint = Dsh.labelSecondary,
                     modifier = Modifier.size(DshIconSize.xs),
                 )
                 Spacer(Modifier.width(DshSpace.s8))
             }
             Text(
                 summaryTitle,
-                color = if (groupRunning) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.caption,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -539,7 +541,7 @@ internal fun ToolGroupHeader(
                     color = Dsh.labelTertiary,
                     style = DshType.caption.tabularNums(),
                 )
-                Spacer(Modifier.width(DshSpace.s6))
+                Spacer(Modifier.width(DshSpace.s8))
             }
             Icon(
                 if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
@@ -556,14 +558,14 @@ internal fun ToolGroupHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 7.dp, top = DshSpace.s2)
+                    .padding(start = DshSpace.s8, top = DshSpace.s4)
                     .drawBehind {
-                        val x = 3.5.dp.toPx()
+                        val x = 0.5.dp.toPx()
                         drawLine(rail, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
                     }
                     .padding(start = DshSpace.s16, top = DshSpace.s4, bottom = DshSpace.s4),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
+                Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
                     group.items.forEach { item ->
                         MessageItem(
                             msg = item,
@@ -582,111 +584,28 @@ internal fun ToolGroupHeader(
 }
 
 /**
- * 会话顶栏：导航、会话名、对话/轨迹切换和溢出菜单。
- * 项目与连接状态在输入卡上方的上下文条（[ComposerContextStrip]），顶栏只放标题。
- * 菜单项由 [workspaceHeaderMenuItems] 构建后传入；设备入口在菜单与侧栏底部。
+ * 会话顶栏（v4 4.1）：返回 + 标题 + 副标题（工作区 · 状态 · 第 N 步）+ diff 角标 + ⋯。
+ * ⋯ 打开 [SessionMenuSheet]（4.9）；菜单为空（草稿态）时不显示 ⋯。
  */
 @Composable
 internal fun WorkspaceTopBar(
-    running: Boolean,
     title: String,
-    /** 第二行：工作区 · 电脑名，或执行中的「◌ 正在执行 · 第 12 步 · 3 分钟」（稿 03/10）。 */
     subtitle: String? = null,
-    showBack: Boolean,
     onNavigate: () -> Unit,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
-    menuItems: List<DshMenuItem>,
-    /** 子智能体入口：>0 时在「⋯」按钮右上角显示品牌色圆点，菜单第一项也显示数量。 */
-    subagentCount: Int = 0,
-    onOpenSubagents: () -> Unit = {},
-    /** Control 档玻璃采样源（返回 / ⋯ 圆钮）；由页面骨架注入。 */
-    backdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null,
+    menu: SessionMenu,
+    diff: DlDiffStat? = null,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                // 紧凑档 56dp（2026-10-01 R2）：高度与标题字阶收敛到 DshPageChrome 规格
-                .heightIn(min = DshPageChromeDensity.Compact.minHeight)
-                .padding(start = DshSpace.s4, end = DshSpace.s4, top = DshSpace.s2, bottom = DshSpace.s2),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // L9：返回 / 会话列表改悬浮玻璃圆钮（Control 档）
-            DshGlassCircle(
-                icon = if (showBack) ArrowLeftOutline16 else PanelLeftOutline16,
-                contentDescription = if (showBack) L.back else L.sessionList,
-                onClick = onNavigate,
-                backdrop = backdrop,
-                iconTint = Dsh.labelSecondary,
-            )
-
-            // 两行标题：会话名（粗）+ 工作区·电脑名 / 执行中状态（稿 03/10）。
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (running && subtitle.isNullOrBlank()) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Dsh.labelPrimary),
-                    )
-                    Spacer(Modifier.width(DshSpace.s6))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        color = Dsh.labelPrimary,
-                        // 紧凑档标题 17/24（2026-10-01 R2）：DshType.titleLarge 自带 SemiBold
-                        style = DshType.titleLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (!subtitle.isNullOrBlank()) {
-                        Text(
-                            subtitle,
-                            color = Dsh.labelSecondary,
-                            style = DshType.captionRelaxed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-
-            if (menuItems.isNotEmpty()) {
-                Box {
-                    DshGlassCircle(
-                        icon = EllipsisOutline16,
-                        contentDescription = L.moreActions,
-                        onClick = { onMenuExpandedChange(true) },
-                        backdrop = backdrop,
-                        iconTint = Dsh.labelSecondary,
-                    )
-                    if (subagentCount > 0) {
-                        // 圆点贴在 20dp 图标右上角，而不是 48dp 触控区的角上
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(end = DshSpace.s8, top = DshSpace.s8)
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Dsh.brand400),
-                        )
-                    }
-                    DshMenu(
-                        expanded = menuExpanded,
-                        onDismiss = { onMenuExpandedChange(false) },
-                        items = menuItems,
-                    )
-                }
-            }
-        }
-    }
+    DlTopBar(
+        title = title,
+        subtitle = subtitle?.takeIf { it.isNotBlank() },
+        nav = DlTopBarNav.Back,
+        onNav = onNavigate,
+        diff = diff,
+        actions = if (menu.isEmpty) emptyList() else listOf(DlTopBarAction(EllipsisOutline16, L.moreActions, { onMenuExpandedChange(true) })),
+    )
+    if (menuExpanded && !menu.isEmpty) SessionMenuSheet(menu) { onMenuExpandedChange(false) }
 }
 
 /**
@@ -769,7 +688,7 @@ internal fun ScrollToBottomButton(unread: Int, onClick: () -> Unit) {
                     .defaultMinSize(minWidth = 18.dp)
                     .clip(CircleShape)
                     .background(Dsh.labelPrimary)
-                    .padding(horizontal = 5.dp, vertical = DshSpace.s2),
+                    .padding(horizontal = DshSpace.s4, vertical = DshSpace.s4),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -821,7 +740,7 @@ internal fun ComposerContextStrip(
     ) {
         if (showOffline) {
             HostStatusDot(false)
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 text = L.hostOffline,
                 color = Dsh.labelSecondary,

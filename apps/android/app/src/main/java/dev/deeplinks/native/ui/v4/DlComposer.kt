@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -64,6 +63,14 @@ fun DlComposer(
     permissionRisk: Boolean = false,
     onPermissionClick: () -> Unit = {},
     attachments: (@Composable RowScope.() -> Unit)? = null,
+    /** 自定义输入框（如保住输入法 composition 的原生 EditText）；为空用内置 BasicTextField。 */
+    field: (@Composable () -> Unit)? = null,
+    /** 自定义下方控件行左侧（+ / 模型 / 权限）；为空用内置三项。 */
+    controls: (@Composable RowScope.() -> Unit)? = null,
+    /** 自定义发送键；为空按 [sendState] 画。 */
+    sendButton: (@Composable () -> Unit)? = null,
+    /** 控件行下方的提示（发送失败等）。 */
+    footer: (@Composable () -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -79,7 +86,7 @@ fun DlComposer(
                 content = attachments,
             )
         }
-        BasicTextField(
+        if (field != null) field() else BasicTextField(
             value = text,
             onValueChange = onTextChange,
             textStyle = DshType.body.copy(color = Dsh.labelPrimary),
@@ -99,21 +106,39 @@ fun DlComposer(
             },
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (onAttach != null) {
-                DlIconButton(PlusOutline16, DshS.addAttachment, onAttach, tint = Dsh.labelSecondary)
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                if (controls != null) {
+                    controls()
+                } else {
+                    DlComposerDefaultControls(onAttach, modelLabel, onModelClick, permissionLabel, permissionRisk, onPermissionClick)
+                }
             }
-            if (modelLabel != null) DlComposerChip(modelLabel, null, Dsh.labelSecondary, onModelClick)
-            if (permissionLabel != null) {
-                DlComposerChip(
-                    permissionLabel,
-                    ShieldOutline16,
-                    if (permissionRisk) Dsh.wait else Dsh.labelSecondary,
-                    onPermissionClick,
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            DlSendButton(sendState, onSend, onStop, onMic)
+            if (sendButton != null) sendButton() else DlSendButton(sendState, onSend, onStop, onMic)
         }
+        footer?.invoke()
+    }
+}
+
+@Composable
+private fun DlComposerDefaultControls(
+    onAttach: (() -> Unit)?,
+    modelLabel: String?,
+    onModelClick: () -> Unit,
+    permissionLabel: String?,
+    permissionRisk: Boolean,
+    onPermissionClick: () -> Unit,
+) {
+    if (onAttach != null) {
+        DlIconButton(PlusOutline16, DshS.addAttachment, onAttach, tint = Dsh.labelSecondary)
+    }
+    if (modelLabel != null) DlComposerChip(modelLabel, null, Dsh.labelSecondary, onModelClick)
+    if (permissionLabel != null) {
+        DlComposerChip(
+            permissionLabel,
+            ShieldOutline16,
+            if (permissionRisk) Dsh.wait else Dsh.labelSecondary,
+            onPermissionClick,
+        )
     }
 }
 
