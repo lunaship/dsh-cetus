@@ -184,6 +184,32 @@ import dev.deeplinks.native.ui.DshGlassTier
 import dev.deeplinks.native.ui.dshGlass
 import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.ui.DshTextTabs
+import dev.deeplinks.core.dshColorScheme
+import dev.deeplinks.native.GlobeOutline16
+import dev.deeplinks.native.GoalOutline16
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import dev.deeplinks.native.ui.v4.DlAction
+import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
+import dev.deeplinks.native.ui.v4.DlButtonStyle
+import dev.deeplinks.native.ui.v4.DlChip
+import dev.deeplinks.native.ui.v4.DlChipStyle
+import dev.deeplinks.native.ui.v4.DlComposer
+import dev.deeplinks.native.ui.v4.DlDecisionBar
+import dev.deeplinks.native.ui.v4.DlDecisionOption
+import dev.deeplinks.native.ui.v4.DlDialogSurface
+import dev.deeplinks.native.ui.v4.DlDiffStat
+import dev.deeplinks.native.ui.v4.DlInboxItem
+import dev.deeplinks.native.ui.v4.DlListRow
+import dev.deeplinks.native.ui.v4.DlRowTrailing
+import dev.deeplinks.native.ui.v4.DlSectionHeader
+import dev.deeplinks.native.ui.v4.DlSegmented
+import dev.deeplinks.native.ui.v4.DlSendState
+import dev.deeplinks.native.ui.v4.DlStatusSlot
+import dev.deeplinks.native.ui.v4.DlTone
+import dev.deeplinks.native.ui.v4.DlTopBar
+import dev.deeplinks.native.ui.v4.DlTopBarAction
+import dev.deeplinks.native.ui.v4.DlTopBarNav
 
 /**
  * Compose Preview Screenshot Testing 基线（AGP 内置）。
@@ -205,7 +231,7 @@ internal fun ShotFrame(dark: Boolean, english: Boolean = false, content: @Compos
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
     val colors = if (dark) DarkDshColors else LightDshColors
     val typography = dshTypography()
-    MaterialTheme(typography = typography) {
+    MaterialTheme(colorScheme = dshColorScheme(colors), typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides colors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
@@ -1486,3 +1512,373 @@ internal fun SidebarLightZh() {
 internal fun SidebarDarkEn() {
     Wall(dark = true, english = true) { SidebarWall(english = true) }
 }
+
+// ===== v4 基础组件（R2.2）：每个组件浅色（中文）/ 深色（英文），各含常规、长文本、禁用态 =====
+
+@Composable
+private fun V4Wall(dark: Boolean, content: @Composable (en: Boolean) -> Unit) {
+    ShotFrame(dark = dark, english = dark) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Dsh.bgBase)
+                .padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            content(dark)
+        }
+    }
+}
+
+private fun pick(en: Boolean, zh: String, english: String) = if (en) english else zh
+
+@Composable
+private fun V4TopBarCases(en: Boolean) {
+    DlTopBar(
+        title = pick(en, "完善审批状态同步", "Sync approval state"),
+        subtitle = pick(en, "dsh-links · 运行中 · 第 12 步", "dsh-links · Running · step 12"),
+        diff = DlDiffStat(148, 37) {},
+        actions = listOf(DlTopBarAction(EllipsisOutline16, "more", {})),
+    )
+    DlTopBar(
+        title = "DeepLinks",
+        subtitle = pick(en, "MacBook Pro · 在线", "MacBook Pro · Online"),
+        nav = DlTopBarNav.None,
+        large = true,
+        actions = listOf(DlTopBarAction(SearchOutline16, "search", {}), DlTopBarAction(SettingsOutline16, "settings", {})),
+    )
+    DlTopBar(
+        title = pick(en, "一个非常非常长的会话标题，用来检查标题在顶栏里会不会被截断显示", "A very very long session title that must be truncated inside the top bar"),
+        subtitle = pick(en, "一个同样很长的副标题 · 工作区 · 状态 · 第 128 步", "An equally long subtitle · workspace · state · step 128"),
+        nav = DlTopBarNav.Close,
+        showDivider = true,
+        actions = listOf(DlTopBarAction(ShareOutline16, "share", {}, enabled = false)),
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 top bar light zh", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun V4TopBarLightZh() = V4Wall(dark = false) { V4TopBarCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 top bar dark en", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun V4TopBarDarkEn() = V4Wall(dark = true) { V4TopBarCases(it) }
+
+@Composable
+private fun V4ListRowCases(en: Boolean) {
+    Column {
+        DlListRow(pick(en, "语言", "Language"), leading = TranslateOutline16, trailing = DlRowTrailing.Value(pick(en, "简体中文", "English")), onClick = {})
+        DlListRow(pick(en, "通知", "Notifications"), subtitle = pick(en, "审批、完成、失败", "Approvals, done, failed"), leading = InfoOutline16, trailing = DlRowTrailing.Chevron, onClick = {})
+        DlListRow(pick(en, "允许在通知栏直接批准", "Approve from notification"), subtitle = pick(en, "不推荐：手机收不到完整参数", "Not recommended: the phone cannot see full arguments"), leading = WarningOutline16, leadingTint = DlTone.Wait, trailing = DlRowTrailing.Switch(true) {})
+        DlListRow(pick(en, "跟随系统", "Follow system"), trailing = DlRowTrailing.Radio(true), onClick = {})
+        DlListRow(pick(en, "深色", "Dark"), trailing = DlRowTrailing.Check(true), onClick = {})
+        DlListRow(pick(en, "这是一个非常长的列表行标题，用来检查换行和尾部控件之间的距离是否合适", "A very long list row title used to check wrapping against the trailing control"), subtitle = pick(en, "副标题也很长，最多显示三行，超出部分用省略号结束，保证列表行高度可控。", "The subtitle is long too and wraps up to three lines before it is ellipsized."), leading = FileOutline16, trailing = DlRowTrailing.TextAction(pick(en, "重新检查", "Recheck")) {})
+        DlListRow(pick(en, "远程中继", "Remote relay"), subtitle = pick(en, "未开启", "Off"), leading = GlobeOutline16, trailing = DlRowTrailing.Switch(false) {}, enabled = false)
+        DlListRow(pick(en, "解除配对", "Unpair"), subtitle = pick(en, "同时从电脑端吊销本机", "Also revokes this phone on the computer"), leading = UnlinkOutline16, danger = true, onClick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 list row light zh", showBackground = true, widthDp = 412, heightDp = 640)
+@Composable
+internal fun V4ListRowLightZh() = V4Wall(dark = false) { V4ListRowCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 list row dark en", showBackground = true, widthDp = 412, heightDp = 640)
+@Composable
+internal fun V4ListRowDarkEn() = V4Wall(dark = true) { V4ListRowCases(it) }
+
+@Composable
+private fun V4SectionHeaderCases(en: Boolean) {
+    Column {
+        DlSectionHeader(pick(en, "等你处理", "Needs you"), trailing = "2")
+        DlSectionHeader(pick(en, "通用", "General"))
+        DlSectionHeader(pick(en, "一个很长很长的分组标题，用来检查右侧文字按钮是否被挤掉", "A very long section title that must not push the trailing action out"), trailing = pick(en, "全部", "All"), onTrailingClick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 section header light zh", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun V4SectionHeaderLightZh() = V4Wall(dark = false) { V4SectionHeaderCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 section header dark en", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun V4SectionHeaderDarkEn() = V4Wall(dark = true) { V4SectionHeaderCases(it) }
+
+@Composable
+private fun V4StatusSlotCases(en: Boolean) {
+    DlStatusSlot(
+        title = pick(en, "目标 · 第 3/8 轮 · 计划 4/7", "Goal · round 3/8 · plan 4/7"),
+        meta = pick(en, "正在：补审批过期的单测", "Now: tests for expired approvals"),
+        icon = GoalOutline16,
+        onExpandedChange = {},
+        expandedContent = {},
+    )
+    DlStatusSlot(
+        title = pick(en, "把审批状态做成双向同步", "Make approval state sync both ways"),
+        meta = pick(en, "进行中 · 第 3/8 轮", "In progress · round 3/8"),
+        icon = GoalOutline16,
+        expanded = true,
+        onExpandedChange = {},
+        expandedContent = {
+            Text(pick(en, "定位事件只推给发起端", "Find why events only reach the origin"), style = DshType.supporting, color = Dsh.labelSecondary)
+            Text(pick(en, "补审批过期的单测", "Add tests for expired approvals"), style = DshType.bodyStrong, color = Dsh.labelPrimary)
+        },
+    )
+    DlStatusSlot(
+        title = pick(en, "连接已断开，正在重连…", "Disconnected, reconnecting…"),
+        meta = pick(en, "已尝试 3 次 · 局域网", "3 attempts · LAN"),
+        icon = CloudOffOutline16,
+        tone = DlTone.Err,
+    )
+    DlStatusSlot(
+        title = pick(en, "等你批准：运行一个非常长的命令，标题只显示一行，超出部分用省略号结束", "Needs approval: a very long command whose title stays on a single line and is ellipsized"),
+        icon = WarningOutline16,
+        tone = DlTone.Wait,
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 status slot light zh", showBackground = true, widthDp = 412, heightDp = 420)
+@Composable
+internal fun V4StatusSlotLightZh() = V4Wall(dark = false) { V4StatusSlotCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 status slot dark en", showBackground = true, widthDp = 412, heightDp = 420)
+@Composable
+internal fun V4StatusSlotDarkEn() = V4Wall(dark = true) { V4StatusSlotCases(it) }
+
+@Composable
+private fun V4InboxItemCases(en: Boolean) {
+    Column {
+        DlInboxItem(
+            status = pick(en, "等你批准", "Needs approval"),
+            tone = DlTone.Wait,
+            workspace = "dsh-links",
+            time = pick(en, "2 分钟", "2 min"),
+            title = pick(en, "发布 beta.28 前跑一遍真机测试", "Run device tests before beta.28"),
+            command = "./gradlew :app:connectedDebugAndroidTest",
+            actions = listOf(
+                DlAction(pick(en, "拒绝", "Deny"), {}),
+                DlAction(pick(en, "允许一次", "Allow once"), {}, DlButtonStyle.Filled),
+            ),
+        )
+        DlInboxItem(
+            workspace = "dsh-links",
+            time = pick(en, "3 分钟", "3 min"),
+            title = pick(en, "完善审批状态同步", "Sync approval state"),
+            preview = pick(en, "正在运行 go test ./... · 第 12 步", "Running go test ./... · step 12"),
+            running = true,
+        )
+        DlInboxItem(
+            status = pick(en, "完成", "Done"),
+            tone = DlTone.Ok,
+            workspace = pick(en, "一个名字特别长的工作区目录用来检查省略", "a-workspace-with-a-really-long-directory-name"),
+            time = pick(en, "昨天", "Yesterday"),
+            title = pick(en, "一个很长的会话标题，最多显示两行，超过两行的部分会用省略号结束，避免条目高度失控", "A long session title that wraps to at most two lines before it is ellipsized so the row height stays bounded"),
+            preview = pick(en, "改了 4 个文件 · +62 −9", "Changed 4 files · +62 −9"),
+        )
+        DlInboxItem(
+            status = pick(en, "等你回答", "Needs answer"),
+            tone = DlTone.Wait,
+            workspace = "relay",
+            time = pick(en, "8 分钟", "8 min"),
+            title = pick(en, "中继限流策略", "Relay rate limit"),
+            preview = pick(en, "问：每台设备每分钟上限设成 60 还是 120？", "Q: 60 or 120 requests per device per minute?"),
+            actions = listOf(DlAction(pick(en, "回答", "Answer"), {}, enabled = false)),
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 inbox item light zh", showBackground = true, widthDp = 412, heightDp = 600)
+@Composable
+internal fun V4InboxItemLightZh() = V4Wall(dark = false) { V4InboxItemCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 inbox item dark en", showBackground = true, widthDp = 412, heightDp = 600)
+@Composable
+internal fun V4InboxItemDarkEn() = V4Wall(dark = true) { V4InboxItemCases(it) }
+
+@Composable
+private fun V4ComposerCases(en: Boolean) {
+    DlComposer(
+        text = "",
+        onTextChange = {},
+        placeholder = pick(en, "补充说明，这一步结束后发给它", "Add a note; it is sent after this step"),
+        sendState = DlSendState.Stop,
+        onSend = {},
+        onAttach = {},
+        modelLabel = "step-5-preview · " + pick(en, "高", "High"),
+        permissionLabel = pick(en, "工作区内修改", "Workspace write"),
+    )
+    DlComposer(
+        text = pick(en, "这是一段很长的输入内容，用来检查输入框在多行时的高度和行距是否合适，以及发送按钮是否保持在右下角。", "A long draft used to check multi-line height and line spacing, and that the send button stays bottom-right."),
+        onTextChange = {},
+        placeholder = "",
+        sendState = DlSendState.Send,
+        onSend = {},
+        onAttach = {},
+        modelLabel = "deepseek-v4 · " + pick(en, "中", "Medium"),
+        permissionLabel = pick(en, "完全权限", "Full access"),
+        permissionRisk = true,
+        attachments = {
+            Box(Modifier.size(48.dp).background(Dsh.surface2, RoundedCornerShape(DshRadius.control)))
+            Box(Modifier.size(48.dp).background(Dsh.surface2, RoundedCornerShape(DshRadius.control)))
+        },
+    )
+    DlComposer(
+        text = pick(en, "连上后再发送", "Send after reconnecting"),
+        onTextChange = {},
+        placeholder = "",
+        sendState = DlSendState.Disabled,
+        onSend = {},
+        onAttach = {},
+        modelLabel = "step-5-preview",
+        permissionLabel = pick(en, "只读", "Read only"),
+    )
+    DlComposer(
+        text = "",
+        onTextChange = {},
+        placeholder = pick(en, "给智能体发消息", "Message the agent"),
+        sendState = DlSendState.Mic,
+        onSend = {},
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 composer light zh", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun V4ComposerLightZh() = V4Wall(dark = false) { V4ComposerCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 composer dark en", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun V4ComposerDarkEn() = V4Wall(dark = true) { V4ComposerCases(it) }
+
+@Composable
+private fun V4DecisionBarCases(en: Boolean) {
+    DlDecisionBar(
+        status = pick(en, "等你批准", "Needs approval"),
+        meta = pick(en, "2 分钟前", "2 min ago"),
+        question = pick(en, "要运行这个命令吗？", "Run this command?"),
+        command = "./gradlew :app:connectedDebugAndroidTest --tests 'dev.deeplinks.architecture.*' --stacktrace",
+        note = pick(en, "工作区 dsh-links · 在电脑上执行 · 当前权限：工作区内修改", "Workspace dsh-links · runs on the computer · permission: workspace write"),
+        secondary = DlAction(pick(en, "拒绝", "Deny"), {}),
+        primary = DlAction(pick(en, "允许一次", "Allow once"), {}),
+    )
+    DlDecisionBar(
+        status = pick(en, "等你回答", "Needs answer"),
+        meta = pick(en, "问题 1/2", "Question 1/2"),
+        question = pick(en, "每台设备每分钟的请求上限设成多少？", "What should the per-device limit per minute be?"),
+        options = listOf(
+            DlDecisionOption(pick(en, "60 次（推荐，与现在的面板一致）", "60 (recommended, matches the panel)"), true, {}),
+            DlDecisionOption(pick(en, "120 次", "120"), false, {}),
+            DlDecisionOption(pick(en, "自己写答案", "Write my own answer"), false, {}, custom = true),
+        ),
+        secondary = DlAction(pick(en, "跳过", "Skip"), {}),
+        primary = DlAction(pick(en, "下一题", "Next"), {}, enabled = false),
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 decision bar light zh", showBackground = true, widthDp = 412, heightDp = 680)
+@Composable
+internal fun V4DecisionBarLightZh() = V4Wall(dark = false) { V4DecisionBarCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 decision bar dark en", showBackground = true, widthDp = 412, heightDp = 680)
+@Composable
+internal fun V4DecisionBarDarkEn() = V4Wall(dark = true) { V4DecisionBarCases(it) }
+
+@Composable
+private fun V4BottomSheetCases(en: Boolean) {
+    Box(Modifier.fillMaxSize().background(Dsh.bgOverlay), contentAlignment = Alignment.BottomCenter) {
+        DlBottomSheetSurface(
+            title = pick(en, "模型与推理", "Model and reasoning"),
+            subtitle = pick(en, "只影响这个会话；这是一个较长的副标题，用来检查换行", "Only affects this session; a longer subtitle to check wrapping"),
+        ) {
+            DlListRow("step-5-preview", subtitle = pick(en, "阶跃星辰 · 上下文 256K", "StepFun · 256K context"), trailing = DlRowTrailing.Radio(true), onClick = {})
+            DlListRow("deepseek-v4", subtitle = pick(en, "DeepSeek 账户 · 上下文 128K", "DeepSeek account · 128K context"), trailing = DlRowTrailing.Radio(false), onClick = {})
+            DlListRow("legacy-model", subtitle = pick(en, "不可用", "Unavailable"), trailing = DlRowTrailing.Radio(false), enabled = false, onClick = {})
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 bottom sheet light zh", showBackground = true, widthDp = 412, heightDp = 480)
+@Composable
+internal fun V4BottomSheetLightZh() = V4Wall(dark = false) { V4BottomSheetCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 bottom sheet dark en", showBackground = true, widthDp = 412, heightDp = 480)
+@Composable
+internal fun V4BottomSheetDarkEn() = V4Wall(dark = true) { V4BottomSheetCases(it) }
+
+@Composable
+private fun V4DialogCases(en: Boolean) {
+    Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        DlDialogSurface(
+            title = pick(en, "删除这个会话？", "Delete this session?"),
+            text = pick(en, "会从手机列表移除「完善审批状态同步」，并在电脑端归档。30 天内可以在 设置 › 会话记录 里恢复。", "Removes \u201cSync approval state\u201d from the phone and archives it on the computer. Restore within 30 days in Settings › Sessions."),
+            icon = TrashOutline16,
+            dismiss = DlAction(pick(en, "取消", "Cancel"), {}),
+            confirm = DlAction(pick(en, "删除", "Delete"), {}, DlButtonStyle.Danger),
+        )
+        DlDialogSurface(
+            title = pick(en, "编辑目标", "Edit goal"),
+            leading = DlAction(pick(en, "清除目标", "Clear goal"), {}, DlButtonStyle.Danger),
+            dismiss = DlAction(pick(en, "取消", "Cancel"), {}),
+            confirm = DlAction(pick(en, "保存", "Save"), {}, enabled = false),
+            content = {
+                Text(pick(en, "把审批状态做成双向同步，并补齐真机验证", "Make approval state sync both ways and verify on device"), style = DshType.body, color = Dsh.labelPrimary)
+            },
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 dialog light zh", showBackground = true, widthDp = 412, heightDp = 520)
+@Composable
+internal fun V4DialogLightZh() = V4Wall(dark = false) { V4DialogCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 dialog dark en", showBackground = true, widthDp = 412, heightDp = 520)
+@Composable
+internal fun V4DialogDarkEn() = V4Wall(dark = true) { V4DialogCases(it) }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun V4ChipCases(en: Boolean) {
+    FlowRow(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DlChip(pick(en, "全部", "All"), {}, selected = true)
+        DlChip("dsh-links", {}, selected = false)
+        DlChip(pick(en, "跑一遍测试", "Run the tests"), {})
+        DlChip(pick(en, "工作区内修改", "Workspace write"), {}, icon = ShieldOutline16, style = DlChipStyle.Filled)
+        DlChip(pick(en, "完全权限", "Full access"), {}, icon = ShieldOutline16, tone = DlTone.Wait, style = DlChipStyle.Filled)
+        DlChip(pick(en, "一个非常长的建议文字，用来检查 chip 的截断", "A very long suggestion used to check chip truncation"), {})
+        DlChip(pick(en, "不可用", "Disabled"), {}, enabled = false)
+    }
+    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        DlSegmented(listOf(pick(en, "低", "Low"), pick(en, "中", "Medium"), pick(en, "高", "High")), 1, {})
+        DlSegmented(listOf(pick(en, "浅色", "Light"), pick(en, "深色", "Dark"), pick(en, "跟随系统", "System")), 2, {}, enabled = false)
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 chip light zh", showBackground = true, widthDp = 412, heightDp = 320)
+@Composable
+internal fun V4ChipLightZh() = V4Wall(dark = false) { V4ChipCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 chip dark en", showBackground = true, widthDp = 412, heightDp = 320)
+@Composable
+internal fun V4ChipDarkEn() = V4Wall(dark = true) { V4ChipCases(it) }

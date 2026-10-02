@@ -53,6 +53,9 @@ object DshRadius {
     /** Composer（22dp）：聊天输入卡与任务入口——少量品牌签名形状，普通卡片不得复制。 */
     val composer = 22.dp
 
+    /** 容器块（16dp）：横幅、状态槽、输入区（v4）。 */
+    val block = 16.dp
+
     /** 弹层（28dp）：Dialog、Bottom sheet（M3 标准）。 */
     val modal = 28.dp
 
