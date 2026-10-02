@@ -262,7 +262,7 @@ internal fun MessageItem(
             }
         )
         if (selectOpen) {
-            SelectTextDialog(text = msg.text, onDismiss = { selectOpen = false })
+            SelectTextDialog(text = msg.text, onDismiss = { selectOpen = false }, onCopy = onCopy, onQuote = onQuote)
         }
     }
 }

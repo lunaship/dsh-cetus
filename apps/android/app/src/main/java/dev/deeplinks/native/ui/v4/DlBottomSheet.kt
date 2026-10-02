@@ -31,6 +31,11 @@ internal val DlOverlayColor: Color
     @Composable @ReadOnlyComposable
     get() = if (Dsh.isDark) Dsh.surface1 else Dsh.bgBase
 
+/** 弹层里的嵌入块（预览卡、大按钮、搜索框）底色：比 [DlOverlayColor] 高一级。 */
+internal val DlInsetColor: Color
+    @Composable @ReadOnlyComposable
+    get() = if (Dsh.isDark) Dsh.surface2 else Dsh.surface1
+
 /**
  * v4 底部弹层（5.x）：包 M3 [ModalBottomSheet]，顶角 28dp、scrim 分层、无阴影。
  * 标题 17sp + 可选副标题。不要在弹层里再打开第二层弹层；需要确认时用 [DlDialog]。

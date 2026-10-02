@@ -1,10 +1,5 @@
 package dev.deeplinks.native
 
-import dev.deeplinks.native.DshIconSize
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import dev.deeplinks.core.DshType
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -17,10 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,12 +29,16 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
+import dev.deeplinks.core.DshS
+import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshListActionRow
-import dev.deeplinks.native.ui.DshListSection
-import dev.deeplinks.native.ui.DshSheet
+import dev.deeplinks.core.subagentSheetFootnote
+import dev.deeplinks.native.ui.v4.DlBottomSheet
+import dev.deeplinks.native.ui.v4.DlInsetColor
+import dev.deeplinks.native.ui.v4.DlListRow
+import dev.deeplinks.native.ui.v4.DlPill
 
-/** 面板里的搜索框：分组卡片同色的圆角输入条，放在冷灰面板底上。 */
+/** 弹层里的搜索框（3.2、5.2）：surface1 胶囊输入条。 */
 @Composable
 internal fun SheetSearchField(
     value: String,
@@ -51,13 +49,13 @@ internal fun SheetSearchField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = DshTouch.min)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgInput)
-            .padding(start = DshSpace.s12),
-        verticalAlignment = Alignment.CenterVertically
+            .clip(DlPill)
+            .background(DlInsetColor)
+            .padding(start = DshSpace.s16),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
-        Spacer(Modifier.width(DshSpace.s8))
+        Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.md))
+        Spacer(Modifier.width(DshSpace.s12))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -66,18 +64,18 @@ internal fun SheetSearchField(
             cursorBrush = SolidColor(Dsh.brand400),
             modifier = Modifier
                 .weight(1f)
-                .padding(end = if (value.isEmpty()) 12.dp else 0.dp),
+                .then(if (value.isEmpty()) Modifier.padding(end = DshSpace.s16) else Modifier),
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) Text(placeholder, color = Dsh.labelTertiary, style = DshType.body)
+                    if (value.isEmpty()) Text(placeholder, color = Dsh.tertiaryText, style = DshType.body)
                     inner()
                 }
-            }
+            },
         )
         if (value.isNotEmpty()) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(DshTouch.min)
                     .semantics {
                         role = Role.Button
                         contentDescription = L.clearSearch
@@ -85,7 +83,7 @@ internal fun SheetSearchField(
                     .clickable { onValueChange("") },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
+                Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
             }
         }
     }
@@ -93,6 +91,8 @@ internal fun SheetSearchField(
 
 // ---------- 子智能体 ----------
 
+/** 5.8 子代理弹层：列表 + 说明；当前是子代理会话时多一行「返回父会话」。 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SubagentBottomSheet(
     sessions: List<MobileSession>,
@@ -104,33 +104,30 @@ internal fun SubagentBottomSheet(
     val anchorParent = currentSession?.parentSessionId ?: currentSessionId
     val nodes = remember(sessions, anchorParent) { buildSubagentTree(sessions, anchorParent) }
     val parentOfCurrent = currentSession?.parentSessionId
-    DshSheet(
-        onDismiss = onDismiss,
-        title = L.subagents,
-        subtitle = if (nodes.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(nodes.size),
-    ) {
-        if (nodes.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 460.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                SubagentTree(nodes, onSelect = {
-                    onDismiss()
-                    onSelectSession(it)
-                })
-            }
+    DlBottomSheet(onDismissRequest = onDismiss, title = L.subagents) {
+        Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+            SubagentTree(nodes, onSelect = {
+                onDismiss()
+                onSelectSession(it)
+            })
         }
         if (!parentOfCurrent.isNullOrBlank()) {
-            DshListSection {
-                DshListActionRow(
-                    label = L.returnToParentSession,
-                    onClick = {
-                        onDismiss()
-                        onSelectSession(parentOfCurrent)
-                    },
-                )
-            }
+            DlListRow(
+                title = L.returnToParentSession,
+                leading = ArrowLeftOutline16,
+                onClick = {
+                    onDismiss()
+                    onSelectSession(parentOfCurrent)
+                },
+            )
+        }
+        if (nodes.isNotEmpty()) {
+            Text(
+                DshS.subagentSheetFootnote,
+                style = DshType.supporting,
+                color = Dsh.labelSecondary,
+                modifier = Modifier.padding(horizontal = DshSpace.s24, vertical = DshSpace.s8),
+            )
         }
     }
 }

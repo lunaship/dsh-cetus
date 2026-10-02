@@ -1,9 +1,12 @@
 package dev.deeplinks.native.ui.v4
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
+import dev.deeplinks.core.tabularNums
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
 
@@ -129,4 +134,24 @@ internal object DlSize {
     val send = 36.dp
     val handleWidth = 36.dp
     val handleHeight = 4.dp
+}
+
+/** 5.7 用量里的大数字：26sp 等宽数字 + 小号单位，底部对齐。 */
+@Composable
+internal fun DlBigNumber(value: String, unit: String?, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
+    ) {
+        Text(value, style = DshType.displayLarge.tabularNums(), color = Dsh.labelPrimary, maxLines = 1)
+        if (unit != null) {
+            Text(
+                unit,
+                style = DshType.supporting,
+                color = Dsh.labelSecondary,
+                modifier = Modifier.padding(bottom = DshSpace.s4),
+            )
+        }
+    }
 }

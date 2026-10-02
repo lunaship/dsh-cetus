@@ -245,25 +245,15 @@ private fun ComposerAttachButton(
     onOpenPermissionPicker: () -> Unit,
 ) {
     var attachOpen by remember { mutableStateOf(false) }
-    Box {
-        RoundIconButton(icon = PlusOutline16, tint = Dsh.labelSecondary, contentDescription = L.addAttachment, onClick = { attachOpen = true })
-        DshMenu(
-            expanded = attachOpen,
+    RoundIconButton(icon = PlusOutline16, tint = Dsh.labelSecondary, contentDescription = L.addAttachment, onClick = { attachOpen = true })
+    if (attachOpen) {
+        AttachSheet(
+            permissionLabel = permissionLabel,
+            permissionIcon = composerPermissionGlyph(permissionPreset),
             onDismiss = { attachOpen = false },
-            items = listOf(
-                DshMenuItem(ImageOutline16, L.choosePhoto) {
-                    attachOpen = false
-                    onPickImage()
-                },
-                DshMenuItem(CameraOutline16, L.takePhoto) {
-                    attachOpen = false
-                    onTakePhoto()
-                },
-                DshMenuItem(composerPermissionGlyph(permissionPreset), permissionLabel) {
-                    attachOpen = false
-                    onOpenPermissionPicker()
-                },
-            ),
+            onTakePhoto = onTakePhoto,
+            onPickImage = onPickImage,
+            onOpenPermissionPicker = onOpenPermissionPicker,
         )
     }
 }

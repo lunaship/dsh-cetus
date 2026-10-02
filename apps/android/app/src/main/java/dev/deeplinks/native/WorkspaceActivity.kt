@@ -75,6 +75,7 @@ import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
 import dev.deeplinks.native.util.chatCanvasKind
+import dev.deeplinks.native.ui.v4.DlTone
 import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.util.composerSuggestionVisible
 import dev.deeplinks.native.util.lastGroupEndedAssistant
@@ -2122,6 +2123,7 @@ fun WorkspaceScreen(
             if (showShareSheet) {
                 val sid = currentSessionId
                 ConversationShareSheet(
+                    preview = currentSession?.let { conversationSharePreview(displaySessionTitle(it.title), it.cwd, messages) },
                     onDismiss = { showShareSheet = false },
                     onShareImage = {
                         showShareSheet = false
@@ -2664,6 +2666,8 @@ fun WorkspaceScreen(
                     message = L.confirmFullAccessMessage,
                     confirmLabel = L.confirm,
                     danger = true,
+                    icon = ShieldOutline16,
+                    iconTone = DlTone.Wait,
                     onDismiss = { showFullAccessSendConfirm = false },
                     onConfirm = {
                         showFullAccessSendConfirm = false
@@ -2753,6 +2757,7 @@ fun WorkspaceScreen(
             catalog = modelCatalog,
             loading = modelCatalogLoading,
             error = modelCatalogError,
+            contextPercent = usageFigures(sessionStats)?.let { contextUsedPercent(it.contextUsedTokens, it.contextWindowTokens) },
             onRetry = { loadModelCatalog(openPicker = true) },
             onDismiss = { showModelPicker = false },
             onSelect = { provider, model, effort ->
@@ -2764,11 +2769,9 @@ fun WorkspaceScreen(
                         currentModel = model,
                         currentReasoningEffort = effort,
                     )
-                    showModelPicker = false
                     return@ModelPickerSheet
                 }
-                // 立刻关闭并乐观更新座位（N2）；后台 selectModel 成功校正、失败回滚。
-                showModelPicker = false
+                // 不关弹层，乐观更新座位（N2）；后台 selectModel 成功校正、失败回滚。
                 workspaceViewModel.selectModelOptimistic(sid, provider, model, effort) { message ->
                     modelCatalogError = message
                 }
@@ -2885,6 +2888,7 @@ fun WorkspaceScreen(
         val path = normalizeWorkspacePath(rawPath)
         DshConfirmDialog(
             title = L.deleteWorkspaceTitle,
+            icon = TrashOutline16,
             message = L.deleteWorkspaceMessage.format(path.substringAfterLast('/')),
             confirmLabel = L.delete,
             danger = true,
@@ -2935,6 +2939,7 @@ fun WorkspaceScreen(
     deleteSessionTarget?.let { target ->
         DshConfirmDialog(
             title = L.deleteSessionTitle,
+            icon = TrashOutline16,
             message = L.deleteSessionMessage.format(displaySessionTitle(target.title)),
             confirmLabel = L.delete,
             danger = true,
