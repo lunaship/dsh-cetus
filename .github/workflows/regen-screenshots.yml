@@ -5,6 +5,10 @@ name: Regenerate screenshot baselines
 # 不会在 push 或 pull_request 时自动执行。
 on:
   workflow_dispatch:
+  # 临时：只为 plan/p2-3-estimated-cost 生成截图基线，合并前删除，合并结果与 main 一致。
+  push:
+    branches:
+      - plan/p2-3-estimated-cost
 
 jobs:
   regenerate:
