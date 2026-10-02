@@ -30,7 +30,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.text.font.FontFamily
 
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileMessage
@@ -49,7 +48,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 /** 从消息列表提取最上方（最新）的 goal 摘要文本。 */
 internal fun latestGoalSummary(messages: List<MobileMessage>): String? {
@@ -163,50 +161,6 @@ internal class ChatFeedActions(
     /** 工具摘要行点按：切到轨迹视图看明细。 */
     val openTrace: () -> Unit = {},
 ) {
-    fun onAnswerApproval(): (String, String, (Boolean) -> Unit) -> Unit = { approvalId, outcome, onDone ->
-        val sid = currentSessionId()
-        if (sid == null) {
-            onDone(false)
-        } else {
-            scope.launch(Dispatchers.IO) {
-                val accepted = try {
-                    client.answerApproval(sid, approvalId, outcome)
-                } catch (_: Exception) {
-                    false
-                }
-                withContext(Dispatchers.Main) {
-                    if (accepted) {
-                        setMessages(
-                            messages().map { msg ->
-                                if (msg.approvalId == approvalId) {
-                                    applyRequestState(msg, approvalUiStatus(outcome), outcome)
-                                } else msg
-                            },
-                        )
-                        DshNotifier.cancelApproval(context, host, sid)
-                    }
-                    onDone(accepted)
-                }
-            }
-        }
-    }
-
-    fun onAnswerQuestion(): (String, JSONObject, (Boolean) -> Unit) -> Unit = { rpcId, answer, onDone ->
-        val sid = currentSessionId()
-        if (sid == null) {
-            onDone(false)
-        } else {
-            scope.launch(Dispatchers.IO) {
-                val accepted = try {
-                    client.answerQuestion(sid, rpcId, answer)
-                } catch (_: Exception) {
-                    false
-                }
-                withContext(Dispatchers.Main) { onDone(accepted) }
-            }
-        }
-    }
-
     fun onCopy(msg: MobileMessage): () -> Unit = {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("dsh message", msg.text))
@@ -371,8 +325,6 @@ internal fun LazyListScope.chatMessageItems(
                     MessageItem(
                         msg = group.msg,
                         running = sweepingId != null && group.msg.id == sweepingId,
-                        onAnswerApproval = actions.onAnswerApproval(),
-                        onAnswerQuestion = actions.onAnswerQuestion(),
                         onCopy = actions.onCopy(group.msg),
                         onQuote = actions.onQuote(group.msg),
                         onFork = actions.onFork(),

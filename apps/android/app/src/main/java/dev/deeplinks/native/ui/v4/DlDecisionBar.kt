@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -54,6 +55,8 @@ fun DlDecisionBar(
     command: String? = null,
     note: String? = null,
     options: List<DlDecisionOption> = emptyList(),
+    /** 选项下方的补充内容（如自定义答案输入框、提交失败提示）。 */
+    extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth().background(Dsh.bgBase)) {
         HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
@@ -107,6 +110,9 @@ fun DlDecisionBar(
                 Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
                     for (option in options) DlDecisionOptionRow(option)
                 }
+            }
+            if (extra != null) {
+                Column(Modifier.padding(top = DshSpace.s8), verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) { extra() }
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = DshSpace.s12),

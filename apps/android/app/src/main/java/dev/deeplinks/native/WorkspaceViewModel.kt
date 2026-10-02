@@ -70,6 +70,21 @@ internal class WorkspaceViewModel(
         }
     }
 
+    /** 对话页决策栏里的提问作答；成功后把那条提问标为已答，决策栏随之收起。 */
+    fun answerQuestion(sessionId: String, rpcId: String, answer: org.json.JSONObject, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val accepted = runCatching {
+                withContext(Dispatchers.IO) { client.answerQuestion(sessionId, rpcId, answer) }
+            }.getOrDefault(false)
+            if (accepted) {
+                messages.value = messages.value.map { msg ->
+                    if (msg.questionRpcId == rpcId) applyRequestState(msg, REQUEST_RESOLVED, null) else msg
+                }
+            }
+            onDone(accepted)
+        }
+    }
+
     // ===== 会话数据 =====
 
     val sessions = mutableStateOf<List<MobileSession>>(emptyList())
