@@ -2,42 +2,37 @@
 
 > 目的：让「设计一致性」和「巨型文件」从**约定**变成**可执行的检查**。
 >
-> **视觉合同以 `docs/visual-rules.md` 为准**（唯一方向、页面骨架、表面、形状、排版、组件族）。
+> **视觉合同以 `docs/visual-rules.md` 为准**（v4：实底、Material 3、单一品牌色）。
+> 页面以仓库根目录 `docs/redesign-v4/design-v4.html` 的页面编号为准。
 > 本文件只讲工程门禁怎么把这些合同变成机器检查。
 
 ## 1. 设计 token 规则（硬性）
 
 1. **禁止裸字号**：业务代码不得写 `fontSize = N.sp` / `lineHeight = N.sp`。
    - 用语义排版入口 `DshType.*`（`core/DshTypography.kt`），角色面由 `DshTypeScaleTest` 锁死。
-   - `DshTheme` 已把 `LocalTextStyle` 设为 `bodyMedium`（15/22），因此
-     `fontSize = 15.sp, lineHeight = 22.sp` 是**冗余**的，直接删掉即可。
    - 存量以 `app/src/test/resources/design-token-baseline.txt` 登记为**每文件上限**。
-2. **禁止裸色值**：不得写 `Color(0x...)`。颜色一律走 `Dsh.*`（`core/DshTheme.kt`）；
-   语法高亮走 `DshSyntaxPalette`。唯一允许字面量的文件是 token 定义文件
-   （`DshTheme.kt` / `DshTypography.kt` / `DshSyntaxPalette.kt` / `DswPalette.kt`）。
-3. **色源是 DSH**：`DshTheme.kt` 的颜色取自 `Dsw.*`（`core/DswPalette.kt`，DSH 调色板镜像）；
-   仍写字面量的行必须带「偏离 DSH：原因」，由 `DshPaletteProvenanceTest` 强制。
-4. **间距走刻度**：`padding` / `spacedBy` / `PaddingValues` / `Spacer` 里写 `DshSpace.s2…s32`；
-   刻度外存量按 `app/src/test/resources/spacing-baseline.txt` 每文件预算只降不升，由 `DshSpacingUsageTest` 强制。
-5. **只允许下调**：以上预算文件只允许把数字改小。若因结构性改动必须一次性上调，
-   必须在预算文件里写明原因与下调计划（参见 `SettingsActivity.kt` 的导航迁移）。
+2. **禁止裸色值**：不得写 `Color(0x...)`。颜色一律走 `Dsh.*`。
+   `Color(0x…)` 只允许出现在 `core/DshTheme.kt`。迁移期临时允许 `core/DswPalette.kt`，阶段 4 删除。
+   字面量的 RGB 必须在 v4 token 表里（`DshPaletteProvenanceTest`），不再要求溯源到 Dsw。
+3. **间距**：`padding` / `spacedBy` / `PaddingValues` / `Spacer` 只用 4 的倍数，范围 4–32。
+   由 `DshSpacingUsageTest` 强制。
+4. **圆角**：只用 8 / 12 / 16 / 28，外加全圆。由 `DshShapeRoleTest` 强制。
+5. **实底**：禁止 `blur(`、`RenderEffect`、`graphicsLayer { renderEffect`、`haze`。由 `DshSurfaceRoleTest` 强制。
+6. **迁移白名单**：还没改完的文件在 `V4MigrationAllowlist`。迁完一个模块就删对应条目，不要新增。
 
-由 `DesignTokenUsageTest` 强制：新增违规即让 `testDebugUnitTest` 失败。
+由 `DesignTokenUsageTest` 强制裸色值和裸字号：新增违规即让 `testDebugUnitTest` 失败。
 
 ## 2. 组件语言门禁（ComponentLanguageTest）
 
-防止「用了 token」但不「用对 token」，也防止页面级重复实现重新长回来：
+页面文件不得直接使用 M3 的 `Card`、`ElevatedCard`，或 `tonalElevation > 0` 的 `Surface`。
+用 `native/ui/v4/` 里的组件。v4 组件本身可以包 M3。
 
-- 页面文件（`native/ui/` 共享组件库之外）不得直接使用 `DshRadius.group` 等已废弃的
-  页面级形状语义；存量按明确预算只降不升，迁移完成后归零。
-- `DshLargeTitle`、`DshGroupedPage` 等迁移期兼容包装的调用数量只能下降。
-- `HomeChip`、`DeviceTag` 一类只服务单页但语义可复用的组件有清零预算；新页面不得新增。
-- `RoundedCornerShape(DshRadius.full)`（pill）只允许出现在共享组件或允许的状态/筛选组件中。
+另外这些存量门禁仍然有效，只降不升：
+
+- 页面文件不得使用已删除的 `DshRadius.group`。
+- `DshLargeTitle`、`DshGroupedPage`、`HomeChip`、`DeviceTag` 不得回潮。
+- `RoundedCornerShape(DshRadius.full)` 只允许出现在共享组件或允许的状态/筛选组件中。
 - Settings / Devices 页面不得新增 `CircleShape` 图标底板。
-- 一级页面必须使用 `DshPageScaffold`（迁移期按预算收敛）。
-
-新增页面级视觉组件前，先读 `docs/visual-rules.md` 第五节；确有特殊业务语义时，
-组件名必须表达业务，而不是视觉形状。
 
 ## 3. 文件体积规则
 

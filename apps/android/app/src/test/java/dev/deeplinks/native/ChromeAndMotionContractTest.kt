@@ -7,13 +7,9 @@ import org.junit.Test
 import java.io.File
 
 /**
- * v3 玻璃打磨的回归门禁：
- * - 无模糊回退必须按 shape 绘制（此前 drawRect 把胶囊 / 圆钮画成方块）；
- * - 边缘渐隐有渐进模糊路径且不进采样源；
- * - 入场揭示的错峰有上限、不做无限循环；
- * - 座位行窄屏时模型座先让位。
+ * 从玻璃回归里留下的非玻璃断言：顶栏回填高度、实底 chrome、入场揭示、座位行让位。
  */
-class GlassPolishV3Test {
+class ChromeAndMotionContractTest {
 
     private fun mainRoot(): File {
         var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
@@ -31,30 +27,28 @@ class GlassPolishV3Test {
     }
 
     @Test
-    fun `glass fallback draws the shape outline instead of a rect`() {
-        val glass = source("ui/DshGlass.kt")
-        val fallback = body(glass, "private fun Modifier.dshGlassFallback(")
-        assertTrue(fallback.contains("shape.createOutline("))
-        assertTrue(fallback.contains("drawOutline("))
-        assertFalse("回退不得用 drawRect（会忽略 shape）", fallback.contains("drawRect("))
-        val entry = body(glass, "fun Modifier.dshGlass(")
-        assertTrue(entry.contains("dshGlassFallback("))
-        assertFalse("dshGlass 不得再在 drawBehind 里画方形回退", entry.contains("drawBehind"))
+    fun `top chrome measures height including status bar`() {
+        val top = body(source("OverlayChrome.kt"), "internal fun Modifier.overlayTopChrome(")
+        val measure = top.indexOf("onSizeChanged")
+        val inset = top.indexOf("statusBarsPadding()")
+        assertTrue(measure >= 0 && inset >= 0)
+        assertTrue("onSizeChanged 必须在 statusBarsPadding() 之前", measure < inset)
     }
 
     @Test
-    fun `edge fade has a progressive blur path`() {
-        val fade = source("ui/DshEdgeFade.kt")
-        assertTrue(fade.contains("drawPlainBackdrop("))
-        assertTrue(fade.contains("BlendMode.DstIn"))
-        assertTrue(fade.contains("Build.VERSION_CODES.S"))
-        // 调用方都把内容层采样源传进来（聊天页 2026-10-02 方案 A 改为实底 chrome，不再用边缘渐隐）
-        for (caller in listOf("WorkspaceSidebar.kt")) {
-            val text = source(caller)
-            val call = text.substring(text.indexOf("DshEdgeFades(").also { assertTrue("$caller 未用 DshEdgeFades", it >= 0) })
-            assertTrue("$caller 未接入采样源", call.substringBefore('\n').contains("chrome.backdrop)"))
-        }
-        assertTrue(source("ui/DshPageScaffold.kt").contains("backdrop = backdrop,"))
+    fun `top and bottom chrome are solid`() {
+        val chrome = source("OverlayChrome.kt")
+        val top = body(chrome, "internal fun Modifier.overlayTopChrome(")
+        assertTrue(top.contains("drawRect(base)"))
+        assertFalse(top.contains("dshTranslucent"))
+        val bottom = body(chrome, "internal fun Modifier.overlayBottomChrome(")
+        assertTrue(bottom.contains("drawRect(base)"))
+        assertTrue(bottom.contains("BOTTOM_CHROME_FADE"))
+    }
+
+    @Test
+    fun `chat page has no edge fades`() {
+        assertFalse(source("WorkspaceActivity.kt").contains("DshEdgeFades("))
     }
 
     @Test

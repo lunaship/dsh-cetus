@@ -319,4 +319,33 @@ class ComponentLanguageTest {
             violations.isEmpty(),
         )
     }
+
+    @Test
+    fun pageFilesDoNotUseRawMaterialCards() {
+        val root = mainSourceRoot()
+        val card = Regex("""(?<![\w.])(?:Card|ElevatedCard)\s*\(""")
+        val tonal = Regex("""tonalElevation\s*=\s*(\d+(?:\.\d+)?)""")
+        val violations = mutableListOf<String>()
+        for (file in ktFiles(root)) {
+            val rel = relative(root, file)
+            if (rel.startsWith("dev/deeplinks/native/ui/v4/")) continue
+            if (V4MigrationAllowlist.allows(rel)) continue
+            val lines = V4MigrationAllowlist.codeLines(file)
+            val cardHits = lines.count { card.containsMatchIn(it) }
+            if (cardHits > 0) {
+                violations += "$rel: M3 Card/ElevatedCard $cardHits 处，页面必须用 v4 组件"
+            }
+            for (line in lines) {
+                val match = tonal.find(line) ?: continue
+                if (match.groupValues[1].toDouble() > 0.0) {
+                    violations += "$rel: Surface tonalElevation=${match.groupValues[1]}，v4 不用抬升表面"
+                    break
+                }
+            }
+        }
+        assertTrue(
+            "页面直接使用 M3 卡片（docs/visual-rules.md §5）：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
 }
