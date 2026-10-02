@@ -21,7 +21,8 @@ import dev.deeplinks.native.ui.DshListCaption
 import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListRetry
 import dev.deeplinks.native.ui.DshListRow
-import dev.deeplinks.native.ui.HostStatusDot
+import dev.deeplinks.core.LastOnlineStore
+import dev.deeplinks.core.hostListTone
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshListTrailing
 import dev.deeplinks.native.ui.DshPageNavigation
@@ -417,9 +418,7 @@ internal fun SettingsHome(
     DshListSection(container = DshSectionContainer.Card, header = s.sectionComputer) {
         if (host != null) {
             val address = hostDisplayName(host.baseUrl)
-            // E4：状态点改用共享组件 HostStatusDot（此前的「●」是文字 glyph，颜色跟随
-            // value 文字色呈深灰，与首页/设备页的绿色点不一致）。点 + 文字放进 trailingContent，
-            // 保留 chevron。
+            // 四色状态点只读现有快照：绿=直连成功，黄=只能走远程，红=最近失败，灰=从未或很久没连。
             val hostStatus = dev.deeplinks.native.util.hostStatusText(
                 online = connectivity?.online,
                 viaRemote = connectivity?.viaRemote == true,
@@ -427,16 +426,22 @@ internal fun SettingsHome(
                 offlineText = s.statusOffline,
                 viaRemoteText = s.viaRemoteShort,
             )
+            val tone = hostListTone(
+                online = connectivity?.online,
+                viaRemote = connectivity?.viaRemote == true,
+                lastOnlineAtMs = LastOnlineStore.read(notifyContext),
+                nowMs = System.currentTimeMillis(),
+            )
             DshListRow(
                 title = alias.ifBlank { host.name.ifBlank { address } },
                 subtitle = address,
                 subtitleMono = true,
                 icon = LaptopOutline16,
                 onClick = onOpenDevices,
-                trailingContent = if (hostStatus != null) {
-                    {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            HostStatusDot(connectivity?.online)
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        HostHealthDot(tone)
+                        if (hostStatus != null) {
                             Spacer(Modifier.width(DshSpace.s6))
                             Text(
                                 hostStatus,
@@ -447,8 +452,6 @@ internal fun SettingsHome(
                             )
                         }
                     }
-                } else {
-                    null
                 },
             )
         } else {

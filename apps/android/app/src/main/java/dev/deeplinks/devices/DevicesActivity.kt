@@ -20,6 +20,7 @@ import dev.deeplinks.native.shouldBlockLocalHostRemoval
 import dev.deeplinks.native.DshConfirmDialog
 import dev.deeplinks.native.DshRenameDialog
 import dev.deeplinks.native.util.WorkspacePrefs
+import dev.deeplinks.native.ConnectionDiagnosticsPage
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 
@@ -190,7 +191,14 @@ fun DevicesScreen(
     }
 
     // ---------- 页面骨架（工作区内为底部面板，否则整页） ----------
-    if (sheet) {
+    var showDiagnostics by remember { mutableStateOf(false) }
+    val currentDevice = device
+    if (showDiagnostics && currentDevice != null) {
+        ConnectionDiagnosticsPage(
+            host = currentDevice.host,
+            onBack = { showDiagnostics = false },
+        )
+    } else if (sheet) {
         DeviceSheet(
             device = device,
             notice = hostNotice ?: offlineError,
@@ -200,6 +208,7 @@ fun DevicesScreen(
             onUnpair = ::requestUnpair,
             alias = alias,
             onRename = onAliasChanged,
+            onOpenDiagnostics = { showDiagnostics = true },
         )
     } else {
         DevicesPage(
@@ -215,6 +224,7 @@ fun DevicesScreen(
             onRename = { renameOpen = true },
             showsBack = showsBack,
             onNavigateBack = onNavigateBack,
+            onOpenDiagnostics = { showDiagnostics = true },
         )
     }
 
@@ -353,6 +363,7 @@ private fun DevicesPage(
     onRename: () -> Unit = {},
     showsBack: Boolean = false,
     onNavigateBack: () -> Unit = {},
+    onOpenDiagnostics: () -> Unit = {},
 ) {
     val s = DshS
     DshPageScaffold(
@@ -399,6 +410,7 @@ private fun DevicesPage(
                         onUnpair = { onUnpair(current) },
                         alias = alias,
                         onRename = onRename,
+                        onOpenDiagnostics = onOpenDiagnostics,
                     )
                 }
             }

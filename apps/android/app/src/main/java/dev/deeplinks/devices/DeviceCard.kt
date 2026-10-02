@@ -4,6 +4,7 @@ import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.getValue
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.EditOutline16
+import dev.deeplinks.native.InspectOutline16
 import dev.deeplinks.native.RefreshOutline16
 import dev.deeplinks.native.ScanOutline16
 import dev.deeplinks.native.UnlinkOutline16
@@ -71,6 +72,7 @@ internal fun DeviceDetailSections(
     onUnpair: () -> Unit,
     alias: String = "",
     onRename: () -> Unit = {},
+    onOpenDiagnostics: () -> Unit = {},
 ) {
     val s = DshS
     DshListSection { DeviceCard(device = device, onOpen = onOpen) }
@@ -86,6 +88,7 @@ internal fun DeviceDetailSections(
     // 顺序：设备 → 操作 → 危险操作。状态已在设备卡里，操作行不再重复显示。
     DshListSection(container = DshSectionContainer.Card, footer = s.replaceDeviceHint) {
         DshListActionRow(label = s.recheckConnection, icon = RefreshOutline16, onClick = onRecheck)
+        DshListActionRow(label = s.translation("diagOpen"), icon = InspectOutline16, onClick = onOpenDiagnostics)
         DshListActionRow(label = s.replaceDevice, icon = ScanOutline16, onClick = onReplace)
     }
     DshListSection {
@@ -109,6 +112,7 @@ internal fun DeviceSheet(
     onUnpair: (DeviceUi) -> Unit,
     alias: String = "",
     onRename: () -> Unit = {},
+    onOpenDiagnostics: () -> Unit = {},
 ) {
     val s = DshS
     DshSheet(onDismiss = onDismiss, title = s.pairingManage, skipPartiallyExpanded = true) {
@@ -126,6 +130,7 @@ internal fun DeviceSheet(
                 onUnpair = { onUnpair(device) },
                 alias = alias,
                 onRename = onRename,
+                onOpenDiagnostics = onOpenDiagnostics,
             )
         }
     }

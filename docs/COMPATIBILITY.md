@@ -23,8 +23,9 @@ published. Per-change details live in `CHANGELOG.md`.
 Unreleased plugin source on `main` declares `capabilities.diagnostics = { v: 1 }`
 and serves `GET /dsh-link/mobile/diagnostics`. `PLUGIN_PROTOCOL` stays `2`.
 Package and APK version numbers are unchanged. Android builds that do not
-know the field ignore it and keep working; a diagnostics screen is a later
-change and must hide the host report when the capability is absent.
+know the field ignore it and keep working. The connection-diagnostics screen
+reads `GET /dsh-link/mobile/diagnostics` when the route exists, and still
+shows the on-phone checks when the plugin returns 404.
 
 ## Verified combination and scope
 

@@ -80,6 +80,39 @@ internal fun isBusy(error: Throwable): Boolean =
 private fun isCertChanged(error: Throwable): Boolean =
     generateSequence<Throwable>(error) { it.cause }.any { PinnedSsl.unwrap(it) is PinnedSsl.CertChangedException }
 
+/** 局域网探测失败原因。只用于诊断文案，不触发删凭据。 */
+enum class LanProbeFailure { TIMEOUT, REFUSED, CERT_MISMATCH, UNREACHABLE }
+
+internal data class LanProbeDetail(
+    val ok: Boolean,
+    val elapsedMs: Long,
+    val failure: LanProbeFailure?,
+)
+
+/** 把探测异常收成枚举。异常消息里可能有地址，调用方不得把它写进结果。 */
+internal fun classifyLanProbeFailure(error: Throwable): LanProbeFailure {
+    if (PinnedSsl.unwrap(error) is PinnedSsl.CertChangedException) return LanProbeFailure.CERT_MISMATCH
+    var timeout = false
+    var refused = false
+    var cur: Throwable? = error
+    while (cur != null) {
+        when (cur) {
+            is SocketTimeoutException -> timeout = true
+            is ConnectException,
+            is UnknownHostException,
+            is NoRouteToHostException,
+            is PortUnreachableException,
+            -> refused = true
+        }
+        cur = cur.cause
+    }
+    return when {
+        timeout -> LanProbeFailure.TIMEOUT
+        refused -> LanProbeFailure.REFUSED
+        else -> LanProbeFailure.UNREACHABLE
+    }
+}
+
 /**
  * LAN/公网身份校验：有指纹则要求合法格式（64 位十六进制）；
  * 无指纹仅允许公网主机走系统 PKI（私网/回环 fail-closed）。
@@ -395,26 +428,37 @@ object HostHttp {
      */
     internal fun probeLan(host: Host): Boolean = probeLanUrl(host.baseUrl, host.certFingerprint)
 
-    internal fun probeLanUrl(baseUrl: String, certFingerprint: String): Boolean {
-        val pin = PinnedSsl.normalizeFingerprint(certFingerprint)
-        if (pin.isEmpty()) return false
-        val uri = runCatching { URI(PinnedSsl.normalizeUrl(baseUrl)) }.getOrNull() ?: return false
-        val hostName = uri.host ?: return false
-        val port = if (uri.port > 0) uri.port else 443
+    internal fun probeLanUrl(baseUrl: String, certFingerprint: String): Boolean =
+        probeLanDetail(baseUrl, certFingerprint).ok
+
+    /**
+     * 与 [probeLanUrl] 同一次握手，多带回耗时和失败原因。
+     * 证书不符只记 [LanProbeFailure.CERT_MISMATCH]，调用方不得据此删除凭据。
+     */
+    internal fun probeLanDetail(baseUrl: String, certFingerprint: String): LanProbeDetail {
         val started = System.currentTimeMillis()
+        fun finish(ok: Boolean, failure: LanProbeFailure?): LanProbeDetail =
+            LanProbeDetail(ok, (System.currentTimeMillis() - started).coerceAtLeast(0L), failure)
+
+        val pin = PinnedSsl.normalizeFingerprint(certFingerprint)
+        if (pin.isEmpty()) return finish(false, LanProbeFailure.UNREACHABLE)
+        val uri = runCatching { URI(PinnedSsl.normalizeUrl(baseUrl)) }.getOrNull()
+            ?: return finish(false, LanProbeFailure.UNREACHABLE)
+        val hostName = uri.host ?: return finish(false, LanProbeFailure.UNREACHABLE)
+        val port = if (uri.port > 0) uri.port else 443
         return try {
             Socket().use { raw ->
                 raw.connect(InetSocketAddress(hostName, port), LAN_PROBE_CONNECT_MS)
                 val left = LAN_PROBE_BUDGET_MS - (System.currentTimeMillis() - started).toInt()
-                if (left <= 0) return false
+                if (left <= 0) return finish(false, LanProbeFailure.TIMEOUT)
                 raw.soTimeout = left
                 val tls = pinnedContext(PinnedSsl.pinnedTrustManager(pin)).socketFactory
                     .createSocket(raw, hostName, port, false) as SSLSocket
                 tls.use { it.startHandshake() }
-                true
+                finish(true, null)
             }
-        } catch (_: Exception) {
-            false
+        } catch (e: Exception) {
+            finish(false, classifyLanProbeFailure(e))
         }
     }
 
