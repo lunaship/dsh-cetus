@@ -18,6 +18,15 @@ published. Per-change details live in `CHANGELOG.md`.
 | Android `apps/android/` | `versionName 0.5.0-beta.24` on `main` (UI changes after it are listed under "Unreleased" in `CHANGELOG.md`) | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.23` |
 | Relay (`relay/`) | `dlp-relay` (DLP/1) from `main`; DLR/1 server removed | Official instance `wss://relay.dshlinks.com/ws`; self-hosting in `relay/README.md` |
 
+## Capability: dev server preview
+
+Unreleased plugin source on `main` declares `capabilities.preview = { v: 1 }`
+and serves `GET /dsh-link/mobile/previews` plus
+`/dsh-link/mobile/preview/:previewId/*`. The proxy dials `127.0.0.1` only,
+and only for a port approved on the loopback panel. There is no mobile
+approve route. `PLUGIN_PROTOCOL` stays `2`. Package and APK version numbers
+are unchanged. Android builds that do not know the field ignore it.
+
 ## Capability: host session events
 
 Unreleased plugin source on `main` declares `capabilities.events = { host: true }`

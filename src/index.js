@@ -17,6 +17,7 @@ import { gzipSync } from "node:zlib"
 import z from "@deepseek-ai/schemastery"
 import QRCode from "qrcode"
 
+import { createPreviewService, rejectUpgrade, matchPreviewPath } from "./preview-proxy.js"
 import { workspaceChangesService } from "./workspace-changes.js"
 import { resolveSessionLogPath, sessionDirFor } from "./session-log-path.js"
 
@@ -1277,6 +1278,8 @@ const PANEL_ONLY_PATHS = new Set([
   "/dsh-link/workspace-approve",
   "/dsh-link/workspace-reject",
   "/dsh-link/diagnostics",
+  "/dsh-link/previews",
+  "/dsh-link/previews/revoke",
 ])
 
 function sessionEvents(session) {
@@ -1378,6 +1381,13 @@ export function apply(ctx, config) {
     logger: ctx.logger,
   })
   rt.remote = remote
+  const previews = createPreviewService({
+    state,
+    save: () => saveState(stateFile, state),
+    pluginPort: config.port,
+    hostPort: targetPort,
+    logger: ctx.logger,
+  })
 
   // 诊断只读：workspace.list 已在白名单里。证书 PEM 留在 tlsHolder，不进入返回值。
   function diagnosticsSource(device) {
@@ -1580,6 +1590,29 @@ export function apply(ctx, config) {
         const report = await runDiagnostics(diagnosticsSource(null), { scope: "panel" })
         ctx.logger.info(`dsh-links: diagnostics scope=panel ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
         json(res, 200, report)
+      },
+    }),
+    web.register({
+      kind: "exact",
+      path: "/dsh-link/previews",
+      handler: async (req, res) => {
+        if (!requireLoopbackSameOrigin(req, res)) return
+        if (req.method === "GET") return json(res, 200, { previews: previews.listPanel() })
+        if (req.method !== "POST") return json(res, 405, { error: "method not allowed" })
+        const body = await readLoopbackPost(req, res)
+        if (!body) return
+        const result = previews.approve({ port: body.port, label: body.label })
+        json(res, result.status, result.body)
+      },
+    }),
+    web.register({
+      kind: "exact",
+      path: "/dsh-link/previews/revoke",
+      handler: async (req, res) => {
+        const body = await readLoopbackPost(req, res)
+        if (!body) return
+        const result = previews.revoke(body.previewId)
+        json(res, result.status, result.body)
       },
     }),
     web.register({
@@ -1857,6 +1890,10 @@ export function apply(ctx, config) {
         if (req.method === "GET" && pathname === "/dsh-link/mobile/events") {
           return handleHostEvents(req, res, hostEvents)
         }
+        if (req.method === "GET" && pathname === "/dsh-link/mobile/previews") {
+          return json(res, 200, { previews: previews.listPublic() })
+        }
+        if (previews.handleHttp(req, res)) return
         const streamMatch = pathname.match(/^\/dsh-link\/mobile\/sessions\/([^/]+)\/stream$/)
         if (req.method === "GET" && streamMatch) {
           return handleStreamRoute(decodeURIComponent(streamMatch[1]), res, targetPort, config, req, rt, device)
@@ -1881,6 +1918,25 @@ export function apply(ctx, config) {
     proxy = createHttpsServer({ key: tls.key, cert: tls.cert, minVersion: "TLSv1.2" }, requestHandler)
     proxy.on("error", (err) => {
       ctx.logger.warn(`dsh-links: proxy error: ${err?.message ?? err}`)
+    })
+    proxy.on("upgrade", (req, socket, head) => {
+      socket.on("error", () => {})
+      if (!matchPreviewPath(req.url)) {
+        rejectUpgrade(socket, 404, "not found")
+        return
+      }
+      const origin = requestOrigin(rt, req)
+      if (origin?.selftest || origin?.kind === "bootstrap") {
+        rejectUpgrade(socket, 403, "forbidden")
+        return
+      }
+      const device = authorize(req, state, stateFile)
+      if (!device || (origin && origin.deviceId !== device.deviceId) || !isDeviceAuthorized(state, device) || isDevicePending(device)) {
+        rejectUpgrade(socket, 401, "unauthorized")
+        return
+      }
+      touchDevice(state, device, stateFile)
+      previews.handleUpgrade(req, socket, head)
     })
     // 远程每条连接都是一次 WSS + 会合 + 内层 TLS，必须让 App 的连接池复用（RFC §4.2）。
     // 服务端空闲上限要长于 App 远程连接池的 keepAlive（50 秒），由客户端先放手，避免竞态。
@@ -1934,6 +1990,7 @@ export function apply(ctx, config) {
       if (pollTimer) clearInterval(pollTimer)
       if (keepAliveTimer) clearInterval(keepAliveTimer)
       try { hostEvents.stop() } catch {}
+      try { previews.stop() } catch {}
       try { muxBridge?.stop() } catch {}
       muxBridge = null
       remote.stop()
