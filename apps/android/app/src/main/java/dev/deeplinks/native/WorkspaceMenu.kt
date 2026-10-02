@@ -57,7 +57,7 @@ internal fun buildTopBarMenu(
         add(
             DshMenuItem(
                 icon = AgentPresetOutline16,
-                label = L.subagentCount.format(activeSubagentCount),
+                label = L.subagents,
                 onClick = onOpenSubagents,
             ),
         )

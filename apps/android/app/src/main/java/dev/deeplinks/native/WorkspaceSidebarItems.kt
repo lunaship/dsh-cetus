@@ -68,6 +68,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
+import dev.deeplinks.core.subagentRunning
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.ThemeManager
 import dev.deeplinks.core.dshRipple
@@ -387,6 +388,7 @@ internal fun homeRowTexts(session: MobileSession, goalSummary: String?, offline:
             result = session.lastResult?.text?.takeIf { it.isNotBlank() }
         }
     }
+    session.subagentCount?.takeIf { it > 0 }?.let { parts += s.subagentRunning.format(it) }
     return HomeRowTexts(meta = parts.joinToString(" · "), result = result)
 }
 

@@ -43,6 +43,7 @@ internal fun resolveActiveSubagentCount(
     currentSubagentCount: Int?,
 ): Int {
     val sid = currentSessionId ?: return 0
+    if (sessions.isNotEmpty() && !hostExposesSubagentParent(sessions)) return 0
     return currentSubagentCount?.takeIf { it > 0 }
         ?: sessions.count { it.origin == "subagent" && it.parentSessionId == sid }
 }

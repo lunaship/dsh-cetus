@@ -23,6 +23,12 @@ class ActiveSubagentCountTest {
     }
 
     @Test
+    fun listWithoutParentFieldHidesTheFeature() {
+        val sessions = listOf(session("s1"), session("s2"))
+        assertEquals(0, resolveActiveSubagentCount(sessions, "s1", 4))
+    }
+
+    @Test
     fun explicitPositiveCountWins() {
         assertEquals(3, resolveActiveSubagentCount(emptyList(), "s1", 3))
     }

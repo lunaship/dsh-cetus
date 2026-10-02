@@ -266,6 +266,8 @@ val DshStringsEn = DshStrings(
         put("clearAllSessionsTitle", "Clear all session records?")
         put("clearAllSessionsMessage", "Remove all archived and deleted sessions from this phone's settings list (%d total). They will not reappear in the sidebar. This cannot be undone.")
         put("subagents", "Subagents")
+        put("subagentRunning", "%d subagents running")
+        put("subagentIdle", "Idle")
         put("noSubagentSessions", "No subagent sessions yet")
         put("subagentSheetSummary", "%d total · tap to switch")
         put("runningStatus", "Running")
