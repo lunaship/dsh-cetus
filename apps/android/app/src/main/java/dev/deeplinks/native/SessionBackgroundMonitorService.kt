@@ -12,6 +12,13 @@ import androidx.core.content.ContextCompat
 import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.ApprovalActionReceiver
 import dev.deeplinks.core.Host
+import dev.deeplinks.core.TASK_PROGRESS_MIN_INTERVAL_MS
+import dev.deeplinks.core.TaskProgressEvent
+import dev.deeplinks.core.TaskProgressState
+import dev.deeplinks.core.reduceTaskProgress
+import dev.deeplinks.core.shouldPostTaskProgress
+import dev.deeplinks.core.taskProgressEventChangesNotification
+import dev.deeplinks.core.todoProgressCounts
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
 import dev.deeplinks.native.util.WorkspacePrefs
@@ -45,6 +52,10 @@ class SessionBackgroundMonitorService : Service() {
     private var streamJob: Job? = null
     private var terminalCheck: Job? = null
     private var generation = 0L
+    private var progress = TaskProgressState(title = "")
+    private var lastProgressPostAt = 0L
+    private var progressFlush: Job? = null
+    private var foregroundPosted = false
 
     override fun onCreate() {
         super.onCreate()
@@ -111,7 +122,15 @@ class SessionBackgroundMonitorService : Service() {
         val currentHost = host ?: return
         val sid = sessionId ?: return
         DshNotifier.ensureChannel(this)
-        val notification = DshNotifier.taskMonitorNotification(this, currentHost, sid, sessionTitle)
+        progress = progress.copy(title = sessionTitle)
+        val notification = DshNotifier.taskMonitorNotification(
+            this,
+            currentHost,
+            sid,
+            progress.snapshot(System.currentTimeMillis()),
+        )
+        lastProgressPostAt = android.os.SystemClock.elapsedRealtime()
+        foregroundPosted = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceCompat.startForeground(
                 this,
@@ -128,11 +147,16 @@ class SessionBackgroundMonitorService : Service() {
         if (sessionId != sid || host?.slotKey != nextHost.slotKey) {
             stopReader()
             terminalCheck?.cancel()
+            progressFlush?.cancel()
             if (host != null && sessionId != null) DshNotifier.cancelTaskMonitor(this, host!!, sessionId!!)
+            progress = TaskProgressState(title = title)
+            lastProgressPostAt = 0L
+            foregroundPosted = false
         }
         host = nextHost
         sessionId = sid
         sessionTitle = title
+        progress = progress.copy(title = title)
         background = inBackground
         persist(afterSeq)
         startForegroundNow()
@@ -158,8 +182,11 @@ class SessionBackgroundMonitorService : Service() {
                     is SessionStreamClient.Item.Ready -> {
                         recordSequence(client, sid, item.resumeSeq)
                         reconcilePendingApproval(currentHost, sid)
+                        seedTaskProgress(currentHost, sid)
                     }
                     is SessionStreamClient.Item.Message -> handleMessage(currentHost, sid, client, item)
+                    is SessionStreamClient.Item.Question -> onProgressEvent(TaskProgressEvent.QuestionAsked)
+                    is SessionStreamClient.Item.QuestionResolved -> onProgressEvent(TaskProgressEvent.QuestionResolved)
                     is SessionStreamClient.Item.ResyncRequired -> resync(currentHost, sid, client, readerGeneration)
                     SessionStreamClient.Item.Disconnected -> {
                         if (client.lastFailure == StreamFailure.AUTH) stopMonitoring()
@@ -173,10 +200,85 @@ class SessionBackgroundMonitorService : Service() {
     private fun handleMessage(host: Host, sid: String, client: SessionStreamClient, item: SessionStreamClient.Item.Message) {
         recordSequence(client, sid, item.seq)
         when (item.type) {
-            "approval/asked" -> postApproval(host, sid, item.data.optString("id"), item.data.optString("toolName", L.toolFallbackName))
-            "approval/decided" -> DshNotifier.cancelApproval(this, host, sid)
-            "turn/start" -> terminalCheck?.cancel()
-            "turn/end" -> scheduleTerminalCheck(host, sid, item.data)
+            "approval/asked" -> {
+                postApproval(host, sid, item.data.optString("id"), item.data.optString("toolName", L.toolFallbackName))
+                onProgressEvent(TaskProgressEvent.ApprovalAsked)
+            }
+            "approval/decided" -> {
+                DshNotifier.cancelApproval(this, host, sid)
+                onProgressEvent(TaskProgressEvent.ApprovalDecided)
+            }
+            "turn/start" -> {
+                terminalCheck?.cancel()
+                val at = item.time.takeIf { it > 0L } ?: System.currentTimeMillis()
+                onProgressEvent(TaskProgressEvent.TurnStarted(at))
+            }
+            "turn/end" -> {
+                onProgressEvent(TaskProgressEvent.TurnEnded)
+                scheduleTerminalCheck(host, sid, item.data)
+            }
+            "todo/write" -> onProgressEvent(todoEvent(item.data))
+            "tool/call" -> {
+                val step = item.data.optLong("step", -1L).takeIf { it >= 0L }
+                onProgressEvent(TaskProgressEvent.ToolStep(step))
+            }
+            else -> onProgressEvent(TaskProgressEvent.Ignored(item.type))
+        }
+    }
+
+    private fun todoEvent(data: JSONObject): TaskProgressEvent {
+        val todos = data.optJSONArray("todos") ?: return TaskProgressEvent.Todos(0, 0)
+        val statuses = (0 until todos.length()).map { index ->
+            todos.optJSONObject(index)?.optString("status", "pending") ?: "pending"
+        }
+        val (done, total) = todoProgressCounts(statuses)
+        return TaskProgressEvent.Todos(done, total)
+    }
+
+    private fun onProgressEvent(event: TaskProgressEvent, force: Boolean = false) {
+        val next = reduceTaskProgress(progress, event)
+        val changed = next != progress
+        progress = next
+        if (!force && (!changed || !taskProgressEventChangesNotification(event))) return
+        postTaskProgress(force)
+    }
+
+    /** 2 秒内只刷新一次；流式片段不会进到这里。错过的更新在窗口结束后补一次。 */
+    private fun postTaskProgress(force: Boolean) {
+        val currentHost = host ?: return
+        val sid = sessionId ?: return
+        if (!foregroundPosted) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!shouldPostTaskProgress(lastProgressPostAt, now, force)) {
+            if (progressFlush?.isActive == true) return
+            val wait = (TASK_PROGRESS_MIN_INTERVAL_MS - (now - lastProgressPostAt)).coerceAtLeast(0L)
+            progressFlush = serviceScope.launch {
+                delay(wait)
+                postTaskProgress(force = true)
+            }
+            return
+        }
+        progressFlush?.cancel()
+        lastProgressPostAt = now
+        DshNotifier.updateTaskMonitor(this, currentHost, sid, progress.snapshot(System.currentTimeMillis()))
+    }
+
+    private fun seedTaskProgress(host: Host, sid: String) {
+        serviceScope.launch(Dispatchers.IO) {
+            val history = runCatching { MobileApiClient(host).getSessionHistory(sid, maxMessages = 80) }.getOrNull()
+            val todo = history?.messages?.lastOrNull { it.role == "todo" }
+            val seeded = if (todo == null) {
+                null
+            } else {
+                val (done, total) = todoProgressCounts(todo.todos.map { it.status })
+                TaskProgressEvent.Todos(done, total)
+            }
+            val step = history?.stats?.steps?.takeIf { it > 0L }
+            withContext(Dispatchers.Main) {
+                if (sessionId != sid) return@withContext
+                if (seeded != null) onProgressEvent(seeded)
+                if (step != null && progress.step == null) onProgressEvent(TaskProgressEvent.ToolStep(step))
+            }
         }
     }
 
@@ -318,6 +420,7 @@ class SessionBackgroundMonitorService : Service() {
         val sid = sessionId
         stopReader()
         terminalCheck?.cancel()
+        progressFlush?.cancel()
         if (currentHost != null && sid != null) DshNotifier.cancelTaskMonitor(this, currentHost, sid)
         prefs().edit().clear().apply()
         background = false
