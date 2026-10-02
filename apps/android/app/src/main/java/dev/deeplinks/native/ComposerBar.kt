@@ -97,6 +97,9 @@ internal fun InputBar(
     compact: Boolean = false,
     onOpenModelPicker: () -> Unit,
     onOpenPermissionPicker: () -> Unit,
+    /** v4 3.1：新任务草稿里第二个座位换成智能体预设（权限仍在 + 菜单里）。 */
+    presetLabel: String? = null,
+    onOpenPresetPicker: () -> Unit = {},
     onToggleVoice: () -> Unit,
     onStop: () -> Unit,
     onSend: () -> Unit,
@@ -155,6 +158,8 @@ internal fun InputBar(
                     compact = compact,
                     onOpenModelPicker = onOpenModelPicker,
                     onOpenPermissionPicker = onOpenPermissionPicker,
+                    presetLabel = presetLabel,
+                    onOpenPresetPicker = onOpenPresetPicker,
                 )
             }
             // v4：上下文占用不放在输入区，进 ⋯ → 用量（5.7）
@@ -365,6 +370,8 @@ internal fun ComposerSeatsRow(
     compact: Boolean = false,
     onOpenModelPicker: () -> Unit = {},
     onOpenPermissionPicker: () -> Unit = {},
+    presetLabel: String? = null,
+    onOpenPresetPicker: () -> Unit = {},
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -379,12 +386,23 @@ internal fun ComposerSeatsRow(
             onClick = onOpenModelPicker,
             modifier = Modifier.weight(1f, fill = false),
         )
-        ComposerAccessSeat(
-            preset = permissionPreset,
-            label = permissionLabel,
-            compact = compact,
-            onClick = onOpenPermissionPicker,
-        )
+        if (presetLabel != null) {
+            ComposerSeat(
+                glyph = SparkleOutline16,
+                label = presetLabel,
+                tint = Dsh.labelSecondary,
+                aria = L.agentPresetSeatAria.format(presetLabel),
+                compact = compact,
+                onClick = onOpenPresetPicker,
+            )
+        } else {
+            ComposerAccessSeat(
+                preset = permissionPreset,
+                label = permissionLabel,
+                compact = compact,
+                onClick = onOpenPermissionPicker,
+            )
+        }
     }
 }
 
@@ -478,7 +496,6 @@ private fun ComposerAccessSeat(
     compact: Boolean,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
     val canonical = canonicalComposerPermission(preset)
     val danger = composerPermissionIsDanger(canonical)
     val glyph = when (canonical) {
@@ -486,13 +503,33 @@ private fun ComposerAccessSeat(
         "danger-full-access" -> WarningOutline16
         else -> FolderOpenOutline16
     }
-    val contentTint = if (danger) Dsh.warn else Dsh.labelSecondary
+    ComposerSeat(
+        glyph = glyph,
+        label = label,
+        tint = if (danger) Dsh.warn else Dsh.labelSecondary,
+        aria = L.accessModeAria.format(label),
+        compact = compact,
+        onClick = onClick,
+    )
+}
+
+/** 输入条上的图标 + 文字座位（访问模式 / 智能体预设）；窄档只留图标。 */
+@Composable
+private fun ComposerSeat(
+    glyph: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    aria: String,
+    compact: Boolean,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .height(48.dp)
             .semantics {
                 role = Role.Button
-                contentDescription = L.accessModeAria.format(label)
+                contentDescription = aria
             }
             .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -506,16 +543,11 @@ private fun ComposerAccessSeat(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
-            Icon(
-                glyph,
-                contentDescription = null,
-                tint = contentTint,
-                modifier = Modifier.size(DshIconSize.sm),
-            )
+            Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.size(DshIconSize.sm))
             if (!compact) {
                 Text(
                     text = label,
-                    color = contentTint,
+                    color = tint,
                     style = DshType.title,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,

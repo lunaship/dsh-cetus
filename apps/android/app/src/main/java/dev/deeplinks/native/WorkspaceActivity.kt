@@ -1,4 +1,5 @@
 package dev.deeplinks.native
+import dev.deeplinks.native.util.workspaceDisplayName
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.result.contract.ActivityResultContracts
@@ -2182,11 +2183,11 @@ fun WorkspaceScreen(
                     currentSessionId == null -> ""
                     else -> currentSession?.title?.let(::displaySessionTitle) ?: L.newSession
                 },
-                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」；草稿态不显示
+                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」；草稿态只写电脑名（3.1）
                 subtitle = if (traceOpen) {
                     remember(messages) { traceSummaryLine(messages) }
                 } else if (composeNewSession && currentSessionId == null) {
-                    null
+                    hostLabel
                 } else {
                     chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec)
                 },
@@ -2375,19 +2376,9 @@ fun WorkspaceScreen(
                     if (composeNewSession && currentSessionId == null) {
                         newTaskDraftCanvas(
                             lastTask = draftLastTask,
-                            workspaces = workspaceCatalogItems.map { it.path },
-                            selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
-                            modeLabel = presetDisplayName(
-                                draftPresetId(pendingAgentPreset, appSettings.agentPreset),
-                                null,
-                            ),
+                            workspaceLabel = (pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace)?.let(::workspaceDisplayName),
                             onOpenLastTask = { sid -> selectSession(sid); showPhoneChat() },
-                            onSelectWorkspace = { cwd ->
-                                pendingSessionCwd = cwd
-                                workspacePrefs.lastSelectedWorkspace = cwd
-                            },
                             onOpenWorkspacePicker = { showDraftWorkspacePicker = true },
-                            onOpenModePicker = { showAgentPresetPicker = true },
                         )
                     } else {
                     chatEmptyCanvas(
@@ -2606,6 +2597,8 @@ fun WorkspaceScreen(
                 compact = composerSeatsCompact(containerWidthDp.value),
                 onOpenModelPicker = { loadModelCatalog(openPicker = true) },
                 onOpenPermissionPicker = { showPermissionPicker = true },
+                presetLabel = if (composeNewSession && currentSessionId == null) presetDisplayName(draftPresetId(pendingAgentPreset, appSettings.agentPreset), null) else null,
+                onOpenPresetPicker = { showAgentPresetPicker = true },
                 onToggleVoice = {
                     if (isListening) {
                         onStopVoiceInput()
@@ -2745,12 +2738,12 @@ fun WorkspaceScreen(
             registryReady = workspaceRegistryReady,
             selectedPath = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
             onDismiss = { showDraftWorkspacePicker = false },
+            onAddWorkspace = { showAddWorkspace = true },
             onPick = { path ->
+                // v4 3.2：选「不绑定工作区」也生效（null = 只聊天）
                 showDraftWorkspacePicker = false
-                if (path != null) {
-                    pendingSessionCwd = path
-                    workspacePrefs.lastSelectedWorkspace = path
-                }
+                pendingSessionCwd = path
+                workspacePrefs.lastSelectedWorkspace = path
             },
         )
     }

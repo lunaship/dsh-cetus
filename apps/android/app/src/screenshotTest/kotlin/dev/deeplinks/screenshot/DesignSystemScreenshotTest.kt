@@ -154,8 +154,6 @@ import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.UsagePanel
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
-import dev.deeplinks.native.newTaskDraftCanvas
-import dev.deeplinks.native.DraftLastTask
 import dev.deeplinks.native.ComposerSeatsRow
 import dev.deeplinks.native.OfflineStatusSlot
 import dev.deeplinks.native.PreviewStatusSlot
@@ -1179,44 +1177,6 @@ internal fun DevicesLightZh() {
 @Composable
 internal fun DevicesDarkEn() {
     ShotFrame(dark = true, english = true) { DevicesWall() }
-}
-
-/**
- * 新任务草稿态（F09 补齐）：生产结构 [newTaskDraftCanvas]（对话页 LazyColumn 的
- * messages.isEmpty() 分支）+ 固定业务状态——继续上次 / 工作区胶囊 / 智能体预设。
- */
-@Composable
-private fun NewTaskDraftWall(english: Boolean) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        newTaskDraftCanvas(
-            lastTask = DraftLastTask(
-                sessionId = "preview",
-                title = if (english) "Refactor settings into grouped list" else "重构设置页为分组列表",
-                workspaceLabel = "/Users/me/dsh-links",
-            ),
-            workspaces = listOf("/Users/me/dsh-links", "/Users/me/relay"),
-            selectedWorkspace = "/Users/me/dsh-links",
-            modeLabel = if (english) "Balanced" else "均衡",
-            onOpenLastTask = {},
-            onSelectWorkspace = {},
-            onOpenWorkspacePicker = {},
-            onOpenModePicker = {},
-        )
-    }
-}
-
-@PreviewTest
-@Preview(name = "new task draft light zh", showBackground = true, widthDp = 412, heightDp = 900)
-@Composable
-internal fun NewTaskDraftLightZh() {
-    ShotFrame(dark = false, english = false) { NewTaskDraftWall(english = false) }
-}
-
-@PreviewTest
-@Preview(name = "new task draft dark en", showBackground = true, widthDp = 412, heightDp = 900)
-@Composable
-internal fun NewTaskDraftDarkEn() {
-    ShotFrame(dark = true, english = true) { NewTaskDraftWall(english = true) }
 }
 
 /** 2026-10-02 简化：悬浮玻璃控件 + 建议行（继续 / 复核 / 查看改动 (N)）+ 底部操作行。 */
