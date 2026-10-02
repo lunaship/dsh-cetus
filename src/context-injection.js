@@ -1,6 +1,7 @@
 /**
- * 识别 DSH 注入到会话里的上下文快照（system-reminder、runtime context 等），
- * 与 App ContextInjection.kt 规则对齐。
+ * 识别 DSH 注入到会话里的上下文快照，与 App ContextInjection.kt 规则对齐。
+ * 只认结构性标记，以及以 runtime context / file policy 开头的整段文本。
+ * 正文里提到 CLAUDE.md、AGENTS.md 或 “Instructions from:” 不算注入。
  */
 export function isContextInjectionText(text) {
   if (!text || !String(text).trim()) return false
@@ -10,14 +11,10 @@ export function isContextInjectionText(text) {
     /&lt;system-reminder&gt;/i.test(t) ||
     /<available_skills>/i.test(t) ||
     /&lt;available_skills&gt;/i.test(t) ||
-    /available skill catalog/i.test(t) ||
-    /available-skills/i.test(t) ||
-    /Current runtime context/i.test(t) ||
-    /Current DSH file policy/i.test(t) ||
-    /Approval prompts are disabled/i.test(t) ||
-    /Instructions from:/i.test(t) ||
-    /\bAGENTS\.md\b/.test(t) ||
-    /\bCLAUDE\.md\b/.test(t)
+    /<goal_round>/i.test(t) ||
+    /&lt;goal_round&gt;/i.test(t) ||
+    /^\s*Current runtime context/i.test(t) ||
+    /^\s*Current DSH file policy/i.test(t)
   )
 }
 
@@ -52,4 +49,33 @@ export function contextInjectionLabels(text) {
 export function isModelChangedNotice(text) {
   if (!text || !String(text).trim()) return false
   return /^\[model changed:/i.test(String(text).trim())
+}
+
+/** goal 模式每轮注入的续跑提示（`<goal_round>` 包装）。 */
+export function isGoalRoundText(text) {
+  if (!text) return false
+  return /<goal_round>/i.test(String(text)) || /&lt;goal_round&gt;/i.test(String(text))
+}
+
+/** 从 goal_round 提示里解析轮次和目标原文；解析不到的字段为 null。 */
+export function parseGoalRound(text) {
+  const t = String(text ?? "")
+  const round = t.match(/Round:\s*([0-9]+)\s*(?:\/\s*([0-9]+))?/)
+  const objective = t.match(/Objective:\s*"(.*)"/)
+  return {
+    round: round ? Number(round[1]) : null,
+    maxRounds: round && round[2] ? Number(round[2]) : null,
+    objective: objective ? objective[1].trim() || null : null,
+  }
+}
+
+/**
+ * 用户消息（user/message）的结构化分类，供 App 直接渲染、不再自己猜：
+ * goal_round / injection / model_changed / user。
+ */
+export function classifyUserMessage(text) {
+  if (isGoalRoundText(text)) return { kind: "goal_round", goal: parseGoalRound(text) }
+  if (isContextInjectionText(text)) return { kind: "injection", labels: contextInjectionLabels(String(text)) }
+  if (isModelChangedNotice(text)) return { kind: "model_changed" }
+  return { kind: "user" }
 }

@@ -2,8 +2,8 @@ package dev.deeplinks.native
 
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.util.groupMessages
-import dev.deeplinks.native.util.isContextInjectionText
-import dev.deeplinks.native.util.isGoalRoundText
+import dev.deeplinks.native.util.MessageKind
+import dev.deeplinks.native.util.resolvedMessageKind
 
 internal data class ChatFeedModel(
     val lastCompletedAssistantId: String?,
@@ -51,8 +51,7 @@ internal fun dedupeById(messages: List<MobileMessage>): List<MobileMessage> {
  * 不再铺进对话流（轨迹 Tab 仍能看到过程）；目标轮次（`<goal_round>`）是用户可见的目标信息，保留。
  */
 internal fun isHiddenContextInjection(msg: MobileMessage): Boolean =
-    (msg.role == "context_injection" || isContextInjectionText(msg.text)) &&
-        !isGoalRoundText(msg.text)
+    resolvedMessageKind(msg.role, msg.kind, msg.text) == MessageKind.INJECTION
 
 /**
  * 「正在扫过」的行 id：只有运行中的 tool_call / tool_result / reasoning 才能抢状态条，

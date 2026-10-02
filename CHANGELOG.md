@@ -6,6 +6,15 @@
 - Android 视觉规则换成 v4。架构测试按实底、v4 色表、4 档圆角和 4 的倍数间距执行；还没迁移的文件在 `V4MigrationAllowlist`，迁完一个模块就删一条。
 - 主题换成 v4 色表与 5 档字号（26/17/15/13/12，系统字体）；去掉动态取色和品牌字体两个开关及 Plus Jakarta Sans 字体文件；纯黑背景改为 #000000 / #141416；玻璃、边缘渐隐、半透明条改为实色。
 - 新增 v4 的 10 个基础组件（`native/ui/v4/`：顶栏、列表行、组头、状态槽、收件箱条目、输入区、决策栏、底部弹层、对话框、chip / 分段），附浅色 / 深色截图测试；页面尚未改用。
+- 插件历史的每条消息都带 `kind`（user / injection / goal_round / model_changed，其余同 role）；目标轮次另带解析好的 `goal.round` / `goal.maxRounds` / `goal.objective`。App 以 `kind` 为准，旧插件和实时流才按文本兜底。
+
+**目标轮次**
+
+- 会话里的目标轮次进度是「1/256」这种文字。折叠行文案从「第 %d 轮」改成「第 %s 轮」，不再因格式符类型崩溃。目标卡上的轮数仍是整数，继续用「第 %d 轮」。
+
+**上下文注入**
+
+- 用户消息里提到 CLAUDE.md、AGENTS.md，或正文中间出现 “Instructions from:”，不再被折叠成上下文注入。只认结构性标记（system-reminder、available_skills、goal_round 及其 HTML 转义），以及以 “Current runtime context” / “Current DSH file policy” 开头的文本。插件与 App 共用 `testdata/context-injection-cases.json`。
 
 **界面修正（小米 15 / Android 16 真机反馈，方案 A）**
 

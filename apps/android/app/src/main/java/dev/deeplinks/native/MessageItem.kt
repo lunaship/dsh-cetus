@@ -65,7 +65,6 @@ import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.util.answerMetaSummary
 import dev.deeplinks.native.util.buildAnswerMeta
 import dev.deeplinks.native.util.formatClockTime
-import dev.deeplinks.native.util.isModelChangedNotice
 import dev.deeplinks.native.util.modelChangedFrom
 import dev.deeplinks.native.util.loadOlderKind
 import dev.deeplinks.native.util.LoadOlderKind
@@ -73,8 +72,8 @@ import dev.deeplinks.native.util.contextInjectionLabels
 import dev.deeplinks.native.util.decodeHtmlEntities
 import dev.deeplinks.native.util.goalRoundObjective
 import dev.deeplinks.native.util.goalRoundProgress
-import dev.deeplinks.native.util.isContextInjectionText
-import dev.deeplinks.native.util.isGoalRoundText
+import dev.deeplinks.native.util.MessageKind
+import dev.deeplinks.native.util.resolvedMessageKind
 import org.json.JSONObject
 
 // ---------- 消息渲染 ----------
@@ -130,13 +129,13 @@ internal fun MessageItem(
         Modifier
     }
 
+    val kind = remember(msg.role, msg.kind, msg.text) { resolvedMessageKind(msg.role, msg.kind, msg.text) }
     Box {
         when {
-            msg.role == "context_injection" || isContextInjectionText(msg.text) -> {
-                if (isGoalRoundText(msg.text)) GoalRoundRow(msg.text) else ContextInjectionRow(msg.text)
-            }
+            kind == MessageKind.GOAL_ROUND -> GoalRoundRow(msg)
+            kind == MessageKind.INJECTION -> ContextInjectionRow(msg.text)
             // 模型切换提示：安静的居中一行（既不是用户气泡，也不是可展开的上下文注入）
-            msg.role == "system_notice" || isModelChangedNotice(msg.text) -> SystemNoticeRow(msg.text)
+            kind == MessageKind.MODEL_CHANGED -> SystemNoticeRow(msg.text)
             msg.role == "user" -> {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -486,10 +485,13 @@ private fun CompactionRow(summary: String, running: Boolean) {
 
 // goal 模式每轮注入的续跑提示：折叠为一行「目标轮次」，展开看 Objective 与轮次，不铺开整段系统指令
 @Composable
-private fun GoalRoundRow(text: String) {
+private fun GoalRoundRow(msg: MobileMessage) {
+    val text = msg.text
     var expanded by remember { mutableStateOf(false) }
-    val objective = remember(text) { goalRoundObjective(text) }
-    val progress = remember(text) { goalRoundProgress(text) }
+    val objective = remember(msg) { msg.goalObjective ?: goalRoundObjective(text) }
+    val progress = remember(msg) {
+        msg.goalRound?.let { r -> msg.goalMaxRounds?.let { "$r/$it" } ?: "$r" } ?: goalRoundProgress(text)
+    }
 
     Column(
         modifier = Modifier
