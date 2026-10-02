@@ -59,18 +59,65 @@ object DshNotifier {
         NotificationChannel(id, name, importance).apply { description = desc }
 
     /** Required by Android while a user-started conversation is monitored in the background. */
-    fun taskMonitorNotification(context: Context, host: Host, sessionId: String, title: String): Notification =
-        base(context, host, sessionId, CHANNEL_ID_MONITOR)
-            .setContentTitle(L.notifMonitorTitle)
-            .setContentText(L.notifMonitorBody.format(title))
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+    internal fun taskMonitorNotification(context: Context, host: Host, sessionId: String, snapshot: TaskProgressSnapshot): Notification {
+        val content = taskProgressContent(snapshot, taskProgressLabels())
+        val publicNotification = NotificationCompat.Builder(context, CHANNEL_ID_MONITOR)
+            .setSmallIcon(R.drawable.ic_stat_dsh)
+            .setContentTitle(content.publicText)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .build()
+        return base(context, host, sessionId, CHANNEL_ID_MONITOR)
+            .setContentTitle(content.title)
+            .setContentText(content.text)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicNotification)
+            .applyTaskProgress(content)
             .build()
+    }
+
+    private fun taskProgressLabels(): TaskProgressLabels = TaskProgressLabels(
+        running = L.taskProgressRunning,
+        awaitingApproval = L.taskProgressAwaitingApproval,
+        awaitingInput = L.taskProgressAwaitingInput,
+        completed = L.taskProgressCompleted,
+        step = L.taskProgressStep,
+        elapsed = L.taskProgressElapsed,
+        publicText = L.taskProgressPublic,
+    )
+
+    /** API 36 用 ProgressStyle 并请求提升为进行中通知；更低版本用 setProgress。 */
+    private fun NotificationCompat.Builder.applyTaskProgress(content: TaskProgressContent): NotificationCompat.Builder {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            val style = NotificationCompat.ProgressStyle()
+            if (content.indeterminate) {
+                style.setProgressIndeterminate(true)
+            } else {
+                style.setProgress(content.progress)
+                if (content.progressMax > 0) {
+                    style.setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(content.progressMax)))
+                }
+            }
+            setStyle(style)
+            setRequestPromotedOngoing(true)
+        } else {
+            val max = if (content.indeterminate) 0 else content.progressMax.coerceAtLeast(1)
+            setProgress(max, content.progress, content.indeterminate)
+        }
+        return this
+    }
 
     fun cancelTaskMonitor(context: Context, host: Host, sessionId: String) {
         NotificationManagerCompat.from(context).cancel(TASK_MONITOR_NOTIFICATION_ID)
+    }
+
+    /** 节流后的进度刷新。走统一的发通知入口，缺权限时静默丢掉。 */
+    internal fun updateTaskMonitor(context: Context, host: Host, sessionId: String, snapshot: TaskProgressSnapshot) {
+        postNotification(context, TASK_MONITOR_NOTIFICATION_ID, taskMonitorNotification(context, host, sessionId, snapshot))
     }
 
     /** 审批请求：需要审批「工具名」；带 approvalId 时附「允许一次 / 拒绝」两个动作（方案 8）。 */
