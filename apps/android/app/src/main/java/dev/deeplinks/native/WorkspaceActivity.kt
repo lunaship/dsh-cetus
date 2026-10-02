@@ -2178,18 +2178,14 @@ fun WorkspaceScreen(
                     },
                 )
             }
-            val menuWithSubagents = remember(topBarMenuItems, activeSubagentCount, viewMode) {
-                buildTopBarMenu(
-                    viewMode = viewMode,
-                    topBarMenuItems = topBarMenuItems,
-                    activeSubagentCount = activeSubagentCount,
-                    onToggleViewMode = {
-                        headerMenuOpen = false
-                        selectViewMode(if (viewMode == "trace") "chat" else "trace")
-                    },
-                    onOpenSubagents = { headerMenuOpen = false; showSubagentSheet = true },
-                )
-            }
+            var showPreviewSheet by remember { mutableStateOf(false) }
+            if (showPreviewSheet) PreviewEntrySheet(client, host) { showPreviewSheet = false }
+            val menuWithSubagents = rememberWorkspaceOverflowMenu(
+                topBarMenuItems, activeSubagentCount, viewMode, workspaceViewModel.previewSupported.value,
+                onToggleViewMode = { headerMenuOpen = false; selectViewMode(if (viewMode == "trace") "chat" else "trace") },
+                onOpenSubagents = { headerMenuOpen = false; showSubagentSheet = true },
+                onOpenPreview = { headerMenuOpen = false; showPreviewSheet = true },
+            )
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
             Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop, paintGlass = false)) {
             Box(modifier = Modifier.fillMaxWidth()) {

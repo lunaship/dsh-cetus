@@ -1,6 +1,8 @@
 package dev.deeplinks.native
 
+import androidx.compose.runtime.Composable
 import dev.deeplinks.core.L
+import dev.deeplinks.core.previewTitle
 import dev.deeplinks.core.scheduledTasks
 
 /**
@@ -39,12 +41,35 @@ internal fun workspaceHeaderMenuItems(
  * 顶栏「⋯」菜单（2026-10-02 L6）：首项 = 查看轨迹 / 返回对话（文字随当前视图切换），
  * 有子智能体时第二项是子智能体入口（小圆点提示在按钮上），其后是既有条目。
  */
+@Composable
+internal fun rememberWorkspaceOverflowMenu(
+    topBarMenuItems: List<DshMenuItem>,
+    activeSubagentCount: Int,
+    viewMode: String,
+    previewSupported: Boolean,
+    onToggleViewMode: () -> Unit,
+    onOpenSubagents: () -> Unit,
+    onOpenPreview: () -> Unit,
+): List<DshMenuItem> = androidx.compose.runtime.remember(topBarMenuItems, activeSubagentCount, viewMode, previewSupported) {
+    buildTopBarMenu(
+        viewMode = viewMode,
+        topBarMenuItems = topBarMenuItems,
+        activeSubagentCount = activeSubagentCount,
+        previewSupported = previewSupported,
+        onToggleViewMode = onToggleViewMode,
+        onOpenSubagents = onOpenSubagents,
+        onOpenPreview = onOpenPreview,
+    )
+}
+
 internal fun buildTopBarMenu(
     viewMode: String,
     topBarMenuItems: List<DshMenuItem>,
     activeSubagentCount: Int,
     onToggleViewMode: () -> Unit,
     onOpenSubagents: () -> Unit,
+    previewSupported: Boolean = false,
+    onOpenPreview: () -> Unit = {},
 ): List<DshMenuItem> = buildList {
     add(
         DshMenuItem(
@@ -61,6 +86,9 @@ internal fun buildTopBarMenu(
                 onClick = onOpenSubagents,
             ),
         )
+    }
+    if (previewSupported) {
+        add(DshMenuItem(GlobeOutline16, L.previewTitle, onClick = onOpenPreview))
     }
     addAll(topBarMenuItems)
 }

@@ -18,6 +18,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
@@ -177,6 +179,8 @@ object HostHttp {
         val headers: List<Pair<String, String>> = emptyList(),
         val connectTimeoutMs: Int = 8_000,
         val readTimeoutMs: Int = 12_000,
+        /** 有请求体时的 Content-Type。空则仍按 JSON，避免改到现有手机 API。 */
+        val bodyMediaType: String? = null,
         /** SSE 等长连接：不经过 [RemoteGate]，否则会一直占着并发名额。 */
         val streaming: Boolean = false,
     )
@@ -339,7 +343,7 @@ object HostHttp {
         when {
             request.body != null -> builder.method(
                 request.method,
-                request.body.toRequestBody("application/json; charset=utf-8".toMediaType()),
+                request.body.toRequestBody((request.bodyMediaType ?: "application/json; charset=utf-8").toMediaType()),
             )
             request.method == "GET" -> builder.get()
             else -> builder.method(request.method, null)
@@ -392,6 +396,41 @@ object HostHttp {
     /** 回到前台：清掉空闲的远程连接，避免继续使用可能已被远端关掉的隧道（R5）。 */
     fun evictIdleRemote() {
         evictPools(includeLan = false)
+    }
+
+    /**
+     * 预览用的 WebSocket。选路和证书钉扎与 [execute] 相同。
+     * 握手失败通过 [listener] 异步回来，这里不占远程并发名额。
+     */
+    internal fun openWebSocket(
+        host: Host,
+        path: String,
+        headers: List<Pair<String, String>>,
+        listener: WebSocketListener,
+    ): WebSocket {
+        val key = routeKey(host)
+        val remote = host.remoteRoute()
+        val routes = selector.order(key, remote != null, host.directLanUrls(), { NetworkTransport.lanCapable }) { url ->
+            probeLanUrl(url, host.certFingerprint)
+        }
+        return attemptWithFailover(key, routes, false) { route ->
+            val base = if (route == HostRoute.LAN) selector.lanAddress(key) ?: host.baseUrl else host.baseUrl
+            val url = base.trimEnd('/') + path
+            require(url.startsWith("https://")) { "拒绝明文 HTTP，仅支持 HTTPS" }
+            val spec = DshRequest(method = "GET", path = path, headers = headers, readTimeoutMs = 0, streaming = true)
+            val pooled = if (route == HostRoute.REMOTE) {
+                remoteClient(host, remote ?: throw IOException("no remote route"), key, spec)
+            } else {
+                clientFor(host, spec)
+            }
+            val client = pooled.newBuilder()
+                .readTimeout(0, TimeUnit.MILLISECONDS)
+                .pingInterval(30, TimeUnit.SECONDS)
+                .build()
+            val builder = Request.Builder().url(url)
+            headers.forEach { (name, value) -> builder.header(name, value) }
+            client.newWebSocket(builder.build(), listener)
+        }
     }
 
     // ===== 局域网 =====
