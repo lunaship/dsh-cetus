@@ -765,12 +765,13 @@ const createPanelModule = (require) => {
     )
   }
 
-  function PreviewGroup({ previews, actions }) {
+  function PreviewGroup({ previews, detected, actions }) {
     const [port, setPort] = React.useState('')
     const [label, setLabel] = React.useState('')
     const [error, setError] = React.useState('')
     const [busy, setBusy] = React.useState(false)
     const rows = previews ?? []
+    const hints = detected ?? []
     const now = useNow(rows.length > 0)
     const submit = (e) => {
       e.preventDefault()
@@ -802,6 +803,18 @@ const createPanelModule = (require) => {
         ),
         h('p', { className: 'dl-note' }, '只转发到本机 127.0.0.1，默认 2 小时后失效。SSH 和数据库端口不能添加。手机上不能批准。'),
       ),
+      hints.map((item) => h(Row, {
+        key: `${item.sessionId}:${item.port}`,
+        title: `:${item.port}`,
+        desc: `会话 ${String(item.sessionId).slice(0, 8)} · 请在这台电脑上批准`,
+        actions: h('button', {
+          type: 'button', className: 'dl-btn is-primary',
+          onClick: () => {
+            actions.approvePreview({ port: item.port, label: `开发服务器 :${item.port}` })
+              .catch((err) => setError(String(err?.message ?? err)))
+          },
+        }, '批准'),
+      })),
       rows.length === 0
         ? h('div', { className: 'dl-empty' }, '还没有批准的预览端口。')
         : rows.map((item) => h(Row, {
@@ -834,7 +847,7 @@ const createPanelModule = (require) => {
   }
 
   function usePanelData(active) {
-    const [data, setData] = React.useState({ info: null, devices: [], workspaceApprovals: [], remote: null, previews: [] })
+    const [data, setData] = React.useState({ info: null, devices: [], workspaceApprovals: [], remote: null, previews: [], detected: [] })
     const [err, setErr] = React.useState('')
     // pair-info 503(proxy_not_ready) = HTTPS 还没 listen；有限重试后给出明确失败
     const [starting, setStarting] = React.useState(false)
@@ -863,7 +876,7 @@ const createPanelModule = (require) => {
         const [info, devices, approvals, remote, previewBody] = await Promise.all([
           resInfo.json(), resDevices.json(), resApprovals.json(), resRemote.ok ? resRemote.json() : null, resPreviews.json(),
         ])
-        setData({ info, devices: devices.devices ?? [], workspaceApprovals: approvals.approvals ?? [], remote, previews: previewBody.previews ?? [] })
+        setData({ info, devices: devices.devices ?? [], workspaceApprovals: approvals.approvals ?? [], remote, previews: previewBody.previews ?? [], detected: previewBody.detected ?? [] })
         setStarting(false)
         setErr('')
       } catch (e) {
@@ -908,7 +921,7 @@ const createPanelModule = (require) => {
   // ─── 组装 ────────────────────────────────────────────────────────────────
 
   function PanelBody(pair) {
-    const { info, devices, workspaceApprovals, remote, previews, err, starting, load, actions } = pair
+    const { info, devices, workspaceApprovals, remote, previews, detected, err, starting, load, actions } = pair
     if (starting) return h('div', { className: 'dl-status' }, '手机连接正在启动…')
     if (err) return h('div', { className: 'dl-status is-error' }, `加载失败：${err}`)
     if (!info) return h('div', { className: 'dl-status' }, '加载中…')
@@ -917,7 +930,7 @@ const createPanelModule = (require) => {
       h(PairGroup, { info, remote, onExpired: load, onRequireConfirm: actions.setRequireConfirm }),
       h(RemoteGroup, { remote, actions }),
       h(DevicesGroup, { devices, remote, actions }),
-      h(PreviewGroup, { previews, actions }),
+      h(PreviewGroup, { previews, detected, actions }),
       h(DiagnosticsGroup, {}),
       h(ExposureNote, { exposure: info.exposure }),
     )

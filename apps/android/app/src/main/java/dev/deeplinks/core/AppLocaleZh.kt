@@ -277,6 +277,7 @@ val DshStringsZh = DshStrings(
         put("previewOpenBrowser", "用浏览器打开")
         put("previewCopied", "地址已复制，可粘贴到系统浏览器")
         put("previewExit", "退出")
+        put("previewDetected", "检测到 dev server :%d — 请在电脑上批准")
         put("runningStatus", "运行中")
         put("returnToParentSession", "返回父会话")
         put("renameSessionDesc", "设置一个方便识别的会话名称。")

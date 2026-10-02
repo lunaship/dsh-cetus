@@ -28,6 +28,9 @@ approve route. `PLUGIN_PROTOCOL` stays `2`. Package and APK version numbers
 are unchanged. Android builds that do not know the field ignore it.
 Unreleased Android source shows a Preview entry when `preview.v` is 1 and
 opens approved ports through a loopback proxy on the phone.
+`preview.detect = 1` adds a session hint for ports seen in tool output.
+The hint tells the user to approve on the computer. There is still no
+mobile approve route, and no phone setting for it.
 
 ## Capability: host session events
 

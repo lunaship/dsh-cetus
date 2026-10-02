@@ -2243,6 +2243,7 @@ fun WorkspaceScreen(
                 kind = streamBanner,
                 onRetry = { streamClient?.reconnect() },
             )
+            PreviewDetectBanner(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
             if (viewMode == "chat" && currentSessionId != null) {
                 SessionChromeGoals(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl)
             }

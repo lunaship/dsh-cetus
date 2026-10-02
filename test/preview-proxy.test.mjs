@@ -26,7 +26,7 @@ import {
 
 test("能力声明 preview v1，协议号不变", () => {
   const caps = pluginCapabilities()
-  assert.deepEqual(caps.preview, { v: 1 })
+  assert.deepEqual(caps.preview, { v: 1, detect: 1 })
   assert.equal(caps.protocol, 2)
   assert.deepEqual(caps.diagnostics, { v: 1 })
   assert.equal(caps.events.host, true)

@@ -646,6 +646,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const value = await runMobileDeviceMutation(rt, state, device, () =>
         callLocalRpc(targetPort, "workspace.archiveSession", { sessionId }))
       if (mobileMutationWasRevoked(value)) return respondDeviceRevoked(res)
+      rt.previewDetect?.endSession(sessionId)
       return json(res, 200, { ok: true, archived: Boolean(value?.ok), sessionId })
     }
 
