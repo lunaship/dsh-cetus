@@ -2,14 +2,6 @@ package dev.deeplinks.screenshot
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
-import dev.deeplinks.native.util.HomeSection
-import dev.deeplinks.native.HomeApprovalCard
-import androidx.compose.ui.draw.alpha
-import dev.deeplinks.native.HomeEmptyStarters
-import dev.deeplinks.native.HomeOfflineCard
-import dev.deeplinks.native.HomeSectionHeader
-import dev.deeplinks.native.HomeHeader
-import dev.deeplinks.native.HomeBottomBar
 import dev.deeplinks.native.ComposerSuggestionsRow
 import dev.deeplinks.native.SessionMenuContent
 import dev.deeplinks.native.sessionMenu
@@ -82,7 +74,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -159,12 +150,7 @@ import dev.deeplinks.native.ComposerContextStrip
 import dev.deeplinks.native.InputBar
 import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.SearchOutline16
-import dev.deeplinks.native.MobileSession
-import dev.deeplinks.native.MobileSessionActivity
-import dev.deeplinks.native.MobileSessionResult
 import dev.deeplinks.native.MobileSessionStats
-import dev.deeplinks.native.SessionRowItem
-import dev.deeplinks.native.ui.DshCardRows
 import dev.deeplinks.native.UsagePanel
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
@@ -788,40 +774,6 @@ internal fun RemoteImagePlaceholderDarkEn() {
     }
 }
 
-// ---- 第 3 步：首页审批卡（C1 Outline 按钮）/ 设置隐私分组预览 ----
-
-@PreviewTest
-@Preview(name = "home approval card", showBackground = true, widthDp = 412, heightDp = 260)
-@Composable
-internal fun HomeApprovalCardLight() {
-    ShotFrame(dark = false) {
-        HomeApprovalCard(
-            title = "任务首页改版",
-            workspaceLabel = "dsh-links",
-            timeLabel = "2 分钟前",
-            toolName = "./gradlew :app:connectedDebugAndroidTest",
-            onReject = {},
-            onApprove = {},
-        )
-    }
-}
-
-@PreviewTest
-@Preview(name = "home approval card dark en", showBackground = true, widthDp = 412, heightDp = 260)
-@Composable
-internal fun HomeApprovalCardDarkEn() {
-    ShotFrame(dark = true, english = true) {
-        HomeApprovalCard(
-            title = "Redesign home inbox",
-            workspaceLabel = "dsh-links",
-            timeLabel = "2 min ago",
-            toolName = "./gradlew :app:connectedDebugAndroidTest",
-            onReject = {},
-            onApprove = {},
-        )
-    }
-}
-
 @PreviewTest
 @Preview(name = "settings privacy section", showBackground = true, widthDp = 412, heightDp = 260)
 @Composable
@@ -1267,197 +1219,6 @@ internal fun NewTaskDraftDarkEn() {
     ShotFrame(dark = true, english = true) { NewTaskDraftWall(english = true) }
 }
 
-/**
- * 首页（任务中心）墙：顶栏 → 工作区筛选条 → 等待确认 / 进行中 / 今天 / 昨天 → 开始新任务。
- * 会话时间都给 0，避免相对时间随时钟漂移导致基线抖动。
- */
-@Composable
-private fun SidebarWall(english: Boolean = false) {
-    fun session(
-        id: String,
-        title: String,
-        running: Boolean = false,
-        awaiting: Boolean = false,
-        activity: MobileSessionActivity? = null,
-        lastResult: MobileSessionResult? = null,
-        stoppedReason: String? = null,
-    ) = MobileSession(
-        sessionId = id,
-        title = title,
-        // 真实一点的更新时间：进行中的行要有「3 分钟」这类已运行时长（方案 3.5 要求行尾有时长），
-        // 最近的行要有「昨天 / 周五」。全填 0L 会让墙上看不到任何时间，掩盖真实问题。
-        updatedAt = System.currentTimeMillis() - if (running) 3L * 60_000 else 26L * 3_600_000,
-        stoppedReason = stoppedReason,
-        running = running,
-        blank = false,
-        cwd = "/Users/me/dsh-links",
-        agentPreset = null,
-        awaitingInput = awaiting,
-        activity = activity,
-        lastResult = lastResult,
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Dsh.bgBase)
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        HomeHeader(
-            online = true,
-            offlineSinceLabel = null,
-            workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
-            selectedWorkspace = null,
-            onSelectWorkspace = {},
-            onAddWorkspace = {},
-            onDeleteWorkspace = {},
-            onOpenArchived = {},
-            onOpenSettings = {},
-            backdrop = null,
-        )
-        // 2026-10-02 简化：分区内容进白色分组卡（DshCardRows）
-        HomeSectionHeader(HomeSection.AWAITING)
-        DshCardRows {
-            // 稿 07：最早一件展开成审批行（手机已接管），其余收成行
-            HomeApprovalCard(
-                title = if (english) "Home inbox redesign" else "任务首页改版",
-                workspaceLabel = "dsh-links",
-                timeLabel = if (english) "2 min ago" else "2 分钟前",
-                toolName = "./gradlew :app:connectedDebugAndroidTest",
-                onReject = {},
-                onApprove = {},
-            )
-            SessionRowItem(session("s5", if (english) "Relay deploy check" else "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-        }
-        HomeSectionHeader(HomeSection.RUNNING)
-        DshCardRows {
-            SessionRowItem(session("s2", if (english) "Approval status sync" else "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-        }
-        HomeSectionHeader(HomeSection.RECENT)
-        // 「最近」：元信息行有工作区与停止原因，结果一句话在标题下第二行（L7 文件数只认改动卡）
-        DshCardRows {
-            SessionRowItem(session("r0", if (english) "Interrupted during gate run" else "跑门禁时被中断", stoppedReason = "interrupted"), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-            SessionRowItem(session("s3", if (english) "Fix mobile model switch" else "修复手机模型切换", lastResult = MobileSessionResult(text = if (english) "You interrupted this turn" else "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-            SessionRowItem(session("s4", if (english) "Tidy workspace navigation" else "整理工作区导航", lastResult = MobileSessionResult(text = if (english) "Gate run all green" else "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-            SessionRowItem(session("s6", if (english) "Fill in mobile tests" else "补齐移动端测试", lastResult = MobileSessionResult(text = if (english) "Added 3 test cases" else "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-        }
-        Spacer(Modifier.height(12.dp))
-        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
-    }
-}
-
-/**
- * 离线墙（稿 08）：顶栏空心灰点 + 「离线 · N 分钟前在线」、重连卡顶掉概况行、
- * 列表 72% 不透明、进行中行换成静止时钟 + 「最后看到：」、新任务置灰。
- */
-@Composable
-private fun HomeOfflineWall(english: Boolean = false) {
-    val session = MobileSession(
-        sessionId = "s2",
-        title = if (english) "Approval status sync" else "完善审批状态同步",
-        updatedAt = 0L,
-        running = true,
-        blank = false,
-        cwd = "/Users/me/dsh-links",
-        agentPreset = null,
-        activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12),
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Dsh.bgBase)
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        HomeHeader(
-            online = false,
-            offlineSinceLabel = if (english) "10 min ago" else "10 分钟前",
-            workspaces = listOf("/Users/me/dsh-links"),
-            selectedWorkspace = null,
-            onSelectWorkspace = {},
-            onAddWorkspace = {},
-            onDeleteWorkspace = {},
-            onOpenArchived = {},
-            onOpenSettings = {},
-            backdrop = null,
-        )
-        HomeOfflineCard(hostName = "Mac mini", sinceLabel = if (english) "10 min ago" else "10 分钟前", onRetry = {}, onOpenConnectionMode = {})
-        HomeSectionHeader(HomeSection.RUNNING)
-        Box(Modifier.alpha(0.72f)) {
-            DshCardRows {
-                SessionRowItem(
-                    session = session,
-                    isSelected = false,
-                    onClick = {},
-                    onRename = {},
-                    onFork = {},
-                    offline = true,
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Box(Modifier.alpha(0.72f)) { HomeBottomBar(online = false, onOpenSearch = {}, onNewTask = {}, backdrop = null) }
-    }
-}
-
-/** 空态墙（稿 09）：没有要你处理的事 + 三行起手式 + 悬浮新任务。 */
-@Composable
-private fun HomeEmptyWall() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Dsh.bgBase)
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        HomeHeader(
-            online = true,
-            offlineSinceLabel = null,
-            workspaces = emptyList(),
-            selectedWorkspace = null,
-            onSelectWorkspace = {},
-            onAddWorkspace = {},
-            onDeleteWorkspace = {},
-            onOpenArchived = {},
-            onOpenSettings = {},
-            backdrop = null,
-        )
-        // 空态不画概况行（稿 09 没有「0 件等你处理」）
-        Spacer(Modifier.height(12.dp))
-        HomeEmptyStarters(onPick = {})
-        Spacer(Modifier.height(12.dp))
-        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
-    }
-}
-
-@PreviewTest
-@Preview(name = "home offline light zh", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeOfflineLightZh() {
-    Wall(dark = false, english = false) { HomeOfflineWall(english = false) }
-}
-
-@PreviewTest
-@Preview(name = "home offline dark en", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeOfflineDarkEn() {
-    Wall(dark = true, english = true) { HomeOfflineWall(english = true) }
-}
-
-@PreviewTest
-@Preview(name = "home empty light zh", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeEmptyLightZh() {
-    Wall(dark = false, english = false) { HomeEmptyWall() }
-}
-
-@PreviewTest
-@Preview(name = "home empty dark en", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeEmptyDarkEn() {
-    Wall(dark = true, english = true) { HomeEmptyWall() }
-}
-
 /** 2026-10-02 简化：悬浮玻璃控件 + 建议行（继续 / 复核 / 查看改动 (N)）+ 底部操作行。 */
 @Composable
 private fun GlassControlsWall(english: Boolean = false) {
@@ -1494,9 +1255,6 @@ private fun GlassControlsWall(english: Boolean = false) {
             onSuggestion = {},
             onOpenChanges = {},
         )
-        SectionTitle(if (english) "Home bottom bar (search capsule + accent plus)" else "首页底部操作行（搜索胶囊 + 强调色圆形 +）")
-        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
-        HomeBottomBar(online = false, onOpenSearch = {}, onNewTask = {}, backdrop = null)
     }
 }
 
@@ -1512,20 +1270,6 @@ internal fun ChatSuggestionsLightZh() {
 @Composable
 internal fun HomeBottomBarDarkEn() {
     Wall(dark = true, english = true) { GlassControlsWall(english = true) }
-}
-
-@PreviewTest
-@Preview(name = "sidebar light zh", showBackground = true, widthDp = 412, heightDp = 980)
-@Composable
-internal fun SidebarLightZh() {
-    Wall(dark = false, english = false) { SidebarWall(english = false) }
-}
-
-@PreviewTest
-@Preview(name = "sidebar dark en", showBackground = true, widthDp = 412, heightDp = 980)
-@Composable
-internal fun SidebarDarkEn() {
-    Wall(dark = true, english = true) { SidebarWall(english = true) }
 }
 
 // ===== v4 基础组件（R2.2）：每个组件浅色（中文）/ 深色（英文），各含常规、长文本、禁用态 =====

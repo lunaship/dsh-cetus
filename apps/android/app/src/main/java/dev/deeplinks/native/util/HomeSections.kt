@@ -30,3 +30,20 @@ fun homeSections(sessions: List<MobileSession>): List<Pair<HomeSection, List<Mob
         }
     return HomeSection.values().mapNotNull { key -> buckets[key]?.let { key to it.toList() } }
 }
+
+/** 2.4 搜索结果：标题命中在前，其余（服务端全文检索命中）带摘要放「内容匹配」。 */
+data class HomeSearchGroups(
+    val titleMatches: List<MobileSession>,
+    val contentMatches: List<Pair<MobileSession, String?>>,
+)
+
+fun homeSearchGroups(
+    sessions: List<MobileSession>,
+    needle: String,
+    snippets: Map<String, String>,
+): HomeSearchGroups {
+    val ordered = sessions.sortedByDescending { sessionMillis(it.updatedAt) }.distinctBy { it.sessionId }
+    if (needle.isBlank()) return HomeSearchGroups(ordered, emptyList())
+    val (title, rest) = ordered.partition { it.title.contains(needle, ignoreCase = true) }
+    return HomeSearchGroups(title, rest.map { it to snippets[it.sessionId]?.takeIf { s -> s.isNotBlank() } })
+}

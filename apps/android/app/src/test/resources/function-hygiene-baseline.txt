@@ -9,4 +9,4 @@ dev/deeplinks/native/WorkspaceActivity.kt::WorkspaceScreen 2875
 # 2026-09-27 设置子页拆成独立 composable 后下调。
 dev/deeplinks/native/SettingsActivity.kt::SettingsScreen 254
 dev/deeplinks/devices/DevicesActivity.kt::DevicesScreen 261
-dev/deeplinks/native/WorkspaceSidebar.kt::WorkspaceSidebar 245
+dev/deeplinks/native/WorkspaceSidebar.kt::WorkspaceSidebar 150

@@ -23,4 +23,4 @@ dev/deeplinks/native/SettingsActivity.kt 34
 # 2026-10-02 Lody 简化：新增建议行 / 返回对话文案后按实际上调。
 dev/deeplinks/core/AppLocale.kt 708
 # 2026-10-02 Lody 简化（L9）：顶栏胶囊 + 分组卡 + 底部操作行 + 边缘渐隐；状态行抽 homeStatusItems 后按实际上调。
-dev/deeplinks/native/WorkspaceSidebar.kt 411
+dev/deeplinks/native/WorkspaceSidebar.kt 369
