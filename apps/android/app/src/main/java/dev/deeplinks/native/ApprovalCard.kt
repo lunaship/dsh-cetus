@@ -148,10 +148,10 @@ internal fun ApprovalCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(DshRadius.composer))
+                .clip(RoundedCornerShape(DshRadius.block))
                 .background(Dsh.bgCard),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = DshSpace.s12)) {
+            Column(modifier = Modifier.padding(horizontal = DshSpace.s16, vertical = DshSpace.s12)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
@@ -164,7 +164,7 @@ internal fun ApprovalCard(
                                     .clip(CircleShape)
                                     .background(Dsh.warn),
                             )
-                            Spacer(Modifier.width(DshSpace.s6))
+                            Spacer(Modifier.width(DshSpace.s8))
                             Text(
                                 L.approvalQuestion,
                                 color = Dsh.labelPrimary,
@@ -183,12 +183,12 @@ internal fun ApprovalCard(
                         )
                         // C3：对话内审批卡同样收不到工具参数（bb058bd 只在首页卡加过），
                         // 在工具名下方、选项上方补同一行说明，与首页审批卡共用一份文案。
-                        Spacer(Modifier.height(DshSpace.s6))
+                        Spacer(Modifier.height(DshSpace.s8))
                         Text(
                             L.approvalArgsMissing,
                             color = Dsh.labelSecondary,
                             style = DshType.supporting,
-                            modifier = Modifier.padding(horizontal = 10.dp),
+                            modifier = Modifier.padding(horizontal = DshSpace.s12),
                         )
                         // C4：工具名只出现一次——副标题（请求授权执行 <工具>）已经写了，
                         // 这里不再重复一行灰色小字（截图 ChatApprovalsLightZh 的反馈）。
@@ -252,7 +252,7 @@ internal fun ApprovalCard(
                     style = DshType.caption,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = DshSpace.s4)
+                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
                         .semantics { contentDescription = shownError },
                 )
             }
@@ -265,7 +265,7 @@ internal fun ApprovalCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = DshSpace.s8),
+                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
             ) {
@@ -304,7 +304,7 @@ private fun ApprovalOptionRow(
                 contentDescription = label
             }
             .heightIn(min = 48.dp)
-            .padding(horizontal = DshSpace.s6, vertical = DshSpace.s6),
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

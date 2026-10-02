@@ -102,7 +102,7 @@ internal fun QuestionCard(
             .heightIn(min = 120.dp)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgSubtle)
-            .padding(horizontal = 14.dp, vertical = DshSpace.s12),
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
     ) {
         Text(
             msg.questionHeader?.takeIf { it.isNotBlank() } ?: strings.questionClarify,
@@ -129,7 +129,7 @@ internal fun QuestionCard(
                     style = DshType.microMedium,
                     fontWeight = FontWeight(500),
                 )
-                Spacer(Modifier.height(DshSpace.s2))
+                Spacer(Modifier.height(DshSpace.s4))
             }
             Text(
                 question.prompt.ifBlank { msg.text },
@@ -164,7 +164,7 @@ internal fun QuestionCard(
                             )
                             .semantics { contentDescription = option.label }
                             .heightIn(min = 48.dp)
-                            .padding(vertical = DshSpace.s6, horizontal = DshSpace.s4),
+                            .padding(vertical = DshSpace.s8, horizontal = DshSpace.s4),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -197,7 +197,7 @@ internal fun QuestionCard(
                             .heightIn(min = 48.dp, max = 140.dp)
                             .clip(RoundedCornerShape(DshRadius.control))
                             .background(Dsh.bgSubtle)
-                            .padding(horizontal = 10.dp, vertical = DshSpace.s8),
+                            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
                     ) {
                         if (draft.custom.isEmpty()) {
                             Text(strings.questionAnswerHint, color = Dsh.labelTertiary, style = DshType.body)
@@ -215,7 +215,7 @@ internal fun QuestionCard(
                     .semantics { contentDescription = strings.questionCustomAnswerDescription },
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(DshSpace.s12))
         val shownError = submitError
         if (shownError != null) {
             Text(

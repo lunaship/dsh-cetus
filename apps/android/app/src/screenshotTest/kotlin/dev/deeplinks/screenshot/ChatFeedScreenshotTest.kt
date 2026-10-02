@@ -57,8 +57,8 @@ private fun ChatFrame(dark: Boolean, english: Boolean = false, content: @Composa
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
             LocalTextStyle provides typography.bodyMedium,
         ) {
-            // v3：聊天画布是白底（bgCard），与生产 WorkspaceScreen 一致
-            Box(modifier = Modifier.fillMaxSize().background(Dsh.bgCard)) {
+            // v4：聊天画布是 background（与生产 WorkspaceScreen 一致）
+            Box(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
                 Column(
                     modifier = Modifier.padding(DshSpace.s16),
                     verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
@@ -321,7 +321,7 @@ private fun ProcessRows(dark: Boolean, english: Boolean) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Dsh.bgCard)
+                .background(Dsh.bgBase)
                 .padding(DshSpace.s16),
             verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
         ) {
@@ -385,7 +385,7 @@ internal fun ProcessRowDarkEn() {
 private fun ChatPage(dark: Boolean, english: Boolean) {
     ChatFrame(dark = dark, english = english) {
         val actions = rememberPreviewChatActions(completedTurn)
-        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgCard)) {
+        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(DshSpace.s12),

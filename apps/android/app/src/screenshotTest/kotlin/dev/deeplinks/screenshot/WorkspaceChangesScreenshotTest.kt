@@ -111,13 +111,11 @@ private fun CardWall() {
     ) {
         Text("Top bar", color = Dsh.labelTertiary, style = DshType.label)
         WorkspaceTopBar(
-            running = false,
             title = "对照 Paseo 设计左滑改动面板",
-            showBack = true,
             onNavigate = {},
             menuExpanded = false,
             onMenuExpandedChange = {},
-            menuItems = emptyList(),
+            menu = dev.deeplinks.native.SessionMenu.Empty,
         )
         Text("Multi-file card", color = Dsh.labelTertiary, style = DshType.label)
         WorkspaceChangesCard(summary = multi, onOpen = {})

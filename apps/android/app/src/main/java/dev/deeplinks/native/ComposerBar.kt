@@ -6,21 +6,13 @@ import androidx.compose.runtime.getValue
 import dev.deeplinks.core.DshType
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,20 +25,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -55,15 +45,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.native.ui.DshFilterChip
-import dev.deeplinks.native.ui.DshGlassCircle
-import dev.deeplinks.native.ui.DshGlassSurface
-import dev.deeplinks.native.ui.DshGlassTier
-import dev.deeplinks.native.ui.dshGlass
+import dev.deeplinks.native.ui.v4.DlComposer
+import dev.deeplinks.native.ui.v4.DlSendState
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
 
@@ -116,7 +103,6 @@ internal fun InputBar(
     actionError: String? = null,
     composerFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
     focusToken: Int = 0,
-    backdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null,
 ) {
     ComposerFocusEffect(focusToken, composerFocusRequester)
     var composerFocused by remember { mutableStateOf(false) }
@@ -127,22 +113,40 @@ internal fun InputBar(
             .getOrDefault(false)
     }
     val composerIdle = inputText.isNullOrBlank() && pendingImages.isEmpty()
-    // L12：输入行是两块独立玻璃（+ 圆钮、输入胶囊），不再有 PR3 的整块浮岛外圈
-    val capsuleShape = RoundedCornerShape(DshRadius.composer)
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // ===== 座位行（自下而上第二层，4.3）：模型 · 强度 ⌄ ／ 访问模式 ⌄；右侧上下文计量 =====
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = DshSpace.s8, end = DshSpace.s4, bottom = DshSpace.s2),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.weight(1f)) {
+    // v4 4.1：输入区是一整块容器色（DlComposer）：输入框在上，下方 + / 模型 / 权限 / 发送
+    DlComposer(
+        text = inputText,
+        onTextChange = onInputChange,
+        placeholder = composerPlaceholder(isListening, running),
+        sendState = DlSendState.Send,
+        onSend = onSend,
+        modifier = modifier.onFocusChanged { composerFocused = it.hasFocus },
+        attachments = if (pendingImages.isEmpty()) null else {
+            { ComposerPendingImages(pendingImages, onRemoveImage) }
+        },
+        field = {
+            // 原生 EditText：保住中文输入法 composition / 语音转写的 InputConnection。
+            ComposerEditField(
+                value = inputText,
+                onValueChange = onInputChange,
+                hint = composerPlaceholder(isListening, running),
+                textColor = Dsh.labelPrimary,
+                hintColor = Dsh.tertiaryText,
+                cursorColor = Dsh.brand400,
+                fontSize = DshType.body.fontSize,
+                lineHeight = DshType.body.lineHeight,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = DshSpace.s24, max = 200.dp)
+                    .padding(start = DshSpace.s8, end = DshSpace.s8, bottom = DshSpace.s4)
+                    .let { base ->
+                        if (composerFocusRequester != null) base.focusRequester(composerFocusRequester) else base
+                    },
+            )
+        },
+        controls = {
+            if (!running) ComposerAttachButton(permissionPreset, permissionLabel, onPickImage, onTakePhoto, onOpenPermissionPicker)
+            Box(Modifier.weight(1f, fill = false)) {
                 ComposerSeatsRow(
                     modelName = modelName,
                     modelEffort = modelEffort,
@@ -153,284 +157,183 @@ internal fun InputBar(
                     onOpenPermissionPicker = onOpenPermissionPicker,
                 )
             }
-            val meterStats = sessionStats
-            if (!compact && meterStats != null && meterStats.contextWindow > 0) {
-                ContextMeterButton(stats = meterStats, running = running, onOpenUsage = onOpenUsage)
+            // v4：上下文占用不放在输入区，进 ⋯ → 用量（5.7）
+        },
+        sendButton = {
+            ComposerSendButton(
+                running = running,
+                canSend = canSend,
+                isSending = isSending,
+                isListening = isListening,
+                showMic = composerIdle && !running && !isSending && !isListening && voiceAvailable,
+                voiceAvailable = voiceAvailable,
+                actionError = actionError,
+                onStop = onStop,
+                onToggleVoice = onToggleVoice,
+                onSend = onSend,
+            )
+        },
+        footer = {
+            val shownActionError = actionError
+            if (shownActionError != null && composerShowsActionError(shownActionError, isSending)) {
+                Text(
+                    shownActionError,
+                    color = Dsh.err,
+                    style = DshType.supporting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
+                        .semantics { contentDescription = shownActionError },
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun ComposerPendingImages(pendingImages: List<Pair<String, String>>, onRemoveImage: (Int) -> Unit) {
+    pendingImages.forEachIndexed { index, (_, data) ->
+        val preview = remember(data) { android.util.Base64.decode(data, android.util.Base64.DEFAULT) }
+        Box {
+            coil3.compose.AsyncImage(
+                model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data(preview)
+                    .build(),
+                contentDescription = L.pendingImage,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(DshRadius.container)),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 12.dp, y = (-12).dp)
+                    .size(48.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = L.removeImage
+                    }
+                    .clickable { onRemoveImage(index) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Dsh.surface2),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(CloseOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.xs))
+                }
             }
         }
+    }
+}
 
-        // ===== 输入行（第一层，L12）：+ 圆钮 ｜ 8dp ｜ 玻璃输入胶囊（发送在内右侧）=====
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            if (!running) {
-                var attachOpen by remember { mutableStateOf(false) }
-                Box {
-                    DshGlassCircle(
-                        icon = PlusOutline16,
-                        contentDescription = L.addAttachment,
-                        onClick = { attachOpen = true },
-                        backdrop = backdrop,
-                        iconTint = Dsh.labelPrimary,
-                    )
-                    DshMenu(
-                        expanded = attachOpen,
-                        onDismiss = { attachOpen = false },
-                        items = listOf(
-                            DshMenuItem(ImageOutline16, L.choosePhoto) {
-                                attachOpen = false
-                                onPickImage()
-                            },
-                            DshMenuItem(CameraOutline16, L.takePhoto) {
-                                attachOpen = false
-                                onTakePhoto()
-                            },
-                            DshMenuItem(composerPermissionGlyph(permissionPreset), permissionLabel) {
-                                attachOpen = false
-                                onOpenPermissionPicker()
-                            },
-                        ),
-                    )
+@Composable
+private fun ComposerAttachButton(
+    permissionPreset: String,
+    permissionLabel: String,
+    onPickImage: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onOpenPermissionPicker: () -> Unit,
+) {
+    var attachOpen by remember { mutableStateOf(false) }
+    Box {
+        RoundIconButton(icon = PlusOutline16, tint = Dsh.labelSecondary, contentDescription = L.addAttachment, onClick = { attachOpen = true })
+        DshMenu(
+            expanded = attachOpen,
+            onDismiss = { attachOpen = false },
+            items = listOf(
+                DshMenuItem(ImageOutline16, L.choosePhoto) {
+                    attachOpen = false
+                    onPickImage()
+                },
+                DshMenuItem(CameraOutline16, L.takePhoto) {
+                    attachOpen = false
+                    onTakePhoto()
+                },
+                DshMenuItem(composerPermissionGlyph(permissionPreset), permissionLabel) {
+                    attachOpen = false
+                    onOpenPermissionPicker()
+                },
+            ),
+        )
+    }
+}
+
+/** 发送 / 停止 / 语音：容器右下角 36dp 圆键。发送品牌色、停止墨色、语音与禁用容器色。 */
+@Composable
+private fun ComposerSendButton(
+    running: Boolean,
+    canSend: Boolean,
+    isSending: Boolean,
+    isListening: Boolean,
+    showMic: Boolean,
+    voiceAvailable: Boolean,
+    actionError: String?,
+    onStop: () -> Unit,
+    onToggleVoice: () -> Unit,
+    onSend: () -> Unit,
+) {
+    val haptic = rememberDshHaptic()
+    val showStop = running && !canSend && !isSending
+    val sendBg by animateColorAsState(
+        targetValue = when {
+            showMic -> Dsh.surface2
+            actionError != null && (showStop || canSend) -> Dsh.err
+            showStop -> Dsh.inkFill
+            isListening || canSend || isSending -> Dsh.brand400
+            else -> Dsh.surface2
+        },
+        animationSpec = tween(motionDuration(DshDuration.fast)),
+        label = "sendBg",
+    )
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = when {
+                    actionError != null && (showStop || canSend) -> actionError
+                    showStop -> L.stopGenerating
+                    isListening -> L.listening
+                    canSend -> L.sendMessage
+                    else -> if (voiceAvailable) L.voiceInput else L.sendMessage
                 }
-                Spacer(Modifier.width(DshSpace.s8))
             }
-
-            // 输入胶囊：Control 档玻璃 + Strong 表面（L11 可读性下限）；多行向上增长
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .dshGlass(
-                        tier = DshGlassTier.Control,
-                        backdrop = backdrop,
-                        shape = capsuleShape,
-                        surface = DshGlassSurface.Strong,
-                    )
-                    .onFocusChanged { composerFocused = it.hasFocus },
-            ) {
-                // 待发送图片缩略图（DSH 待发送图片行）
-                if (pendingImages.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = DshSpace.s16, end = DshSpace.s12, top = DshSpace.s8),
-                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
-                    ) {
-                        pendingImages.forEachIndexed { index, (_, data) ->
-                            val preview = remember(data) { android.util.Base64.decode(data, android.util.Base64.DEFAULT) }
-                            Box {
-                                coil3.compose.AsyncImage(
-                                    model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                                        .data(preview)
-                                        .build(),
-                                    contentDescription = L.pendingImage,
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(RoundedCornerShape(DshRadius.container)),
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .offset(x = 10.dp, y = (-10).dp)
-                                        .size(48.dp)
-                                        .semantics {
-                                            role = Role.Button
-                                            contentDescription = L.removeImage
-                                        }
-                                        .clickable { onRemoveImage(index) },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .clip(CircleShape)
-                                            .background(Dsh.bgSubtle),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            CloseOutline16,
-                                            contentDescription = null,
-                                            tint = Dsh.labelSecondary,
-                                            modifier = Modifier.size(DshIconSize.xs),
-                                        )
-                                    }
-                                }
-                            }
-                        }
+            .clickable(
+                enabled = showStop || isListening || showMic || (canSend && !isSending),
+                onClick = {
+                    haptic(if (isListening || showMic) DshHaptic.ToggleOn else DshHaptic.Tick)
+                    when {
+                        showStop -> onStop()
+                        isListening || showMic -> onToggleVoice()
+                        else -> onSend()
                     }
-                }
-                // 原生 EditText：保住中文输入法 composition / 语音转写的 InputConnection。
-                Row(verticalAlignment = Alignment.Bottom) {
-                    val composerHint = composerPlaceholder(isListening, running)
-                    ComposerEditField(
-                        value = inputText,
-                        onValueChange = onInputChange,
-                        hint = composerHint,
-                        textColor = Dsh.labelPrimary,
-                        hintColor = Dsh.labelTertiary,
-                        cursorColor = Dsh.brand400,
-                        fontSize = 16.sp,
-                        lineHeight = 25.sp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 40.dp, max = 200.dp)
-                            .padding(start = DshSpace.s16, end = DshSpace.s4, top = DshSpace.s2)
-                            .let { base ->
-                                if (composerFocusRequester != null) base.focusRequester(composerFocusRequester) else base
-                            },
-                    )
-
-                    // 发送 / 停止 / 语音：胶囊内右侧。发送 = accentIcon 圆底（L4），禁用 bgSubtle。
-                    val sendInteraction = remember { MutableInteractionSource() }
-                    val sendPressed by sendInteraction.collectIsPressedAsState()
-                    val haptic = rememberDshHaptic()
-                    val showStopAtSend = running && !canSend && !isSending
-                    val showMic = composerIdle && !running && !isSending && !isListening && voiceAvailable
-                    val sendBg by animateColorAsState(
-                        targetValue = when {
-                            showMic -> Dsh.bgTrack
-                            actionError != null && (showStopAtSend || canSend) -> Dsh.error
-                            showStopAtSend -> Dsh.inkFill
-                            isListening -> Dsh.accentIcon
-                            !canSend && !isSending -> Dsh.bgSubtle
-                            sendPressed -> Dsh.accentIcon
-                            else -> Dsh.accentIcon
-                        },
-                        animationSpec = tween(motionDuration(120)),
-                        label = "sendBg",
-                    )
-                    val sendScale = animateFloatAsState(
-                        targetValue = if (sendPressed && !showStopAtSend) 0.88f else 1f,
-                        animationSpec = tween(motionDuration(DshDuration.fast)),
-                        label = "sendScale",
-                    )
-                    val reduceMotion = isReduceMotionEnabled()
-                    val breathScale: State<Float>?
-                    val breathAlpha: State<Float>?
-                    if (showStopAtSend && !reduceMotion) {
-                        val breath = rememberInfiniteTransition(label = "stopBreath")
-                        breathScale = breath.animateFloat(
-                            initialValue = 0.88f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1100, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse,
-                            ),
-                            label = "stopBreathScale",
-                        )
-                        breathAlpha = breath.animateFloat(
-                            initialValue = 0.62f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1100, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse,
-                            ),
-                            label = "stopBreathAlpha",
-                        )
-                    } else {
-                        breathScale = null
-                        breathAlpha = null
-                    }
-                    Box(
-                        modifier = Modifier
-                            .padding(start = DshSpace.s4, end = DshSpace.s4, bottom = DshSpace.s4)
-                            .size(40.dp)
-                            .dshPressScale(sendInteraction)
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = when {
-                                    actionError != null && (showStopAtSend || canSend) -> actionError
-                                    showStopAtSend -> L.stopGenerating
-                                    isListening -> L.listening
-                                    canSend -> L.sendMessage
-                                    else -> if (voiceAvailable) L.voiceInput else L.sendMessage
-                                }
-                            }
-                            .clickable(
-                                interactionSource = sendInteraction,
-                                indication = dshRipple(),
-                                enabled = showStopAtSend || isListening || showMic || (canSend && !isSending),
-                                onClick = {
-                                    haptic(
-                                        when {
-                                            showStopAtSend -> DshHaptic.Tick
-                                            isListening || showMic -> DshHaptic.ToggleOn
-                                            else -> DshHaptic.Tick
-                                        }
-                                    )
-                                    when {
-                                        showStopAtSend -> onStop()
-                                        isListening || showMic -> onToggleVoice()
-                                        else -> onSend()
-                                    }
-                                },
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .graphicsLayer {
-                                    val scale = breathScale?.value ?: sendScale.value
-                                    scaleX = scale
-                                    scaleY = scale
-                                    alpha = breathAlpha?.value ?: 1f
-                                }
-                                .clip(CircleShape)
-                                .background(sendBg),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            when {
-                                showStopAtSend -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .clip(RoundedCornerShape(DshRadius.micro))
-                                            .background(Dsh.onInk),
-                                    )
-                                }
-                                isListening || isSending -> {
-                                    val angle = rememberMotionSpin(750, label = "spin")
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .rotate(angle ?: 0f)
-                                            .border(1.5.dp, Dsh.onBrand, CircleShape),
-                                    )
-                                }
-                                showMic -> {
-                                    Icon(
-                                        MicOutline16,
-                                        contentDescription = null,
-                                        tint = Dsh.labelPrimary,
-                                        modifier = Modifier.size(DshIconSize.sm),
-                                    )
-                                }
-                                else -> {
-                                    Icon(
-                                        SendOutline16,
-                                        contentDescription = null,
-                                        tint = if (canSend) Dsh.onBrand else Dsh.labelDimmed,
-                                        modifier = Modifier.size(DshIconSize.sm),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                val shownActionError = actionError
-                if (shownActionError != null && composerShowsActionError(shownActionError, isSending)) {
-                    Text(
-                        shownActionError,
-                        color = Dsh.error,
-                        style = DshType.caption,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = DshSpace.s16, end = DshSpace.s12, bottom = DshSpace.s8)
-                            .semantics { contentDescription = shownActionError },
-                    )
-                }
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier.size(36.dp).clip(CircleShape).background(sendBg),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                showStop -> Box(Modifier.size(12.dp).background(Dsh.onInk))
+                isListening || isSending -> CircularProgressIndicator(
+                    modifier = Modifier.size(DshIconSize.xs),
+                    color = Dsh.onBrand,
+                    strokeWidth = 1.5.dp,
+                )
+                showMic -> Icon(MicOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
+                else -> Icon(
+                    SendOutline16,
+                    contentDescription = null,
+                    tint = if (canSend) Dsh.onBrand else Dsh.tertiaryText,
+                    modifier = Modifier.size(DshIconSize.sm),
+                )
             }
         }
     }
@@ -465,7 +368,7 @@ internal fun ComposerSeatsRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s2),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
     ) {
         // v3：窄屏时模型座先让位（weight + fill=false：不撑满，只在放不下时收缩），
         // 访问模式标签保持完整，不再出现「工作…」
@@ -685,7 +588,7 @@ private fun ComposerSetupRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(DshSpace.s12))
         Text(
             label,
             color = if (onClick != null) Dsh.labelPrimary else Dsh.labelSecondary,
@@ -729,7 +632,7 @@ internal fun ComposerSuggestionsRow(
                     .clip(CircleShape)
                     .background(Dsh.labelTertiary),
             )
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 L.hostOffline,
                 color = Dsh.labelTertiary,
@@ -743,9 +646,9 @@ internal fun ComposerSuggestionsRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2),
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
     ) {
         // v3 入场揭示：一轮结束、建议出现时逐个错峰 70ms 淡入上移（DshMotion.dshReveal）
         if (suggestionsVisible) {

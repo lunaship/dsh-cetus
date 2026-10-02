@@ -207,6 +207,17 @@ class ChatFeedDerivationTest {
     }
 
     @Test
+    fun `isTurnEnd skips trailing notice and changes rows`() {
+        val groups = listOf(
+            MessageGroup.Single(msg("a1", "assistant", text = "a")),
+            MessageGroup.Single(msg("n1", "system_notice", text = "[model changed]")),
+            MessageGroup.Single(msg("c1", ROLE_WORKSPACE_CHANGES, text = "")),
+        )
+        assertTrue(isTurnEnd(groups, 0, running = false))
+        assertFalse(isTurnEnd(groups + MessageGroup.Single(msg("a2", "assistant", text = "b")), 0, running = false))
+    }
+
+    @Test
     fun `isTurnEnd false when not assistant message`() {
         val groups = listOf(
             MessageGroup.Single(msg("u1", "user", text = "a")),

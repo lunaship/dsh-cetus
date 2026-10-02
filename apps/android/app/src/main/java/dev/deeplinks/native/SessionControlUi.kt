@@ -105,7 +105,7 @@ internal fun QueuedPromptsStrip(
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
     ) {
         Text(L.queueTitle.format(items.size), color = Dsh.labelTertiary, style = DshType.microMedium)
         items.take(MAX_VISIBLE_QUEUE).forEach { item ->
@@ -142,7 +142,7 @@ private fun QueuedPromptRow(
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = DshTouch.min),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
     ) {
         Icon(QueueOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         Text(queuePlacementLabel(item.placement), color = Dsh.labelSecondary, style = DshType.microMedium)
@@ -157,7 +157,7 @@ private fun QueuedPromptRow(
             modifier = Modifier.weight(1f),
         )
         if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s2)
+            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s4)
         } else if (item.editable) {
             if (item.placement == "queued") {
                 DshIconAction(RightUpOutline16, L.queueSteer, onSteer, iconSize = DshIconSize.sm, visualSize = DshSpace.s32)
@@ -193,7 +193,7 @@ internal fun GoalControlRow(goal: SessionGoal, control: SessionControlController
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
     ) {
         Icon(GoalOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
         Text(goalPhaseLabel(goal.phase), color = Dsh.labelSecondary, style = DshType.microMedium)
@@ -202,7 +202,7 @@ internal fun GoalControlRow(goal: SessionGoal, control: SessionControlController
             goalRoundsLabel(goal)?.let { Text(it, color = Dsh.labelTertiary, style = DshType.microRelaxed, maxLines = 1) }
         }
         if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s2)
+            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s4)
         } else {
             DshIconAction(
                 if (goal.active) PauseOutline16 else PlayOutline16,
@@ -242,6 +242,17 @@ internal fun GoalControlRow(goal: SessionGoal, control: SessionControlController
             onDismiss = { confirmClear = false },
             onConfirm = { control.clearGoal { ok -> if (ok) confirmClear = false } },
         )
+    }
+}
+
+/** ⋯ 菜单「目标」入口：有可管理目标时打开编辑对话框。 */
+@Composable
+internal fun GoalEditHost(open: Boolean, control: SessionControlController, onDismiss: () -> Unit) {
+    val goal = control.goal.value
+    if (!open || goal == null) return
+    val busy = control.busy.value?.startsWith("goal:") == true
+    GoalEditDialog(goal, saving = busy, onDismiss = onDismiss) { objective, rounds ->
+        control.editGoal(objective, rounds) { ok -> if (ok) onDismiss() }
     }
 }
 
@@ -325,7 +336,7 @@ internal fun ScheduledTasksSheet(open: Boolean, control: SessionControlControlle
         val loadError = control.schedulesError.value
         when {
             control.schedulesLoading.value && tasks.isEmpty() -> Box(Modifier.fillMaxWidth().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(modifier = Modifier.size(DshIconSize.lg), color = Dsh.labelSecondary, strokeWidth = DshSpace.s2)
+                CircularProgressIndicator(modifier = Modifier.size(DshIconSize.lg), color = Dsh.labelSecondary, strokeWidth = DshSpace.s4)
             }
             loadError != null && tasks.isEmpty() -> DshErrorState(
                 title = loadError,

@@ -11,6 +11,10 @@ import dev.deeplinks.native.HomeSectionHeader
 import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.HomeBottomBar
 import dev.deeplinks.native.ComposerSuggestionsRow
+import dev.deeplinks.native.SessionMenuContent
+import dev.deeplinks.native.sessionMenu
+import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
+import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.EllipsisOutline16
 import dev.deeplinks.native.ArrowLeftOutline16
 import dev.deeplinks.native.FilterLinesOutline16
@@ -154,7 +158,6 @@ import dev.deeplinks.native.CommandSuggestions
 import dev.deeplinks.native.ComposerContextStrip
 import dev.deeplinks.native.InputBar
 import dev.deeplinks.native.WorkspaceChangesSummary
-import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileSessionActivity
@@ -175,13 +178,8 @@ import dev.deeplinks.native.util.StreamBannerKind
 import dev.deeplinks.native.ui.DshBadge
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.DshBannerTone
-import dev.deeplinks.native.COMPOSER_ISLAND_INNER_CLEARANCE
-import dev.deeplinks.native.COMPOSER_SIDE_CLEARANCE
 import dev.deeplinks.native.DshRadius
-import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.ui.DshFilterChip
-import dev.deeplinks.native.ui.DshGlassTier
-import dev.deeplinks.native.ui.dshGlass
 import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.ui.DshTextTabs
 import dev.deeplinks.core.dshColorScheme
@@ -190,7 +188,6 @@ import dev.deeplinks.native.GoalOutline16
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import dev.deeplinks.native.ui.v4.DlAction
-import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
 import dev.deeplinks.native.ui.v4.DlButtonStyle
 import dev.deeplinks.native.ui.v4.DlChip
 import dev.deeplinks.native.ui.v4.DlChipStyle
@@ -198,7 +195,6 @@ import dev.deeplinks.native.ui.v4.DlComposer
 import dev.deeplinks.native.ui.v4.DlDecisionBar
 import dev.deeplinks.native.ui.v4.DlDecisionOption
 import dev.deeplinks.native.ui.v4.DlDialogSurface
-import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.ui.v4.DlInboxItem
 import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.native.ui.v4.DlRowTrailing
@@ -574,32 +570,18 @@ private val sampleSessionStats = MobileSessionStats(
 )
 
 /**
- * 对话页输入区：上下文条 + 输入卡（两层输入区），按生产结构包进浮岛（R11）。
- * 预览不带采样源（backdrop = null），展示的正是 4.5 回退表「无背景源 → 普通表面」
- * 的形态；玻璃折射/模糊的运行时效果由真机录屏验证（D04）。
- * 真机上「没有消息」的画布下方就是它——空会话的起点是输入框占位句。
+ * 对话页输入区（v4 4.1）：建议行 + 实底输入区（DlComposer），与生产 WorkspaceScreen 同构。
  * ChatBottomWall 与空态画布帧共用，样例数据（含上下文占用）保持单一来源。
  */
 @Composable
 private fun ChatComposerArea(modifier: Modifier = Modifier) {
     val stats = sampleSessionStats
-    Column(
-        modifier = modifier
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
-            .dshGlass(
-                tier = DshGlassTier.Floating,
-                backdrop = null,
-                shape = RoundedCornerShape(DshRadius.modal),
-            )
-            .padding(
-                start = COMPOSER_ISLAND_INNER_CLEARANCE,
-                end = COMPOSER_ISLAND_INNER_CLEARANCE,
-                top = DshSpace.s6,
-            ),
-    ) {
-        ComposerContextStrip(
+    Column(modifier = modifier.background(Dsh.bgBase)) {
+        ComposerSuggestionsRow(
             online = true,
-            changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
+            suggestionsVisible = true,
+            changesCount = null,
+            onSuggestion = {},
             onOpenChanges = {},
         )
         InputBar(
@@ -657,18 +639,45 @@ internal fun ChatBottomDarkEn() {
 @Composable
 private fun TopBarWall(english: Boolean = false) {
     WorkspaceTopBar(
-        running = true,
-        title = if (english) "Research t3code mobile design" else "调研 t3code 移动端设计并对比项目",
-        subtitle = "dsh-links · Mac mini",
-        showBack = true,
+        title = if (english) "Sync approval state" else "完善审批状态同步",
+        subtitle = if (english) "dsh-links · Running · Step 12" else "dsh-links · 运行中 · 第 12 步",
         onNavigate = {},
         menuExpanded = false,
         onMenuExpandedChange = {},
-        menuItems = listOf(
-            DshMenuItem(SearchOutline16, if (english) "Search tool calls" else "搜索工具调用") {},
-            DshMenuItem(SearchOutline16, if (english) "Rename session" else "重命名会话") {},
-        ),
+        menu = sessionMenu(onClose = {}),
+        diff = DlDiffStat(148, 37) {},
     )
+}
+
+/** v4 4.9：会话 ⋯ 菜单（弹层静态外观）。 */
+@Composable
+private fun SessionMenuWall() {
+    val menu = sessionMenu(
+        onClose = {},
+        changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 4, added = 62, deleted = 9, files = emptyList()),
+        canBrowseFiles = true,
+        subagentCount = 2,
+        previewSupported = true,
+        canGoal = true,
+        canSchedules = true,
+    )
+    Column(Modifier.fillMaxSize().background(Dsh.bgOverlay), verticalArrangement = Arrangement.Bottom) {
+        DlBottomSheetSurface { SessionMenuContent(menu) }
+    }
+}
+
+@PreviewTest
+@Preview(name = "session menu light zh", showBackground = true, widthDp = 412, heightDp = 860)
+@Composable
+internal fun SessionMenuLightZh() {
+    ShotFrame(dark = false, english = false) { SessionMenuWall() }
+}
+
+@PreviewTest
+@Preview(name = "session menu dark en", showBackground = true, widthDp = 412, heightDp = 860)
+@Composable
+internal fun SessionMenuDarkEn() {
+    ShotFrame(dark = true, english = true) { SessionMenuWall() }
 }
 
 @PreviewTest
@@ -1475,7 +1484,7 @@ private fun GlassControlsWall(english: Boolean = false) {
         ComposerSuggestionsRow(
             online = true,
             suggestionsVisible = true,
-            changesCount = 6,
+            changesCount = null,
             onSuggestion = {},
             onOpenChanges = {},
         )
