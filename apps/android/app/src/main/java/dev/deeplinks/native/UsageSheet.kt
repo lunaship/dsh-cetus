@@ -180,7 +180,13 @@ private fun formatDurationOrDash(ms: Long?): String =
 @Composable
 private fun formatEstimate(cost: EstimatedCost?): String? {
     if (cost == null) return null
-    val money = formatEstimateMoney(cost.currency, cost.amount)
+    val min = cost.amountMin
+    val max = cost.amountMax
+    val money = if (min != null && max != null) {
+        formatEstimateMoney(cost.currency, min) + "–" + formatEstimateMoney(cost.currency, max)
+    } else {
+        formatEstimateMoney(cost.currency, cost.amount)
+    }
     val date = cost.priceDate
     return if (date.isNullOrBlank()) {
         DshS.translation("usageEstimateNoDate").format(money)

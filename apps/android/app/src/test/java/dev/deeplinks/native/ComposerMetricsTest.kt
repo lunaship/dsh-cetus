@@ -19,10 +19,13 @@ class ComposerMetricsTest {
     fun seatsCompactUsesTheInputCardWidthNotTheWindowWidth() {
         // 412dp 手机：岛外 12dp + 岛内 8dp 每侧，卡片可用宽 372dp，两个座位都带文字
         assertFalse(composerSeatsCompact(412f))
-        // 小屏 / 分屏：卡片可用宽 320dp，座位只留图标
+        // 主流手机（393 / 384 / 360dp）两座都带文字（2026-10-02 真机反馈：原阈值让它们只剩图标）
+        assertFalse(composerSeatsCompact(393f))
+        assertFalse(composerSeatsCompact(360f))
+        assertFalse(composerSeatsCompact(340f))
+        // 小屏 / 分屏：卡片可用宽 < 300dp，座位只留图标
+        assertTrue(composerSeatsCompact(339f))
         assertTrue(composerSeatsCompact(320f))
-        assertTrue(composerSeatsCompact(399f))
-        assertFalse(composerSeatsCompact(400f))
     }
 
     @Test

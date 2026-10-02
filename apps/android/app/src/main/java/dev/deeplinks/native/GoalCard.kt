@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.native.ui.dshCardSurface
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.style.TextOverflow
 import dev.deeplinks.core.Dsh
@@ -60,8 +59,7 @@ internal fun GoalCard(
         modifier
             .fillMaxWidth()
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgInput)
+            .dshCardSurface() // 与首页卡片同一卡面（白卡 + 发丝边 + 轻阴影），在实底顶栏下也分得出层
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
     ) {

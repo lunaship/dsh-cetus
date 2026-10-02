@@ -126,7 +126,7 @@ private fun PreviewScreen(title: String, url: String, onClose: () -> Unit) {
             AndroidView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 factory = { createPreviewWebView(it, url, port).also { view -> webView = view } },
-                onRelease = { clearPreviewWebView(it) },
+                onRelease = { clearPreviewWebView(it, port) },
             )
         }
     }
@@ -158,10 +158,20 @@ private fun createPreviewWebView(context: android.content.Context, url: String, 
         loadUrl(url)
     }
 
-private fun clearPreviewWebView(view: WebView) {
+/**
+ * 退出时只清这次预览本机源（127.0.0.1 / localhost + 代理端口）的 Cookie 与存储，
+ * 不动 App 里其他 WebView（Mermaid / 公式 / 代码高亮）的数据。
+ */
+private fun clearPreviewWebView(view: WebView, port: Int) {
     view.stopLoading()
-    CookieManager.getInstance().removeAllCookies(null)
-    WebStorage.getInstance().deleteAllData()
+    val cookies = CookieManager.getInstance()
+    for (origin in previewOrigins(port)) {
+        for (name in previewCookieNames(cookies.getCookie(origin))) {
+            cookies.setCookie(origin, "$name=; Max-Age=0; Path=/")
+        }
+        WebStorage.getInstance().deleteOrigin(origin)
+    }
+    cookies.flush()
     view.clearCache(true)
     view.clearHistory()
     view.destroy()
@@ -188,3 +198,11 @@ private class PreviewWebClient(private val port: Int) : WebViewClient() {
         return (name == "127.0.0.1" || name == "localhost") && uri.port == port
     }
 }
+
+internal fun previewOrigins(port: Int): List<String> = listOf("http://127.0.0.1:$port", "http://localhost:$port")
+
+/** `CookieManager.getCookie` 返回 `a=1; b=2`，取出名字用于逐个过期。 */
+internal fun previewCookieNames(header: String?): List<String> =
+    header.orEmpty().split(';').mapNotNull { part ->
+        part.substringBefore('=').trim().takeIf { it.isNotEmpty() }
+    }.distinct()
