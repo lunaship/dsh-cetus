@@ -21,11 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import dev.deeplinks.core.AppSettingsStore
-import dev.deeplinks.core.HostStore
-import dev.deeplinks.core.readTierCustom
-import dev.deeplinks.core.resolveModelTiers
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,20 +70,6 @@ internal fun ModelPickerSheet(
     val currentEffort = catalog?.currentReasoningEffort
         ?: currentOption?.second?.defaultEffort
     val currentEfforts = currentOption?.second?.reasoningEfforts.orEmpty()
-    val context = LocalContext.current
-    val tierPicks = remember(catalog, context) {
-        val local = runCatching {
-            val host = HostStore.current(context) ?: return@runCatching null
-            AppSettingsStore.cached(context, host) to readTierCustom(context, host)
-        }.getOrNull()
-        val settings = local?.first ?: AppSettings()
-        resolveModelTiers(
-            tierModelsOf(catalog),
-            settings.defaultModelProvider,
-            settings.defaultModel,
-            local?.second ?: emptyMap(),
-        )
-    }
     val filteredGroups = remember(catalog, query) {
         val groups = catalog?.groups.orEmpty()
         if (query.isBlank()) groups
@@ -137,16 +118,6 @@ internal fun ModelPickerSheet(
 
         when (page) {
             ModelPickerPage.MENU -> Column {
-                ModelTierBar(
-                    picks = tierPicks,
-                    currentProvider = catalog?.currentProvider,
-                    currentModel = catalog?.currentModel,
-                    currentEffort = currentEffort,
-                    onPick = { provider, model, effort ->
-                        onSelect(provider, model, effort)
-                        onDismiss()
-                    },
-                )
                 DshListSection {
                 DshListRow(
                     title = L.model,
