@@ -164,14 +164,16 @@ private fun controlSpec(surface: DshGlassSurface): DshGlassSpec {
     // 深色表面取 bgCard（#1C1D21）：与重设计稿面板面同源，避免新裸色值
     val darkBase = Dsh.bgCard
     return when (surface) {
+        // 2026-10-02 真机（小米 15 / Android 16）复核：0.50 + 4dp 模糊时背后正文清晰透出、边缘被折射扭曲，
+        // 「透明不像透明、磨砂不像磨砂」。统一提到约 88% 实色 + 12dp 模糊，折射减半，只留轻微玻璃感。
         DshGlassSurface.Standard -> DshGlassSpec(
-            blur = 4.dp,
+            blur = 12.dp,
             refractionHeight = 12.dp,
-            refractionAmount = 24.dp,
+            refractionAmount = 12.dp,
             surfaceColorLight = Color.White,
             surfaceColorDark = darkBase,
-            surfaceAlphaLight = 0.50f,
-            surfaceAlphaDark = 0.55f,
+            surfaceAlphaLight = 0.88f,
+            surfaceAlphaDark = 0.86f,
             highlightWidth = 1.dp,
             highlightAlphaLight = 0.55f,
             highlightAlphaDark = 0.28f,
@@ -181,14 +183,14 @@ private fun controlSpec(surface: DshGlassSurface): DshGlassSpec {
             fallbackAlpha = 0.96f,
         )
         DshGlassSurface.Strong -> DshGlassSpec(
-            blur = 4.dp,
+            blur = 12.dp,
             refractionHeight = 12.dp,
-            refractionAmount = 24.dp,
+            refractionAmount = 12.dp,
             surfaceColorLight = Color.White,
             surfaceColorDark = darkBase,
-            // L11 可读性下限：输入文字对比实测不达 4.5:1 时提到 0.82 / 0.84（A17）
-            surfaceAlphaLight = 0.72f,
-            surfaceAlphaDark = 0.74f,
+            // L11 可读性下限（承载输入文字）：比 Standard 再实一档
+            surfaceAlphaLight = 0.92f,
+            surfaceAlphaDark = 0.90f,
             highlightWidth = 1.dp,
             highlightAlphaLight = 0.55f,
             highlightAlphaDark = 0.28f,

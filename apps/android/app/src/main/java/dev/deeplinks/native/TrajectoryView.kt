@@ -74,8 +74,15 @@ private data class TraceRoleVisual(
     val icon: ImageVector,
 )
 
+/** DSH 注入的 system-reminder / runtime context 在轨迹里单独标为「上下文注入」，不冒充用户/助手。 */
+internal const val TRACE_ROLE_CONTEXT_INJECTION = "context_injection"
+
+internal fun traceDisplayRole(msg: MobileMessage): String =
+    if (isHiddenContextInjection(msg)) TRACE_ROLE_CONTEXT_INJECTION else msg.role
+
 @Composable
 private fun traceRoleVisual(role: String): TraceRoleVisual = when (role) {
+    TRACE_ROLE_CONTEXT_INJECTION -> TraceRoleVisual(L.contextInjection, Dsh.labelTertiary, ArchiveOutline20)
     "user" -> TraceRoleVisual(L.traceKindUser, Dsh.brand400, GoalOutline16)
     "reasoning" -> TraceRoleVisual(L.traceKindReasoning, Dsh.traceReasoning, ThinkOutline16)
     "tool_call" -> TraceRoleVisual(L.traceKindTool, Dsh.labelSecondary, CodeOutline16)
@@ -120,18 +127,22 @@ private data class TraceTurn(
     val steps: List<MobileMessage>,
 )
 
+/** 只有用户亲手发的消息才开新回合；DSH 注入的上下文（role 可能是 user）归入当前回合。 */
+internal fun isTraceTurnStart(msg: MobileMessage): Boolean =
+    msg.role == "user" && traceDisplayRole(msg) == "user"
+
 private fun groupTraceTurns(messages: List<MobileMessage>): List<TraceTurn> {
     if (messages.isEmpty()) return emptyList()
     val turns = mutableListOf<TraceTurn>()
     var current = mutableListOf<MobileMessage>()
     fun flush() {
         if (current.isEmpty()) return
-        val header = current.firstOrNull { it.role == "user" }
+        val header = current.firstOrNull { isTraceTurnStart(it) }
         turns.add(TraceTurn(turns.size + 1, header, current.toList()))
         current = mutableListOf()
     }
     for (m in messages) {
-        if (m.role == "user" && current.isNotEmpty()) flush()
+        if (isTraceTurnStart(m) && current.isNotEmpty()) flush()
         current.add(m)
     }
     flush()
@@ -449,7 +460,7 @@ private fun TraceTimeline(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         messages.forEach { m ->
-            val visual = traceRoleVisual(m.role)
+            val visual = traceRoleVisual(traceDisplayRole(m))
             val key = "row-" + m.id
             val weight = if (actualDuration) {
                 (durations[m.id] ?: 120L).coerceIn(60L, 6000L).toFloat()
@@ -519,7 +530,7 @@ private fun TraceTableRow(
 ) {
     val primary = row.primary
     val error = traceIsError(primary) || (row.result?.let { traceIsError(it) } == true)
-    val visual = traceRoleVisual(primary.role)
+    val visual = traceRoleVisual(traceDisplayRole(primary))
     val accent = if (error) Dsh.error else visual.color
     val bg = when {
         focused -> accent.copy(alpha = 0.10f)

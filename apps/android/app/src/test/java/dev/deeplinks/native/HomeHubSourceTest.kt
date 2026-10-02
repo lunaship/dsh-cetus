@@ -1,6 +1,8 @@
 package dev.deeplinks.native
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -25,13 +27,24 @@ class HomeHubSourceTest {
         assertFalse("HomeHeader should not contain HostBadge", body.contains("HostBadge"))
     }
 
+    /** 2026-10-02 真机反馈：工作区胶囊必须写出当前工作区，不能只剩一个看起来像禁用的漏斗。 */
     @Test
-    fun `HomeHeader has no ChevronDownOutline16`() {
+    fun `HomeHeader workspace capsule shows current workspace label`() {
         val text = file("HomeHub.kt").readText()
         val start = text.indexOf("internal fun HomeHeader(")
         val end = text.indexOf("\n}\n", start) + 3
         val body = text.substring(start, end)
-        assertFalse("HomeHeader should not contain ChevronDownOutline16", body.contains("ChevronDownOutline16"))
+        assertTrue(body.contains("homeWorkspaceChipLabel(selectedWorkspace"))
+        assertFalse("漏斗图标看起来像禁用态", body.contains("FilterLinesOutline16"))
+    }
+
+    @Test
+    fun `workspace chip label falls back and truncates`() {
+        assertEquals("全部", homeWorkspaceChipLabel(null, "全部"))
+        assertEquals("全部", homeWorkspaceChipLabel("  ", "全部"))
+        val long = homeWorkspaceChipLabel("/home/me/a-very-long-workspace-name", "全部")
+        assertTrue(long.endsWith("…"))
+        assertTrue(long.length <= 12)
     }
 
     @Test

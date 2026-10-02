@@ -107,16 +107,23 @@ internal fun HomeHeader(
             HostStatusDot(online)
         }
         Spacer(Modifier.weight(1f))
-        // 「筛选 + 设置」合并胶囊（4.1）：筛选菜单沿用原工作区菜单（H1）
+        // 「工作区 + 设置」合并胶囊（4.1）：左半直接写出当前工作区（全部 / 某个工作区）+ 下拉箭头，
+        // 点开是原工作区菜单（H1）。2026-10-02 真机反馈：只放一个灰色漏斗时看不出能选工作区。
         Box {
-            DshGlassCapsule(onClick = { menuOpen = true }, backdrop = backdrop) {
-                DshGlassCapsuleIcon(
-                    icon = FilterLinesOutline16,
-                    contentDescription = s.homeFilterWorkspaces,
-                    onClick = { menuOpen = true },
-                    enabled = false, // 整颗胶囊承载点击（F03：不留嵌套点击层），图标只作展示
-                    iconTint = Dsh.labelPrimary,
+            DshGlassCapsule(
+                onClick = { menuOpen = true },
+                backdrop = backdrop,
+                contentDescription = s.homeFilterWorkspaces,
+            ) {
+                DshGlassCapsuleLabel(homeWorkspaceChipLabel(selectedWorkspace, s.homeAllWorkspaces))
+                Spacer(Modifier.width(DshSpace.s4))
+                Icon(
+                    ChevronDownOutline16,
+                    contentDescription = null,
+                    tint = Dsh.labelSecondary,
+                    modifier = Modifier.size(DshIconSize.sm),
                 )
+                Spacer(Modifier.width(DshSpace.s4))
                 DshGlassCapsuleIcon(
                     icon = SettingsOutline16,
                     contentDescription = s.settingsTitle,
@@ -165,6 +172,15 @@ internal fun HomeHeader(
         }
     }
 }
+
+/** 首页工作区胶囊上的文字：未筛选写「全部工作区」，否则写工作区名（过长截断，给设置钮留位）。 */
+internal fun homeWorkspaceChipLabel(selected: String?, allLabel: String): String {
+    val name = selected?.let(::workspaceDisplayName)?.trim().orEmpty()
+    if (name.isEmpty()) return allLabel
+    return if (name.length > HOME_WORKSPACE_CHIP_MAX_CHARS) name.take(HOME_WORKSPACE_CHIP_MAX_CHARS - 1) + "…" else name
+}
+
+private const val HOME_WORKSPACE_CHIP_MAX_CHARS = 12
 
 /**
  * 首页审批（稿 01/07 · 2026-10-02 改为「等你处理」卡内的一行展开内容，不再单独成卡）：

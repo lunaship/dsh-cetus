@@ -62,8 +62,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.ui.DshEdgeFadeDefaults
-import dev.deeplinks.native.ui.DshEdgeFades
 import dev.deeplinks.native.util.isContextInjectionText
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
@@ -2187,7 +2185,7 @@ fun WorkspaceScreen(
                 onOpenPreview = { headerMenuOpen = false; showPreviewSheet = true },
             )
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
-            Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop, paintGlass = false)) {
+            Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 WorkspaceTopBar(
                     running = running,
@@ -2248,7 +2246,7 @@ fun WorkspaceScreen(
                 SessionChromeGoals(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl)
             }
             } // 顶部 chrome 结束
-            DshEdgeFades(topChromeDp + DshEdgeFadeDefaults.overhang, bottomChromeDp + DshSpace.s24, viewMode != "chat" || contentUnderTop, viewMode != "chat" || listState.canScrollForward, Dsh.bgCard, chrome.backdrop)
+            // 方案 A（2026-10-02）：顶 / 底 chrome 实底，不再叠边缘渐隐（实底与渐隐色不一致会出现白雾）。
 
             // 消息流 + 悬浮「回到底部」：weight 加在容器（Column 直接子级）上，
             // 悬浮按钮盖在列表之上；框内 LazyColumn 用 fillMaxSize 填满 Box。
@@ -2262,7 +2260,7 @@ fun WorkspaceScreen(
                 },
                 state = pullRefreshState,
                 indicator = { ChromeAwareRefreshIndicator(pullRefreshState, historyRefreshing, topChromeDp) },
-                modifier = Modifier.fillMaxSize().overlayBackdropSource(chrome),
+                modifier = Modifier.fillMaxSize(),
             ) {
             // 对话与轨迹共用消息数据，只替换当前视图，避免同时测量和绘制两张长列表。
             ChangesSwipeArea(
@@ -2658,7 +2656,8 @@ fun WorkspaceScreen(
                 actionError = composerActionError,
                 composerFocusRequester = composerFocusRequester,
                 focusToken = composerFocusToken,
-                backdrop = chrome.backdrop,
+                // 方案 A：输入区坐在实底上，不再采样背后内容（采样会让被实底挡住的正文从胶囊里透出来）
+                backdrop = null,
                 onSend = {
                     // 不可逆权限升级：无论从哪个入口触发，都不直发，先走二次确认。
                     if (isDangerPermissionCommand(inputText)) {
