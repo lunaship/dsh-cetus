@@ -54,6 +54,8 @@ import { createRemoteRuntime } from "./remote/runtime.js"
 
 import { applyMobileSessionSafety, handleMobileApi } from "./mobile-api.js"
 import { hostDiagnosticsSource, runDiagnostics } from "./diagnostics.js"
+import { deriveStoppedReason } from "./mobile-session-activity.js"
+import { createHostEventHub, handleHostEvents } from "./host-events.js"
 
 export const name = "dsh-links"
 export const inject = ["webServer", "typertGateway"]
@@ -1740,6 +1742,32 @@ export function apply(ctx, config) {
   }), { prepend: true })
 
   // ---------- 手机接入代理（0.0.0.0:<port> HTTPS）：仅 health / pair / mobile/* ----------
+  const hostEvents = createHostEventHub({
+    listSessions: async () => {
+      const list = await callLocalRpc(targetPort, "session.list", {})
+      const approvals = new Set()
+      const questions = new Set()
+      for (const rec of rt.requests.pendingApprovals.values()) {
+        if (rec?.sessionId) approvals.add(rec.sessionId)
+      }
+      for (const rec of rt.requests.pendingQuestions.values()) {
+        if (rec?.sessionId) questions.add(rec.sessionId)
+      }
+      return (list?.items ?? []).map((item) => ({
+        sessionId: item?.sessionId,
+        title: item?.projections?.values?.title,
+        origin: item?.origin,
+        running: Boolean(item?.running),
+        pendingApproval: approvals.has(item?.sessionId),
+        pendingQuestion: questions.has(item?.sessionId),
+        awaitingInput: Boolean(rt.awaiting?.has(item?.sessionId)),
+      }))
+    },
+    terminalReason: async (sessionId) => {
+      const history = await callLocalRpc(targetPort, "session.history", { sessionId, maxMessages: 8 })
+      return deriveStoppedReason(history?.events)
+    },
+  })
   const requestHandler = async (req, res) => {
     try {
       const pathname = new URL(req.url ?? "/", "http://x").pathname
@@ -1826,6 +1854,9 @@ export function apply(ctx, config) {
             return json(res, 500, { error: "permission update failed" })
           }
         }
+        if (req.method === "GET" && pathname === "/dsh-link/mobile/events") {
+          return handleHostEvents(req, res, hostEvents)
+        }
         const streamMatch = pathname.match(/^\/dsh-link\/mobile\/sessions\/([^/]+)\/stream$/)
         if (req.method === "GET" && streamMatch) {
           return handleStreamRoute(decodeURIComponent(streamMatch[1]), res, targetPort, config, req, rt, device)
@@ -1902,6 +1933,7 @@ export function apply(ctx, config) {
       for (const dispose of disposers) dispose()
       if (pollTimer) clearInterval(pollTimer)
       if (keepAliveTimer) clearInterval(keepAliveTimer)
+      try { hostEvents.stop() } catch {}
       try { muxBridge?.stop() } catch {}
       muxBridge = null
       remote.stop()
