@@ -370,6 +370,9 @@ data class EstimatedCost(
     val currency: String,
     val priceDate: String?,
     val source: String,
+    /** 内置表计价时：整段全按谷时 / 全按峰时的金额（插件拿不到逐轮时间，只能给区间）。 */
+    val amountMin: Double? = null,
+    val amountMax: Double? = null,
 )
 
 data class MobileModelOption(
@@ -522,7 +525,7 @@ fun parseMobileSessionStats(stats: org.json.JSONObject?): MobileSessionStats {
     )
 }
 
-private fun parseEstimatedCost(raw: org.json.JSONObject?): EstimatedCost? {
+internal fun parseEstimatedCost(raw: org.json.JSONObject?): EstimatedCost? {
     if (raw == null) return null
     if (!raw.has("amount") || raw.isNull("amount")) return null
     val amount = raw.optDouble("amount")
@@ -530,7 +533,10 @@ private fun parseEstimatedCost(raw: org.json.JSONObject?): EstimatedCost? {
     if (!amount.isFinite() || amount < 0 || currency.isEmpty()) return null
     val priceDate = raw.optString("priceDate").trim().ifEmpty { null }
     val source = raw.optString("source").trim().ifEmpty { "builtin" }
-    return EstimatedCost(amount, currency, priceDate, source)
+    val min = raw.optDouble("amountMin", Double.NaN).takeIf { it.isFinite() && it >= 0 }
+    val max = raw.optDouble("amountMax", Double.NaN).takeIf { it.isFinite() && it >= 0 }
+    val range = min != null && max != null && max > min
+    return EstimatedCost(amount, currency, priceDate, source, if (range) min else null, if (range) max else null)
 }
 
 /** 智能体运行中时，按 ui-conversation.busyEnter 决定 prompt mode（对标 web）。 */

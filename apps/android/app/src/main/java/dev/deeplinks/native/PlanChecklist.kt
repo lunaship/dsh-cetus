@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import dev.deeplinks.native.ui.dshCardSurface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,8 +73,7 @@ internal fun PlanChecklist(
         modifier
             .fillMaxWidth()
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgInput)
+            .dshCardSurface() // 与首页卡片同一卡面（白卡 + 发丝边 + 轻阴影），在实底顶栏下也分得出层
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
     ) {

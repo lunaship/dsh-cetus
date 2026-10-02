@@ -3,6 +3,10 @@
  * 官方表来自 https://api-docs.deepseek.com/quick_start/pricing （2026-10-02）。
  * 峰时是 UTC 工作日 01:00–04:00 与 06:00–10:00，其余为谷时。
  * 中国法定节假日官方按谷时计，这里没有节假日日历，工作日峰时窗口仍按峰时估算。
+ *
+ * Host 只给整段会话的累计 token，没有逐轮时间和逐轮模型，所以内置表算不出每轮的真实峰谷价。
+ * 内置表计价时同时给出全谷时 / 全峰时的区间（amountMin / amountMax），App 显示区间；
+ * `amount` 仍按当前时刻单价，兼容只认 `amount` 的旧 App。模型按当前选中的模型计，中途换过模型时也是估算。
  */
 
 export const PRICE_PAGE = "https://api-docs.deepseek.com/quick_start/pricing"
@@ -55,6 +59,14 @@ export function priceFromHostModel(model) {
   return { cacheHitPerMillion, cacheMissPerMillion, outputPerMillion, currency, priceDate, source: "host" }
 }
 
+function sumCost(usage, price) {
+  return (
+    nonNegative(usage.cacheReadTokens) * price.cacheHitPerMillion
+    + nonNegative(usage.uncachedInputTokens) * price.cacheMissPerMillion
+    + nonNegative(usage.outputTokens) * price.outputPerMillion
+  ) / 1_000_000
+}
+
 export function lookupBuiltinPrice(modelId, at = new Date()) {
   const row = BUILTIN.get(String(modelId ?? ""))
   if (!row) return null
@@ -84,16 +96,22 @@ export function buildEstimatedCost({ modelId, usage, hostModel, at = new Date() 
   const host = priceFromHostModel(hostModel)
   const price = host ?? lookupBuiltinPrice(modelId, at)
   if (!price) return null
-  const amount = (
-    nonNegative(usage.cacheReadTokens) * price.cacheHitPerMillion
-    + nonNegative(usage.uncachedInputTokens) * price.cacheMissPerMillion
-    + nonNegative(usage.outputTokens) * price.outputPerMillion
-  ) / 1_000_000
+  const amount = sumCost(usage, price)
   if (!Number.isFinite(amount)) return null
-  return {
+  const out = {
     amount: Number(amount.toFixed(6)),
     currency: price.currency,
     priceDate: price.priceDate,
     source: price.source,
   }
+  if (!host) {
+    const row = BUILTIN.get(String(modelId ?? ""))
+    const min = sumCost(usage, row.offPeak)
+    const max = sumCost(usage, row.peak)
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      out.amountMin = Number(min.toFixed(6))
+      out.amountMax = Number(max.toFixed(6))
+    }
+  }
+  return out
 }

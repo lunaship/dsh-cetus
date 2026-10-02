@@ -70,3 +70,18 @@ test("Host 价格优先于内置表", () => {
   assert.equal(cost.source, "host")
   assert.equal(cost.priceDate, "2026-09-01")
 })
+
+test("内置表给出全谷时到全峰时的区间，Host 价格不给区间", () => {
+  const cost = buildEstimatedCost({ modelId: "deepseek-flash", usage, at: new Date("2026-10-05T02:30:00Z") })
+  // 谷时 0.456；峰时 2M * 0.006 + 1M * 0.3 + 0.5M * 1.2 = 0.012 + 0.3 + 0.6
+  assert.equal(cost.amountMin, 0.456)
+  assert.equal(cost.amountMax, 0.912)
+  assert.equal(cost.amount, 0.912)
+  const host = buildEstimatedCost({
+    modelId: "deepseek-flash",
+    usage,
+    hostModel: { pricing: { cacheHitPerMillion: 1, cacheMissPerMillion: 1, outputPerMillion: 1, currency: "USD" } },
+  })
+  assert.equal("amountMin" in host, false)
+  assert.equal("amountMax" in host, false)
+})

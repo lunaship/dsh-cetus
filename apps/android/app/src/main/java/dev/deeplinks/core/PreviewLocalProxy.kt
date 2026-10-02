@@ -139,7 +139,8 @@ internal fun mapPreviewPath(key: String, pathAndQuery: String): String? {
     val path = if (cut >= 0) pathAndQuery.substring(0, cut) else pathAndQuery
     val query = if (cut >= 0) pathAndQuery.substring(cut) else ""
     val parts = path.split('/').filter { it.isNotEmpty() }
-    if (parts.size < 2 || parts[0] != key) return null
+    // 恒定时间比较：不让逐字节的提前返回泄露 key 的前缀
+    if (parts.size < 2 || !java.security.MessageDigest.isEqual(parts[0].toByteArray(), key.toByteArray())) return null
     val id = parts[1]
     if (!Regex("^[a-f0-9]{24}$").matches(id)) return null
     if (parts.drop(2).any { it == "." || it == ".." }) return null

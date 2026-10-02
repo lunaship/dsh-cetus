@@ -12,6 +12,13 @@ internal val COMPOSER_ISLAND_INNER_CLEARANCE = 8.dp
 internal val COMPOSER_COMPACT_WIDTH = 360.dp
 internal val COMPOSER_MODEL_MAX_WIDTH = 132.dp
 
+/**
+ * 座位行进入「只剩图标」的卡片可用宽（2026-10-02 真机反馈）：原来沿用 360dp，
+ * 容器 < 400dp（393 / 384 / 360dp 等主流手机）就只剩图标。模型座本身会先收缩截断，
+ * 卡片可用宽 300dp（容器约 340dp）以上两座都放得下文字。
+ */
+internal val COMPOSER_SEATS_COMPACT_WIDTH = 300.dp
+
 /** 访问模式座文字上限（DSH PermissionSelect 的 max-width 220px；手机上够装「Workspace Write」）。 */
 internal val COMPOSER_ACCESS_MAX_WIDTH = 124.dp
 
@@ -22,9 +29,8 @@ fun composerIsCompact(widthDp: Float): Boolean = widthDp < COMPOSER_COMPACT_WIDT
  * 分屏/自由窗口下容器宽会变小，所以按容器宽推导，不看 screenWidthDp。
  */
 fun composerSeatsCompact(containerWidthDp: Float): Boolean =
-    composerIsCompact(
-        containerWidthDp - 2 * (COMPOSER_SIDE_CLEARANCE + COMPOSER_ISLAND_INNER_CLEARANCE).value,
-    )
+    containerWidthDp - 2 * (COMPOSER_SIDE_CLEARANCE + COMPOSER_ISLAND_INNER_CLEARANCE).value <
+        COMPOSER_SEATS_COMPACT_WIDTH.value
 
 /**
  * 模型座内容（DSH `conversation.input.model`）：名称与推理等级拆成两段，
