@@ -92,16 +92,19 @@ internal fun ChatStickySummary(
     /** 插件给了结构化目标（含 CAS 引用）时显示可操作的目标行，未执行（如已暂停）也常驻。 */
     goal: SessionGoal? = null,
     control: SessionControlController? = null,
+    /** 结构化目标已经画在顶栏下方的目标卡里时，吸顶条只留待办，避免同一段目标出现两次。 */
+    suppressGoalText: Boolean = false,
 ) {
     val derivedGoal = remember(messages) { latestGoalSummary(messages) }
     val todos = remember(messages) { latestTodoProgress(messages) }
+    val summary = if (suppressGoalText) null else goalOverride?.takeIf { it.isNotBlank() } ?: derivedGoal
     StickyTaskSummaryCard(
-        goalSummary = goalOverride?.takeIf { it.isNotBlank() } ?: derivedGoal,
+        goalSummary = summary,
         todoProgress = todos,
         isRunning = isRunning,
         modifier = modifier,
-        goal = goal?.takeIf { it.manageable && control != null },
-        control = control,
+        goal = if (suppressGoalText) null else goal?.takeIf { it.manageable && control != null },
+        control = if (suppressGoalText) null else control,
     )
 }
 
