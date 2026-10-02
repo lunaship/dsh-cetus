@@ -1,9 +1,11 @@
 package dev.deeplinks.native.util
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class ContextInjectionTest {
     @Test
@@ -64,5 +66,30 @@ class ContextInjectionTest {
         assertFalse(isGoalRoundText("普通用户消息"))
         assertEquals(null, goalRoundObjective("<goal_round>Round: 2/8</goal_round>"))
         assertEquals(null, goalRoundProgress("<goal_round>Objective: \"x\"</goal_round>"))
+    }
+
+    @Test
+    fun `shared context injection cases match the plugin`() {
+        val file = sharedCasesFile()
+        val cases = JSONObject(file.readText()).getJSONArray("cases")
+        assertTrue("用例清单太短，可能没读到文件", cases.length() >= 10)
+        for (i in 0 until cases.length()) {
+            val item = cases.getJSONObject(i)
+            assertEquals(
+                item.getString("name"),
+                item.getBoolean("injection"),
+                isContextInjectionText(item.getString("text")),
+            )
+        }
+    }
+
+    private fun sharedCasesFile(): File {
+        var dir: File? = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        while (dir != null) {
+            val candidate = File(dir, "testdata/context-injection-cases.json")
+            if (candidate.isFile) return candidate
+            dir = dir.parentFile
+        }
+        error("找不到 testdata/context-injection-cases.json")
     }
 }
