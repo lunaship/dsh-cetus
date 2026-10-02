@@ -87,17 +87,20 @@ private fun DshChipSurface(
     modifier: Modifier = Modifier,
     showChevron: Boolean = false,
     count: Int? = null,
+    tonal: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     // 选中是浅灰底上的深字。品牌蓝不进筛选。按压反馈只留水波纹（P1：去掉手动叠底）
+    // tonal：未选中也带卡片底（输入区建议胶囊坐在灰色实底上，需要看得出是可点的胶囊）
     val bg = when {
         !enabled -> Color.Transparent
         selected -> Dsh.bgSubtle
+        tonal -> Dsh.bgCard
         else -> Color.Transparent
     }
     val textColor = when {
         !enabled -> Dsh.labelDimmed
-        selected -> Dsh.labelPrimary
+        selected || tonal -> Dsh.labelPrimary
         else -> Dsh.labelSecondary
     }
     // 视觉 32dp 胶囊 / 外层 48dp 触摸热区：可点面积不缩，观感收紧
@@ -153,6 +156,8 @@ fun DshFilterChip(
     contentDescription: String? = null,
     /** 长按 extras（如工作区胶囊的「新建会话 / 移除」菜单）；为空时退化为普通点击。 */
     onLongClick: (() -> Unit)? = null,
+    /** 未选中也画卡片底（输入区建议行）。 */
+    tonal: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Box(
@@ -189,6 +194,7 @@ fun DshFilterChip(
             selected = selected,
             enabled = enabled,
             count = count,
+            tonal = tonal,
         )
     }
 }

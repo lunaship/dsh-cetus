@@ -48,8 +48,8 @@ class GlassPolishV3Test {
         assertTrue(fade.contains("drawPlainBackdrop("))
         assertTrue(fade.contains("BlendMode.DstIn"))
         assertTrue(fade.contains("Build.VERSION_CODES.S"))
-        // 调用方都把内容层采样源传进来
-        for (caller in listOf("WorkspaceActivity.kt", "WorkspaceSidebar.kt")) {
+        // 调用方都把内容层采样源传进来（聊天页 2026-10-02 方案 A 改为实底 chrome，不再用边缘渐隐）
+        for (caller in listOf("WorkspaceSidebar.kt")) {
             val text = source(caller)
             val call = text.substring(text.indexOf("DshEdgeFades(").also { assertTrue("$caller 未用 DshEdgeFades", it >= 0) })
             assertTrue("$caller 未接入采样源", call.substringBefore('\n').contains("chrome.backdrop)"))

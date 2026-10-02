@@ -749,14 +749,15 @@ internal fun ComposerSuggestionsRow(
     ) {
         // v3 入场揭示：一轮结束、建议出现时逐个错峰 70ms 淡入上移（DshMotion.dshReveal）
         if (suggestionsVisible) {
-            DshFilterChip(label = L.suggestContinue, selected = false, onClick = { onSuggestion(L.suggestContinueText) }, modifier = Modifier.dshReveal(0))
-            DshFilterChip(label = L.suggestReview, selected = false, onClick = { onSuggestion(L.suggestReviewText) }, modifier = Modifier.dshReveal(1))
+            DshFilterChip(label = L.suggestContinue, selected = false, onClick = { onSuggestion(L.suggestContinueText) }, tonal = true, modifier = Modifier.dshReveal(0))
+            DshFilterChip(label = L.suggestReview, selected = false, onClick = { onSuggestion(L.suggestReviewText) }, tonal = true, modifier = Modifier.dshReveal(1))
         }
         if (showChanges) {
             DshFilterChip(
                 label = L.viewChangesCount.format(changesCount),
                 selected = false,
                 onClick = onOpenChanges,
+                tonal = true,
                 modifier = Modifier.dshReveal(if (suggestionsVisible) 2 else 0),
             )
         }

@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -253,20 +255,22 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
 private fun TableGrid(rows: List<List<String>>, compact: Boolean = true) {
     Column(modifier = Modifier.fillMaxWidth()) {
         rows.forEachIndexed { rowIdx, cells ->
-            Row(modifier = Modifier.fillMaxWidth()) {
+            // 同一行等高（真机：左列短、右列长时左格只画半截边框）
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 cells.forEach { cell ->
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .fillMaxHeight()
                             .background(if (rowIdx == 0) Dsh.bgSubtle else Color.Transparent)
                             .border(0.5.dp, Dsh.borderSubtle)
                             .padding(horizontal = 10.dp, vertical = if (compact) 6.dp else 10.dp)
                     ) {
-                        Text(
+                        // 单元格也解析行内标记（**粗体** / `code` / 链接），不再原样显示星号
+                        InlineMarkdownText(
                             cell,
                             color = Dsh.labelPrimary,
-                            style = DshType.body,
-                            fontWeight = if (rowIdx == 0) FontWeight(500) else FontWeight(400),
+                            style = DshType.body.copy(fontWeight = if (rowIdx == 0) FontWeight(500) else FontWeight(400)),
                         )
                     }
                 }

@@ -254,7 +254,7 @@ internal fun WorkspaceSidebar(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .zIndex(1f)
-                    .overlayBottomChrome(chrome)
+                    .overlayBottomChrome(chrome, base = null)
                     .navigationBarsPadding(),
             ) {
                 HomeBottomBar(
