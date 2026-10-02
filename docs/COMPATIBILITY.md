@@ -15,7 +15,7 @@ published. Per-change details live in `CHANGELOG.md`.
 |---|---|---|
 | DSH | `0.1.7-alpha.1` (npm `alpha`) | Upstream dependency |
 | Plugin `dsh-links` | package `0.1.0-beta.19` on `main` | Distributed from this repository as a git source (npm publishing removed 2026-09-30). Latest pushed tag: `v0.1.0-beta.18`; `v0.1.0-beta.19` is not tagged yet |
-| Android `apps/android/` | `versionName 0.5.0-beta.24` on `main` (UI changes after it are listed under "Unreleased" in `CHANGELOG.md`) | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.23` |
+| Android `apps/android/` | `versionName 0.5.0-beta.27` on `main` | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.23` (`0.5.0-beta.24`–`0.5.0-beta.27` were never published; their changes ship in `0.5.0-beta.27`) |
 | Relay (`relay/`) | `dlp-relay` (DLP/1) from `main`; DLR/1 server removed | Official instance `wss://relay.dshlinks.com/ws`; self-hosting in `relay/README.md` |
 
 ## Capability: dev server preview

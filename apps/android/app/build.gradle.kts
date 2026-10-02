@@ -58,8 +58,8 @@ android {
         applicationId = "dev.deeplinks"
         minSdk = 26
         targetSdk = 36
-        versionCode = 34
-        versionName = "0.5.0-beta.24"
+        versionCode = 35
+        versionName = "0.5.0-beta.27"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
