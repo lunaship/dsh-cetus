@@ -140,6 +140,8 @@ data class MobilePairedDevice(
 
 data class MobileSearchResult(val sessionId: String, val snippet: String)
 
+data class MobilePreview(val previewId: String, val label: String, val port: Int, val expiresAt: Long)
+
 data class MobileBootstrap(
     val hostName: String,
     val deviceName: String,
@@ -154,6 +156,8 @@ data class MobileBootstrap(
     val filesTree: Boolean = false,
     /** 插件支持排队 / 目标 / 定时任务管理（capabilities.control）。 */
     val sessionControl: Boolean = false,
+    /** 插件可以列出已批准的本机预览（capabilities.preview.v = 1）。 */
+    val preview: Boolean = false,
 )
 
 data class SessionRequestState(
@@ -710,8 +714,23 @@ class MobileApiClient(private val host: Host) {
             requestSnapshot = root.optJSONObject("capabilities")?.optJSONObject("requests")?.optBoolean("snapshot") == true,
             filesTree = root.optJSONObject("capabilities")?.optJSONObject("files")?.optBoolean("tree") == true,
             sessionControl = root.optJSONObject("capabilities")?.optJSONObject("control")?.optBoolean("queue") == true,
+            preview = root.optJSONObject("capabilities")?.optJSONObject("preview")?.optInt("v") == 1,
         )
         return info to applyBootstrapRemote(host, root)
+    }
+
+    fun listPreviews(): List<MobilePreview> {
+        val root = request("GET", "/dsh-link/mobile/previews")
+        val array = root.optJSONArray("previews") ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val id = item.optString("previewId")
+                val port = item.optInt("port")
+                if (id.isBlank() || port <= 0) continue
+                add(MobilePreview(id, item.optString("label").ifBlank { port.toString() }, port, item.optLong("expiresAt")))
+            }
+        }
     }
 
     fun getSessions(): MobileSessionSnapshot {

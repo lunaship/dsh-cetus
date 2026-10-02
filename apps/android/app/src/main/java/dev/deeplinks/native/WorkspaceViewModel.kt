@@ -102,6 +102,9 @@ internal class WorkspaceViewModel(
     /** 插件是否支持工作区文件树（bootstrap capabilities.files.tree）。 */
     val filesTreeSupported = mutableStateOf(false)
 
+    /** 插件可以列已批准的预览端口（capabilities.preview）。 */
+    val previewSupported = mutableStateOf(false)
+
     // ===== 自 composable remember 上收的数据态（WI-R3） =====
 
     val appSettings = mutableStateOf(AppSettingsStore.cached(appContext, host))

@@ -26,6 +26,8 @@ and serves `GET /dsh-link/mobile/previews` plus
 and only for a port approved on the loopback panel. There is no mobile
 approve route. `PLUGIN_PROTOCOL` stays `2`. Package and APK version numbers
 are unchanged. Android builds that do not know the field ignore it.
+Unreleased Android source shows a Preview entry when `preview.v` is 1 and
+opens approved ports through a loopback proxy on the phone.
 
 ## Capability: host session events
 

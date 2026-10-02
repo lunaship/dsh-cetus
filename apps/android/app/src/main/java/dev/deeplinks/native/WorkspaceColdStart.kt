@@ -75,6 +75,7 @@ internal suspend fun WorkspaceViewModel.runColdStartBootstrap(
         StartupTrace.mark("bootstrap_done", "${boot.sessions.size}")
         filesTreeSupported.value = boot.filesTree
         sessionControl.supported.value = boot.sessionControl
+        previewSupported.value = boot.preview
         // 远程能力补齐 / 清除（bootstrap 的 remote，RFC §6.4）
         if (refreshed != host) runCatching { HostStore.upsert(context, refreshed) }
         // Bootstrap carries the same durable archive set as Web. Apply it before selecting a session,
