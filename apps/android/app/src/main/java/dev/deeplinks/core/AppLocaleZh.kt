@@ -377,7 +377,7 @@ val DshStringsZh = DshStrings(
         put("listening", "正在倾听…")
         put("voiceInput", "语音输入")
         put("goalInjection", "目标注入")
-        put("goalRoundLabel", "第 %d 轮")
+        put("goalRoundLabel", "第 %s 轮")
         put("chatPlaceholder", "给智能体发消息，/ 调用指令")
         put("addAttachment", "添加文件或图片")
         put("choosePhoto", "相册")
