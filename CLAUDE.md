@@ -15,6 +15,10 @@ DSH 手机插件（本仓插件源码）：局域网配对 + 设备管理 + 1864
 - 真中继端到端（需要 Go，不进 `npm test`）：`npm run test:dlp1-e2e`。
 - Android（在 `apps/android/` 目录下）：`cd apps/android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`。
 
+## UI 改动规则
+
+任何 UI 改动必须对应 `docs/redesign-v4/design-v4.html` 的页面编号。未在设计稿里的 UI 不做。
+
 ## 深入文档
 
 | 主题 | 文件 |
@@ -29,3 +33,4 @@ DSH 手机插件（本仓插件源码）：局域网配对 + 设备管理 + 1864
 | Android 视觉规则（间距、形状、排版、尺寸、强调色） | `apps/android/docs/visual-rules.md` |
 | RC1 内测计划与证据模板 | `docs/RC1_CLOSED_BETA_TEST_PLAN.md` |
 | 专注 DSH 五期执行方案（领取 PR 前必读） | `docs/proposals/002-dsh-focus-roadmap.md` |
+| Android 重设计 v4（设计稿、视觉规则、执行方案） | `docs/redesign-v4/PLAN.md` |
