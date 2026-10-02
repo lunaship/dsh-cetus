@@ -6,9 +6,15 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.DshS
+import dev.deeplinks.core.LONG_TASK_MINUTE_CHOICES
 import dev.deeplinks.core.backgroundTakeover
 import dev.deeplinks.core.backgroundTakeoverDoc
 import dev.deeplinks.core.backgroundTakeoverHint
+import dev.deeplinks.core.longTaskMinutes
+import dev.deeplinks.core.longTaskMinutesValue
+import dev.deeplinks.core.normalizeLongTaskMinutes
+import dev.deeplinks.core.notifyReplyFirstLine
+import dev.deeplinks.core.notifyReplyFirstLineDesc
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.FontScaleManager
 import dev.deeplinks.core.ThemeManager
@@ -406,6 +412,8 @@ internal fun SettingsHome(
     val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
     var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
     var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
+    var longTaskMinutes by remember { mutableStateOf(notifyPrefs.longTaskMinutes) }
+    var replyFirstLine by remember { mutableStateOf(notifyPrefs.notifyReplyFirstLine) }
     var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
     var quickApprove by remember { mutableStateOf(notifyPrefs.allowApproveFromNotification) }
     var autoLoadRemoteImages by remember { mutableStateOf(notifyPrefs.autoLoadRemoteImages) }
@@ -521,6 +529,25 @@ internal fun SettingsHome(
             title = s.notifyOnDone,
             checked = notifyDone,
             onCheckedChange = { notifyDone = it; notifyPrefs.notifyOnDone = it },
+        )
+        DshSelectRow(
+            title = s.longTaskMinutes,
+            value = s.longTaskMinutesValue.format(longTaskMinutes),
+            options = LONG_TASK_MINUTE_CHOICES.map { minutes ->
+                s.longTaskMinutesValue.format(minutes) to minutes.toString()
+            },
+            selectedId = longTaskMinutes.toString(),
+            onSelect = { _, id ->
+                val minutes = normalizeLongTaskMinutes(id.toIntOrNull() ?: longTaskMinutes)
+                longTaskMinutes = minutes
+                notifyPrefs.longTaskMinutes = minutes
+            },
+        )
+        DshSwitchRow(
+            title = s.notifyReplyFirstLine,
+            subtitle = s.notifyReplyFirstLineDesc,
+            checked = replyFirstLine,
+            onCheckedChange = { replyFirstLine = it; notifyPrefs.notifyReplyFirstLine = it },
         )
         // 默认关闭：打开后前台服务在离开 App 时保持订阅，插件就把审批交给手机（见 WorkspacePrefs）。
         // 关闭时立刻停服务并收回它发出的可操作审批通知，之后的审批回到电脑网页。
