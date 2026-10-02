@@ -9,8 +9,11 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import dev.deeplinks.core.ActiveSinceTracker
 import dev.deeplinks.core.ConnectivitySignals
+import dev.deeplinks.core.decideCompletionNotice
 import dev.deeplinks.core.DshNotifier
+import dev.deeplinks.core.notifySessionCompletion
 import dev.deeplinks.core.ApprovalActionReceiver
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HOST_MONITOR_IDLE_MS
@@ -194,7 +197,10 @@ class SessionBackgroundMonitorService : Service() {
                 if (!isActive || readerGeneration != generation) break
                 when (item) {
                     is HostEventClient.Item.State -> onHostState(currentHost, sid, item)
-                    HostEventClient.Item.Resync -> sessionStates.clear()
+                    HostEventClient.Item.Resync -> {
+                        sessionStates.clear()
+                        activeSince.clear()
+                    }
                     HostEventClient.Item.Disconnected -> {
                         if (client.lastFailure == StreamFailure.AUTH) stopMonitoring()
                     }
@@ -212,11 +218,15 @@ class SessionBackgroundMonitorService : Service() {
         if (afterSeq > 0) client.noteEventId(afterSeq)
     }
 
+    private val activeSince = ActiveSinceTracker()
+
     private fun onHostState(host: Host, takeoverId: String, item: HostEventClient.Item.State) {
+        val now = System.currentTimeMillis()
+        activeSince.observe(item.sessionId, item.state, now)
         sessionStates[item.sessionId] = item.state
         val active = sessionStates.values.any(::isHostSessionActive)
         val decision = stepHostMonitor(
-            nowMs = System.currentTimeMillis(),
+            nowMs = now,
             links = listOf(HostLink(host.slotKey, active)),
             idleSince = idleSince,
         )
@@ -226,6 +236,9 @@ class SessionBackgroundMonitorService : Service() {
             return
         }
         scheduleIdleStop(host.slotKey)
+        if (!isHostSessionActive(item.state)) {
+            postCompletion(host, item, activeSince.finish(item.sessionId, now))
+        }
         if (item.sessionId != takeoverId) {
             if (item.state == "awaitingApproval") {
                 DshNotifier.notifyHandleOnComputer(this, host, item.sessionId, item.title.ifBlank { sessionTitle })
@@ -243,15 +256,47 @@ class SessionBackgroundMonitorService : Service() {
             }
             "awaitingInput" -> onProgressEvent(TaskProgressEvent.QuestionAsked)
             "running" -> onProgressEvent(TaskProgressEvent.ApprovalDecided)
-            "completed" -> {
-                onProgressEvent(TaskProgressEvent.TurnEnded)
-                if (item.sessionId == takeoverId) DshNotifier.notifyTaskDone(this, host, item.sessionId, item.title)
+            "completed", "failed", "stopped" -> onProgressEvent(TaskProgressEvent.TurnEnded)
+        }
+    }
+
+    /** 完成通知走纯函数。回复首行只在开关打开时另读会话列表，不放进主机事件。 */
+    private fun postCompletion(host: Host, item: HostEventClient.Item.State, durationMs: Long?) {
+        val prefs = WorkspacePrefs(this)
+        val preliminary = decideCompletionNotice(
+            origin = item.origin,
+            state = item.state,
+            observedDurationMs = durationMs,
+            longTaskMinutes = prefs.longTaskMinutes,
+            notifyOnDone = prefs.notifyOnDone,
+            showReplyFirstLine = false,
+            replyFirstLine = null,
+        )
+        if (!preliminary.notify) return
+        val showLine = prefs.notifyReplyFirstLine
+        serviceScope.launch(Dispatchers.IO) {
+            val line = if (showLine) {
+                runCatching {
+                    MobileApiClient(host).getSessions().sessions
+                        .firstOrNull { it.sessionId == item.sessionId }
+                        ?.lastResult
+                        ?.text
+                }.getOrNull()
+            } else {
+                null
             }
-            "failed", "stopped" -> {
-                onProgressEvent(TaskProgressEvent.TurnEnded)
-                if (item.sessionId == takeoverId) {
-                    DshNotifier.notifyTaskFailed(this, host, item.sessionId, item.title, item.state)
-                }
+            val notice = decideCompletionNotice(
+                origin = item.origin,
+                state = item.state,
+                observedDurationMs = durationMs,
+                longTaskMinutes = prefs.longTaskMinutes,
+                notifyOnDone = prefs.notifyOnDone,
+                showReplyFirstLine = showLine,
+                replyFirstLine = line,
+            )
+            if (!notice.notify) return@launch
+            withContext(Dispatchers.Main) {
+                notifySessionCompletion(this@SessionBackgroundMonitorService, host, item.sessionId, item.title, notice)
             }
         }
     }

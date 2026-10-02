@@ -1,6 +1,8 @@
 package dev.deeplinks.native.util
 
 import android.content.Context
+import dev.deeplinks.core.DEFAULT_LONG_TASK_MINUTES
+import dev.deeplinks.core.normalizeLongTaskMinutes
 import org.json.JSONObject
 
 /**
@@ -97,6 +99,20 @@ class WorkspacePrefs(context: Context) {
         get() = prefs.getBoolean(KEY_NOTIFY_DONE, true)
         set(value) {
             prefs.edit().putBoolean(KEY_NOTIFY_DONE, value).apply()
+        }
+
+    /** 普通任务短于该分钟数时不发完成通知。默认 3。 */
+    var longTaskMinutes: Int
+        get() = normalizeLongTaskMinutes(prefs.getInt(KEY_LONG_TASK_MINUTES, DEFAULT_LONG_TASK_MINUTES))
+        set(value) {
+            prefs.edit().putInt(KEY_LONG_TASK_MINUTES, normalizeLongTaskMinutes(value)).apply()
+        }
+
+    /** 完成通知的展开正文是否带回复首行。默认关闭；锁屏版仍然不带。 */
+    var notifyReplyFirstLine: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFY_REPLY_FIRST_LINE, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_NOTIFY_REPLY_FIRST_LINE, value).apply()
         }
 
     /**
@@ -268,6 +284,8 @@ class WorkspacePrefs(context: Context) {
         const val KEY_HOST_ALIAS = "host_alias"
         const val KEY_NOTIFY_APPROVAL = "notify_on_approval"
         const val KEY_NOTIFY_DONE = "notify_on_done"
+        const val KEY_LONG_TASK_MINUTES = "workspace_long_task_minutes"
+        const val KEY_NOTIFY_REPLY_FIRST_LINE = "workspace_notify_reply_first_line"
         const val KEY_BACKGROUND_TAKEOVER = "background_takeover"
         const val KEY_ALLOW_APPROVE_FROM_NOTIFICATION = "workspace_allow_approve_from_notification"
 

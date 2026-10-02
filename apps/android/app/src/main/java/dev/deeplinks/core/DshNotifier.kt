@@ -362,7 +362,7 @@ object DshNotifier {
         for (kind in 1..3) nm.cancel(notificationId(host, sessionId, kind))
     }
 
-    private fun postNotification(context: Context, id: Int, notification: Notification) {
+    internal fun postNotification(context: Context, id: Int, notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -374,7 +374,7 @@ object DshNotifier {
         }
     }
 
-    private fun base(
+    internal fun base(
         context: Context,
         host: Host,
         sessionId: String,
@@ -398,6 +398,6 @@ object DshNotifier {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
     }
 
-    private fun notificationId(host: Host, sessionId: String, kind: Int): Int =
+    internal fun notificationId(host: Host, sessionId: String, kind: Int): Int =
         (host.slotKey.hashCode() * 31 + sessionId.hashCode() + kind * 10_007) and 0x7fffffff
 }
