@@ -1,5 +1,6 @@
 package dev.deeplinks.native
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -44,6 +45,26 @@ class UsageMathTest {
         assertNull(outputTokensPerSec(100, 0))
         assertNull(outputTokensPerSec(-1, 1000))
         assertEquals(50.0, outputTokensPerSec(100, 2000)!!, 0.001)
+    }
+
+    @Test
+    fun `estimated cost is optional and ignored when the amount is missing`() {
+        val parsed = parseMobileSessionStats(
+            JSONObject()
+                .put("tokenUsage", JSONObject().put("outputTokens", 10))
+                .put(
+                    "estimatedCost",
+                    JSONObject()
+                        .put("amount", 0.42)
+                        .put("currency", "CNY")
+                        .put("priceDate", "2026-10-02")
+                        .put("source", "builtin"),
+                ),
+        )
+        val cost = parsed.estimatedCost
+        assertEquals(0.42, cost!!.amount, 0.0001)
+        assertEquals("CNY", cost.currency)
+        assertNull(parseMobileSessionStats(JSONObject().put("estimatedCost", JSONObject())).estimatedCost)
     }
 
     @Test

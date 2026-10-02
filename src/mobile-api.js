@@ -12,6 +12,7 @@ import { pluginCapabilities, PLUGIN_PROTOCOL } from "./protocol-caps.js"
 import { runDiagnostics } from "./diagnostics.js"
 import { workspaceChangesService, parseChangesCoordinates, projectChangesSummary, projectFileDiff } from "./workspace-changes.js"
 import { clampHistoryMaxMessages, projectHistoryPage } from "./history.js"
+import { buildEstimatedCost, modelIdFromProjections } from "./pricing.js"
 import { listWorkspaceDir, mimeFromName, resolveWorkspaceFile } from "./workspace-file.js"
 import { optionalString, omitNullFields } from "./optional-string.js"
 import { MobileWorkspaceCreateError, planMobileWorkspaceCreate, ensureMobileWorkspaceDirectory, resolveAbsoluteWorkspaceDirectory } from "./workspace-create.js"
@@ -888,6 +889,15 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         contextBreakdown: projValues.contextBreakdown ?? null,
         todos: projValues.todos ?? null,
       }
+      if (usageHasTokens(statsPayload.tokenUsage)) {
+        const priced = await resolveSessionPriceModel(rt, targetPort, sessionId, projValues)
+        const estimatedCost = buildEstimatedCost({
+          modelId: priced.modelId,
+          usage: statsPayload.tokenUsage,
+          hostModel: priced.hostModel,
+        })
+        if (estimatedCost) statsPayload.estimatedCost = estimatedCost
+      }
       // 排队 / 引导中的消息（DSH durable inbox）；旧 Host 无此投影时为空表
       const queue = queueItemsFromInbox(projValues.inbox)
       // 结构化目标（含 CAS 引用 id / revision 与 phase），App 据此提供暂停 / 继续 / 编辑 / 清除
@@ -1014,4 +1024,37 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
     }
     return json(res, 502, { error: "mobile API unavailable" })
   }
+}
+
+function usageHasTokens(usage) {
+  if (!usage || typeof usage !== "object") return false
+  return ["uncachedInputTokens", "cacheReadTokens", "outputTokens"].some((key) => Number(usage[key]) > 0)
+}
+
+/** 投影里有模型 id 就用它。否则短缓存地问一次 session.models，失败就只显示 token。 */
+async function resolveSessionPriceModel(rt, targetPort, sessionId, projValues) {
+  const fromProj = modelIdFromProjections(projValues)
+  if (fromProj) return { modelId: fromProj, hostModel: null }
+  if (!rt) return { modelId: null, hostModel: null }
+  const cache = rt.pricedModelCache ?? (rt.pricedModelCache = new Map())
+  const hit = cache.get(sessionId)
+  const now = Date.now()
+  if (hit && now - hit.at < 30_000) return hit.value
+  let value = { modelId: null, hostModel: null }
+  try {
+    const catalog = await callLocalRpc(targetPort, "session.models", { sessionId })
+    const modelId = typeof catalog?.current?.model === "string" ? catalog.current.model : null
+    let hostModel = null
+    if (modelId) {
+      for (const group of catalog?.groups ?? []) {
+        const found = (group?.models ?? []).find((model) => model?.id === modelId)
+        if (found) hostModel = found
+      }
+    }
+    value = { modelId, hostModel }
+  } catch {
+    value = { modelId: null, hostModel: null }
+  }
+  cache.set(sessionId, { at: now, value })
+  return value
 }

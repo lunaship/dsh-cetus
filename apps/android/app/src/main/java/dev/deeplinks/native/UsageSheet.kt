@@ -61,6 +61,9 @@ internal fun UsagePanel(stats: MobileSessionStats?) {
         UsageLine(DshS.translation("usageCacheRead"), compactTokens(figures.cacheReadTokens))
         UsageLine(DshS.translation("usageOutput"), compactTokens(figures.outputTokens))
         UsageLine(DshS.translation("usageTotal"), compactTokens(figures.totalTokens), strong = true)
+        formatEstimate(stats?.estimatedCost)?.let { estimate ->
+            UsageLine(DshS.translation("usageEstimateLabel"), estimate)
+        }
         UsageLine(DshS.statsCacheHitLabel, formatPercent(figures.cacheHitRate))
         UsageLine(DshS.translation("usageTurns"), figures.turns.toString())
         UsageLine(DshS.translation("usageSteps"), figures.steps.toString())
@@ -173,6 +176,31 @@ private fun formatPercent(rate: Double?): String =
 
 private fun formatDurationOrDash(ms: Long?): String =
     if (ms == null || ms <= 0L) "—" else compactDuration(ms)
+
+@Composable
+private fun formatEstimate(cost: EstimatedCost?): String? {
+    if (cost == null) return null
+    val money = formatEstimateMoney(cost.currency, cost.amount)
+    val date = cost.priceDate
+    return if (date.isNullOrBlank()) {
+        DshS.translation("usageEstimateNoDate").format(money)
+    } else {
+        DshS.translation("usageEstimate").format(money, date)
+    }
+}
+
+private fun formatEstimateMoney(currency: String, amount: Double): String {
+    val text = if (amount >= 0.01 || amount == 0.0) {
+        String.format(Locale.US, "%.2f", amount)
+    } else {
+        String.format(Locale.US, "%.4f", amount)
+    }
+    return when (currency.uppercase(Locale.US)) {
+        "CNY" -> "¥$text"
+        "USD" -> "$$text"
+        else -> "$text $currency"
+    }
+}
 
 private fun formatSpeed(tokensPerSec: Double?): String {
     if (tokensPerSec == null || !tokensPerSec.isFinite()) return "—"

@@ -355,6 +355,15 @@ data class MobileSessionStats(
     val systemTokens: Long = 0,
     val toolsTokens: Long = 0,
     val messageTokens: Long = 0,
+    val estimatedCost: EstimatedCost? = null,
+)
+
+/** 插件算的预估花费。旧 App 忽略这个字段。source 为 host 或 builtin。 */
+data class EstimatedCost(
+    val amount: Double,
+    val currency: String,
+    val priceDate: String?,
+    val source: String,
 )
 
 data class MobileModelOption(
@@ -503,7 +512,19 @@ fun parseMobileSessionStats(stats: org.json.JSONObject?): MobileSessionStats {
         systemTokens = breakdown?.optLong("systemTokens", 0L) ?: 0L,
         toolsTokens = breakdown?.optLong("toolsTokens", 0L) ?: 0L,
         messageTokens = breakdown?.optLong("messageTokens", 0L) ?: 0L,
+        estimatedCost = parseEstimatedCost(stats?.optJSONObject("estimatedCost")),
     )
+}
+
+private fun parseEstimatedCost(raw: org.json.JSONObject?): EstimatedCost? {
+    if (raw == null) return null
+    if (!raw.has("amount") || raw.isNull("amount")) return null
+    val amount = raw.optDouble("amount")
+    val currency = raw.optString("currency").trim()
+    if (!amount.isFinite() || amount < 0 || currency.isEmpty()) return null
+    val priceDate = raw.optString("priceDate").trim().ifEmpty { null }
+    val source = raw.optString("source").trim().ifEmpty { "builtin" }
+    return EstimatedCost(amount, currency, priceDate, source)
 }
 
 /** 智能体运行中时，按 ui-conversation.busyEnter 决定 prompt mode（对标 web）。 */
