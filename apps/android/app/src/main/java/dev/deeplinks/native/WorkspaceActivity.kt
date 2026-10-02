@@ -62,7 +62,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.util.isContextInjectionText
+import dev.deeplinks.native.util.legacyRoleForKind
+import dev.deeplinks.native.util.resolvedMessageKind
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.WorkspaceAccount
@@ -1231,11 +1232,13 @@ fun WorkspaceScreen(
                         arr.optJSONObject(i)?.optString("text").orEmpty()
                     }
                 }
-                val role = if (isContextInjectionText(text)) "context_injection" else "user"
+                val kind = resolvedMessageKind("user", null, text) // 实时流没有插件 kind，同规则兜底
+                val role = legacyRoleForKind(kind)
                 upsertStreamMessage(
                     MobileMessage(
                         id = "msg-${item.seq}",
                         role = role,
+                        kind = kind,
                         text = text,
                         time = item.time,
                         type = "text",

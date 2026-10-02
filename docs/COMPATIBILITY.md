@@ -32,6 +32,14 @@ opens approved ports through a loopback proxy on the phone.
 The hint tells the user to approve on the computer. There is still no
 mobile approve route, and no phone setting for it.
 
+## History field: message `kind`
+
+Unreleased plugin source on `redesign/v4` adds `kind` to every history
+message (`user` / `injection` / `goal_round` / `model_changed`, otherwise equal
+to `role`). It is additive: `role` keeps its old values and `PLUGIN_PROTOCOL`
+stays `2`. Android builds that know the field render from it; older builds
+ignore it and keep the text heuristics.
+
 ## Capability: host session events
 
 Unreleased plugin source on `main` declares `capabilities.events = { host: true }`

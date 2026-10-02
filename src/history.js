@@ -1,4 +1,4 @@
-import { isContextInjectionText, isModelChangedNotice } from "./context-injection.js"
+import { classifyUserMessage } from "./context-injection.js"
 import { mutationPath, toolResultContent, toolResultIsError, toolResultMeta, uniquePaths } from "./produced-files.js"
 import { MAX_EMBEDDED_CHANGED_FILES, projectChangesSummary } from "./workspace-changes.js"
 
@@ -75,6 +75,8 @@ export function projectHistoryPage({ events, reasoningBySeq = new Map(), hasMore
   }
   const emittedIds = new Set()
   const push = (m) => {
+    // 每条消息都带 kind：用户消息由 classifyUserMessage 给出，其余与 role 相同
+    if (!m.kind) m.kind = m.role
     if (!emittedIds.has(m.id)) {
       emittedIds.add(m.id)
       messages.push(m)
@@ -101,12 +103,15 @@ export function projectHistoryPage({ events, reasoningBySeq = new Map(), hasMore
       flushReasoning(e.time)
       const text = (e.data?.content ?? []).map((c) => c.text || "").join("")
       // 三种来源分清楚：上下文注入 / 模型切换提示 / 用户本人
-      const role = isContextInjectionText(text)
-        ? "context_injection"
-        : isModelChangedNotice(text)
-          ? "system_notice"
-          : "user"
-      push({ id: `msg-${e.seq}`, seq: e.seq, role, text, time: e.time, type: "text" })
+      const cls = classifyUserMessage(text)
+      // role 保持旧值给老 App；新 App 只看 kind
+      const role =
+        cls.kind === "goal_round" || cls.kind === "injection"
+          ? "context_injection"
+          : cls.kind === "model_changed"
+            ? "system_notice"
+            : "user"
+      push({ id: `msg-${e.seq}`, seq: e.seq, role, text, time: e.time, type: "text", ...cls })
     } else if (e.type === "assistant/chunk" || e.type === "assistant/message") {
       const chunk = e.data?.chunk
       if (chunk?.type === "reasoning-delta") {
