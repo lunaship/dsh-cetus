@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -408,46 +407,23 @@ internal fun SubagentBottomSheet(
     onDismiss: () -> Unit,
 ) {
     val anchorParent = currentSession?.parentSessionId ?: currentSessionId
-    val children = remember(sessions, anchorParent) {
-        sessions.filter { it.origin == "subagent" && it.parentSessionId == anchorParent }
-            .sortedByDescending { it.updatedAt }
-    }
+    val nodes = remember(sessions, anchorParent) { buildSubagentTree(sessions, anchorParent) }
     val parentOfCurrent = currentSession?.parentSessionId
     DshSheet(
         onDismiss = onDismiss,
         title = L.subagents,
-        subtitle = if (children.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(children.size),
+        subtitle = if (nodes.isEmpty()) L.noSubagentSessions else L.subagentSheetSummary.format(nodes.size),
     ) {
-        if (children.isNotEmpty()) {
+        if (nodes.isNotEmpty()) {
             Column(
                 modifier = Modifier
                     .heightIn(max = 460.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                DshListSection {
-                    children.forEach { child ->
-                        DshListRow(
-                            title = child.title,
-                            subtitle = if (child.running) L.runningStatus else null,
-                            leading = {
-                                if (child.running) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        color = Dsh.labelSecondary,
-                                        strokeWidth = 1.5.dp,
-                                    )
-                                } else {
-                                    Icon(BranchOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.md))
-                                }
-                            },
-                            onClick = {
-                                onDismiss()
-                                onSelectSession(child.sessionId)
-                            },
-                            trailing = if (child.sessionId == currentSessionId) DshListTrailing.Check else DshListTrailing.None,
-                        )
-                    }
-                }
+                SubagentTree(nodes, onSelect = {
+                    onDismiss()
+                    onSelectSession(it)
+                })
             }
         }
         if (!parentOfCurrent.isNullOrBlank()) {

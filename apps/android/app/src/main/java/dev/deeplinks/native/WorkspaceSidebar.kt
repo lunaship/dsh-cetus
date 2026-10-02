@@ -205,7 +205,7 @@ internal fun WorkspaceSidebar(
                                                 )
                                             } else {
                                                 SessionRowItem(
-                                                    session = s,
+                                                    session = s.copy(subagentCount = runningSubagentCount(sessions, s.sessionId).takeIf { it > 0 }),
                                                     isSelected = s.sessionId == currentSessionId,
                                                     onClick = { actions.onSelectSession(s.sessionId) },
                                                     onRename = { actions.onRenameSession(s) },

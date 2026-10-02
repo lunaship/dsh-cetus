@@ -2588,10 +2588,7 @@ fun WorkspaceScreen(
                 InputBar(
                 modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                 inputText = inputText,
-                onInputChange = {
-                    inputText = it
-                    if (composerActionError != null) composerActionError = null
-                },
+                onInputChange = { if (currentSession?.origin != "subagent") { inputText = it; if (composerActionError != null) composerActionError = null } },
                 pendingImages = pendingImages,
                 onRemoveImage = { index ->
                     pendingImages = pendingImages.filterIndexed { i, _ -> i != index }
@@ -2608,7 +2605,7 @@ fun WorkspaceScreen(
                 onTakePhoto = { launchCamera() },
                 isListening = isListening,
                 isSending = isSending,
-                canSend = (inputText.isNotBlank() || pendingImages.isNotEmpty()) && !isSending,
+                canSend = (inputText.isNotBlank() || pendingImages.isNotEmpty()) && !isSending && currentSession?.origin != "subagent",
                 running = running,
                 modelName = inputModelSeat.name,
                 modelEffort = inputModelSeat.effort,

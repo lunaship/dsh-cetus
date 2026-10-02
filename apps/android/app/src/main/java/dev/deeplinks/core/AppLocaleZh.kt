@@ -266,6 +266,8 @@ val DshStringsZh = DshStrings(
         put("clearAllSessionsTitle", "清除全部会话记录？")
         put("clearAllSessionsMessage", "将从本机设置列表移除全部已归档和已删除会话（共 %d 条）。侧边栏不会重新显示这些会话，此操作不可撤销。")
         put("subagents", "子代理")
+        put("subagentRunning", "%d 个子代理运行中")
+        put("subagentIdle", "空闲")
         put("noSubagentSessions", "暂无子代理会话")
         put("subagentSheetSummary", "共 %d 个 · 点选可切换")
         put("runningStatus", "运行中")
