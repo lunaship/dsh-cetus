@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,6 +49,8 @@ fun DlStatusSlot(
     leading: (@Composable () -> Unit)? = null,
     meta: String? = null,
     tone: DlTone = DlTone.Neutral,
+    /** 行尾动作（如断线时的「重试」文字按钮）；有行尾动作时不显示展开箭头。 */
+    trailing: (@Composable RowScope.() -> Unit)? = null,
     expanded: Boolean = false,
     onExpandedChange: ((Boolean) -> Unit)? = null,
     expandedContent: (@Composable ColumnScope.() -> Unit)? = null,
@@ -101,10 +104,18 @@ fun DlStatusSlot(
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (meta != null) {
-                    Text(meta, style = DshType.supporting, color = Dsh.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        meta,
+                        style = DshType.supporting,
+                        color = Dsh.labelSecondary,
+                        maxLines = if (showExpanded) 2 else 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
-            if (expandable) {
+            if (trailing != null) {
+                trailing()
+            } else if (expandable) {
                 Icon(
                     if (expanded) ChevronUpOutline16 else ChevronDownOutline16,
                     contentDescription = null,

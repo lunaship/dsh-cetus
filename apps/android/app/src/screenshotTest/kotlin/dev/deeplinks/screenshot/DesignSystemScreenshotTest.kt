@@ -171,7 +171,10 @@ import dev.deeplinks.native.chatEmptyCanvas
 import dev.deeplinks.native.newTaskDraftCanvas
 import dev.deeplinks.native.DraftLastTask
 import dev.deeplinks.native.ComposerSeatsRow
-import dev.deeplinks.native.StreamReconnectBanner
+import dev.deeplinks.native.OfflineStatusSlot
+import dev.deeplinks.native.PreviewStatusSlot
+import dev.deeplinks.native.SessionStatus
+import dev.deeplinks.native.sessionStatus
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
 import dev.deeplinks.native.util.ChatCanvasKind
 import dev.deeplinks.native.util.StreamBannerKind
@@ -495,8 +498,11 @@ private fun SettingsHomeWall() {
 @Composable
 private fun ChromeWall() {
     SectionTitle("Stream banner")
-    StreamReconnectBanner(kind = StreamBannerKind.Connecting, onRetry = {})
-    StreamReconnectBanner(kind = StreamBannerKind.Failed, onRetry = {})
+    for (kind in listOf(StreamBannerKind.Retrying, StreamBannerKind.Failed)) {
+        val status = sessionStatus(kind, null, null, null, emptyList(), running = false, previewPorts = listOf(5173))
+        OfflineStatusSlot(status as SessionStatus.Offline)
+    }
+    PreviewStatusSlot(SessionStatus.Preview(listOf(5173)))
     SectionTitle("Context meter rows")
     ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
     ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)

@@ -72,7 +72,6 @@ import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.ui.v4.DlTopBar
 import dev.deeplinks.native.ui.v4.DlTopBarAction
 import dev.deeplinks.native.ui.v4.DlTopBarNav
-import dev.deeplinks.native.util.StreamBannerKind
 import dev.deeplinks.native.NewChatOutline16
 import dev.deeplinks.native.ListPenOutline16
 import dev.deeplinks.native.AgentPresetOutline16
@@ -83,64 +82,6 @@ import androidx.compose.ui.draw.shadow
  * Workspace 主界面抽出的独立 chrome（COM-001 拆解）。
  * 与 WorkspaceScreen 同包，通过 internal 复用；不持有业务状态。
  */
-
-/**
- * 断线重连：顶栏下面一行字。失败时字变红，「重试」是文字按钮。
- */
-@Composable
-internal fun StreamReconnectBanner(
-    kind: StreamBannerKind,
-    onRetry: () -> Unit,
-) {
-    val text = when (kind) {
-        StreamBannerKind.Connecting -> L.connecting
-        StreamBannerKind.Failed -> L.connectionFailedReconnecting
-        else -> L.disconnectedReconnecting
-    }
-    val description = when (kind) {
-        StreamBannerKind.Connecting -> L.connecting
-        StreamBannerKind.Failed -> L.connectionFailedReconnecting
-        else -> L.disconnectedReconnectingContentDescription
-    }
-    AnimatedVisibility(
-        visible = kind != StreamBannerKind.Hidden,
-        enter = expandVertically(animationSpec = tween(motionDuration(200))) + fadeIn(animationSpec = tween(motionDuration(200))),
-        exit = shrinkVertically(animationSpec = tween(motionDuration(180))) + fadeOut(animationSpec = tween(motionDuration(180)))
-    ) {
-        QuietStatusLine(
-            text = text,
-            alert = kind == StreamBannerKind.Failed,
-            contentDescription = description,
-        ) {
-            QuietStatusAction(L.retry, onRetry)
-        }
-    }
-}
-
-/**
- * 设备不可达：一行字加两个文字动作。离线时不强制跳回设备页。
- */
-@Composable
-internal fun DeviceUnreachableBanner(
-    hostName: String,
-    visible: Boolean,
-    onRetry: () -> Unit,
-    onOpenDevice: () -> Unit,
-) {
-    val message = L.cannotConnectHost.format(hostName)
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandVertically(animationSpec = tween(motionDuration(200))) +
-            fadeIn(animationSpec = tween(motionDuration(200))),
-        exit = shrinkVertically(animationSpec = tween(motionDuration(180))) +
-            fadeOut(animationSpec = tween(motionDuration(180))),
-    ) {
-        QuietStatusLine(text = message, alert = false, contentDescription = message) {
-            QuietStatusAction(L.deviceAndPairing, onOpenDevice)
-            QuietStatusAction(L.retry, onRetry)
-        }
-    }
-}
 
 @Composable
 private fun QuietStatusLine(

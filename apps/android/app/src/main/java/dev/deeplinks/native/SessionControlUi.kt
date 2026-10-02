@@ -35,17 +35,11 @@ import dev.deeplinks.core.L
 import dev.deeplinks.core.goalActiveLabel
 import dev.deeplinks.core.goalBlockedLabel
 import dev.deeplinks.core.goalCompleteLabel
-import dev.deeplinks.core.goalClear
-import dev.deeplinks.core.goalClearMessage
-import dev.deeplinks.core.goalClearTitle
 import dev.deeplinks.core.goalEdit
 import dev.deeplinks.core.goalMaxRounds
 import dev.deeplinks.core.goalMaxRoundsInvalid
-import dev.deeplinks.core.goalMore
 import dev.deeplinks.core.goalObjective
-import dev.deeplinks.core.goalPause
 import dev.deeplinks.core.goalPausedLabel
-import dev.deeplinks.core.goalResume
 import dev.deeplinks.core.goalRounds
 import dev.deeplinks.core.goalRoundsOf
 import dev.deeplinks.core.queueContext
@@ -181,68 +175,6 @@ internal fun goalRoundsLabel(goal: SessionGoal): String? = when {
     goal.roundsStarted <= 0 -> null
     goal.maxGoalRounds != null -> L.goalRoundsOf.format(goal.roundsStarted, goal.maxGoalRounds)
     else -> L.goalRounds.format(goal.roundsStarted)
-}
-
-/** 吸顶摘要里的结构化目标行：状态 + 内容 + 暂停 / 继续 + 更多（编辑 / 清除）。 */
-@Composable
-internal fun GoalControlRow(goal: SessionGoal, control: SessionControlController) {
-    var menuOpen by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf(false) }
-    var confirmClear by remember { mutableStateOf(false) }
-    val busy = control.busy.value?.startsWith("goal:") == true
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
-    ) {
-        Icon(GoalOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
-        Text(goalPhaseLabel(goal.phase), color = Dsh.labelSecondary, style = DshType.microMedium)
-        Column(Modifier.weight(1f)) {
-            Text(goal.objective, color = Dsh.labelPrimary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            goalRoundsLabel(goal)?.let { Text(it, color = Dsh.labelTertiary, style = DshType.microRelaxed, maxLines = 1) }
-        }
-        if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s4)
-        } else {
-            DshIconAction(
-                if (goal.active) PauseOutline16 else PlayOutline16,
-                if (goal.active) L.goalPause else L.goalResume,
-                { control.pauseOrResumeGoal() },
-                iconSize = DshIconSize.sm,
-                visualSize = DshSpace.s32,
-            )
-            Box {
-                DshIconAction(EllipsisOutline16, L.goalMore, { menuOpen = true }, iconSize = DshIconSize.sm, visualSize = DshSpace.s32)
-                DshMenu(
-                    expanded = menuOpen,
-                    onDismiss = { menuOpen = false },
-                    items = listOf(
-                        DshMenuItem(EditOutline16, L.goalEdit) { menuOpen = false; editing = true },
-                        DshMenuItem(TrashOutline16, L.goalClear, danger = true, dividerBefore = true) { menuOpen = false; confirmClear = true },
-                    ),
-                )
-            }
-        }
-    }
-    control.error.value?.takeIf { control.queue.value.isEmpty() }?.let {
-        Text(it, color = Dsh.error, style = DshType.captionRelaxed)
-    }
-    if (editing) {
-        GoalEditDialog(goal, saving = busy, onDismiss = { editing = false }) { objective, rounds ->
-            control.editGoal(objective, rounds) { ok -> if (ok) editing = false }
-        }
-    }
-    if (confirmClear) {
-        DshConfirmDialog(
-            title = L.goalClearTitle,
-            message = L.goalClearMessage,
-            confirmLabel = L.goalClear,
-            danger = true,
-            saving = busy,
-            onDismiss = { confirmClear = false },
-            onConfirm = { control.clearGoal { ok -> if (ok) confirmClear = false } },
-        )
-    }
 }
 
 /** ⋯ 菜单「目标」入口：有可管理目标时打开编辑对话框。 */
