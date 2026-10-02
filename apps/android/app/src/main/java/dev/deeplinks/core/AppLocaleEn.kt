@@ -377,7 +377,7 @@ val DshStringsEn = DshStrings(
         put("listening", "Listening…")
         put("voiceInput", "Voice input")
         put("goalInjection", "Goal injection")
-        put("goalRoundLabel", "Round %d")
+        put("goalRoundLabel", "Round %s")
         put("chatPlaceholder", "Message the agent, / for commands")
         put("addAttachment", "Add files or images")
         put("choosePhoto", "Photos")
