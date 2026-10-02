@@ -311,3 +311,4 @@
 |---|---|---|
 | P1.1 | #23 | 已按方案落地。未开启远程记为 `REMOTE_DISABLED` / fail，避免和「中继连不上」混成同一个 code。诊断里的 Tailscale 地址分类不改 `classifyUrl`，留给 P1.3。 |
 | P1.2 | #24 | 已按方案落地。网络类型读 `NetworkTransport` 的同一次刷新（`ConnectivitySignals` 只有唤醒，没有类型）。「很久没连」取 7 天。未配置远程且局域网已通时，远程项记为 skip。 |
+| P1.3 | #25 | 已按方案落地。主地址仍是最先连通的那条；只有与主地址不同的 Tailscale 地址才写入备用字段。Tailscale IPv6 一并归为 tailnet。 |
