@@ -42,6 +42,8 @@ export function pluginCapabilities({ changes = false } = {}) {
     },
     // 连接诊断。旧 App 忽略未知字段；没声明时 App 不展示主机诊断报告。
     diagnostics: { v: 1 },
+    // 主机级会话状态流。旧 App 忽略未知字段，仍只订阅单个会话。
+    events: { host: true },
   }
 }
 
