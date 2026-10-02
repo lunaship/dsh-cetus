@@ -164,7 +164,7 @@ import dev.deeplinks.native.MobileSessionResult
 import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.SessionRowItem
 import dev.deeplinks.native.ui.DshCardRows
-import dev.deeplinks.native.SessionStatsDetailDialog
+import dev.deeplinks.native.UsagePanel
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
 import dev.deeplinks.native.newTaskDraftCanvas
@@ -657,23 +657,41 @@ internal fun WorkspaceTopBarLight() {
 }
 
 @PreviewTest
-@Preview(name = "session usage light zh", showBackground = true, widthDp = 412, heightDp = 980)
+@Preview(name = "session usage light zh", showBackground = true, widthDp = 412, heightDp = 1100)
 @Composable
 internal fun SessionUsageLightZh() {
-    SessionUsageWall(dark = false, english = false)
+    SessionUsageWall(dark = false, english = false, stats = sampleSessionStats.copy(ttftMs = 4_200, ttftSteps = 3))
 }
 
 @PreviewTest
-@Preview(name = "session usage dark en", showBackground = true, widthDp = 412, heightDp = 980)
+@Preview(name = "session usage dark en", showBackground = true, widthDp = 412, heightDp = 1100)
 @Composable
 internal fun SessionUsageDarkEn() {
-    SessionUsageWall(dark = true, english = true)
+    SessionUsageWall(dark = true, english = true, stats = sampleSessionStats.copy(ttftMs = 4_200, ttftSteps = 3))
+}
+
+@PreviewTest
+@Preview(name = "session usage partial light zh", showBackground = true, widthDp = 412, heightDp = 900)
+@Composable
+internal fun SessionUsagePartialLightZh() {
+    SessionUsageWall(
+        dark = false,
+        english = false,
+        stats = MobileSessionStats(turns = 2, uncachedInputTokens = 1_200, outputTokens = 340),
+    )
+}
+
+@PreviewTest
+@Preview(name = "session usage old host light zh", showBackground = true, widthDp = 412, heightDp = 280)
+@Composable
+internal fun SessionUsageOldHostLightZh() {
+    SessionUsageWall(dark = false, english = false, stats = null)
 }
 
 @Composable
-private fun SessionUsageWall(dark: Boolean, english: Boolean) {
+private fun SessionUsageWall(dark: Boolean, english: Boolean, stats: MobileSessionStats?) {
     Wall(dark = dark, english = english) {
-        SessionStatsDetailDialog(stats = sampleSessionStats, onDismiss = {})
+        UsagePanel(stats)
     }
 }
 

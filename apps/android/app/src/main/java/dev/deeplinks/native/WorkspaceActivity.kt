@@ -245,10 +245,8 @@ fun WorkspaceScreen(
     val composerFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
     val composerKeyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     var showModelPicker by remember { mutableStateOf(false) }
-    // showViewOptions removed — view toggle is inline in sidebar
     var showAddWorkspace by remember { mutableStateOf(false) }
     var showPermissionPicker by remember { mutableStateOf(false) }
-    // WI-R3：归档/删除集合统一由 WorkspaceLocalStore 所有（Compose 状态 + prefs 双写）
     val localStore = workspaceViewModel.local
     var archivedIds by localStore.archivedSessionIds
     var deletedIds by localStore.deletedSessionIds
@@ -2122,6 +2120,7 @@ fun WorkspaceScreen(
             var headerMenuOpen by remember { mutableStateOf(false) }
             var showShareSheet by remember { mutableStateOf(false) }
             var showSchedules by remember { mutableStateOf(false) }
+            var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
             val topBarMenuItems = workspaceHeaderMenuItems(
                 canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
@@ -2129,6 +2128,7 @@ fun WorkspaceScreen(
                 onBrowseFiles = { showFileBrowser = true },
                 onRename = { currentSession?.let { openRename(it) } },
                 onShare = { showShareSheet = true },
+                onUsage = { showUsage = true },
                 canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
                 onArchive = {
                     currentSession?.let { session ->
@@ -2144,6 +2144,7 @@ fun WorkspaceScreen(
                 onDelete = { currentSession?.let { openDeleteSession(it) } },
             )
             ScheduledTasksSheet(showSchedules, workspaceViewModel.sessionControl, currentSessionId != null) { showSchedules = false }
+            if (showUsage) UsageSheet(sessionStats) { showUsage = false }
             if (showShareSheet) {
                 val sid = currentSessionId
                 ConversationShareSheet(
@@ -2177,7 +2178,6 @@ fun WorkspaceScreen(
                     },
                 )
             }
-            // L6：菜单首项 = 查看轨迹 / 返回对话（随视图切换），其后是子智能体与既有条目
             val menuWithSubagents = remember(topBarMenuItems, activeSubagentCount, viewMode) {
                 buildTopBarMenu(
                     viewMode = viewMode,
@@ -2581,7 +2581,6 @@ fun WorkspaceScreen(
                         modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
                     )
                 }
-                // 发送主体在 WorkspaceScreen 顶层赋值（新任务面板与输入卡共用同一条路径）。
                 var showFullAccessSendConfirm by remember { mutableStateOf(false) }
                 // 访问模式座（DSH conversation.input.permission）：本会话改过的预设优先，否则用全局默认。
                 val inputPermissionPreset = composerPermissionPreset(currentSessionId, sessionPermissionOverrides, appSettings.permissionPreset).let(::canonicalComposerPermission)
@@ -2614,6 +2613,7 @@ fun WorkspaceScreen(
                 modelName = inputModelSeat.name,
                 modelEffort = inputModelSeat.effort,
                 sessionStats = sessionStats,
+                onOpenUsage = { showUsage = true },
                 permissionPreset = inputPermissionPreset,
                 permissionLabel = inputPermissionLabel,
                 compact = composerSeatsCompact(containerWidthDp.value),

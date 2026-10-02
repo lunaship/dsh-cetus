@@ -30,6 +30,9 @@ test("session.list 的 agentPreset 为 null 时不下发该键", () => {
   assert.equal("agentPreset" in summary, false)
   assert.equal("cwd" in summary, false)
   assert.equal(summary.title, "Reply with exactly PONG015")
+  // session.list 不带用量。首页不为此加请求，用量只在会话内显示。
+  assert.equal("tokenUsage" in summary, false)
+  assert.equal("stats" in summary, false)
   assert.equal(JSON.parse(JSON.stringify(summary)).agentPreset, undefined)
 })
 

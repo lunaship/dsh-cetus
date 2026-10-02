@@ -11,7 +11,6 @@ import dev.deeplinks.native.ui.DshPageChromeDensity
 import dev.deeplinks.core.tabularNums
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.DshS
-import dev.deeplinks.native.ui.DshSheetHeader
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -54,8 +53,6 @@ import androidx.compose.foundation.layout.Arrangement
 import dev.deeplinks.native.util.MessageGroup
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,8 +60,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import dev.deeplinks.core.dshRipple
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.draw.drawBehind
@@ -228,6 +223,7 @@ internal fun ContextMeterButton(
     stats: MobileSessionStats,
     running: Boolean = false,
     showPercent: Boolean = true,
+    onOpenUsage: (() -> Unit)? = null,
 ) {
     var statsOpen by remember { mutableStateOf(false) }
     val used = stats.contextPressureTokens
@@ -251,7 +247,9 @@ internal fun ContextMeterButton(
                 role = Role.Button
                 contentDescription = L.contextUsedPercent.format(percent.toInt())
             }
-            .clickable(interactionSource = interaction, indication = dshRipple()) { statsOpen = true }
+            .clickable(interactionSource = interaction, indication = dshRipple()) {
+                if (onOpenUsage != null) onOpenUsage() else statsOpen = true
+            }
             .padding(horizontal = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
@@ -291,8 +289,8 @@ internal fun ContextMeterButton(
         }
     }
 
-    if (statsOpen) {
-        SessionStatsDetailDialog(stats = stats, onDismiss = { statsOpen = false })
+    if (onOpenUsage == null && statsOpen) {
+        UsageSheet(stats = stats, onDismiss = { statsOpen = false })
     }
 }
 
@@ -838,134 +836,5 @@ internal fun ComposerContextStrip(
                 modifier = Modifier.clickable(role = Role.Button, onClick = onOpenChanges),
             )
         }
-    }
-}
-
-/**
- * 会话用量看板：紧凑对话框——三个关键数一行、上下文一条进度、令牌构成一行小字。
- * 精确到个位的明细不再逐行列出（概览已经够用，整屏看板反而难读）。
- */
-@Composable
-internal fun SessionStatsDetailDialog(
-    stats: MobileSessionStats,
-    onDismiss: () -> Unit,
-) {
-    val strings = DshS
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        // 与 DshDialogFrame 同一套弹层外壳：modal 28dp + bgCard + 阴影（真浮层）
-        Column(
-            modifier = Modifier
-                .widthIn(max = 380.dp)
-                .fillMaxWidth(0.9f)
-                .shadow(16.dp, RoundedCornerShape(DshRadius.modal), ambientColor = Dsh.shadowCard, spotColor = Dsh.shadowCard)
-                .clip(RoundedCornerShape(DshRadius.modal))
-                .background(Dsh.bgCard)
-                .padding(start = DshSpace.s20, end = DshSpace.s8, top = DshSpace.s8, bottom = DshSpace.s20),
-        ) {
-            DshSheetHeader(
-                title = strings.sessionStatsSheetTitle,
-                subtitle = strings.statsTurnsSteps.format(stats.turns, stats.steps),
-                onClose = onDismiss,
-            )
-            Column(Modifier.padding(end = DshSpace.s12)) {
-                StatsDetailSections(stats)
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatsDetailSections(s: MobileSessionStats) {
-    val strings = DshS
-    val inputTokens = s.uncachedInputTokens + s.cacheReadTokens
-    val totalTokens = inputTokens + s.outputTokens
-    val cacheHitPercent = if (inputTokens > 0) ((s.cacheReadTokens * 100) / inputTokens).toInt() else null
-    val speed = if (s.decodeMs > 0 && s.decodeTokens > 0) s.decodeTokens * 1000.0 / s.decodeMs else null
-
-    Spacer(Modifier.height(DshSpace.s12))
-    // 三个关键数：一张 tonal 卡片里三等分，不再各占一张卡
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgSubtle)
-            .padding(vertical = 14.dp),
-    ) {
-        StatsFigure(compactTokens(totalTokens), strings.statsTotalTokens, Modifier.weight(1f))
-        StatsFigure(cacheHitPercent?.let { "$it%" } ?: "—", strings.statsCacheHitLabel, Modifier.weight(1f))
-        StatsFigure(
-            speed?.let { String.format(java.util.Locale.US, "%.0f", it) } ?: "—",
-            strings.tokenRateUnit,
-            Modifier.weight(1f),
-        )
-    }
-    Spacer(Modifier.height(10.dp))
-    Text(
-        strings.statsCompositionLine.format(
-            compactTokens(s.uncachedInputTokens),
-            compactTokens(s.cacheReadTokens),
-            compactTokens(s.outputTokens),
-        ),
-        color = Dsh.labelTertiary,
-        style = DshType.captionRelaxed.tabularNums(),
-        modifier = Modifier.padding(horizontal = DshSpace.s4),
-    )
-
-    if (s.contextWindow > 0) {
-        val used = s.contextPressureTokens
-        val percent = ((used * 100) / s.contextWindow).toInt().coerceIn(0, 100)
-        val tight = percent > 80
-        Spacer(Modifier.height(DshSpace.s20))
-        Row(Modifier.padding(horizontal = DshSpace.s4), verticalAlignment = Alignment.CenterVertically) {
-            Text(strings.statsContextWindow, color = Dsh.labelSecondary, style = DshType.titleSmall, modifier = Modifier.weight(1f))
-            Text(
-                "${compactTokens(used)} / ${compactTokens(s.contextWindow)} · $percent%",
-                color = if (tight) Dsh.warn else Dsh.labelSecondary,
-                style = DshType.captionRelaxed.tabularNums(),
-            )
-        }
-        Spacer(Modifier.height(DshSpace.s8))
-        Box(
-            modifier = Modifier
-                .padding(horizontal = DshSpace.s4)
-                .fillMaxWidth()
-                .height(4.dp)
-                .clip(RoundedCornerShape(DshRadius.full))
-                .background(Dsh.bgTrack),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(percent / 100f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(DshRadius.full))
-                    .background(if (tight) Dsh.warn else Dsh.brand500),
-            )
-        }
-        if (s.systemTokens + s.toolsTokens + s.messageTokens > 0) {
-            Spacer(Modifier.height(DshSpace.s8))
-            Text(
-                strings.statsContextBreakdownLine.format(
-                    compactTokens(s.systemTokens),
-                    compactTokens(s.toolsTokens),
-                    compactTokens(s.messageTokens),
-                ),
-                color = Dsh.labelTertiary,
-                style = DshType.captionRelaxed.tabularNums(),
-                modifier = Modifier.padding(horizontal = DshSpace.s4),
-            )
-        }
-    }
-}
-
-/** 看板里的一个关键数：数值在上、标签在下，居中。 */
-@Composable
-private fun StatsFigure(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = Dsh.labelPrimary, style = DshType.titleLarge.tabularNums(), maxLines = 1)
-        Spacer(Modifier.height(DshSpace.s2))
-        Text(label, color = Dsh.labelTertiary, style = DshType.microRelaxed, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
