@@ -15,12 +15,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.DarkDshColors
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshFontFamily
 import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
-import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
@@ -52,12 +50,11 @@ private fun ChatFrame(dark: Boolean, english: Boolean = false, content: @Composa
     // 渲染环境（layoutlib）没有可用的 SharedPreferences，走 setLanguageForPreview
     // 只切内存态，保证英文预览里不再混中文。
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides if (dark) DarkDshColors else LightDshColors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             // v3：聊天画布是白底（bgCard），与生产 WorkspaceScreen 一致

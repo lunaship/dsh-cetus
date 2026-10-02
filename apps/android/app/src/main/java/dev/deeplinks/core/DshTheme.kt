@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Shapes
@@ -26,16 +27,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import dev.deeplinks.R
 import dev.deeplinks.native.DshRadius
 
 /**
- * DeepSeek Harness 设计系统颜色 Token 接口定义与主题管理器。
- * 两套配色的每个角色都取自 [Dsw]（DSH Web 调色板镜像），偏离处逐行写明原因，
- * 并支持通过系统设置 / App 内部偏好进行动态切换。
+ * DeepLinks 设计系统颜色角色与主题管理器。
+ * 取值以 v4 色表为准（docs/visual-rules.md §2）；旧角色名映射到 v4 角色，迁移完成后删除。
  */
 @Stable
 data class DshColors(
@@ -103,132 +102,200 @@ data class DshColors(
     val accentIcon: Color = Color.Unspecified,
     /** 开关开启轨道：取 brand400；拇指浅色 bgCard / 深色 onInk（见 dshSwitchColors）。 */
     val switchOnTrack: Color = Color.Unspecified,
-    /** 用户气泡底：品牌蓝低透明度叠在 bgCard 上的预合成色（避免叠层采样成本）。 */
+    /** 用户气泡底（v4：容器色 surface1）。 */
     val userBubble: Color = Color.Unspecified,
+    // ===== v4 角色（docs/visual-rules.md §2）=====
+    val surface1: Color = Color.Unspecified,
+    val surface2: Color = Color.Unspecified,
+    val outline: Color = Color.Unspecified,
+    val tertiaryText: Color = Color.Unspecified,
+    val primarySoft: Color = Color.Unspecified,
+    /** 等你 / 风险：等你批准、等你回答、完全权限。 */
+    val wait: Color = Color.Unspecified,
+    val waitSoft: Color = Color.Unspecified,
+    /** 成功 / diff 增行。 */
+    val ok: Color = Color.Unspecified,
+    val okSoft: Color = Color.Unspecified,
+    /** 失败 / diff 删行 / 危险操作文字。 */
+    val err: Color = Color.Unspecified,
+    val errSoft: Color = Color.Unspecified,
 )
 
-// ===== 色源：DeepSeek Harness（docs/visual-rules.md「色源」）=====
-// 每个角色取自 Dsw（DSH 调色板镜像），行尾注释是对应的 --dsw-alias-* / --dsw-specific-*。
-// 取不到 DSH 值的行必须写「偏离 DSH」和原因，由 DshPaletteProvenanceTest 强制。
+// ===== v4 色表（docs/visual-rules.md §2）=====
+// Color(0x…) 只允许出现在本文件，取值必须在 v4 token 表里（DshPaletteProvenanceTest）。
+
+private val LightBackground = Color(0xFFFFFFFF)
+private val LightSurface1 = Color(0xFFF4F5F7)
+private val LightSurface2 = Color(0xFFE9EBEF)
+private val LightOutline = Color(0xFFE3E5E9)
+private val LightOnSurface = Color(0xFF15171C)
+private val LightOnSurfaceVariant = Color(0xFF555A64)
+private val LightTertiaryText = Color(0xFF6E737D)
+private val LightPrimary = Color(0xFF3F5BD6)
+private val LightPrimarySoft = Color(0xFFECEFFC)
+private val LightWait = Color(0xFFB25E0C)
+private val LightOk = Color(0xFF1F7F4A)
+private val LightErr = Color(0xFFC83A30)
+private val LightWaitSoft = Color(0xFFFCF1E5)
+private val LightOkSoft = Color(0xFFE6F3EB)
+private val LightErrSoft = Color(0xFFFBEAE8)
+
+private val DarkBackground = Color(0xFF121214)
+private val DarkSurface1 = Color(0xFF1C1D21)
+private val DarkSurface2 = Color(0xFF27292E)
+private val DarkOutline = Color(0xFF2D2F35)
+private val DarkOnSurface = Color(0xFFECEDF0)
+private val DarkOnSurfaceVariant = Color(0xFFA9ADB6)
+private val DarkTertiaryText = Color(0xFF8C9099)
+private val DarkPrimary = Color(0xFF8B9DFF)
+private val DarkWait = Color(0xFFE9A35B)
+private val DarkOk = Color(0xFF62C28E)
+private val DarkErr = Color(0xFFF07B70)
+
+private val PureBlackBackground = Color(0xFF000000)
+private val PureBlackSurface1 = Color(0xFF141416)
+
+/** 遮罩（scrim）是唯一允许的半透明面。 */
+private val Scrim = Color.Black.copy(alpha = 0.32f)
 
 val DarkDshColors = DshColors(
     isDark = true,
-    // ===== 2026-09-28 重设计稿深色板（方案 2.2）=====
-    // 画布压到近黑、卡片抬一档、输入与代码各占一层；这套取值与 DSH neutral-bluish 不同族，
-    // 因此下面每一行都按 DshPaletteProvenanceTest 的要求标注偏离原因。
-    bgBase = Color(0xFF121214),              // 偏离 DSH：2026-09-28 重设计稿（深色页面底 #121214）
-    bgSidePanel = Color(0xFF121214),         // 偏离 DSH：同上（导航面与页面底同档）
-    bgCard = Color(0xFF1C1D21),              // 偏离 DSH：重设计稿卡片/面板面 #1C1D21
-    bgInput = Color(0xFF121214),             // 偏离 DSH：重设计稿输入条底 #121214（在 #1C1D21 对话页上凹进去）
-    bgSubtle = Color(0xFF2A2B30),            // 偏离 DSH：重设计稿用户气泡与胶囊底 #2A2B30
-    bgCode = Color(0xFF26272C),              // 偏离 DSH：重设计稿代码块底 #26272C
-    bgCodeBanner = Color(0xFF222328),        // 偏离 DSH：重设计稿卡片头/弱底 #222328
-    bgSelected = Color(0xFF26272C),          // 偏离 DSH：重设计稿选中态改中性灰（不再用品牌蓝 tonal）
-    bgPressed = Dsw.interactiveHoverDark,    // alias-interactive-bg-hover
-    bgDrawer = Color(0xFF121214),            // 偏离 DSH：重设计稿抽屉底与页面底同档
-    bgNavSelected = Color(0xFF26272C),       // 偏离 DSH：与 bgSelected 同一 selection container
-    bgTrack = Color(0xFF2E3036),             // 偏离 DSH：重设计稿深色进行中轨道 #2E3036（MainDark.dc.html 的转圈底）
-    bgOverlay = Color(0x73000000),           // 偏离 DSH：2026-09-30 真机反馈遮罩过重，从 .6 降到 .45
-    bgRecessed = Color(0xFF17181B),          // 偏离 DSH：重设计稿凹进面（思考轨迹）比卡片再暗一档
-    bgSurface = Color(0xFF1C1D21),           // 偏离 DSH：重设计稿面板面 #1C1D21
-    labelPrimary = Color(0xFFEDEDEF),        // 偏离 DSH：重设计稿主文字 #EDEDEF
-    labelSecondary = Color(0xFFA3A7AE),      // 偏离 DSH：重设计稿次要文字 #A3A7AE
-    labelTertiary = Color(0xFF8B8F96),       // 偏离 DSH：重设计稿第三级文字/箭头 #8B8F96
-    labelDimmed = Color(0xFF4A4D53),         // 偏离 DSH：重设计稿禁用 #4A4D53
-    borderSubtle = Color(0xFF2A2B30),        // 偏离 DSH：重设计稿分隔线 #2A2B30（只用于分隔线，不做容器描边）
-    borderStrong = Dsw.borderL3Dark,         // alias-border-l3
-    pressed = Dsw.interactiveHoverDark,      // alias-interactive-bg-hover
-    activated = Dsw.interactiveActiveDark,   // alias-interactive-bg-active
-    brand400 = Color(0xFF8B9DFF),            // 偏离 DSH：2026-09-30 第四轮，深色强调蓝提亮一档（#8B9DFF，对画布约 7.4）
-    brand500 = Color(0xFF8B9DFF),            // 偏离 DSH：2026-09-30 第四轮，与 brand400 同值（批准、发送）
-    success = Color(0xFF3BC476),             // 偏离 DSH：重设计稿在线点 #3BC476
-    warn = Dsw.amber500,                     // DSH 无 warning alias，取 static amber
-    warnLabel = Color(0xFFF0B86A),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #F0B86A
-    error = Color(0xFFFF8A7E),               // 偏离 DSH：重设计稿危险文字 #FF8A7E
-    errorBg = Dsw.interactiveHoverDangerDark, // alias-interactive-bg-hover-danger
-    buttonElevated = Dsw.neutralBluish750,   // alias-button-elevated-fill
-    buttonFloating = Dsw.neutralBluish850,   // alias-button-floating-fill
-    shadowCard = Color(0x1F000000),          // 偏离 DSH：DSH 阴影不分深浅（0D），深色画布上看不见，加深到 1F
-    systemAccent = Color(0xFF6B6F78),        // 偏离 DSH：2026-09-30 第四轮，上下文条改中性灰
-    toolsAccent = Color(0xFF4A4D55),         // 偏离 DSH：2026-09-30 第四轮，工具分段改中性灰
-    traceReasoning = Color(0xFF8B9DFF),      // 偏离 DSH：2026-09-30 第四轮，推理轨与 brand400 同值，去掉第二套蓝
-    brandTint = Color(0xFF8B9DFF).copy(alpha = 0.1f), // 偏离 DSH：2026-09-30 第四轮，随强调蓝 #8B9DFF
-    // 深色强调底 #8B9DFF 上写深字；DshPaletteProvenanceTest 要求 onBrand/brand500 ≥ 3:1
-    onBrand = Color(0xFF121214),             // 偏离 DSH：重设计稿深色强调底上的内容色（非白）
-    inkFill = Color(0xFF3A3C43),             // 偏离 DSH：2026-09-30 第四轮，深色过程按钮深灰（让批准蓝成为最亮）
-    onInk = Color(0xFFECEDF0),               // 偏离 DSH：2026-09-30 第四轮，深色过程按钮上的字（对 inkFill 约 9.4）
-    successContent = Color(0xFF5CC38A),      // 偏离 DSH：重设计稿完成图标 #5CC38A（DSH 没有深底绿字档）
-    cloudContent = Dsw.deepseek300,
-    cloudContainer = Dsw.deepseek800,        // alias-state-business-tertiary
-    accentIcon = Color(0xFF8B9DFF),          // 偏离 DSH：2026-10-02 L4，图标/入口强调与 brand400 同值
-    switchOnTrack = Color(0xFF8B9DFF),       // 偏离 DSH：2026-10-02 L4，开关开启轨与 brand400 同值
-    userBubble = Color(0xFF2C2F40),          // 偏离 DSH：2026-10-02 L5，brand400 @ 14% 叠 bgCard #1C1D21 的预合成色
+    bgBase = DarkBackground,
+    bgSidePanel = DarkBackground,
+    bgCard = DarkSurface1,
+    bgInput = DarkSurface1,
+    bgSubtle = DarkSurface2,
+    bgCode = DarkSurface1,
+    bgCodeBanner = DarkSurface1,
+    bgSelected = DarkPrimary.copy(alpha = 0.15f),
+    bgPressed = DarkSurface2,
+    bgDrawer = DarkBackground,
+    bgNavSelected = DarkPrimary.copy(alpha = 0.15f),
+    bgTrack = DarkOutline,
+    bgOverlay = Scrim,
+    bgRecessed = DarkSurface1,
+    bgSurface = DarkBackground,
+    labelPrimary = DarkOnSurface,
+    labelSecondary = DarkOnSurfaceVariant,
+    labelTertiary = DarkTertiaryText,
+    labelDimmed = DarkTertiaryText,
+    borderSubtle = DarkOutline,
+    borderStrong = DarkOutline,
+    pressed = DarkSurface2,
+    activated = DarkPrimary.copy(alpha = 0.15f),
+    brand400 = DarkPrimary,
+    brand500 = DarkPrimary,
+    success = DarkOk,
+    warn = DarkWait,
+    warnLabel = DarkWait,
+    error = DarkErr,
+    errorBg = DarkErr.copy(alpha = 0.13f),
+    buttonElevated = DarkSurface1,
+    buttonFloating = DarkSurface1,
+    shadowCard = Color.Transparent,
+    systemAccent = DarkTertiaryText,
+    toolsAccent = DarkOutline,
+    traceReasoning = DarkPrimary,
+    brandTint = DarkPrimary.copy(alpha = 0.15f),
+    onBrand = DarkBackground,
+    inkFill = DarkSurface2,
+    onInk = DarkOnSurface,
+    successContent = DarkOk,
+    cloudContent = DarkPrimary,
+    cloudContainer = DarkPrimary.copy(alpha = 0.15f),
+    accentIcon = DarkPrimary,
+    switchOnTrack = DarkPrimary,
+    userBubble = DarkSurface1,
+    surface1 = DarkSurface1,
+    surface2 = DarkSurface2,
+    outline = DarkOutline,
+    tertiaryText = DarkTertiaryText,
+    primarySoft = DarkPrimary.copy(alpha = 0.15f),
+    wait = DarkWait,
+    waitSoft = DarkWait.copy(alpha = 0.13f),
+    ok = DarkOk,
+    okSoft = DarkOk.copy(alpha = 0.13f),
+    err = DarkErr,
+    errSoft = DarkErr.copy(alpha = 0.13f),
 )
 
 val LightDshColors = DshColors(
     isDark = false,
-    // ===== 2026-09-28 重设计稿浅色板（方案 2.2）=====
-    // 与旧浅色板最大的差别：**页面底是灰的、卡片才白**。分层靠这一组 tonal 差，
-    // 不给卡片加描边（docs/visual-rules.md 第二节）。
-    bgBase = Color(0xFFF3F4F7),              // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（页面底 #F3F4F7）
-    bgSidePanel = Color(0xFFF3F4F7),         // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（导航面与页面底同档）
-    bgCard = Color(0xFFFFFFFF),              // 偏离 DSH：重设计稿卡片/面板面 #FFFFFF（与灰底成对）
-    bgInput = Color(0xFFF3F4F7),             // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（输入条底，在白卡上凹进去）
-    bgSubtle = Color(0xFFEBEDF1),            // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（对画布 1.07，门禁 ≥ 1.05）
-    bgCode = Color(0xFFF2F3F6),              // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（代码块底 #F2F3F6）
-    bgCodeBanner = Color(0xFFF9FAFB),        // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（卡片头/弱底 #F9FAFB）
-    bgSelected = Color(0xFFE5E7EC),          // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（选中态 #E5E7EC，对画布 1.12）
-    bgPressed = Color(0x0F15171C),           // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（按压 6%，随 labelPrimary）
-    bgDrawer = Color(0xFFF3F4F7),            // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（抽屉底与页面底同档）
-    bgNavSelected = Color(0xFFE5E7EC),       // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（与 bgSelected 同一 selection container）
-    bgTrack = Color(0xFFE4E6EB),             // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（进行中轨道 #E4E6EB）
-    bgOverlay = Color(0x4015171C),           // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（遮罩 .25，随 labelPrimary）
-    bgRecessed = Color(0xFFF2F3F6),          // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（思考轨迹凹进面 #F2F3F6）
-    bgSurface = Color(0xFFFFFFFF),           // 偏离 DSH：重设计稿面板面 #FFFFFF
-    labelPrimary = Color(0xFF15171C),        // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（主文字 #15171C，对画布 16.3）
-    labelSecondary = Color(0xFF5A5F69),      // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（次要文字 #5A5F69，对画布 5.83）
-    labelTertiary = Color(0xFF686D77),       // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（第三级 #686D77，对画布 4.72）
-    labelDimmed = Color(0xFFB3B7BF),         // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（置灰 #B3B7BF，不承载必读信息）
-    borderSubtle = Color(0xFFECEEF2),        // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（分隔线 #ECEEF2，对白卡 1.16）
-    borderStrong = Dsw.borderL3Light,        // alias-border-l3
-    pressed = Color(0x0F15171C),             // 偏离 DSH：2026-09-30 第四轮，灰阶随品牌蓝转冷（与 bgPressed 统一，按压 6%）
-    activated = Dsw.interactiveActiveLight,  // alias-interactive-bg-active
-    brand400 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝（链接/次强调与主强调同族）
-    brand500 = Color(0xFF3F5BD6),            // 偏离 DSH：重设计稿强调蓝 #3F5BD6（批准、发送）
-    success = Color(0xFF1F9D55),             // 偏离 DSH：重设计稿在线点 #1F9D55
-    warn = Color(0xFFC4801A),                // 偏离 DSH：2026-09-30 第四轮，小圆点琥珀（对白卡 3.26，非文字 ≥ 3）
-    warnLabel = Color(0xFF8A4B00),           // 偏离 DSH：重设计稿「等你批准」胶囊文字 #8A4B00
-    error = Color(0xFFB42318),               // 偏离 DSH：重设计稿危险文字 #B42318（4.8:1）
-    errorBg = Color(0x1AB42318),             // 偏离 DSH：随 error 同色相
-    buttonElevated = Dsw.neutralBluish00,    // alias-button-elevated-fill
-    buttonFloating = Dsw.neutralBluish00,    // alias-button-floating-fill
-    shadowCard = Dsw.shadowLv1,              // shadow-lv1 的颜色分量
-    systemAccent = Color(0xFF8C919B),        // 偏离 DSH：2026-09-30 第四轮，上下文条改中性灰
-    toolsAccent = Color(0xFFB3B7BF),         // 偏离 DSH：2026-09-30 第四轮，工具分段改中性灰
-    traceReasoning = Color(0xFF3F5BD6),      // 偏离 DSH：2026-09-30 第四轮，推理轨与 brand400 同值，去掉第二套蓝
-    brandTint = Color(0xFF3F5BD6).copy(alpha = 0.1f), // 偏离 DSH：随重设计稿强调蓝
-    onBrand = Dsw.neutralBluish00,           // 浅色强调底上写白字（#3F5BD6 上 5.7:1）
-    inkFill = Color(0xFF15171C),             // 偏离 DSH：2026-09-30 第四轮，浅色过程按钮等于 labelPrimary
-    onInk = Color(0xFFFFFFFF),               // 偏离 DSH：2026-09-30 第四轮，浅色过程按钮上的白字
-    successContent = Color(0xFF17753F),      // 偏离 DSH：重设计稿完成图标 #17753F（DSH 绿色族白底不达 AA）
-    cloudContent = Dsw.deepseek600,          // 在 deepseek-100 上 4.6:1
-    cloudContainer = Dsw.deepseek100,        // alias-state-business-tertiary
-    accentIcon = Color(0xFF3F5BD6),          // 偏离 DSH：2026-10-02 L4，图标/入口强调与 brand400 同值
-    switchOnTrack = Color(0xFF3F5BD6),       // 偏离 DSH：2026-10-02 L4，开关开启轨与 brand400 同值
-    userBubble = Color(0xFFECEFFB),          // 偏离 DSH：2026-10-02 L5，brand400 @ 10% 叠 bgCard #FFFFFF 的预合成色
+    bgBase = LightBackground,
+    bgSidePanel = LightBackground,
+    bgCard = LightSurface1,
+    bgInput = LightSurface1,
+    bgSubtle = LightSurface2,
+    bgCode = LightSurface1,
+    bgCodeBanner = LightSurface1,
+    bgSelected = LightPrimarySoft,
+    bgPressed = LightSurface2,
+    bgDrawer = LightBackground,
+    bgNavSelected = LightPrimarySoft,
+    bgTrack = LightOutline,
+    bgOverlay = Scrim,
+    bgRecessed = LightSurface1,
+    bgSurface = LightBackground,
+    labelPrimary = LightOnSurface,
+    labelSecondary = LightOnSurfaceVariant,
+    labelTertiary = LightTertiaryText,
+    labelDimmed = LightTertiaryText,
+    borderSubtle = LightOutline,
+    borderStrong = LightOutline,
+    pressed = LightSurface2,
+    activated = LightPrimarySoft,
+    brand400 = LightPrimary,
+    brand500 = LightPrimary,
+    success = LightOk,
+    warn = LightWait,
+    warnLabel = LightWait,
+    error = LightErr,
+    errorBg = LightErrSoft,
+    buttonElevated = LightBackground,
+    buttonFloating = LightBackground,
+    shadowCard = Color.Transparent,
+    systemAccent = LightTertiaryText,
+    toolsAccent = LightOutline,
+    traceReasoning = LightPrimary,
+    brandTint = LightPrimarySoft,
+    onBrand = LightBackground,
+    inkFill = LightOnSurface,
+    onInk = LightBackground,
+    successContent = LightOk,
+    cloudContent = LightPrimary,
+    cloudContainer = LightPrimarySoft,
+    accentIcon = LightPrimary,
+    switchOnTrack = LightPrimary,
+    userBubble = LightSurface1,
+    surface1 = LightSurface1,
+    surface2 = LightSurface2,
+    outline = LightOutline,
+    tertiaryText = LightTertiaryText,
+    primarySoft = LightPrimarySoft,
+    wait = LightWait,
+    waitSoft = LightWaitSoft,
+    ok = LightOk,
+    okSoft = LightOkSoft,
+    err = LightErr,
+    errSoft = LightErrSoft,
 )
 
-/**
- * 深色「纯黑」背景（OLED）：只压画布、侧栏、代码底这几层；卡片 / 输入 / 气泡保持原色阶，
- * 分层靠卡片比底亮而不是底比卡片暗。DSH 没有纯黑模式，这几档都是本端独有。
- */
+/** 纯黑背景（OLED）：画布改 #000000，容器改 #141416，其他不变。 */
 fun DshColors.pureBlack(): DshColors = copy(
-    bgBase = Color.Black,
-    bgSidePanel = Color(0xFF0A0A0B),         // 偏离 DSH：OLED 纯黑模式独有
-    bgDrawer = Color(0xFF0A0A0B),            // 偏离 DSH：OLED 纯黑模式独有
-    bgCode = Color(0xFF0A0A0B),              // 偏离 DSH：OLED 纯黑模式独有
-    bgRecessed = Color.Black,
-    bgSurface = Color(0xFF111113),           // 偏离 DSH：OLED 纯黑模式独有
+    bgBase = PureBlackBackground,
+    bgSidePanel = PureBlackBackground,
+    bgDrawer = PureBlackBackground,
+    bgSurface = PureBlackBackground,
+    onBrand = PureBlackBackground,
+    bgCard = PureBlackSurface1,
+    bgInput = PureBlackSurface1,
+    bgCode = PureBlackSurface1,
+    bgCodeBanner = PureBlackSurface1,
+    bgRecessed = PureBlackSurface1,
+    buttonElevated = PureBlackSurface1,
+    buttonFloating = PureBlackSurface1,
+    userBubble = PureBlackSurface1,
+    surface1 = PureBlackSurface1,
 )
 
 val LocalDshColors = staticCompositionLocalOf { DarkDshColors }
@@ -251,14 +318,9 @@ private val DshMaterialShapes = Shapes(
 object ThemeManager {
     private const val PREFS_NAME = "dsh_settings"
     private const val KEY_THEME = "theme"
-    private const val KEY_DYNAMIC = "dynamic_color"
     private const val KEY_PURE_BLACK = "dark_pure_black"
 
     var currentThemeMode by mutableStateOf("system")
-        private set
-
-    /** Material You 动态取色开关（Android 12+ 才有效）。 */
-    var dynamicColor by mutableStateOf(false)
         private set
 
     /** 深色背景用纯黑而不是近黑（仅本地，不进服务端 AppSettings）。 */
@@ -268,7 +330,6 @@ object ThemeManager {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         currentThemeMode = prefs.getString(KEY_THEME, "system") ?: "system"
-        dynamicColor = prefs.getBoolean(KEY_DYNAMIC, false)
         pureBlack = prefs.getBoolean(KEY_PURE_BLACK, false)
     }
 
@@ -277,14 +338,6 @@ object ThemeManager {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_PURE_BLACK, enabled)
-            .apply()
-    }
-
-    fun setDynamicColor(context: Context, enabled: Boolean) {
-        dynamicColor = enabled
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_DYNAMIC, enabled)
             .apply()
     }
 
@@ -340,32 +393,6 @@ fun fontScaleMultiplier(id: String?): Float = when (canonicalizeFontScale(id)) {
 }
 
 /**
- * UI 字体偏好：默认跟随系统字体（原生观感，中文用户基线稳）；
- * 可选关闭改用 Plus Jakarta Sans 品牌字（拉丁 UI / Logo 位）。
- */
-object UiFontManager {
-    private const val PREFS_NAME = "dsh_settings"
-    private const val KEY_SYSTEM_FONT = "ui_system_font"
-
-    /** 默认 true：系统字体更像原生 App；Jakarta 仅作可选品牌字。 */
-    var useSystemFont by mutableStateOf(true)
-        private set
-
-    fun init(context: Context) {
-        useSystemFont = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_SYSTEM_FONT, true)
-    }
-
-    fun setUseSystemFont(context: Context, enabled: Boolean) {
-        useSystemFont = enabled
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_SYSTEM_FONT, enabled)
-            .apply()
-    }
-}
-
-/**
  * 透明系统栏；图标亮暗由 [DshTheme] 按当前主题写入 InsetsController。
  * 不用 SystemBarStyle.dark：浅色主题下会把状态栏图标固定成浅色。
  */
@@ -398,7 +425,6 @@ fun DshTheme(
         ThemeManager.init(context)
         LocaleManager.init(context)
         FontScaleManager.init(context)
-        UiFontManager.init(context)
     }
 
     val systemDark = isSystemInDarkTheme()
@@ -408,14 +434,7 @@ fun DshTheme(
         else -> systemDark
     }
 
-    // Material You：开启且系统支持时用动态取色，否则回退静态调色板
-    val palette = if (ThemeManager.dynamicColor) {
-        dynamicDshColors(context, isDark) ?: if (isDark) DarkDshColors else LightDshColors
-    } else if (isDark) {
-        DarkDshColors
-    } else {
-        LightDshColors
-    }
+    val palette = if (isDark) DarkDshColors else LightDshColors
     val colors = if (isDark && ThemeManager.pureBlack) palette.pureBlack() else palette
     val lang = LocaleManager.language
     val strings = if (lang == "en") DshStringsEn else DshStringsZh
@@ -447,76 +466,11 @@ fun DshTheme(
         }
     }
 
-    val materialColors = if (isDark) {
-        darkColorScheme(
-            primary = colors.brand400,
-            onPrimary = Dsw.neutralBluish1000,
-            // container/on-container 配对：深蓝容器 + 浅字（DSH deepseek 族）
-            primaryContainer = Dsw.deepseek800,
-            onPrimaryContainer = Dsw.deepseek100,
-            secondary = colors.brand400,
-            onSecondary = Dsw.neutralBluish1000,
-            secondaryContainer = colors.bgSubtle,
-            onSecondaryContainer = colors.labelPrimary,
-            tertiary = colors.successContent,
-            onTertiary = colors.bgBase,
-            tertiaryContainer = colors.bgSubtle,
-            onTertiaryContainer = colors.successContent,
-            background = colors.bgBase,
-            onBackground = colors.labelPrimary,
-            surface = colors.bgSurface,
-            onSurface = colors.labelPrimary,
-            surfaceVariant = colors.bgSubtle,
-            onSurfaceVariant = colors.labelSecondary,
-            outline = colors.labelTertiary,
-            outlineVariant = colors.borderStrong,
-            error = colors.error,
-            onError = Dsw.red900,
-            errorContainer = Dsw.red900,
-            onErrorContainer = Dsw.red100,
-            inverseSurface = colors.labelPrimary,
-            inverseOnSurface = colors.bgBase,
-            inversePrimary = colors.brand400,
-            scrim = Color.Black,
-        )
-    } else {
-        lightColorScheme(
-            primary = colors.brand400,
-            onPrimary = Color.White,
-            // 浅蓝容器 + 深蓝文字（alias-label-primary-bluish，≥ 9:1）
-            primaryContainer = Dsw.deepseek200,
-            onPrimaryContainer = Dsw.blue900,
-            secondary = colors.brand400,
-            onSecondary = Color.White,
-            secondaryContainer = Dsw.deepseek100,
-            onSecondaryContainer = colors.labelPrimary,
-            tertiary = colors.successContent,
-            onTertiary = Color.White,
-            tertiaryContainer = colors.bgSubtle,
-            onTertiaryContainer = colors.successContent,
-            background = colors.bgBase,
-            onBackground = colors.labelPrimary,
-            surface = colors.bgSurface,
-            onSurface = colors.labelPrimary,
-            surfaceVariant = colors.bgSubtle,
-            onSurfaceVariant = colors.labelSecondary,
-            outline = colors.labelSecondary,
-            outlineVariant = colors.borderStrong,
-            error = colors.error,
-            onError = Color.White,
-            errorContainer = Dsw.red100,
-            onErrorContainer = Dsw.red900,
-            inverseSurface = colors.labelPrimary,
-            inverseOnSurface = colors.bgBase,
-            inversePrimary = colors.brand500,
-            scrim = Color.Black,
-        )
-    }
+    val materialColors = dshColorScheme(colors)
 
     val baseDensity = LocalDensity.current
     val fontMultiplier = fontScaleMultiplier(FontScaleManager.currentScale)
-    val uiFontFamily = if (UiFontManager.useSystemFont) FontFamily.Default else DshFontFamily
-    val typography = remember(uiFontFamily) { dshTypography(uiFontFamily) }
+    val typography = remember { dshTypography() }
     MaterialTheme(
         colorScheme = materialColors,
         typography = typography,
@@ -526,7 +480,6 @@ fun DshTheme(
             LocalDshColors provides colors,
             LocalDshStrings provides strings,
             LocalTextStyle provides typography.bodyMedium,
-            LocalDshFontFamily provides uiFontFamily,
             LocalDensity provides Density(
                 density = baseDensity.density,
                 fontScale = baseDensity.fontScale * fontMultiplier,
@@ -550,8 +503,48 @@ fun DshTheme(
     }
 }
 
-/** App-wide UI font (Plus Jakarta Sans). Code blocks keep [FontFamily.Monospace]. */
-val LocalDshFontFamily = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
+/** M3 色槽全部从 v4 角色推导；不接系统动态取色。 */
+fun dshColorScheme(colors: DshColors): ColorScheme {
+    val scheme = if (colors.isDark) darkColorScheme() else lightColorScheme()
+    return scheme.copy(
+        primary = colors.brand400,
+        onPrimary = colors.onBrand,
+        primaryContainer = colors.primarySoft,
+        onPrimaryContainer = colors.brand400,
+        secondary = colors.brand400,
+        onSecondary = colors.onBrand,
+        secondaryContainer = colors.primarySoft,
+        onSecondaryContainer = colors.labelPrimary,
+        tertiary = colors.ok,
+        onTertiary = colors.onBrand,
+        tertiaryContainer = colors.okSoft,
+        onTertiaryContainer = colors.ok,
+        background = colors.bgBase,
+        onBackground = colors.labelPrimary,
+        surface = colors.bgBase,
+        onSurface = colors.labelPrimary,
+        surfaceVariant = colors.surface1,
+        onSurfaceVariant = colors.labelSecondary,
+        surfaceTint = Color.Transparent,
+        surfaceDim = colors.bgBase,
+        surfaceBright = colors.bgBase,
+        surfaceContainerLowest = colors.bgBase,
+        surfaceContainerLow = colors.surface1,
+        surfaceContainer = colors.surface1,
+        surfaceContainerHigh = colors.surface1,
+        surfaceContainerHighest = colors.surface2,
+        outline = colors.outline,
+        outlineVariant = colors.outline,
+        error = colors.err,
+        onError = colors.onBrand,
+        errorContainer = colors.errSoft,
+        onErrorContainer = colors.err,
+        inverseSurface = colors.labelPrimary,
+        inverseOnSurface = colors.bgBase,
+        inversePrimary = colors.brand400,
+        scrim = Color.Black,
+    )
+}
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -797,4 +790,59 @@ object Dsh {
         @Composable
         @ReadOnlyComposable
         get() = LocalDshColors.current.userBubble
+
+    val surface1: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.surface1
+
+    val surface2: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.surface2
+
+    val outline: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.outline
+
+    val tertiaryText: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.tertiaryText
+
+    val primarySoft: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.primarySoft
+
+    val wait: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.wait
+
+    val waitSoft: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.waitSoft
+
+    val ok: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.ok
+
+    val okSoft: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.okSoft
+
+    val err: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.err
+
+    val errSoft: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDshColors.current.errSoft
 }

@@ -18,13 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.DarkDshColors
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshFontFamily
 import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
-import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
@@ -44,12 +42,11 @@ private fun ChangesFrame(dark: Boolean, english: Boolean = false, content: @Comp
     // E1：直接读全局 LocaleManager.strings 的组件也要跟着 english 切语言（详见
     // ChatFeedScreenshotTest.ChatFrame 同位置注释）。
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides if (dark) DarkDshColors else LightDshColors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             Box(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) { content() }

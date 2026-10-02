@@ -101,7 +101,6 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.DarkDshColors
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshFontFamily
 import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.DshType
@@ -109,7 +108,6 @@ import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.pureBlack
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.LocalDshColors
-import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
@@ -206,12 +204,11 @@ internal fun ShotFrame(dark: Boolean, english: Boolean = false, content: @Compos
     // SharedPreferences，所以走 setLanguageForPreview 只切内存态，英文预览不混中文。
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
     val colors = if (dark) DarkDshColors else LightDshColors
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides colors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             content()
@@ -349,12 +346,11 @@ private fun PureBlackWall(content: @Composable () -> Unit) {
     // 纯黑基线只出中文一张：全局语言固定回中文，避免上一张英文预览把它带成英文。
     LocaleManager.setLanguageForPreview("zh")
     val colors = DarkDshColors.pureBlack()
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides colors,
             LocalDshStrings provides DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             Column(
