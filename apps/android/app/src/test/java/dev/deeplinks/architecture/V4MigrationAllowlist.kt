@@ -11,7 +11,6 @@ import java.io.File
 internal object V4MigrationAllowlist {
     val files: Set<String> = setOf(
         "dev/deeplinks/core/DshSyntaxPalette.kt",
-        "dev/deeplinks/core/DshTheme.kt",
         "dev/deeplinks/core/DswPalette.kt",
         "dev/deeplinks/devices/DeviceCard.kt",
         "dev/deeplinks/native/ApprovalCard.kt",
@@ -45,9 +44,7 @@ internal object V4MigrationAllowlist {
         "dev/deeplinks/native/ui/DshAdvancedComponents.kt",
         "dev/deeplinks/native/ui/DshCardSurface.kt",
         "dev/deeplinks/native/ui/DshComponents.kt",
-        "dev/deeplinks/native/ui/DshEdgeFade.kt",
         "dev/deeplinks/native/ui/DshEmptyState.kt",
-        "dev/deeplinks/native/ui/DshGlass.kt",
         "dev/deeplinks/native/ui/DshGroupedList.kt",
         "dev/deeplinks/native/ui/DshInbox.kt",
     )

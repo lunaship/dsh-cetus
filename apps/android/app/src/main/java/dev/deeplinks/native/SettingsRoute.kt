@@ -18,7 +18,6 @@ import dev.deeplinks.core.notifyReplyFirstLineDesc
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.FontScaleManager
 import dev.deeplinks.core.ThemeManager
-import dev.deeplinks.core.UiFontManager
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.AppSettings
 import dev.deeplinks.native.MobileApiClient
@@ -643,7 +642,6 @@ internal fun AppearanceSettings(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val s = DshS
-    val haptic = rememberDshHaptic()
     DshListSection(container = DshSectionContainer.Card, header = s.settingsTheme, footer = s.darkBackgroundDesc) {
         DshSelectRow(
             title = s.settingsTheme,
@@ -676,7 +674,7 @@ internal fun AppearanceSettings(
             onSelect = { _, id -> ThemeManager.setPureBlack(context, id == "black") },
         )
     }
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionText, footer = s.systemFontDesc) {
+    DshListSection(container = DshSectionContainer.Card, header = s.sectionText) {
         DshSelectRow(
             title = s.settingsFontSize,
             icon = TextSizeOutline16,
@@ -693,22 +691,6 @@ internal fun AppearanceSettings(
             selectedId = FontScaleManager.currentScale,
             onSelect = { _, id -> FontScaleManager.setScale(context, id) },
         )
-        DshSwitchRow(
-            title = s.systemFont,
-            icon = FontOutline16,
-            checked = UiFontManager.useSystemFont,
-            onCheckedChange = { haptic(DshHaptic.Tick); UiFontManager.setUseSystemFont(context, it) },
-        )
-    }
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        DshListSection(container = DshSectionContainer.Card, header = s.sectionColor, footer = s.dynamicColorDesc) {
-            DshSwitchRow(
-                title = s.dynamicColor,
-                icon = ImageOutline16,
-                checked = ThemeManager.dynamicColor,
-                onCheckedChange = { haptic(DshHaptic.Tick); ThemeManager.setDynamicColor(context, it) },
-            )
-        }
     }
 }
 

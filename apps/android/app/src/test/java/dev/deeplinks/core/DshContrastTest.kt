@@ -33,7 +33,8 @@ class DshContrastTest {
             "light labelSecondary/bgBase" to (LightDshColors.labelSecondary to LightDshColors.bgBase),
             "light labelTertiary/bgBase" to (LightDshColors.labelTertiary to LightDshColors.bgBase),
             "light labelSecondary/bgCard" to (LightDshColors.labelSecondary to LightDshColors.bgCard),
-            "light warnLabel/bgCard" to (LightDshColors.warnLabel to LightDshColors.bgCard),
+            // v4：状态文字落在画布上；容器色上的等你色只有 4.28:1，不作为文字配对使用
+            "light warnLabel/bgBase" to (LightDshColors.warnLabel to LightDshColors.bgBase),
             "light brand400/bgBase" to (LightDshColors.brand400 to LightDshColors.bgBase),
             "light onInk/inkFill" to (LightDshColors.onInk to LightDshColors.inkFill),
             "dark labelPrimary/bgBase" to (DarkDshColors.labelPrimary to DarkDshColors.bgBase),
@@ -51,8 +52,9 @@ class DshContrastTest {
     @Test
     fun neutralsFollowBrandHue() {
         // 浅色灰阶必须跟品牌蓝走冷调（色相 200°–250°），防止再被改回暖灰。
+        // v4 画布是纯白（无色相），从容器色取样。
         val samples = listOf(
-            "bgBase" to LightDshColors.bgBase,
+            "bgCard" to LightDshColors.bgCard,
             "bgSubtle" to LightDshColors.bgSubtle,
             "labelSecondary" to LightDshColors.labelSecondary,
         )
