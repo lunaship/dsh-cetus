@@ -1,16 +1,19 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.core.L
+import dev.deeplinks.core.homeDone
+import dev.deeplinks.core.homeQuestionPreview
+import dev.deeplinks.core.homeWaitingAnswer
+import dev.deeplinks.native.ui.v4.DlTone
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 首页会话行两层文字（2026-10-02 Lody 简化 3.2）。
- *
- * 规则：元信息行 = 工作区 · 状态（仅执行中 / 等你批准 / 已中断）· 步数，时间由 UI 右对齐；
- * 结果一句话 = lastResult.text（L7：文件数只认改动卡，不写进行里）。完成态无状态点
- * ——homeRowTexts 不输出状态词，UI 不画点。
+ * v4 首页收件箱条目文字（2.1）：状态 · 工作区；进行中写当前步骤（不写状态词，靠转圈），
+ * 结束写「完成」或怎么停的 + 结果一句话；当前会话的审批 / 提问给内联动作。
  */
 class HomeRowTest {
 
@@ -35,73 +38,96 @@ class HomeRowTest {
     )
 
     @Test
-    fun metaCarriesWorkspaceActivityAndStep() {
-        val texts = homeRowTexts(
+    fun runningRowShowsStepInPreviewWithoutStatusWord() {
+        val texts = homeInboxTexts(
             session(running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)),
+            pending = null,
             goalSummary = null,
         )
-        assertEquals(
-            "project · " + L.homeRunningInline.format("go test ./...") + " · " + L.homeStepLabel.format(12),
-            texts.meta,
-        )
-        assertNull(texts.result)
+        assertNull(texts.status)
+        assertEquals("project", texts.workspace)
+        assertEquals(L.homeRunningInline.format("go test ./...") + " · " + L.homeStepLabel.format(12), texts.preview)
+        assertTrue(texts.running)
     }
 
     @Test
     fun runningWithoutActivityFallsBackToGoalThenRunningLabel() {
-        assertEquals("project · 修一下登录", homeRowTexts(session(running = true), "修一下登录").meta)
-        assertEquals("project · " + L.runningStatus, homeRowTexts(session(running = true), null).meta)
+        assertEquals("修一下登录", homeInboxTexts(session(running = true), null, "修一下登录").preview)
+        assertEquals(L.runningStatus, homeInboxTexts(session(running = true), null, null).preview)
     }
 
     @Test
-    fun awaitingRowSaysWaitingApproval() {
-        assertEquals("project · " + L.homeChipWaitingApproval, homeRowTexts(session(awaiting = true, running = true), null).meta)
+    fun awaitingRowSaysWaitingApprovalInWaitTone() {
+        val texts = homeInboxTexts(session(awaiting = true, running = true), null, null)
+        assertEquals(L.homeChipWaitingApproval, texts.status)
+        assertEquals(DlTone.Wait, texts.tone)
+        assertEquals(HomePendingKind.None, texts.pending)
     }
 
     @Test
-    fun doneRowHasNoStatusWordAndResultGoesToSecondLayer() {
-        val texts = homeRowTexts(session(lastResult = MobileSessionResult(text = "门禁全绿", files = 79)), null)
-        // 完成态：元信息只有工作区（无状态词 → UI 无状态点），文件数不进行里（L7）
-        assertEquals("project", texts.meta)
-        assertEquals("门禁全绿", texts.result)
+    fun phoneApprovalShowsCommandAndInlineActions() {
+        val approval = MobileMessage(
+            id = "a1", role = "approval", text = "", approvalId = "a-1",
+            toolName = "bash", toolArgs = """{"command":"./gradlew test"}""",
+        )
+        val texts = homeInboxTexts(session(awaiting = true), approval, null)
+        assertEquals(HomePendingKind.Approval, texts.pending)
+        assertEquals("./gradlew test", texts.command)
+        val noArgs = homeInboxTexts(session(awaiting = true), approval.copy(toolArgs = null), null)
+        assertEquals("bash", noArgs.command)
     }
 
     @Test
-    fun interruptedRowSaysItInMetaNotInResult() {
-        val texts = homeRowTexts(
+    fun phoneQuestionShowsPromptAndAnswerAction() {
+        val question = MobileMessage(
+            id = "q1", role = "question", text = "", questionRpcId = "r1",
+            questionPayloadJson = """[{"id":"x","question":"限流设成多少？","options":["60","120"]}]""",
+        )
+        val texts = homeInboxTexts(session(awaiting = true), question, null)
+        assertEquals(L.homeWaitingAnswer, texts.status)
+        assertEquals(HomePendingKind.Question, texts.pending)
+        assertEquals(L.homeQuestionPreview.format("限流设成多少？"), texts.preview)
+    }
+
+    @Test
+    fun doneRowSaysDoneAndShowsResult() {
+        val texts = homeInboxTexts(session(lastResult = MobileSessionResult(text = "门禁全绿", files = 79)), null, null)
+        assertEquals(L.homeDone, texts.status)
+        assertEquals(DlTone.Ok, texts.tone)
+        assertEquals("门禁全绿", texts.preview)
+    }
+
+    @Test
+    fun interruptedRowSaysHowItStopped() {
+        val texts = homeInboxTexts(
             session(stoppedReason = "interrupted", lastResult = MobileSessionResult(text = "跑到一半")),
             null,
+            null,
         )
-        assertEquals("project · " + stoppedReasonLabel("interrupted"), texts.meta)
-        assertEquals("跑到一半", texts.result)
+        assertEquals(stoppedReasonLabel("interrupted"), texts.status)
+        assertEquals(DlTone.Off, texts.tone)
+        assertEquals("跑到一半", texts.preview)
     }
 
-    @Test
-    fun doneRowWithoutAnyResultKeepsQuietMeta() {
-        val texts = homeRowTexts(session(), null)
-        assertEquals("project", texts.meta)
-        assertNull(texts.result)
-    }
-
-    /** 稿 08：离线时进行中行是缓存状态，元信息加「最后看到：」前缀。 */
+    /** 2.3：离线时进行中行是缓存状态，加「最后看到：」前缀，不转圈。 */
     @Test
     fun offlineRunningRowIsPrefixedWithLastSeen() {
-        val texts = homeRowTexts(
+        val texts = homeInboxTexts(
             session(running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)),
+            pending = null,
             goalSummary = null,
             offline = true,
         )
         assertEquals(
-            "project · " + L.homeLastSeenPrefix + L.homeRunningInline.format("go test ./...") + " · " + L.homeStepLabel.format(12),
-            texts.meta,
+            L.homeLastSeenPrefix + L.homeRunningInline.format("go test ./...") + " · " + L.homeStepLabel.format(12),
+            texts.preview,
         )
+        assertFalse(texts.running)
     }
 
-    /** 离线只影响进行中行：最近行不加前缀。 */
     @Test
     fun offlineDoesNotPrefixRecentRows() {
-        val texts = homeRowTexts(session(lastResult = MobileSessionResult(text = "门禁全绿")), null, offline = true)
-        assertEquals("project", texts.meta)
-        assertEquals("门禁全绿", texts.result)
+        val texts = homeInboxTexts(session(lastResult = MobileSessionResult(text = "门禁全绿")), null, null, offline = true)
+        assertEquals("门禁全绿", texts.preview)
     }
 }

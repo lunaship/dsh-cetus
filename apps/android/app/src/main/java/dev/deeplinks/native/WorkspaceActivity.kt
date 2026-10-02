@@ -1789,6 +1789,7 @@ fun WorkspaceScreen(
         }
     }
 
+    var showShareSheet by remember { mutableStateOf(false) }
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
         onNewSession = { openNewTaskDraft() },
@@ -1810,6 +1811,7 @@ fun WorkspaceScreen(
         onForkSession = { forkNow(it, closeDrawer = true) },
         onCreateSessionIn = { createSessionIn(it) },
         onDeleteWorkspace = { openDeleteWorkspace(it) },
+        onShareSession = { sid -> selectSession(sid); showPhoneChat(); showShareSheet = true },
         onToggleSearch = {
             sidebarSearchOpen = !sidebarSearchOpen
             if (!sidebarSearchOpen && searchQuery.isBlank()) {
@@ -1848,13 +1850,8 @@ fun WorkspaceScreen(
     val offlineSinceLabel = if (hostReachable) null else dev.deeplinks.native.util.lastOnlineLabel(LastOnlineStore.read(context))
 
     // 首页审批卡（D1-A）：只给手机接管的审批按钮；takenOverByPhone 见 MobileMessage 注释。
-    val homePendingApproval = remember(messages, currentSessionId) {
-        if (currentSessionId == null) null
-        else messages.lastOrNull {
-            it.role == "approval" && it.approvalId != null &&
-                it.requestStatus == REQUEST_PENDING && it.takenOverByPhone
-        }
-    }
+    // 首页收件箱（2.1）：当前会话里手机能处理的审批 / 提问，与对话页决策栏同一条规则
+    val homePendingApproval = remember(messages, currentSessionId) { currentSessionId?.let { pendingDecision(messages) } }
     // 发送主体：新任务面板与输入卡共用同一条路径（原先内联在对话页分支里）。
     var submitComposer: () -> Unit = {}
             submitComposer = {
@@ -2116,7 +2113,6 @@ fun WorkspaceScreen(
             val contentUnderTop by remember { derivedStateOf { listState.canScrollBackward } }
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
-            var showShareSheet by remember { mutableStateOf(false) }
             var showSchedules by remember { mutableStateOf(false) }
             var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
