@@ -26,6 +26,19 @@ internal fun classifyHostHealthError(error: Throwable): HostHealth {
 
 private const val LAN_PROBE_WAIT_MS = 1_500L
 
+/** `100.64.0.0/10` 与 Tailscale IPv6 `fd7a:115c:a1e0::/48`。二维码没有分类字段，按地址本身认。 */
+internal fun isTailnetUrl(url: String): Boolean {
+    val host = runCatching { java.net.URI(PinnedSsl.normalizeUrl(url)).host }.getOrNull() ?: return false
+    val raw = host.trim().lowercase().removePrefix("[").removeSuffix("]")
+    if (raw.startsWith("fd7a:115c:a1e0:")) return true
+    val parts = raw.split('.')
+    if (parts.size != 4) return false
+    val a = parts[0].toIntOrNull() ?: return false
+    val b = parts[1].toIntOrNull() ?: return false
+    if (parts[2].toIntOrNull() == null || parts[3].toIntOrNull() == null) return false
+    return a == 100 && b in 64..127
+}
+
 object PairClient {
     data class Result(
         val baseUrl: String,
@@ -36,6 +49,8 @@ object PairClient {
         val pending: Boolean = false,
         /** 插件已启用远程时下发的设备远程能力；旧插件或未启用时为 null。 */
         val remote: RemoteRoute? = null,
+        /** 二维码里与主地址不同的 Tailscale 地址。主地址本身已是 tailnet 时为空。 */
+        val tailnetUrl: String = "",
     )
 
     fun normalize(baseUrl: String): String = PinnedSsl.normalizeUrl(baseUrl)
@@ -64,7 +79,7 @@ object PairClient {
             var last: Exception? = null
             for (url in qr.urls) {
                 try {
-                    return pairOn(normalize(url), pin, qr.code, deviceName, requestId, HostRoute.LAN, null)
+                    return withTailnetSpare(pairOn(normalize(url), pin, qr.code, deviceName, requestId, HostRoute.LAN, null), qr.urls)
                 } catch (e: Exception) {
                     last = e
                 }
@@ -74,14 +89,27 @@ object PairClient {
         val reachable = firstReachable(qr.urls.map(::normalize), LAN_PROBE_WAIT_MS) { HostHttp.probeLanUrl(it, pin) }
         if (reachable != null) {
             try {
-                return pairOn(reachable, pin, qr.code, deviceName, requestId, HostRoute.LAN, null)
+                return withTailnetSpare(pairOn(reachable, pin, qr.code, deviceName, requestId, HostRoute.LAN, null), qr.urls)
             } catch (e: Exception) {
                 if (!canFallBackToRemote(e)) throw e
             }
         }
-        // 远程首配时 baseUrl 只用来拼请求路径，隧道不连它
+        // 远程首配时 baseUrl 只用来拼请求路径，隧道不连它。主地址仍是码里的原地址。
         val base = qr.urls.firstOrNull()?.let(::normalize) ?: "https://127.0.0.1:18640"
-        return pairOn(base, pin, qr.code, deviceName, requestId, HostRoute.REMOTE, remote)
+        return withTailnetSpare(pairOn(base, pin, qr.code, deviceName, requestId, HostRoute.REMOTE, remote), qr.urls)
+    }
+
+    /** 主地址照旧。码里另有一条不同的 Tailscale 地址时，存成备用直连。 */
+    internal fun tailnetSpare(urls: List<String>, primary: String): String {
+        val primaryNorm = normalize(primary).trimEnd('/').lowercase()
+        val tail = urls.map(::normalize).firstOrNull { isTailnetUrl(it) } ?: return ""
+        if (tail.trimEnd('/').lowercase() == primaryNorm) return ""
+        return tail
+    }
+
+    private fun withTailnetSpare(result: Result, urls: List<String>): Result {
+        val spare = tailnetSpare(urls, result.baseUrl)
+        return if (spare.isEmpty()) result else result.copy(tailnetUrl = spare)
     }
 
     /** 只有建立期失败才换到远程；证书不符与插件的明确答复（码错、同名）都不换。 */

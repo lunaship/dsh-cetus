@@ -27,6 +27,23 @@ know the field ignore it and keep working. The connection-diagnostics screen
 reads `GET /dsh-link/mobile/diagnostics` when the route exists, and still
 shows the on-phone checks when the plugin returns 404.
 
+## Capability: Tailscale spare address
+
+Unreleased plugin source on `main` classifies `100.64.0.0/10` and Tailscale
+IPv6 `fd7a:115c:a1e0::/48` as `tailnet`. Those addresses stay in the QR
+`urls`. The panel labels them Tailscale. The recommended address is still
+the first private address. `PLUGIN_PROTOCOL` stays `2`. Package and APK
+version numbers are unchanged.
+
+Unreleased Android source stores a QR tailnet URL that is different from
+the primary address on `Host.tailnetUrl`. JSON written before this field
+loads as an empty spare. Route selection tries the primary address, then
+the spare, then the relay, and caches the address that succeeded until the
+network generation changes. Older Apps ignore the extra URL and keep the
+first reachable address only. Older plugins that still label
+`100.64.0.0/10` as `other` still put that URL in `urls`; a new App
+classifies it from the URL itself.
+
 ## Verified combination and scope
 
 | DSH | Plugin | Android App | Relay | Verified path |

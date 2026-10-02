@@ -110,4 +110,46 @@ class RouteSelectorTest {
         selector.order("k", true, { true }, { probes++; true })
         assertEquals(1, probes)
     }
+
+    @Test
+    fun `primary fails and tailnet succeeds`() {
+        val seen = mutableListOf<String>()
+        val routes = selector.order("k", true, listOf("https://10.0.0.2/", "https://100.64.0.2/")) { url ->
+            seen += url
+            url.contains("100.64")
+        }
+        assertEquals(listOf(HostRoute.LAN, HostRoute.REMOTE), routes)
+        assertEquals(listOf("https://10.0.0.2/", "https://100.64.0.2/"), seen)
+        assertEquals("https://100.64.0.2/", selector.lanAddress("k"))
+        var probes = 0
+        selector.order("k", true, listOf("https://10.0.0.2/", "https://100.64.0.2/")) { probes++; true }
+        assertEquals(0, probes)
+    }
+
+    @Test
+    fun `both direct addresses fail then remote`() {
+        val seen = mutableListOf<String>()
+        val routes = selector.order("k", true, listOf("https://10.0.0.2/", "https://100.64.0.2/", "")) { url ->
+            seen += url
+            false
+        }
+        assertEquals(listOf(HostRoute.REMOTE, HostRoute.LAN), routes)
+        assertEquals(listOf("https://10.0.0.2/", "https://100.64.0.2/"), seen)
+        assertEquals(null, selector.lanAddress("k"))
+    }
+
+    @Test
+    fun `network change drops the cached direct address`() {
+        selector.order("k", true, listOf("https://10.0.0.2/", "https://100.64.0.2/")) { it.contains("100.64") }
+        assertEquals("https://100.64.0.2/", selector.lanAddress("k"))
+        selector.onNetworkChanged()
+        assertEquals(null, selector.lanAddress("k"))
+        val seen = mutableListOf<String>()
+        selector.order("k", true, listOf("https://10.0.0.2/", "https://100.64.0.2/")) { url ->
+            seen += url
+            url.contains("10.0")
+        }
+        assertEquals(listOf("https://10.0.0.2/"), seen)
+        assertEquals("https://10.0.0.2/", selector.lanAddress("k"))
+    }
 }

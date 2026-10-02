@@ -52,13 +52,13 @@ import kotlinx.coroutines.withContext
 
 /**
  * 设置 → 某台电脑 → 连接诊断。打开时跑一遍 [diagnosticsRunnerFor]，不删除凭据。
- * [lanUrls] 默认只有主地址，P1.3 可以传入 Tailscale 备用地址。
+ * [lanUrls] 默认是主地址，再加上已保存的 Tailscale 备用地址。
  */
 @Composable
 internal fun ConnectionDiagnosticsPage(
     host: Host,
     onBack: () -> Unit,
-    lanUrls: List<String> = listOf(host.baseUrl),
+    lanUrls: List<String> = host.directLanUrls(),
 ) {
     var report by remember(host.slotKey) { mutableStateOf<DiagnosticsReport?>(null) }
     var running by remember(host.slotKey) { mutableStateOf(true) }

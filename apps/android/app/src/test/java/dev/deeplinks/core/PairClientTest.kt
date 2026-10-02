@@ -1,5 +1,6 @@
 package dev.deeplinks.core
 
+import dev.deeplinks.devices.hostFromPair
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -7,6 +8,40 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PairClientTest {
+
+    @Test
+    fun `qr tailnet address is stored beside the primary`() {
+        assertEquals(
+            "https://100.64.0.8:18640",
+            PairClient.tailnetSpare(
+                listOf("https://192.168.1.10:18640", "https://100.64.0.8:18640"),
+                "https://192.168.1.10:18640",
+            ),
+        )
+        assertEquals(
+            "",
+            PairClient.tailnetSpare(
+                listOf("https://100.64.0.8:18640", "https://192.168.1.10:18640"),
+                "https://100.64.0.8:18640/",
+            ),
+        )
+        assertEquals("", PairClient.tailnetSpare(listOf("https://10.0.0.2:18640"), "https://10.0.0.2:18640"))
+        assertTrue(isTailnetUrl("https://100.127.1.1:18640"))
+        assertTrue(isTailnetUrl("https://[fd7a:115c:a1e0::8]:18640"))
+        assertFalse(isTailnetUrl("https://100.63.1.1:18640"))
+        assertFalse(isTailnetUrl("https://8.8.8.8:18640"))
+        val stored = hostFromPair(
+            "书房",
+            PairClient.Result(
+                baseUrl = "https://192.168.1.10:18640",
+                name = "书房",
+                token = "tok",
+                tailnetUrl = "https://100.64.0.8:18640",
+            ),
+        )
+        assertEquals("https://192.168.1.10:18640", stored.baseUrl)
+        assertEquals("https://100.64.0.8:18640", stored.tailnetUrl)
+    }
 
     @Test
     fun `pair request carries idempotency key on both routes`() {

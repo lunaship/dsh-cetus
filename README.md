@@ -76,7 +76,11 @@
 > [!IMPORTANT]
 > **本项目为独立的社区项目。** DeepLinks 与 DeepSeek 无隶属、授权或背书关系；DeepSeek Harness 的名称与相关标识归各自所有者。问题请在本仓库反馈，不要提交给上游。
 >
-> **项目处于公开 Beta。** 正式支持范围是**可信局域网**；远程连接（DLP/1 中继）为实验性功能。插件、App 与同步协议迭代较快，升级前请看 [`CHANGELOG.md`](CHANGELOG.md) 与 [兼容矩阵](docs/COMPATIBILITY.md)。
+> **项目处于公开 Beta。** 正式支持范围是**可信局域网**。出门优先用 Tailscale（零服务器、直连）；中继（DLP/1）是免配置备选，仍为实验性功能。插件、App 与同步协议迭代较快，升级前请看 [`CHANGELOG.md`](CHANGELOG.md) 与 [兼容矩阵](docs/COMPATIBILITY.md)。
+
+## 远程连接
+
+电脑和手机在同一个 Tailscale 网络里时，配对二维码会自动带上 Tailscale 地址。手机先试局域网主地址，不通再试这条直连，都失败才走中继。不需要自己填 `100.x` 地址，也不用另开一台服务器。中继是没装 Tailscale 时的免配置备选。细节见 [`REMOTE_ACCESS.md`](REMOTE_ACCESS.md)。
 
 ---
 

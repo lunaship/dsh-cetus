@@ -225,12 +225,23 @@ function isPrivateV4Host(host) {
   return n >= 16 && n <= 31
 }
 
+/** 100.64.0.0/10，以及 Tailscale IPv6 `fd7a:115c:a1e0::/48`。 */
+function isTailnetHost(host) {
+  const raw = String(host ?? "").trim().toLowerCase().replace(/^\[|\]$/g, "")
+  if (raw.startsWith("fd7a:115c:a1e0:")) return true
+  const m = /^100\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(raw)
+  if (!m) return false
+  const second = Number(m[1])
+  return second <= 255 && second >= 64 && second <= 127
+}
+
 function listenExposure(config, infos) {
   const listen = { address: "0.0.0.0", port: config.port }
   const networks = (infos ?? [])
     .filter((item) => item?.label)
     .map((item) => ({ label: item.label, category: item.category, url: item.url }))
   const extras = (config.extraUrls ?? []).length > 0
+  // tailnet 不是公网：只有 category "other" 才算不可信地址。
   const publicNets = networks.filter((n) => n.category === "other")
   if (publicNets.length || extras) {
     const warning = extras
@@ -260,10 +271,11 @@ function requireHttpsUrl(raw) {
   }
 }
 
-function classifyUrl(url) {
+export function classifyUrl(url) {
   try {
     const host = new URL(url).hostname
-    if (host === "127.0.0.1" || host === "localhost") return "loopback"
+    if (host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]") return "loopback"
+    if (isTailnetHost(host)) return "tailnet"
     if (isPrivateV4Host(host)) return "private"
     return "other"
   } catch {
@@ -271,9 +283,32 @@ function classifyUrl(url) {
   }
 }
 
-function lanUrls(config) {
-  const urls = new Set()
+/**
+ * 把地址列表收成二维码用的 urls 和面板用的 infos。
+ * 推荐的仍是第一个私网地址；tailnet 留在列表里，作为第二候选，不抢推荐位。
+ * `198.18.` 是基准测试网段，不进码。
+ */
+export function lanInfosForAddresses(addresses, port) {
+  const urls = []
   const urlInfos = []
+  const seen = new Set()
+  for (const address of addresses ?? []) {
+    if (!address || String(address).startsWith("198.18.")) continue
+    const fullUrl = `https://${address}:${port}`
+    if (seen.has(fullUrl)) continue
+    seen.add(fullUrl)
+    urls.push(fullUrl)
+    urlInfos.push({ url: fullUrl, label: String(address), category: classifyUrl(fullUrl), isRecommended: false })
+  }
+  if (urlInfos.length > 0) {
+    const firstPrivate = urlInfos.find((u) => u.category === "private") ?? urlInfos[0]
+    firstPrivate.isRecommended = true
+  }
+  return { urls, infos: urlInfos }
+}
+
+function lanUrls(config) {
+  const addresses = []
   let ifaces = {}
   try {
     ifaces = networkInterfaces() ?? {}
@@ -282,25 +317,17 @@ function lanUrls(config) {
   }
   for (const list of Object.values(ifaces)) {
     for (const iface of list ?? []) {
-      if (iface && iface.family === "IPv4" && !iface.internal && !iface.address.startsWith("198.18.")) {
-        const fullUrl = `https://${iface.address}:${config.port}`
-        urls.add(fullUrl)
-        urlInfos.push({ url: fullUrl, label: iface.address, category: classifyUrl(fullUrl), isRecommended: false })
-      }
+      if (iface && iface.family === "IPv4" && !iface.internal) addresses.push(iface.address)
     }
   }
-  // 推荐排序后第一个私有 IP（手机上最容易识别的入口）
-  if (urlInfos.length > 0) {
-    const firstPrivate = urlInfos.find((u) => u.category === "private") ?? urlInfos[0]
-    firstPrivate.isRecommended = true
-  }
+  const built = lanInfosForAddresses(addresses, config.port)
   for (const extra of config.extraUrls ?? []) {
     const httpsUrl = requireHttpsUrl(extra)
-    if (!httpsUrl) continue
-    urls.add(httpsUrl)
-    urlInfos.push({ url: httpsUrl, label: httpsUrl, category: "extra", isRecommended: false })
+    if (!httpsUrl || built.urls.includes(httpsUrl)) continue
+    built.urls.push(httpsUrl)
+    built.infos.push({ url: httpsUrl, label: httpsUrl, category: "extra", isRecommended: false })
   }
-  return { urls: [...urls], infos: urlInfos }
+  return built
 }
 
 function pairInfo(config, state, certFingerprint) {
