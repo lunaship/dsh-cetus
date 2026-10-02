@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**上下文注入**
+
+- 用户消息里提到 CLAUDE.md、AGENTS.md，或正文中间出现 “Instructions from:”，不再被折叠成上下文注入。只认结构性标记（system-reminder、available_skills、goal_round 及其 HTML 转义），以及以 “Current runtime context” / “Current DSH file policy” 开头的文本。插件与 App 共用 `testdata/context-injection-cases.json`。
+
 **界面修正（小米 15 / Android 16 真机反馈，方案 A）**
 
 - 聊天页顶栏、底部输入区改成实底（与页面同色），不再是半透明条。顶栏下沿在内容滚到下面时画一条细线；底部实底上沿留 16dp 渐变。聊天页去掉边缘渐隐（原来用白色渐隐压在灰底上，出现白雾带）。
