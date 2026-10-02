@@ -13,9 +13,12 @@ import dev.deeplinks.native.DshSpace
 import dev.deeplinks.core.ModelTier
 import dev.deeplinks.core.TierGap
 import dev.deeplinks.core.TierPick
+import dev.deeplinks.native.EstimatedCost
 import dev.deeplinks.native.HomeBalanceBanner
 import dev.deeplinks.native.HomeBalancePreview
+import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.ModelTierBar
+import dev.deeplinks.native.UsagePanel
 
 @PreviewTest
 @Preview(name = "balance alert light zh", showBackground = true, widthDp = 412, heightDp = 120)
@@ -57,6 +60,23 @@ internal fun ModelTiersDarkEn() {
                 currentModel = "flash",
                 currentEffort = "low",
                 onPick = { _, _, _ -> },
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "usage estimate light zh", showBackground = true, widthDp = 412, heightDp = 280)
+@Composable
+internal fun UsageEstimateLightZh() {
+    ShotFrame(dark = false, english = false) {
+        Column(Modifier.fillMaxSize().background(Dsh.bgBase).padding(DshSpace.s16)) {
+            UsagePanel(
+                MobileSessionStats(
+                    uncachedInputTokens = 1_200,
+                    outputTokens = 340,
+                    estimatedCost = EstimatedCost(0.42, "CNY", "2026-10-01", "builtin"),
+                ),
             )
         }
     }

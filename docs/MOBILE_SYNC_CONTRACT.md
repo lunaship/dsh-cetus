@@ -146,6 +146,10 @@ Host 挂载了该服务时 bootstrap / SSE `ready` 下发：
 
 禁止靠无限断开重连修补缺口。
 
+## 预估花费
+
+`GET /dsh-link/mobile/sessions/:id/history` 的 `stats` 在能计价时多一个 `estimatedCost`：`{ amount, currency, priceDate, source }`。`source` 为 `host`（模型对象自带价格）或 `builtin`（插件内置官方价表）。未知模型或 Host 与内置表都没有价格时省略该字段，App 只显示 token。旧 App 忽略这个字段。金额是估算，不并入余额。
+
 ## 快照与增量
 
 - 历史 REST 是快照；SSE `message` 是增量。
