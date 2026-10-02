@@ -2248,7 +2248,7 @@ fun WorkspaceScreen(
                 onRetry = { streamClient?.reconnect() },
             )
             if (viewMode == "chat" && currentSessionId != null) {
-                ChatStickySummary(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl.goal.value, workspaceViewModel.sessionControl)
+                SessionChromeGoals(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl)
             }
             } // 顶部 chrome 结束
             DshEdgeFades(topChromeDp + DshEdgeFadeDefaults.overhang, bottomChromeDp + DshSpace.s24, viewMode != "chat" || contentUnderTop, viewMode != "chat" || listState.canScrollForward, Dsh.bgCard, chrome.backdrop)

@@ -34,6 +34,7 @@ import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
 import dev.deeplinks.core.goalActiveLabel
 import dev.deeplinks.core.goalBlockedLabel
+import dev.deeplinks.core.goalCompleteLabel
 import dev.deeplinks.core.goalClear
 import dev.deeplinks.core.goalClearMessage
 import dev.deeplinks.core.goalClearTitle
@@ -172,6 +173,7 @@ private fun QueuedPromptRow(
 internal fun goalPhaseLabel(phase: String): String = when (phase) {
     "paused" -> L.goalPausedLabel
     "blocked" -> L.goalBlockedLabel
+    "complete" -> L.goalCompleteLabel
     else -> L.goalActiveLabel
 }
 
@@ -252,7 +254,7 @@ internal fun parseGoalRounds(raw: String): Int? {
 }
 
 @Composable
-private fun GoalEditDialog(goal: SessionGoal, saving: Boolean, onDismiss: () -> Unit, onSave: (String, Int?) -> Unit) {
+internal fun GoalEditDialog(goal: SessionGoal, saving: Boolean, onDismiss: () -> Unit, onSave: (String, Int?) -> Unit) {
     var objective by remember(goal.ref) { mutableStateOf(goal.objective) }
     var rounds by remember(goal.ref) { mutableStateOf(goal.maxGoalRounds?.toString().orEmpty()) }
     val parsedRounds = parseGoalRounds(rounds)
