@@ -47,6 +47,7 @@ fun hostFromPair(name: String, result: PairClient.Result): Host {
         token = result.token,
         deviceId = result.deviceId,
         certFingerprint = result.certFingerprint,
+        tailnetUrl = result.tailnetUrl,
     )
     return result.remote?.let(host::withRemote) ?: host
 }

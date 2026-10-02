@@ -19,6 +19,8 @@ data class Host(
     val remoteHandle: String = "",
     val remoteKey: String = "",
     val remoteOuterPin: String = "",
+    /** 二维码里的 Tailscale 备用直连地址。旧数据没有这个字段，读出来是空串。 */
+    val tailnetUrl: String = "",
 ) {
     val hasRemote: Boolean
         get() = remoteEndpoint.isNotBlank() && remoteRouteId.isNotBlank() && remoteHandle.isNotBlank() && remoteKey.isNotBlank()
@@ -33,6 +35,14 @@ data class Host(
      */
     val slotKey: String
         get() = "lan|$name|$baseUrl"
+
+    /** 直连候选：主地址在前，不同的 Tailscale 备用地址在后。 */
+    fun directLanUrls(): List<String> {
+        val spare = tailnetUrl.trim()
+        if (spare.isEmpty()) return listOf(baseUrl)
+        if (spare.trimEnd('/').equals(baseUrl.trimEnd('/'), ignoreCase = true)) return listOf(baseUrl)
+        return listOf(baseUrl, spare)
+    }
 
     fun withRemote(route: RemoteRoute): Host = copy(
         remoteEndpoint = route.endpoint,
@@ -225,7 +235,8 @@ object HostStore {
                     .put("remoteRouteId", h.remoteRouteId)
                     .put("remoteHandle", h.remoteHandle)
                     .put("remoteKey", h.remoteKey)
-                    .put("remoteOuterPin", h.remoteOuterPin),
+                    .put("remoteOuterPin", h.remoteOuterPin)
+                    .put("tailnetUrl", h.tailnetUrl),
             )
         }
         return arr.toString()
@@ -250,6 +261,7 @@ object HostStore {
                     remoteHandle = o.optString("remoteHandle"),
                     remoteKey = o.optString("remoteKey"),
                     remoteOuterPin = o.optString("remoteOuterPin"),
+                    tailnetUrl = o.optString("tailnetUrl"),
                 )
             }
         } catch (e: Exception) {

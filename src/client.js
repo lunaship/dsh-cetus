@@ -331,6 +331,16 @@ const createPanelModule = (require) => {
 
   // ─── 连接码 ──────────────────────────────────────────────────────────────
 
+  function PairAddresses({ infos }) {
+    const items = (Array.isArray(infos) ? infos : []).filter((item) => item?.label && item.category !== 'loopback')
+    if (!items.length) return null
+    return h('div', { className: 'dl-routes' },
+      items.map((item, index) => h('span', { key: item.url || String(index), className: 'dl-route' },
+        item.category === 'tailnet' ? `${item.label} · Tailscale` : item.label,
+      )),
+    )
+  }
+
   function pairHint(remote) {
     if (remote?.state === 'ready') return '扫一次就行：在家自动走局域网，外出自动走远程。'
     if (remote?.state === 'connecting') return '远程连上后，这张码会自动带上远程能力。'
@@ -377,6 +387,7 @@ const createPanelModule = (require) => {
               h(Dot, { tone: remoteRoute.tone, live: remoteRoute.tone === 'warn' }),
               remoteReady ? '远程' : remote?.state === 'off' || !remote ? '远程未开启' : '远程连接中'),
           ),
+          h(PairAddresses, { infos: info.infos }),
           h('p', { className: 'dl-pair-hint' },
             pairHint(remote),
             left !== null ? h('span', { className: 'dl-expiry' }, ` ${expired ? '正在换新码…' : `${formatCountdown(left)} 后换新码。`}`) : null,

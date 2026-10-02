@@ -42,7 +42,7 @@ function lanInfo() {
     urls: ["https://192.168.1.10:18640", "https://100.64.0.10:18640"],
     infos: [
       { url: "https://192.168.1.10:18640", label: "192.168.1.10", category: "private", isRecommended: true },
-      { url: "https://100.64.0.10:18640", label: "100.64.0.10", category: "other", isRecommended: false },
+      { url: "https://100.64.0.10:18640", label: "100.64.0.10", category: "tailnet", isRecommended: false },
     ],
     pairingCode: "123456",
     certFingerprint: "aa11bb22cc33dd44ee55ff6677889900aa11bb22cc33dd44ee55ff6677889900",

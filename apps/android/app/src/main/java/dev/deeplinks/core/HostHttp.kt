@@ -206,18 +206,21 @@ object HostHttp {
         remoteOverride: RemoteRoute? = null,
         onCall: ((Call) -> Unit)? = null,
     ): Response {
-        val url = host.baseUrl.trimEnd('/') + request.path
-        // 明文 HTTP 不允许：局域网自签证书场景必须走钉死指纹的 HTTPS
-        require(url.startsWith("https://")) { "拒绝明文 HTTP，仅支持 HTTPS" }
         val key = routeKey(host)
         val remote = remoteOverride ?: host.remoteRoute()
         val routes = forceRoute?.let { listOf(it) }
-            ?: selector.order(key, remote != null, { NetworkTransport.lanCapable }, { probeLan(host) })
+            ?: selector.order(key, remote != null, host.directLanUrls(), { NetworkTransport.lanCapable }) { url ->
+                probeLanUrl(url, host.certFingerprint)
+            }
         // S7：第一次选路完成，记下走的是局域网还是远程。
         if (firstRouteLogged.compareAndSet(false, true)) {
             StartupTrace.mark("first_route", routes.first().name)
         }
         return attemptWithFailover(key, routes, request.body != null) { route ->
+            val base = if (route == HostRoute.LAN) selector.lanAddress(key) ?: host.baseUrl else host.baseUrl
+            val url = base.trimEnd('/') + request.path
+            // 明文 HTTP 不允许：局域网自签证书场景必须走钉死指纹的 HTTPS
+            require(url.startsWith("https://")) { "拒绝明文 HTTP，仅支持 HTTPS" }
             try {
                 val response = if (route == HostRoute.REMOTE) {
                     executeRemote(host, remote ?: throw IOException("no remote route"), request, url, key, onCall)
@@ -424,10 +427,9 @@ object HostHttp {
     /**
      * 局域网探测（RFC §7.2 第 3、4 条）：TCP 连接（800 毫秒）+ 钉扎证书的 TLS 握手，总预算 1.2 秒，
      * 不发送任何 HTTP、配对码或 Token。证书不符 = 这个地址不是这台电脑（咖啡馆同网段、DHCP
-     * 换了机器），算不通，交给远程——两条路钉扎同一张证书，不存在降级攻击面。
+     * 换了机器），算不通，交给远程——主地址和 Tailscale 备用地址钉扎同一张证书，不存在降级攻击面。
+     * 选路按主地址、备用地址的顺序调用本函数，成功的那条记在 [RouteSelector.lanAddress]。
      */
-    internal fun probeLan(host: Host): Boolean = probeLanUrl(host.baseUrl, host.certFingerprint)
-
     internal fun probeLanUrl(baseUrl: String, certFingerprint: String): Boolean =
         probeLanDetail(baseUrl, certFingerprint).ok
 

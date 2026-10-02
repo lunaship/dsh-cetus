@@ -7,7 +7,7 @@ import org.json.JSONObject
 /**
  * 把 [DiagnosticsRunner] 接到现有传输上。
  *
- * 局域网地址列表由调用方传入（P1.2 只有主地址；P1.3 可以加上 Tailscale 备用地址）。
+ * 局域网地址列表由调用方传入。诊断页默认带上主地址和 Tailscale 备用地址。
  * 证书不符只返回结果，不删除、不吊销本机凭据。
  */
 internal fun diagnosticsRunnerFor(host: Host, lanUrls: List<String>): DiagnosticsRunner {

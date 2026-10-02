@@ -102,6 +102,34 @@ class HostStoreTest {
         assertEquals("老设备", parsed[0].name)
         assertEquals("https://1:18640", parsed[0].baseUrl)
         assertEquals("", parsed[0].certFingerprint)
+        assertEquals("", parsed[0].tailnetUrl)
+    }
+
+    @Test
+    fun `旧数据没有 tailnetUrl 时备用地址为空且槽位不变`() {
+        val legacy = """[{"name":"书房","baseUrl":"https://10.0.0.2:18640","token":"tok","deviceId":"dev"}]"""
+        val parsed = HostStore.hostsFromJson(legacy)
+        assertEquals("", parsed[0].tailnetUrl)
+        assertEquals("lan|书房|https://10.0.0.2:18640", parsed[0].slotKey)
+        assertEquals(listOf("https://10.0.0.2:18640"), parsed[0].directLanUrls())
+        val again = HostStore.hostsFromJson(HostStore.hostsToJson(parsed))
+        assertEquals("", again[0].tailnetUrl)
+    }
+
+    @Test
+    fun `tailnetUrl 往返且与主地址不同时排在后面`() {
+        val host = Host(
+            "书房",
+            "https://10.0.0.2:18640",
+            "tok",
+            tailnetUrl = "https://100.64.0.8:18640",
+        )
+        assertEquals(listOf(host), HostStore.hostsFromJson(HostStore.hostsToJson(listOf(host))))
+        assertEquals(
+            listOf("https://10.0.0.2:18640", "https://100.64.0.8:18640"),
+            host.directLanUrls(),
+        )
+        assertEquals(listOf(host.baseUrl), host.copy(tailnetUrl = host.baseUrl).directLanUrls())
     }
 
     @Test
