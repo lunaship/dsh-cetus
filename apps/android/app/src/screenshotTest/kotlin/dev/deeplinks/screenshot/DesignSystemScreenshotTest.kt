@@ -200,7 +200,7 @@ import dev.deeplinks.native.ui.DshTextTabs
  */
 
 @Composable
-private fun ShotFrame(dark: Boolean, english: Boolean = false, content: @Composable () -> Unit) {
+internal fun ShotFrame(dark: Boolean, english: Boolean = false, content: @Composable () -> Unit) {
     // E1：直接读全局 LocaleManager.strings 的组件（首页副标题、审批卡、时间标签等）
     // 不会因为注入本地 LocalDshStrings 而变语言；渲染环境（layoutlib）没有可用的
     // SharedPreferences，所以走 setLanguageForPreview 只切内存态，英文预览不混中文。
