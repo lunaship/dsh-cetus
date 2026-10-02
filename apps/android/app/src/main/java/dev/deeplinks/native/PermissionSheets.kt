@@ -1,87 +1,26 @@
 package dev.deeplinks.native
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.AppSettingsStore
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshListNote
 import dev.deeplinks.native.ui.DshListRetry
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.ui.DshListSection
 import dev.deeplinks.native.ui.DshListTrailing
 import dev.deeplinks.native.ui.DshSheet
-import dev.deeplinks.native.util.SessionListKind
-import dev.deeplinks.native.util.catalogKind
-import dev.deeplinks.native.util.sessionShowsRefreshBanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// ---------- Agent 预设选择（新会话 compose 阶段） ----------
-
-@Composable
-internal fun AgentPresetPickerSheet(
-    presets: List<MobileAgentPreset>,
-    currentId: String,
-    loading: Boolean,
-    error: String?,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit,
-    onSelect: (String) -> Unit,
-) {
-    val selectedPreset = presets.firstOrNull { it.id == currentId }
-    DshSheet(
-        onDismiss = onDismiss,
-        title = selectedPreset?.let { presetDisplayName(it.id, it.name) } ?: L.defaultHarnessPreset,
-        subtitle = L.chooseAgentPresetDesc,
-    ) {
-        val presetKind = catalogKind(
-            hasItems = presets.isNotEmpty(),
-            initialLoad = loading && presets.isEmpty(),
-            hasError = error != null,
-        )
-        when (presetKind) {
-            SessionListKind.Loading -> DshListSection { DshListNote(L.loadingPresets) }
-            SessionListKind.Error -> DshListSection { DshListRetry(error ?: L.noAgentPresets, onRetry) }
-            SessionListKind.Empty -> DshListSection { DshListNote(L.noAgentPresets) }
-            SessionListKind.Content -> Column(
-                modifier = Modifier
-                    .heightIn(max = 480.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                DshListSection {
-                    if (sessionShowsRefreshBanner(presets.isNotEmpty(), error != null)) {
-                        DshListRetry(error ?: L.loadFailed, onRetry)
-                    }
-                    presets.forEach { preset ->
-                        val title = presetDisplayName(preset.id, preset.name)
-                        DshListRow(
-                            title = title,
-                            subtitle = presetDisplayDescription(preset.id, preset.description).ifBlank { null },
-                            value = preset.id.takeIf { it != title },
-                            onClick = { onSelect(preset.id) },
-                            trailing = if (preset.id == currentId) DshListTrailing.Check else DshListTrailing.None,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 // ---------- 权限选择弹层（WI-004：真实写入服务端 permission.defaultPreset） ----------
 
 @Composable
