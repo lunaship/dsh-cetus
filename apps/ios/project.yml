@@ -41,6 +41,9 @@ targets:
       - path: App
         excludes:
           - Info.plist
+          - Demo/fixtures/components.json
+      - path: App/Demo/fixtures
+        buildPhase: resources
     dependencies:
       - target: NotificationService
         embed: true

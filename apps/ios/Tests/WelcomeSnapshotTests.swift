@@ -3,13 +3,13 @@ import SwiftUI
 import XCTest
 @testable import DeepLinks
 
-final class EmptyRootSnapshotTests: XCTestCase {
+final class WelcomeSnapshotTests: XCTestCase {
     override func setUp() {
         super.setUp()
         isRecording = ProcessInfo.processInfo.environment["RECORD_SNAPSHOTS"] == "1"
     }
 
-    func testEmptyRootLight() {
+    func testWelcomeLight() {
         let view = RootView()
         assertSnapshot(
             of: view,
