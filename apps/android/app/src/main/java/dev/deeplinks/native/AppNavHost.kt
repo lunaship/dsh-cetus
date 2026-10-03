@@ -27,10 +27,15 @@ import androidx.navigation.compose.rememberNavController
 import dev.deeplinks.core.DeviceName
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostStore
+import dev.deeplinks.core.HostHttp
 import dev.deeplinks.core.L
+import dev.deeplinks.core.pairRejected
 import dev.deeplinks.core.stableIdentity
 import dev.deeplinks.devices.DevicesScreen
+import dev.deeplinks.devices.PairApprovalPoller
+import dev.deeplinks.devices.PairFailedScreen
 import dev.deeplinks.devices.PairQrOutcome
+import dev.deeplinks.devices.PairWaitingScreen
 import dev.deeplinks.devices.pairFromQrText
 import dev.deeplinks.native.util.EXTRA_SHARE_IMAGE
 import dev.deeplinks.native.util.EXTRA_SHARE_IMAGES
@@ -50,6 +55,16 @@ object AppRoute {
 
     /** 批次 2：设置从独立 Activity 并入应用级导航（SettingsActivity 仅剩兼容壳）。 */
     const val SETTINGS = "settings"
+
+    /** v4 1.5：配对已登记，等电脑批准。 */
+    const val PAIR_WAITING = "pairWaiting"
+
+    /** v4 1.6：配对失败（原因 + 重新扫码）。 */
+    const val PAIR_FAILED = "pairFailed"
+
+    /** 扫码页把失败原因带回来（[PAIR_FAILED]）。 */
+    const val EXTRA_PAIR_MESSAGE = "pairFailMessage"
+    const val EXTRA_PAIR_NETWORK = "pairFailNetwork"
 }
 
 /**
@@ -86,7 +101,14 @@ internal fun AppNavHost(
     fun reloadHost() {
         currentHost = HostStore.current(context)
     }
-    LaunchedEffect(liveIntent) { reloadHost() }
+    /** 1.6 失败页要展示的原因：站内配对直接写这里，扫码页经 Intent extras 带回。 */
+    var pairFailure by remember { mutableStateOf<PairQrOutcome.Failed?>(null) }
+    LaunchedEffect(liveIntent) {
+        reloadHost()
+        liveIntent.getStringExtra(AppRoute.EXTRA_PAIR_MESSAGE)?.let { message ->
+            pairFailure = PairQrOutcome.Failed(message, network = liveIntent.getBooleanExtra(AppRoute.EXTRA_PAIR_NETWORK, false))
+        }
+    }
 
     /** 配对成功或点开设备后进入工作区：工作区已在返回栈里就退回去，不叠第二份。 */
     fun openWorkspace() {
@@ -139,6 +161,15 @@ internal fun AppNavHost(
         return false
     }
 
+    /** 工作区内的「设备与配对」面板；没有已配对电脑时工作区自己会退回设备页。 */
+    var deviceSheetOpen by remember { mutableStateOf(false) }
+
+    fun openPairFailed(failure: PairQrOutcome.Failed) {
+        pairFailure = failure
+        deviceSheetOpen = false
+        navController.navigate(AppRoute.PAIR_FAILED) { launchSingleTop = true }
+    }
+
     /**
      * M1：二维码文本 → 与扫码完全相同的配对路径（[pairFromQrText]），成功后落库、进 Workspace。
      * 从相册识别与扫码都汇到这里。
@@ -148,22 +179,23 @@ internal fun AppNavHost(
             scope.launch {
                 val outcome = withContext(Dispatchers.IO) { pairFromQrText(text, DeviceName.of(context)) }
                 when (outcome) {
-                    is PairQrOutcome.Failed -> onError(outcome.message)
+                    is PairQrOutcome.Failed -> if (outcome.badQr) {
+                        onError(outcome.message)
+                    } else {
+                        openPairFailed(outcome)
+                    }
                     is PairQrOutcome.Paired -> if (persistPairHost(outcome.host, onError)) {
                         onSuccess(outcome.host)
                         openWorkspace()
                     }
                     is PairQrOutcome.Pending -> if (persistPairHost(outcome.host, onError)) {
                         onSuccess(outcome.host)
-                        onHostNotice(L.pairPendingApprovalToast)
-                        openWorkspace()
+                        reloadHost()
+                        navController.navigate(AppRoute.PAIR_WAITING) { launchSingleTop = true }
                     }
                 }
             }
         }
-
-    /** 工作区内的「设备与配对」面板；没有已配对电脑时工作区自己会退回设备页。 */
-    var deviceSheetOpen by remember { mutableStateOf(false) }
 
     NavHost(
         navController = navController,
@@ -227,6 +259,50 @@ internal fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onOpenDevices = {
                     navController.navigate(AppRoute.DEVICES) { launchSingleTop = true }
+                },
+            )
+        }
+
+        composable(AppRoute.PAIR_WAITING) {
+            val host = currentHost
+            if (host == null) {
+                LaunchedEffect(Unit) { navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } } }
+            } else {
+                PairApprovalPoller(
+                    host = host,
+                    onApproved = {
+                        navController.navigate(AppRoute.WORKSPACE) { popUpTo(0) { inclusive = true } }
+                    },
+                    onRejected = {
+                        HostStore.remove(context, host)
+                        reloadHost()
+                        openPairFailed(PairQrOutcome.Failed(L.pairRejected))
+                    },
+                )
+                PairWaitingScreen(
+                    computerName = host.name,
+                    deviceName = remember { DeviceName.of(context) },
+                    viaRemote = remember(host) { HostHttp.isViaRemote(host) },
+                    onCancel = {
+                        HostStore.remove(context, host)
+                        reloadHost()
+                        navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } }
+                    },
+                )
+            }
+        }
+
+        composable(AppRoute.PAIR_FAILED) {
+            val failure = pairFailure ?: PairQrOutcome.Failed(L.allAddressesFailed, network = true)
+            PairFailedScreen(
+                message = failure.message,
+                network = failure.network,
+                onRescan = onScan,
+                onBack = {
+                    pairFailure = null
+                    if (!navController.popBackStack()) {
+                        navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } }
+                    }
                 },
             )
         }

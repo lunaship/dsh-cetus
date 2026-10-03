@@ -616,6 +616,9 @@ fun WorkspaceScreen(
     var appliedShareSeq by rememberSaveable { mutableStateOf(0L) }
     var appliedShareOwner by rememberSaveable { mutableStateOf("") }
     var shareConsumed by rememberSaveable { mutableStateOf(false) }
+    var sharePickerSeq by rememberSaveable { mutableStateOf(0L) } // 非 0：弹出「发到」选择（v4 8.3）
+    var shareTargetSeq by rememberSaveable { mutableStateOf(0L) }
+    var shareTargetId by rememberSaveable { mutableStateOf(SHARE_TARGET_NEW) }
     /**
      * 外部分享带入的、以 `/` 开头的文本：系统分享不可信，不能让它直接变成可一键触发的命令入口，
      * 只有用户手动编辑（不再等于该快照）后才恢复命令候选。
@@ -662,9 +665,8 @@ fun WorkspaceScreen(
         // N1/K3：进入草稿态且对话页可见时才请求聚焦（经 InputBar 内部的令牌处理）。
         if (composerFocusShouldEmit(ComposerFocusSource.NewTaskDraft)) composerFocusToken++
     }
-    LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey) {
+    LaunchedEffect(initialShareSeq, initialShareText, initialShareImages, initialShareNotice, shareOwnerKey, shareTargetSeq) {
         if (initialShareText.isNullOrBlank() && initialShareImages.isEmpty() && initialShareNotice.isNullOrBlank()) return@LaunchedEffect
-        openNewTaskDraft() // 分享进来的内容落在草稿态输入框里预填（N1）
         val token = if (initialShareSeq != 0L) {
             initialShareSeq
         } else {
@@ -673,6 +675,11 @@ fun WorkspaceScreen(
         // 已消费的分享不再重复应用；但冷启动时分享先落在「新会话」owner，会话列表随后加载并
         // switchComposer 会清空输入框——因此 owner 从空变为真实会话时需要再应用一次。
         if (shareConsumed && appliedShareSeq == token) return@LaunchedEffect
+        // v4 8.3：先选发到哪（SharePickerSheet）；选会话时切过去，owner 变化后本 effect 重跑再预填
+        val onlyNotice = initialShareText.isNullOrBlank() && initialShareImages.isEmpty() // 只有提示（如文件不支持）就不必选
+        if (shareTargetSeq != token) return@LaunchedEffect run { if (onlyNotice) { shareTargetId = SHARE_TARGET_NEW; shareTargetSeq = token } else sharePickerSeq = token }
+        if (shareTargetId != SHARE_TARGET_NEW && currentSessionId != shareTargetId) return@LaunchedEffect selectSession(shareTargetId)
+        if (shareTargetId == SHARE_TARGET_NEW) openNewTaskDraft() else showPhoneChat() // 新任务落在草稿态输入框里预填（N1）
         if (appliedShareSeq == token && appliedShareOwner == shareOwnerKey) return@LaunchedEffect
         appliedShareSeq = token
         appliedShareOwner = shareOwnerKey
@@ -700,6 +707,7 @@ fun WorkspaceScreen(
             composerActionError = initialShareNotice
         }
     }
+    if (sharePickerSeq != 0L) SharePickerSheet(sessions, initialShareText, initialShareImages.size) { target -> shareTargetId = target; shareTargetSeq = sharePickerSeq; sharePickerSeq = 0L }
 
     LaunchedEffect(host.slotKey, currentSessionId, isSending) {
         if (isSending) return@LaunchedEffect

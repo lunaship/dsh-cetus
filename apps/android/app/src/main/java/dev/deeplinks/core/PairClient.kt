@@ -179,6 +179,32 @@ object PairClient {
             .put("via", via)
             .put("requestId", requestId)
 
+    /** 待批准配对的轮询结果（v4 1.5）。 */
+    enum class Approval { Approved, Pending, Rejected, Unknown }
+
+    /**
+     * 用配对拿到的 token 访问一个需要鉴权的接口：200 = 已批准；403 + `pending` = 还在等；
+     * 401 = 被拒绝或已超时（插件会删掉这台设备）；其余（网络抖动等）按未知继续等。
+     */
+    fun approvalState(host: Host): Approval = try {
+        HostHttp.execute(
+            host,
+            HostHttp.DshRequest("GET", "/dsh-link/mobile/sessions", connectTimeoutMs = 4_000, readTimeoutMs = 6_000),
+        ).use { response ->
+            val body = runCatching { response.body?.byteStream()?.use { BoundedIo.readText(it, BoundedIo.MAX_HEALTH_BODY_BYTES) } }.getOrNull()
+            approvalFromResponse(response.code, body)
+        }
+    } catch (_: Exception) {
+        Approval.Unknown
+    }
+
+    internal fun approvalFromResponse(code: Int, body: String?): Approval = when {
+        code in 200..299 -> Approval.Approved
+        code == 403 && runCatching { JSONObject(body.orEmpty()).optBoolean("pending") }.getOrDefault(false) -> Approval.Pending
+        code == 401 -> Approval.Rejected
+        else -> Approval.Unknown
+    }
+
     /** 探测主机：在线、暂时不可达，或证书已失效。 */
     fun probe(host: Host): HostHealth {
         val start = System.currentTimeMillis()

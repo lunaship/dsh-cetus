@@ -2,9 +2,9 @@ package dev.deeplinks.devices
 import dev.deeplinks.R
 import dev.deeplinks.native.WorkspaceActivity
 import dev.deeplinks.core.DeviceName
-import dev.deeplinks.core.EXTRA_AUTH_NOTICE
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
+import dev.deeplinks.native.AppRoute
 import dev.deeplinks.core.scanHint
 import dev.deeplinks.core.scanTitle
 import dev.deeplinks.core.LocaleManager
@@ -147,7 +147,7 @@ class ScanActivity : AppCompatActivity() {
     /** 扫码与相册共用的落点：解析 + 配对 + 保存/导航。运行在 [executor] 线程上。 */
     private fun pairAndFinish(text: String) {
         when (val outcome = pairFromQrText(text, DeviceName.of(this))) {
-            is PairQrOutcome.Failed -> scanFailed(outcome.message)
+            is PairQrOutcome.Failed -> if (outcome.badQr) scanFailed(outcome.message) else openPairFailed(outcome)
             is PairQrOutcome.Paired -> saveAndFinish(outcome.host)
             is PairQrOutcome.Pending -> saveAndFinish(outcome.host, pending = true)
         }
@@ -165,23 +165,33 @@ class ScanActivity : AppCompatActivity() {
                 }
             }
             if (pending) {
-                pairingProgress.visibility = View.GONE
-                pairingStatus.text = L.pairPendingApprovalToast
-                pairingOverlay.contentDescription = L.pairPendingApprovalToast
-                pairingOverlay.visibility = View.VISIBLE
-                pairingOverlay.setOnClickListener {
-                    startActivity(
-                        android.content.Intent(this@ScanActivity, DevicesActivity::class.java)
-                            .putExtra(EXTRA_AUTH_NOTICE, L.pairPendingApprovalToast),
-                    )
-                    finish()
-                }
+                // v4 1.5：回到应用内的「等电脑批准」页，由它轮询批准结果。
+                startActivity(mainIntent(AppRoute.PAIR_WAITING))
+                finish()
                 return@runOnUiThread
             }
             startActivity(host.putInto(android.content.Intent(this@ScanActivity, WorkspaceActivity::class.java)))
             finish()
         }
     }
+
+    /** v4 1.6：连不上 / 码过期等配对失败，回应用内失败页（码本身不对仍留在扫码页提示）。 */
+    private fun openPairFailed(failure: PairQrOutcome.Failed) {
+        runOnUiThread {
+            if (isFinishing) return@runOnUiThread
+            startActivity(
+                mainIntent(AppRoute.PAIR_FAILED)
+                    .putExtra(AppRoute.EXTRA_PAIR_MESSAGE, failure.message)
+                    .putExtra(AppRoute.EXTRA_PAIR_NETWORK, failure.network),
+            )
+            finish()
+        }
+    }
+
+    private fun mainIntent(route: String) =
+        android.content.Intent(this, dev.deeplinks.native.MainActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(dev.deeplinks.native.MainActivity.EXTRA_START_ROUTE, route)
 
     private fun showPairingProgress() {
         pairingProgress.visibility = View.VISIBLE
