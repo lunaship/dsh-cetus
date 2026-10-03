@@ -6,15 +6,20 @@
         var body: some View {
             Form {
                 Section {
-                    NavigationLink("Component scenes") {
+                    NavigationLink(L10n.string("settings.scenes", fallback: "Component scenes")) {
                         DemoSceneList()
                     }
                 } footer: {
-                    Text("Bundled fixtures only. These scenes do not use the network.")
-                        .font(DLFont.caption)
+                    Text(
+                        L10n.string(
+                            "settings.scenes.footer",
+                            fallback: "Bundled fixtures only. These scenes do not use the network."
+                        )
+                    )
+                    .font(DLFont.caption)
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle(L10n.string("settings.title", fallback: "Settings"))
         }
     }
 #endif

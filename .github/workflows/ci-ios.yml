@@ -6,11 +6,15 @@ on:
     paths:
       - 'apps/ios/**'
       - '.github/workflows/ci-ios.yml'
+      - 'scripts/check-ios-locales.mjs'
+      - 'scripts/check-ios-locales.test.mjs'
   push:
     branches: [ios/main, main]
     paths:
       - 'apps/ios/**'
       - '.github/workflows/ci-ios.yml'
+      - 'scripts/check-ios-locales.mjs'
+      - 'scripts/check-ios-locales.test.mjs'
 
 permissions:
   contents: read
@@ -29,6 +33,12 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Check locale catalogs
+        working-directory: ${{ github.workspace }}
+        run: |
+          node scripts/check-ios-locales.mjs
+          node --test scripts/check-ios-locales.test.mjs
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app

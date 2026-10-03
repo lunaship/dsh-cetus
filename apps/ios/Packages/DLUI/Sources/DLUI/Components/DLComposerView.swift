@@ -23,16 +23,18 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private var isSyncingText = false
     private var didFinishInit = false
     private var mode: Mode = .composer
+    private var sendTitle = "Send"
 
     private enum Mode {
         case composer
         case decision(status: String, question: String, secondaryTitle: String, primaryTitle: String)
     }
 
-    public init(text: String = "", isEnabled: Bool = true) {
+    public init(text: String = "", isEnabled: Bool = true, sendTitle: String = "Send") {
         super.init(frame: .zero)
         self.text = text
         self.isEnabled = isEnabled
+        self.sendTitle = sendTitle
         glass.translatesAutoresizingMaskIntoConstraints = false
         addSubview(glass)
         NSLayoutConstraint.activate([
@@ -124,7 +126,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         field.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         self.field = field
 
-        let send = dlBarButton(title: "Send", prominent: true, enabled: isEnabled) { [weak self] in
+        let send = dlBarButton(title: sendTitle, prominent: true, enabled: isEnabled) { [weak self] in
             self?.onSubmit?()
         }
         send.setContentHuggingPriority(.required, for: .horizontal)

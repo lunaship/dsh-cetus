@@ -15,7 +15,7 @@ struct DemoSceneList: View {
                 }
             }
         }
-        .navigationTitle("Demo")
+        .navigationTitle(L10n.string("demo.title", fallback: "Demo"))
     }
 }
 
