@@ -1,0 +1,50 @@
+name: CI iOS
+
+on:
+  pull_request:
+    branches: [ios/main, main]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ci-ios.yml'
+  push:
+    branches: [ios/main, main]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ci-ios.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsh-links-ci-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS build
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build Debug
+        run: >
+          xcodebuild
+          -scheme DeepLinks
+          -destination 'generic/platform=iOS Simulator'
+          -configuration Debug
+          build
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
