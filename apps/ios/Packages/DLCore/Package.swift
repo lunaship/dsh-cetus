@@ -7,7 +7,15 @@ let package = Package(
     products: [
         .library(name: "DLCore", targets: ["DLCore"])
     ],
+    dependencies: [
+        .package(path: "../DLModels")
+    ],
     targets: [
-        .target(name: "DLCore")
+        .target(
+            name: "DLCore",
+            dependencies: [
+                .product(name: "DLModels", package: "DLModels")
+            ]
+        )
     ]
 )
