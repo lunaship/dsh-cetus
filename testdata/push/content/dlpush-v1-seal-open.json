@@ -1,0 +1,12 @@
+{
+  "_comment": "PLACEHOLDER — I6.2 fills AES-256-GCM positive cases with aad=\"dlpush/1 content|\"+deviceId.",
+  "status": "placeholder",
+  "algorithm": "AES-256-GCM",
+  "nonce_bytes": 12,
+  "aad_prefix_utf8": "dlpush/1 content|",
+  "wire": {
+    "layout": "nonce||ciphertext||tag",
+    "encoding": "base64-std"
+  },
+  "cases": []
+}

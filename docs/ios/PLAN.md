@@ -1,6 +1,7 @@
 # DeepLinks iOS：从 0 到 1 执行方案
 
-> 状态：已采纳 v1.2（2026-10-03）。
+> 状态：已采纳 v1.3（2026-10-03）。
+> v1.3 变更：`sealed` 定为 JSON 对象；附加数据前缀改为 `dlpush/1 token|` 与 `dlpush/1 content|` 做域分离；I6.2 测试向量路径改为 `testdata/push/hpke/` 与 `testdata/push/content/`。
 > v1.2 变更：HPKE 算法组合定为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305 并规定测试向量；补 7.6 对话默认；设计稿去掉“输入配对码”；RFC 0002 先留在 `ios/main`，阶段 6 随插件 PR 一起进 main。
 > v1.1 变更：I1.5 改为 HTML 设计稿（I1.5a 已完成）+ 模拟器截图验收（I1.5b）；决策栏按钮改为实色；深色 BrandFill 暂定 `#4C66E6`；推送网关部署到维护者的香港服务器；新增执行规则第 11 条（agent 无法本地编译 iOS）。
 > 写给两类读者：维护者（做决定、付费、审核）和执行 PR 的 agent（按编号领取）。
@@ -601,7 +602,8 @@ RFC 必须写清以下内容：
   - KDF：HKDF-SHA256，`0x0001`
   - AEAD：ChaCha20-Poly1305，`0x0003`
   - CryptoKit：`HPKE.Ciphersuite.Curve25519_SHA256_ChachaPoly`（系统预置组合，不自拼）；Go：`hpke.NewSuite(hpke.KEM_X25519_HKDF_SHA256, hpke.KDF_HKDF_SHA256, hpke.AEAD_ChaCha20Poly1305)`。
-  - `info` = UTF-8 `"dlpush/1 token"`；`aad` = UTF-8 `"dlpush/1|" + kid`；每个上下文只封装一条消息（序号 0）。
+  - `info` = UTF-8 `"dlpush/1 token"`；`aad` = UTF-8 `"dlpush/1 token|" + kid`；每个上下文只封装一条消息（序号 0）。
+  - 网关请求里的 `sealed` 字段是 **JSON 对象**（即下面的线上格式），不是把对象序列化后的字符串；网关遇到字符串直接返回 400。
   - 线上格式：`{"v":1,"kid":"…","enc":"<base64url，32 字节>","ct":"<base64url>"}`，无填充 base64url。
   - 算法组合与 `kid` 绑定：将来换组合（如 CryptoKit 的 X-Wing 后量子组合）只能发新 `kid`，不在同一 `kid` 下协商。网关遇到未知 `kid` 返回 400，不尝试其他组合。
   - 选择理由：两端都有现成实现、RFC 9180 附录 A.2 有该组合的官方测试向量、ChaCha20 在所有 CPU 上都是常数时间。
@@ -612,7 +614,8 @@ RFC 必须写清以下内容：
 
 **内容加密**
 
-- 插件：`ct = AES-256-GCM(K, nonce=随机 12 字节, aad="dlpush/1|" + deviceId, plaintext=JSON)`。
+- 插件：`ct = AES-256-GCM(K, nonce=随机 12 字节, aad="dlpush/1 content|" + deviceId, plaintext=JSON)`。
+- 附加数据的域分离：token 封装用 `"dlpush/1 token|"`，内容加密用 `"dlpush/1 content|"`，两者前缀不同，不得共用同一个构造函数；两端各有一条负例测试：用另一种前缀解密必须失败。
 - 明文 JSON：`{ v:1, type: "approval"|"question"|"completed"|"failed"|"stopped", sessionId, title, tool?, ts }`。`tool` 只给审批，且锁屏不显示。
 - NSE：解密成功 → 替换标题与正文；`ts` 超过 15 分钟的视为过期，显示通用文案；解密失败 → 显示通用文案“DeepLinks 有新的任务动态”。
 
@@ -650,7 +653,7 @@ RFC 必须写清以下内容：
 - 依赖：`sideshow/apns2`（MIT，token 认证）、`cloudflare/circl`（HPKE）。
 - 结构：`cmd/dlpush`（入口）、`internal/hpke`、`internal/apns`、`internal/limit`、`internal/http`。
 - 配置（环境变量）：`DLPUSH_LISTEN`、`DLPUSH_HPKE_KEYS`（kid → 私钥文件路径）、`APNS_KEY_P8_PATH`、`APNS_KEY_ID`、`APNS_TEAM_ID`、`APNS_BUNDLE_ID`、`DLPUSH_RATE_*`。
-- 测试：HPKE 向量（与 iOS 共用 `testdata/push/*.json`）、限流、APNs 假服务器（HTTP/2）、410 透传、模糊测试。
+- 测试：HPKE 向量（与 iOS 共用 `testdata/push/hpke/`）、内容加密向量（`testdata/push/content/`）、限流、APNs 假服务器（HTTP/2）、410 透传、模糊测试。
 - 门禁：`gofmt -l . && go vet ./... && go build ./... && go test ./... -race`。
 
 ### I6.3 插件推送出口（对 main，维护者安全审查后合并）
@@ -809,6 +812,7 @@ RFC 必须写清以下内容：
 | — | #73（合入 main） | PLAN 升为已采纳 v1.2；设计稿整体替换（去掉输入配对码）；随后 merge 进 `ios/main`（`4e6cf1f`）。 |
 | I1.3 | #74 | 按 PLAN v1.2 修订 RFC 0002：锁定 HPKE 套件与线上格式；新增 `testdata/push/hpke/` 占位与说明。 |
 | I1.2 | #75 | `page-mapping.md` 补 7.6 对话默认；冲突清单标注输入配对码已与设计稿对齐。停下等审核四份文档与 BrandFill。 |
+
 
 ---
 
