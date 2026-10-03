@@ -2,7 +2,7 @@
 
 **审批瀑布**
 
-- DSH `0.1.7-alpha.1` 的钩子复验未能完成：云端隔离 host 可以配对、开会话、收 SSE，但没有 `DEEPSEEK_API_KEY`，回合在工具调用前以 `MISSING_CREDENTIAL` 结束。探针与 `GET .../requests` 都是空的，不能据此判断钩子触发还是不触发。详见 `docs/COMPATIBILITY.md`。
+- DSH `0.1.7-alpha.1` 上复验通过：隔离 host + 临时探针证实 `approval/request` 与 `user-questions/request` 都会触发；手机 API 可提交「允许一次」与澄清答案，写文件在批准后完成。默认 `workspace-write` 下工作区写入未出审批；`read-only` 下 `write` 会出审批。详见 `docs/COMPATIBILITY.md`。
 
 **重设计 v4**
 

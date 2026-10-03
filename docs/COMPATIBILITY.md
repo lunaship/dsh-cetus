@@ -236,21 +236,19 @@ does not hard-code moving `main` revisions or ahead counts.
 影响：`rt.requests` 永远为空 → 插件「手机接管审批」在这版上不可达（App 侧因此走 D1-A 的诚实降级：
 只显示「在电脑上处理」，不给批准/拒绝按钮）。
 
-**边界**：只在 CLI 的 `0.1.5-rc.3` 上证实钩子不触发。`0.1.7-alpha.1` 的复验见下一节（2026-10-03，云端未能跑到瀑布）。手机端据此推导
+**边界**：只在 CLI 的 `0.1.5-rc.3` 上证实钩子不触发。`0.1.7-alpha.1` 的复验见下一节（2026-10-03，云端已证实触发）。手机端据此推导
 `awaitingInput`（历史里 `approval/asked` 无配对 `approval/decided`）不受影响，两种基线上都成立。
 
-### 审批瀑布在 `0.1.7-alpha.1` 上未能验证（2026-10-03，云端 Linux VM）
+### 审批瀑布在 `0.1.7-alpha.1` 上触发（2026-10-03，云端 Linux VM）
 
-结论：**未能验证**。不是「触发」，也不是「不触发」。需维护者在本机用已配置模型凭据的 DSH 再跑一遍 I0.1，然后才能决定是否进入阶段 1。
+结论：**触发**。插件 prepend 挂在 `approval/request` 与 `user-questions/request` 上的钩子都会被调用；手机可提交「允许一次」与澄清答案，DSH 会继续执行。
 
 证据（插件源码与 `main` @ `7b9c164` 相同；DSH npm `0.1.7-alpha.1`；Node `v22.22.2`；日期 2026-10-03）：
 
-- 隔离：`DSH_HOME` 指向临时目录，插件 `stateDir` 由 `node scripts/dev-isolated-host.mjs` 放在另一个临时目录（`autoApprove: true`，手机端口 18641）。真实 `~/.dsh` 在这次验证开始前不存在，结束后仍不存在。没有调用吊销。
-- 探针只写在临时插件副本的两个钩子入口（`approval/request`、`user-questions/request`），被调用时向临时文件追加一行时间戳和请求类型。探针没有进仓库。
-- Host 能起来。按 `docs/MOBILE_SYNC_CONTRACT.md` 用证书指纹校验后的 HTTPS 模拟手机：`POST /dsh-link/pair` 200（设备名 `i01-sim`），`POST /dsh-link/mobile/sessions` 201，会话 SSE（`caps=sync2,multiQuestion,requestState`）收到 `ready`。`POST .../prompt` 200，`accepted: true`，正文要求新建一个文件。
-- 模型回合没有走到工具。SSE 上 `assistant/attempt` 与 `turn/end` 的原因都是 `MISSING_CREDENTIAL`：`llm-deepseek: no API key for provider route "deepseek-official"`。环境里没有 `DEEPSEEK_API_KEY`，也没有 DeepSeek 账号。流里没有 `approval/asked`、没有 `tool/call`、没有澄清请求。
-- 观察约 100 秒：探针文件始终为空（0 字节）；`GET .../requests` 一直是 `{ approvals: [], questions: [] }`。因此没有提交「允许一次」。
+- 隔离：`DSH_HOME` 与插件 `stateDir`（`node scripts/dev-isolated-host.mjs`，`autoApprove: true`，手机端口 18641）都在临时目录。真实 `~/.dsh` 始终不存在。没有调用吊销。探针只写在临时插件副本，没有进仓库。`DEEPSEEK_API_KEY` 仅注入隔离 host 进程环境。
+- 按 `docs/MOBILE_SYNC_CONTRACT.md` 用证书指纹校验后的 HTTPS 模拟手机：配对、开会话、SSE（`caps=sync2,multiQuestion,requestState`）。
+- **写文件审批**：默认新会话权限是 `workspace-write` + `ask`，约 45 秒内没有审批。改为 `POST .../permission` preset=`read-only` 后再要求 `write`：探针出现 `approval/request`（tool=`write`），SSE 有 `approval/asked`，`GET .../requests` 出现 pending（字段名 `approvalId`）。`POST .../approval` 提交 `allowed-once` 返回 `accepted: true`。批准后有新的 `tool/result`，磁盘与 `GET .../file` 都能读到写入内容（`confirm-ok`）。
+- **澄清提问**：要求 agent 走系统 user-questions。探针出现 `user-questions/request`，SSE 有 `event: question`，`GET .../requests` 有 pending（字段名 `rpcId`）。`POST .../question` 提交选项答案返回 `accepted: true`。
+- 同日早些时候无 API key 的一轮以 `MISSING_CREDENTIAL` 结束，探针为空——不能据此判断钩子；有凭据后的上述两轮才作数。
 
-缺的东西：能让 `deepseek-official` 真正跑完一轮的凭据（导出 `DEEPSEEK_API_KEY`，或在网页「模型」页写入同一把密钥），然后按 I0.1 再做一次写文件审批和一次澄清提问。桌面环境不是这次的阻塞点：`dsh --profile web --no-open` 在这台 Linux VM 上已经把回环面板拉起来了。PATH 上默认的 Node `v22.14.0` 低于该包声明的 `>=22.19.0`，这次用的是 `v22.22.2`。
-
-在维护者复验之前，不要把「钩子在 `0.1.7-alpha.1` 上触发」或「仍然不触发」写进决策。
+影响：在 `0.1.7-alpha.1` + 本仓当前插件（含 prepend 注册）上，「手机接管审批 / 澄清」可达。默认 `workspace-write` 下工作区内写入可能不经审批；要稳定打到瀑布，测试用 `read-only`（或其它会触发沙箱升级的模式）。
