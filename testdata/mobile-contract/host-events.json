@@ -1,0 +1,26 @@
+[
+  {
+    "event": "session/state",
+    "id": 1,
+    "data": {
+      "type": "session/state",
+      "sessionId": "sess-demo-login",
+      "state": "awaitingApproval",
+      "title": "修复登录超时",
+      "origin": "user",
+      "seq": 1
+    }
+  },
+  {
+    "event": "session/state",
+    "id": 2,
+    "data": {
+      "type": "session/state",
+      "sessionId": "sess-demo-refactor",
+      "state": "running",
+      "title": "重构登录模块",
+      "origin": "user",
+      "seq": 2
+    }
+  }
+]

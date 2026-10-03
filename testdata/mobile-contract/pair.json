@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "token": "<token>",
+  "deviceId": "<deviceId>",
+  "name": "iPhone 15 Pro",
+  "urls": [
+    "https://<lanAddress>:<port>"
+  ],
+  "pending": false
+}

@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "pending": true,
+  "requestId": "<requestId>",
+  "path": "<fixtureRoot>/elsewhere",
+  "inputKind": "absolute-path",
+  "expiresAt": 1767225900000
+}

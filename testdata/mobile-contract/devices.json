@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "devices": [
+    {
+      "deviceId": "<deviceId>",
+      "name": "iPad Pro",
+      "createdAt": 1767225600000,
+      "lastSeenAt": 1767225600000,
+      "via": "lan",
+      "remote": false,
+      "status": "pending",
+      "replacing": false,
+      "pendingExpiresAt": 1767225900000,
+      "pairedFrom": "127.0.0.1"
+    },
+    {
+      "deviceId": "<deviceId>",
+      "name": "iPhone 15 Pro",
+      "createdAt": 1767225600000,
+      "lastSeenAt": 1767225600000,
+      "via": "lan",
+      "remote": false,
+      "status": "active",
+      "replacing": false,
+      "pendingExpiresAt": null,
+      "pairedFrom": ""
+    }
+  ]
+}

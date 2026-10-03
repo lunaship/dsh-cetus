@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "approvals": [
+    {
+      "approvalId": "appr-tool-write-1",
+      "status": "pending",
+      "outcome": null,
+      "sessionId": "sess-demo-login",
+      "createdAt": 1767225600000,
+      "deadlineAt": 1767225900000,
+      "callId": "call-99",
+      "toolName": "write"
+    }
+  ],
+  "questions": [
+    {
+      "rpcId": "<rpcId>",
+      "status": "pending",
+      "sessionId": "sess-demo-login",
+      "createdAt": 1767225600000,
+      "deadlineAt": 1767225900000,
+      "questions": [
+        {
+          "id": "deploy-target",
+          "header": "部署",
+          "question": "要把调整后的配置写到哪个环境？",
+          "options": [
+            {
+              "id": "staging",
+              "label": "测试环境"
+            },
+            {
+              "id": "production",
+              "label": "生产环境"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "graceActive": false
+}
