@@ -53,6 +53,14 @@ fixtures 漂移就是「插件与 App 合同漂移」的信号。
 假 Host 的固定数据本身就是接口的示例载荷：会话 id 是 `sess-demo-*`，审批 id、队列条目 id、
 题目 id 都是可读的固定字符串。
 
+## 透传字段
+
+history 的 `stats`（`sessionStats` / `contextPressure` / `contextBreakdown` / `todos`）、顶层 `goal`，以及
+`todo` 消息里的 `todos`，都是插件把 DSH 投影或事件原样转发（`src/mobile-api.js`、`src/history.js`）。
+它们的形状不由插件定义：假 Host 里的样本按 Android 已在真机上用过的解析来写（`MobileApi.kt`
+`parseMobileSessionStats`、`SessionControl.kt` `parseSessionGoal`、`WorkspaceActivity.kt` 的 todo 解析）。
+`stats.todos` 目前没有客户端读取，样本形状只作占位。DSH 改了这些投影时，要同时更新假 Host 样本和各端解析。
+
 ## 占位串规则
 
 输出必须完全确定（连跑两次一字不差；`--check` 会在任何机器、任何日期通过）。不可避免的

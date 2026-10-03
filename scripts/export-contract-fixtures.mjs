@@ -63,7 +63,7 @@ const loginEvents = [
   { seq: 9, type: "approval/decided", time: t(9), data: { id: "appr-write-config-1", outcome: "allowed-once" } },
   { seq: 10, type: "tool/call", time: t(10), data: { callId: "call-2", name: "write", arguments: { file_path: "config/timeouts.json", content: "{\n  \"connectTimeoutMs\": 5000,\n  \"retries\": 3\n}\n" }, step: 2, turn: 1 } },
   { seq: 11, type: "tool/result", time: t(11), data: { turn: 1, message: { toolCallId: "call-2", role: "tool", content: [{ type: "text", text: "wrote config/timeouts.json" }] } } },
-  { seq: 12, type: "todo/write", time: t(12), data: { todos: [{ text: "复现超时", done: true }, { text: "调整超时配置", done: true }, { text: "补回归测试", done: false }] } },
+  { seq: 12, type: "todo/write", time: t(12), data: { todos: [{ content: "复现超时", status: "completed" }, { content: "调整超时配置", status: "completed" }, { content: "补回归测试", status: "in_progress" }] } },
   { seq: 13, type: "workspace/changes", time: t(13), data: { turn: 1 } },
   { seq: 14, type: "turn/end", time: t(14), data: { turn: 1, reason: { kind: "completed" } } },
   { seq: 15, type: "tool/call", time: t(15), data: { callId: "call-3", name: "shell", arguments: { command: LOGIN_ACTIVITY_LABEL }, step: 12, turn: 2 } },
@@ -101,12 +101,14 @@ const SESSION_EVENTS = {
 const loginProjections = {
   values: {
     tokenUsage: { uncachedInputTokens: 12500, cacheReadTokens: 98000, outputTokens: 3450 },
-    sessionStats: { turns: 2, toolCalls: 3, durationMs: 118000 },
-    contextPressure: { usedTokens: 113950, windowTokens: 1048576, fraction: 0.11 },
-    contextBreakdown: { system: 4200, tools: 18600, history: 91150 },
-    todos: { items: [{ text: "复现超时", done: true }, { text: "调整超时配置", done: true }, { text: "补回归测试", done: false }], revision: 2 },
+    // 以下投影由插件原样透传（src/mobile-api.js），形状以 Android 的解析为准（MobileApi.kt parseMobileSessionStats、
+    // SessionControl.kt parseSessionGoal），不是插件定义的。
+    sessionStats: { turns: 2, steps: 7, llmMs: 61000, toolMs: 42000, ttftMs: 1800, ttftSteps: 7, decodeMs: 52000, decodeTokens: 3450 },
+    contextPressure: { projectedTokens: 113950, contextWindow: 1048576 },
+    contextBreakdown: { systemTokens: 4200, toolsTokens: 18600, messageTokens: 91150 },
+    todos: [{ content: "复现超时", status: "completed" }, { content: "调整超时配置", status: "completed" }, { content: "补回归测试", status: "in_progress" }],
     inbox: { "next-turn": [{ id: "inbox-1", content: [{ type: "text", text: "把重试次数改成 3 次，并在修复后跑一遍回归测试" }], source: { kind: "user" } }] },
-    goal: { id: "goal-login-1", revision: 3, objective: "修复登录接口超时并补齐回归测试", round: 2, maxGoalRounds: 8, phase: "running" },
+    goal: { goal: { id: "goal-login-1", revision: 3, objective: "修复登录接口超时并补齐回归测试", phase: "active", maxGoalRounds: 8 }, roundsStarted: 2 },
   },
 }
 
