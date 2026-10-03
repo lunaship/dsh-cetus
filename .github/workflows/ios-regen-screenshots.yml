@@ -37,7 +37,7 @@ jobs:
       - name: Generate project
         run: xcodegen generate
 
-      - name: Record empty-page baselines
+      - name: Record screenshot baselines
         run: |
           set -eu
           DEST=$(sh scripts/simulator-destination.sh)
@@ -45,7 +45,8 @@ jobs:
           RECORD_SNAPSHOTS=1 xcodebuild \
             -scheme DeepLinks \
             -destination "$DEST" \
-            -only-testing:DeepLinksTests/EmptyRootSnapshotTests \
+            -skip-testing:DeepLinksTests/ModelsLoadTests \
+            -skip-testing:DeepLinksTests/TokenUsageTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

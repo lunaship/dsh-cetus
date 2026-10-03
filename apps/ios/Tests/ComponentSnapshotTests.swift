@@ -1,0 +1,121 @@
+import SnapshotTesting
+import SwiftUI
+import UIKit
+import XCTest
+@testable import DeepLinks
+
+final class ComponentSnapshotTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        isRecording = ProcessInfo.processInfo.environment["RECORD_SNAPSHOTS"] == "1"
+    }
+
+    func testInboxRow() {
+        assertSwiftUI(ComponentScenes.inbox, height: 160)
+    }
+
+    func testStatusSlot() {
+        assertSwiftUI(ComponentScenes.status, height: 80)
+    }
+
+    func testChip() {
+        assertSwiftUI(ComponentScenes.chip, height: 80)
+    }
+
+    func testProcessLine() {
+        assertSwiftUI(ComponentScenes.process, height: 64)
+    }
+
+    func testCodeBlock() {
+        assertSwiftUI(ComponentScenes.code, height: 120)
+    }
+
+    func testEmptyState() {
+        assertSwiftUI(ComponentScenes.empty, height: 320)
+    }
+
+    func testBanner() {
+        assertSwiftUI(ComponentScenes.banner, height: 120)
+    }
+
+    func testComposer() {
+        assertUIKit(ComponentScenes.composer, height: 96)
+    }
+
+    func testDecisionBar() {
+        assertUIKit(ComponentScenes.decision, height: 220)
+    }
+
+    private func assertSwiftUI<V: View>(
+        _ make: (Bool, Bool) -> V,
+        height: CGFloat,
+        file: StaticString = #filePath,
+        testName: String = #function
+    ) {
+        let layout = SwiftUISnapshotLayout.fixed(width: 402, height: height)
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let dark = UITraitCollection(userInterfaceStyle: .dark)
+        assertSnapshot(
+            of: make(false, true),
+            as: .image(layout: layout, traits: light),
+            named: "light",
+            file: file,
+            testName: testName
+        )
+        assertSnapshot(
+            of: make(false, true),
+            as: .image(layout: layout, traits: dark),
+            named: "dark",
+            file: file,
+            testName: testName
+        )
+        assertSnapshot(
+            of: make(true, true),
+            as: .image(layout: layout, traits: light),
+            named: "long",
+            file: file,
+            testName: testName
+        )
+        assertSnapshot(
+            of: make(false, false),
+            as: .image(layout: layout, traits: light),
+            named: "disabled",
+            file: file,
+            testName: testName
+        )
+    }
+
+    private func assertUIKit(
+        _ make: (Bool, Bool) -> UIView,
+        height: CGFloat,
+        file: StaticString = #filePath,
+        testName: String = #function
+    ) {
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let dark = UITraitCollection(userInterfaceStyle: .dark)
+        render(make(false, true), height: height, traits: light, name: "light", file: file, testName: testName)
+        render(make(false, true), height: height, traits: dark, name: "dark", file: file, testName: testName)
+        render(make(true, true), height: height, traits: light, name: "long", file: file, testName: testName)
+        render(make(false, false), height: height, traits: light, name: "disabled", file: file, testName: testName)
+    }
+
+    private func render(
+        _ view: UIView,
+        height: CGFloat,
+        traits: UITraitCollection,
+        name: String,
+        file: StaticString,
+        testName: String
+    ) {
+        view.frame = CGRect(x: 0, y: 0, width: 402, height: height)
+        view.overrideUserInterfaceStyle = traits.userInterfaceStyle
+        view.layoutIfNeeded()
+        assertSnapshot(
+            of: view,
+            as: .image(size: CGSize(width: 402, height: height), traits: traits),
+            named: name,
+            file: file,
+            testName: testName
+        )
+    }
+}
