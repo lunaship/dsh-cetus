@@ -1,0 +1,52 @@
+{
+  "comment": "I3.4 证书指纹共享向量。fingerprint = 证书 DER 的 SHA-256，小写十六进制无冒号，与插件 src/tls.js certFingerprintSha256、Android PinnedSsl.fingerprintOf、iOS DLSecurity CertificateFingerprint.sha256 三端一致。normalize 规则与 Android PinnedSsl.normalizeFingerprint 一致。生成方式见同目录 README.md。",
+  "vectors": [
+    {
+      "name": "rsa-2048",
+      "certDerBase64": "MIICrDCCAZQCCQCZnFnAx98UFjANBgkqhkiG9w0BAQsFADAYMRYwFAYDVQQDDA1kc2gtbGlua3MtcnNhMB4XDTI2MTAwMzIyNTYyMFoXDTM2MDkzMDIyNTYyMFowGDEWMBQGA1UEAwwNZHNoLWxpbmtzLXJzYTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMCCU+koOvYwOGJ1RlrvVms50UCDiRtOGl/dvHVDCseC8U9dQ9C7MmzctRYRxvzXEWk5y5DDimJIaHpcYBo5gH0XzCAjy4lVYasIUTqHV3o4z//c7hKrXt0pvJA12WegA5NoX4X8UOYBPfs7ABDjsCnl0vyP0FCSez+krLjujS3l/ti3xTlrnoZODhpPRqbx5pGtBAjDU0qFPIFfWniCzgeOLVDM2DnWrHYcxwbNVHkjh3w5YShrW2qPkRcXz9G6b9wFIBC2rVGMxoTeRirf0kTN8zo1CWEF9rYuhERZja2xKWUWm5iHJ9vrKshaDncB3L0Stywo40H/ze30zaJzgfcCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAGEk8UkaUOfHnN1qpBZgcej64ACkyrn4iBYRPCb7zZkaENxWZ5gQRu6sbqSrHlix+T9rGen52ArHHW6aVMs6k61+VxVX4kJWasUxwXX3NHHQuln5fDNd1hh3ABoIAe6JIcnaklvtMBnrCCSPMwEjTSTOp4f0Vp+5tZixypD0wZKnC0NCxJor83C01DVoX24w3ttuRKS534am22ExtQKut3qXT4FtIk3iH94cYSrK6XYo9cqJRkbs9rhSHtBtqwrwX27JMrbTjw8MwKuDwNVN+Zm9slnEjjUSgBidgox0wxuIX7wE2wGL2RAIcxbbq0ajcZJiJE+ObBb4wkvFgUQ7XXg==",
+      "fingerprint": "08ed2b16f8898b6191790604f2498e98a345aba066110535749a95857c82ca14"
+    },
+    {
+      "name": "ec-p256",
+      "certDerBase64": "MIICETCCAbgCCQDfgdJ0YbiJ5jAKBggqhkjOPQQDAjAXMRUwEwYDVQQDDAxkc2gtbGlua3MtZWMwHhcNMjYxMDAzMjI1NjIwWhcNMzYwOTMwMjI1NjIwWjAXMRUwEwYDVQQDDAxkc2gtbGlua3MtZWMwggFLMIIBAwYHKoZIzj0CATCB9wIBATAsBgcqhkjOPQEBAiEA/////wAAAAEAAAAAAAAAAAAAAAD///////////////8wWwQg/////wAAAAEAAAAAAAAAAAAAAAD///////////////wEIFrGNdiqOpPns+u9VXaYhrxlHQawzFOw9jvOPD4n0mBLAxUAxJ02CIbnBJNqZnjhE50mt4GffpAEQQRrF9Hy4SxCR/i85uVjpEDydwN9gS3rM6D0oTlF2JjClk/jQuL+Gn+bjufrSnwPnhYrzjNXazFezsu2QGg3v1H1AiEA/////wAAAAD//////////7zm+q2nF56E87nKwvxjJVECAQEDQgAEIi/yuZ+wCa1HqMcsinoEFOkaDKb+j9UlNPiPKrDHt5Smm8oSUglm8PpouisTgmQxCOpI3FN27REh6G58w4zVjDAKBggqhkjOPQQDAgNHADBEAiBtNvedxRmzHs7jj8DCO1iu56K4+9EQBN/MUtO7DH1UOgIgAuu7SIJXWtxwBHWV79zoeHQD3/BHp99nELaF5pv/ZSc=",
+      "fingerprint": "ec506f38ea97eadee726fd4592541290110c7e86ad9ce6a30bcddedcb21ac588"
+    },
+    {
+      "name": "chinese-cn-and-long-san",
+      "certDerBase64": "MIIDFjCCAf6gAwIBAgIJAL/dCM4Bdn1oMA0GCSqGSIb3DQEBCwUAMBoxGDAWBgNVBAMMD+W3peS9nOWupOeUteiEkTAeFw0yNjEwMDMyMjU2NDdaFw0zNjA5MzAyMjU2NDdaMBoxGDAWBgNVBAMMD+W3peS9nOWupOeUteiEkTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALM8KD0mc55GvYvQk6iKbDRxh8cgjdHtdQS+IIIqscegSZF+muKoF23oMqKeCkFbI44Z2WYerBc3+tSC49L3+XIFluj53BeZGmAd7ba2IgEcd2YT7LjHVxdMZx6H/Y233SyXFe2e+0r1ToDrGLoc1tL2tKV/htHmSOKhTMxnaUbku0/WHJQnOOd+PbSfbPDY+Th4LIi9S+QCXSgnPh7jzGQle5/usO15E5PMkKROAAIjjBxfk74iKwzaFkP8dC96aHtQCXWGYlu86mVvcKX/567zZZ0UKEvqj1SOjRcYz0Vle2qRDLo1KVqm5Sth7mY0DEyRMGeliFgkS8olRki/qOUCAwEAAaNfMF0wWwYDVR0RBFQwUoIMc3R1ZGlvLmxvY2FsgipzdHVkaW8td29ya3N0YXRpb24tbG9uZy1uYW1lLmV4YW1wbGUubG9jYWyHBMCoChGHEP0AAAAAAAAAAAAAAAAAEjQwDQYJKoZIhvcNAQELBQADggEBAK05vKBB9bWCtR6RdbLjMzdMCp12jYvLKFCkkNOZg6+u8U6OlevumUgdsiBlKZZk6a6lKPv7pSZiuad0ErvusEROCZAtFuRt4OWst22FCQ0KZ/5cGxBmaSPtMSP++b6Ir/qyPoVP6PKfIUaZg7pL0yc0nAz4eMHDSKzftSvzhJc/rNnXOB+2dsWRv9HYgD0b3quVvtI8SnXy/cJ16krP3gCwABv13+HI+FBtj/lqi28llNGcBkxiCHgM2lW3u1k4ODKqXi0dghZS2HgvKOXZaZly+YVz6IhXvxizZq5uAo6zVbh02NCf9sFTfrL8IQZfvVbXbLMhFmbpgn2VvYncclE=",
+      "fingerprint": "fe443f57e82e65ca52f77a7119578864b08e38a3700ead9ab61e40e5e385f676"
+    }
+  ],
+  "normalizeCases": [
+    {
+      "name": "uppercase-colon-fingerprint",
+      "input": "A1:B2:C3:D4:E5:F6:07:08:99:AA:BB:CC:DD:EE:FF:01:23:45:67:89:AB:CD:EF:FE:DC:BA:98:76:54:32:10:0F",
+      "expected": "a1b2c3d4e5f6070899aabbccddeeff0123456789abcdeffedcba98765432100f"
+    },
+    {
+      "name": "spaces-and-mixed-case",
+      "input": "  AbCd 0123 EF89  aAbB ",
+      "expected": "abcd0123ef89aabb"
+    },
+    {
+      "name": "colon-separated-lowercase",
+      "input": "de:ad:be:ef",
+      "expected": "deadbeef"
+    },
+    {
+      "name": "already-normalized",
+      "input": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expected": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "name": "empty-string",
+      "input": "",
+      "expected": ""
+    },
+    {
+      "name": "null-input",
+      "input": null,
+      "expected": ""
+    }
+  ]
+}

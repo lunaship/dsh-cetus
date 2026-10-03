@@ -121,6 +121,7 @@ targets:
       - package: DLModels
       - package: DLCore
       - package: DLSecurity
+      - package: DLNet
       - package: DLUI
       - package: SnapshotTesting
         product: SnapshotTesting
