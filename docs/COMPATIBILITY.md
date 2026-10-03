@@ -226,7 +226,7 @@ changing the status above. For every verification or release record, lock the
 exact checked-out revision of each repository in that evidence; this matrix
 does not hard-code moving `main` revisions or ahead counts.
 
-### 审批瀑布在 `0.1.5-rc.3` 上不触发（2026-09-29 实测，`0.1.7-alpha.1` 待验）
+### 审批瀑布在 `0.1.5-rc.3` 上不触发（2026-09-29 实测）
 
 用隔离实例（`--profile` + 临时 `stateDir`，插件 `link:` 到工作树）跑真实审批时发现：插件挂在
 `approval/request`（与 `user-questions/request`）上的钩子**一次都没被调用**——两轮探针分别在钩子入口
@@ -236,6 +236,19 @@ does not hard-code moving `main` revisions or ahead counts.
 影响：`rt.requests` 永远为空 → 插件「手机接管审批」在这版上不可达（App 侧因此走 D1-A 的诚实降级：
 只显示「在电脑上处理」，不给批准/拒绝按钮）。
 
-**边界**：只在 CLI 的 `0.1.5-rc.3` 上证实。本仓基线的宿主包是 `0.1.7-alpha.1`（见上表），它带真正的
-插件面变更，**该版本上钩子是否触发尚未验证**——换基线复验时请优先看这条。手机端据此推导
+**边界**：只在 CLI 的 `0.1.5-rc.3` 上证实钩子不触发。`0.1.7-alpha.1` 的复验见下一节（2026-10-03，云端已证实触发）。手机端据此推导
 `awaitingInput`（历史里 `approval/asked` 无配对 `approval/decided`）不受影响，两种基线上都成立。
+
+### 审批瀑布在 `0.1.7-alpha.1` 上触发（2026-10-03，云端 Linux VM）
+
+结论：**触发**。插件 prepend 挂在 `approval/request` 与 `user-questions/request` 上的钩子都会被调用；手机可提交「允许一次」与澄清答案，DSH 会继续执行。
+
+证据（插件源码与 `main` @ `7b9c164` 相同；DSH npm `0.1.7-alpha.1`；Node `v22.22.2`；日期 2026-10-03）：
+
+- 隔离：`DSH_HOME` 与插件 `stateDir`（`node scripts/dev-isolated-host.mjs`，`autoApprove: true`，手机端口 18641）都在临时目录。真实 `~/.dsh` 始终不存在。没有调用吊销。探针只写在临时插件副本，没有进仓库。`DEEPSEEK_API_KEY` 仅注入隔离 host 进程环境。
+- 按 `docs/MOBILE_SYNC_CONTRACT.md` 用证书指纹校验后的 HTTPS 模拟手机：配对、开会话、SSE（`caps=sync2,multiQuestion,requestState`）。
+- **写文件审批**：默认新会话权限是 `workspace-write` + `ask`，约 45 秒内没有审批。改为 `POST .../permission` preset=`read-only` 后再要求 `write`：探针出现 `approval/request`（tool=`write`），SSE 有 `approval/asked`，`GET .../requests` 出现 pending（字段名 `approvalId`）。`POST .../approval` 提交 `allowed-once` 返回 `accepted: true`。批准后有新的 `tool/result`，磁盘与 `GET .../file` 都能读到写入内容（`confirm-ok`）。
+- **澄清提问**：要求 agent 走系统 user-questions。探针出现 `user-questions/request`，SSE 有 `event: question`，`GET .../requests` 有 pending（字段名 `rpcId`）。`POST .../question` 提交选项答案返回 `accepted: true`。
+- 同日早些时候无 API key 的一轮以 `MISSING_CREDENTIAL` 结束，探针为空——不能据此判断钩子；有凭据后的上述两轮才作数。
+
+影响：在 `0.1.7-alpha.1` + 本仓当前插件（含 prepend 注册）上，「手机接管审批 / 澄清」可达。默认 `workspace-write` 下工作区内写入可能不经审批；要稳定打到瀑布，测试用 `read-only`（或其它会触发沙箱升级的模式）。
