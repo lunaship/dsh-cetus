@@ -19,7 +19,7 @@ struct WelcomeView: View {
         NavigationLink {
             DemoSceneList()
         } label: {
-            Text("Try the demo")
+            Text(L10n.string("welcome.tryDemo", fallback: "Try the demo"))
                 .font(DLFont.body)
                 .foregroundStyle(DLColor.accent)
                 .frame(minHeight: 44)
@@ -31,7 +31,7 @@ struct WelcomeView: View {
             NavigationLink {
                 DebugSettingsView()
             } label: {
-                Text("Settings")
+                Text(L10n.string("welcome.settings", fallback: "Settings"))
                     .font(DLFont.body)
                     .foregroundStyle(DLColor.accent)
                     .frame(minHeight: 44)

@@ -4,10 +4,12 @@ import UIKit
 public struct DLCodeBlock: View {
     private let code: String
     private let isEnabled: Bool
+    private let copyTitle: String
 
-    public init(_ code: String, isEnabled: Bool = true) {
+    public init(_ code: String, isEnabled: Bool = true, copyTitle: String = "Copy") {
         self.code = code
         self.isEnabled = isEnabled
+        self.copyTitle = copyTitle
     }
 
     public var body: some View {
@@ -18,7 +20,7 @@ public struct DLCodeBlock: View {
                     .foregroundStyle(isEnabled ? DLColor.label : DLColor.tertiaryLabel)
                     .frame(maxHeight: .infinity, alignment: .topLeading)
             }
-            Button("Copy", action: copy)
+            Button(copyTitle, action: copy)
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
                 .font(DLFont.caption)

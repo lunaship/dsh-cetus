@@ -4,6 +4,10 @@ options:
   deploymentTarget:
     iOS: "26.0"
   developmentLanguage: en
+  knownRegions:
+    - en
+    - Base
+    - zh-Hans
   createIntermediateGroups: true
   groupSortPosition: top
 configs:

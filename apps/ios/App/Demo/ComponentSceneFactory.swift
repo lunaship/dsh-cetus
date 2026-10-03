@@ -17,15 +17,15 @@ enum ComponentSceneKind: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .inbox: "Inbox"
-        case .status: "Status"
-        case .chip: "Chip"
-        case .process: "Process"
-        case .code: "Code"
-        case .empty: "Empty"
-        case .banner: "Banner"
-        case .composer: "Composer"
-        case .decision: "Decision"
+        case .inbox: L10n.string("scene.inbox", fallback: "Inbox")
+        case .status: L10n.string("scene.status", fallback: "Status")
+        case .chip: L10n.string("scene.chip", fallback: "Chip")
+        case .process: L10n.string("scene.process", fallback: "Process")
+        case .code: L10n.string("scene.code", fallback: "Code")
+        case .empty: L10n.string("scene.empty", fallback: "Empty")
+        case .banner: L10n.string("scene.banner", fallback: "Banner")
+        case .composer: L10n.string("scene.composer", fallback: "Composer")
+        case .decision: L10n.string("scene.decision", fallback: "Decision")
         }
     }
 }
@@ -43,9 +43,9 @@ enum ComponentSceneState: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .standard: "Standard"
-        case .long: "Long text"
-        case .disabled: "Disabled"
+        case .standard: L10n.string("scene.state.standard", fallback: "Standard")
+        case .long: L10n.string("scene.state.long", fallback: "Long text")
+        case .disabled: L10n.string("scene.state.disabled", fallback: "Disabled")
         }
     }
 }
@@ -92,7 +92,11 @@ enum ComponentSceneFactory {
     }
 
     static func code(long: Bool, enabled: Bool) -> DLCodeBlock {
-        DLCodeBlock(long ? fixtures.longText : fixtures.code.text, isEnabled: enabled)
+        DLCodeBlock(
+            long ? fixtures.longText : fixtures.code.text,
+            isEnabled: enabled,
+            copyTitle: L10n.string("code.copy", fallback: "Copy")
+        )
     }
 
     static func empty(long: Bool, enabled: Bool) -> DLEmptyState {
@@ -111,7 +115,11 @@ enum ComponentSceneFactory {
     }
 
     static func composer(long: Bool, enabled: Bool) -> DLComposerView {
-        DLComposerView(text: long ? fixtures.longText : fixtures.composer.text, isEnabled: enabled)
+        DLComposerView(
+            text: long ? fixtures.longText : fixtures.composer.text,
+            isEnabled: enabled,
+            sendTitle: L10n.string("composer.send", fallback: "Send")
+        )
     }
 
     static func decision(long: Bool, enabled: Bool) -> DLDecisionBar {
