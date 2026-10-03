@@ -97,6 +97,7 @@ jobs:
             -only-testing:DeepLinksTests/ContextInjectionContractTests \
             -only-testing:DeepLinksTests/MobileModelsContractTests \
             -only-testing:DeepLinksTests/MobileContractFixturesTests \
+            -only-testing:DeepLinksTests/HostStoreContractTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
