@@ -818,6 +818,7 @@ RFC 必须写清以下内容：
 | I2.3 | #79 | 主题 token：`AccentColor`、`BrandFill`（深色暂定 `#4C66E6`，只在该色集）、`DLColor`、`DLFont`、`TokenUsageTests`。三个 iOS 检查通过。squash `403a646`。 |
 | I2.4 | #80 | 基础组件：收件箱行、状态槽、输入区、决策栏（同一玻璃容器切换）、胶囊、过程行、代码块、空态、横幅；各有浅色 / 深色 / 长文本 / 禁用截图。三个 iOS 检查通过。squash `afb9646`。 |
 | I2.5 | #81 | Debug 场景目录在设置占位底部；欢迎页 “Try the demo” 进入离线演示。数据在 `App/Demo/fixtures/components.json`，Release 也带。截图与场景共用工厂。squash `b750725`。 |
+| I2.6 | #82 | `Localizable.xcstrings`（英文 + 简体中文，语义 key）与 `scripts/check-ios-locales.mjs`（key 对齐、格式符类型一致）。三个 iOS 检查通过。squash `8a6c8a2`。 |
 
 
 ---
