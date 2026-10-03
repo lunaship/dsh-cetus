@@ -813,6 +813,7 @@ RFC 必须写清以下内容：
 | I1.3 | #74 | 按 PLAN v1.2 修订 RFC 0002：锁定 HPKE 套件与线上格式；新增 `testdata/push/hpke/` 占位与说明。 |
 | I1.2 | #75 | `page-mapping.md` 补 7.6 对话默认；冲突清单标注输入配对码已与设计稿对齐。停下等审核四份文档与 BrandFill。 |
 | I1.3 | #76 | PLAN 升为已采纳 v1.3；RFC 0002：`sealed` 仅对象、AAD 域分离 `token|`/`content|`；新增 `testdata/push/content/` 占位。 |
+| I2.1 | #77 | 工程骨架：`project.yml`、空 `NavigationStack`、说明文案与隐私清单、三个扩展占位、六个本地包。CI `iOS build`（macos-26，Debug）通过。 |
 
 
 ---
