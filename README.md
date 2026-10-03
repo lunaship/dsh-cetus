@@ -19,54 +19,52 @@
   </p>
 </div>
 
-<p align="center"><sub>部分截图为设计稿，审批卡中的命令文本为示意；实际手机端不显示工具参数。
+<p align="center"><sub>以下都是 App 的真实渲染（Compose 截图测试基线，<code>apps/android/app/src/screenshotTestDebug/reference/</code>），示例数据为虚构。
 截图基线由 <code>.github/workflows/regen-screenshots.yml</code> 自动生成，已覆盖浅色 / 深色、中文 / 英文、普通 / 大字号。</sub></p>
 
 <table>
   <tr>
-    <td width="25%"><img src="docs/images/redesign/01-首页.png" alt="任务收件箱" /></td>
-    <td width="25%"><img src="docs/images/redesign/03-对话页.png" alt="会话工作台" /></td>
-    <td width="25%"><img src="docs/images/redesign/04-看改动.png" alt="查看代码改动" /></td>
-    <td width="25%"><img src="docs/images/redesign/05-设置.png" alt="设置" /></td>
+    <td width="25%"><img src="docs/images/v4/01-首页.png" alt="首页 · 等你处理 / 进行中 / 最近" /></td>
+    <td width="25%"><img src="docs/images/v4/02-对话.png" alt="对话 · 正文、改动卡与输入区" /></td>
+    <td width="25%"><img src="docs/images/v4/04-看改动.png" alt="看改动 · 文件差异" /></td>
+    <td width="25%"><img src="docs/images/v4/05-设置.png" alt="设置" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>任务收件箱 · 等你处理 / 进行中 / 最近</sub></td>
-    <td align="center"><sub>会话工作台 · Markdown 与工具轨迹</sub></td>
-    <td align="center"><sub>查看改动 · 文件差异与提问</sub></td>
+    <td align="center"><sub>首页 · 等你处理 / 进行中 / 最近</sub></td>
+    <td align="center"><sub>对话 · 正文、改动卡与输入区</sub></td>
+    <td align="center"><sub>看改动 · 文件差异</sub></td>
     <td align="center"><sub>设置</sub></td>
   </tr>
 </table>
 
-<p align="center"><sub>Android 页面预览（14 个手机 / 平板、浅色 / 深色页面与状态）；图片为重设计阶段的设计稿，来自 <code>docs/images/redesign/</code>，
-与现行界面（液态玻璃控件、边缘渐隐、对话页草稿态新任务）有出入，以源码与截图测试基线为准。</sub></p>
-
 <details>
-  <summary>查看全部 14 个页面与状态</summary>
+  <summary>查看全部 15 个页面与状态</summary>
 
   <table>
     <tr>
-      <td><img src="docs/images/redesign/01-首页.png" width="180" alt="首页" /><br /><sub>01 · 首页</sub></td>
-      <td><img src="docs/images/redesign/03-对话页.png" width="180" alt="对话页" /><br /><sub>03 · 对话页</sub></td>
+      <td><img src="docs/images/v4/01-首页.png" width="180" alt="首页 · 等你处理 / 进行中 / 最近" /><br /><sub>01 · 首页 · 等你处理 / 进行中 / 最近</sub></td>
+      <td><img src="docs/images/v4/02-对话.png" width="180" alt="对话 · 正文、改动卡与输入区" /><br /><sub>02 · 对话 · 正文、改动卡与输入区</sub></td>
+      <td><img src="docs/images/v4/03-审批.png" width="180" alt="审批 · 决策栏替换输入区" /><br /><sub>03 · 审批 · 决策栏替换输入区</sub></td>
     </tr>
     <tr>
-      <td><img src="docs/images/redesign/04-看改动.png" width="180" alt="看改动" /><br /><sub>04 · 看改动</sub></td>
-      <td><img src="docs/images/redesign/05-设置.png" width="180" alt="设置" /><br /><sub>05 · 设置</sub></td>
-      <td><img src="docs/images/redesign/06-通知.png" width="180" alt="通知" /><br /><sub>06 · 通知</sub></td>
+      <td><img src="docs/images/v4/04-看改动.png" width="180" alt="看改动 · 文件差异" /><br /><sub>04 · 看改动 · 文件差异</sub></td>
+      <td><img src="docs/images/v4/05-设置.png" width="180" alt="设置" /><br /><sub>05 · 设置</sub></td>
+      <td><img src="docs/images/v4/06-新任务.png" width="180" alt="新任务" /><br /><sub>06 · 新任务</sub></td>
     </tr>
     <tr>
-      <td><img src="docs/images/redesign/07-首页-多件待处理.png" width="180" alt="首页多件待处理" /><br /><sub>07 · 多件待处理</sub></td>
-      <td><img src="docs/images/redesign/08-首页-电脑离线.png" width="180" alt="首页电脑离线" /><br /><sub>08 · 电脑离线</sub></td>
-      <td><img src="docs/images/redesign/09-首页-还没有任务.png" width="180" alt="首页空态" /><br /><sub>09 · 首页空态</sub></td>
+      <td><img src="docs/images/v4/07-电脑离线.png" width="180" alt="电脑离线" /><br /><sub>07 · 电脑离线</sub></td>
+      <td><img src="docs/images/v4/08-轨迹.png" width="180" alt="轨迹" /><br /><sub>08 · 轨迹</sub></td>
+      <td><img src="docs/images/v4/09-欢迎配对.png" width="180" alt="欢迎 / 扫码配对" /><br /><sub>09 · 欢迎 / 扫码配对</sub></td>
     </tr>
     <tr>
-      <td><img src="docs/images/redesign/10-对话-执行中.png" width="180" alt="对话执行中" /><br /><sub>10 · 对话执行中</sub></td>
-      <td><img src="docs/images/redesign/11-平板横屏.png" width="180" alt="平板横屏" /><br /><sub>11 · 平板横屏</sub></td>
-      <td><img src="docs/images/redesign/12-首页-深色.png" width="180" alt="深色首页" /><br /><sub>12 · 深色首页</sub></td>
+      <td><img src="docs/images/v4/10-等电脑批准.png" width="180" alt="等电脑批准" /><br /><sub>10 · 等电脑批准</sub></td>
+      <td><img src="docs/images/v4/11-首页-深色.png" width="180" alt="首页 · 深色 / 英文" /><br /><sub>11 · 首页 · 深色 / 英文</sub></td>
+      <td><img src="docs/images/v4/12-对话-深色.png" width="180" alt="对话 · 深色 / 英文" /><br /><sub>12 · 对话 · 深色 / 英文</sub></td>
     </tr>
     <tr>
-      <td><img src="docs/images/redesign/13-对话-深色.png" width="180" alt="深色对话" /><br /><sub>13 · 深色对话</sub></td>
-      <td><img src="docs/images/redesign/14-看改动-深色.png" width="180" alt="深色看改动" /><br /><sub>14 · 深色看改动</sub></td>
-      <td><img src="docs/images/redesign/15-设置-深色.png" width="180" alt="深色设置" /><br /><sub>15 · 深色设置</sub></td>
+      <td><img src="docs/images/v4/13-审批-深色.png" width="180" alt="审批 · 深色 / 英文" /><br /><sub>13 · 审批 · 深色 / 英文</sub></td>
+      <td><img src="docs/images/v4/14-改动列表-深色.png" width="180" alt="改动列表 · 深色" /><br /><sub>14 · 改动列表 · 深色</sub></td>
+      <td><img src="docs/images/v4/15-外观-深色.png" width="180" alt="外观设置 · 深色 / 英文" /><br /><sub>15 · 外观设置 · 深色 / 英文</sub></td>
     </tr>
   </table>
 </details>
@@ -120,9 +118,9 @@
 - **完整的 Markdown**：代码高亮、表格、KaTeX 数学公式、Mermaid 图（均随 APK 离线打包，经锁死的 WebView 渲染）。
 - **思考与工具轨迹**：推理过程可折叠，工具调用与结果成组展示；对话 / 轨迹视图切换，支持工具查找、轮次跳转与子代理视图。
 - **会话控制**：排队消息可编辑 / 撤回 / 插队；目标可编辑、暂停、继续、清除；「⋯」菜单查看与修改定时任务（需插件声明 `capabilities.control`）。
-- **毛玻璃顶栏与输入区**：Android 12+ 背景模糊，省电 / 减少透明度时退回不透明。
+- **实底界面**：顶栏、输入区与弹层都是实色（v4 设计，不用毛玻璃与渐隐）；审批 / 提问由输入区位置的决策栏承接，状态槽一次只显示一条。
 - **长回复不卡**：长 Markdown 分段懒加载，流式增量按帧合并。
-- **输入**：模型与推理强度选择、图片附件、系统分享到 App、语音输入、命令面板（`/plan`、`/goal` 等）。
+- **输入**：模型与推理强度选择、图片附件、系统分享到 App（先选新任务或最近会话，只预填不发送）、语音输入、命令面板（`/plan`、`/goal` 等）。
 - **自适应布局**：手机单栏；平板与折叠屏展开时改用侧边导航栏，改动审查面在宽屏贴右展开。
 - **中英双语**：界面文案随系统或手动切换，切换后立即生效（截图基线同时守着中 / 英两轨）。
 

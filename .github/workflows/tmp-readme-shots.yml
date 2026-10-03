@@ -1,0 +1,38 @@
+name: TEMP README screenshots (delete before merge)
+
+on:
+  push:
+    branches: [ 'v4/**' ]
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    if: contains(github.event.head_commit.message, '[readme-shots]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.ref_name }}
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+      - name: Crop baselines into docs/images/v4
+        run: |
+          ref=apps/android/app/src/screenshotTestDebug/reference/dev/deeplinks/screenshot
+          mkdir -p docs/images/v4
+          while read -r name out; do
+            [ -z "$name" ] && continue
+            f=$(ls "$ref"/*/"${name}"_*.png | head -1)
+            bg=$(convert "$f" -format '%[pixel:p{2,2}]' info:)
+            convert "$f" -gravity north -background "$bg" -extent 1082x2344 -resize 540x -strip "docs/images/v4/${out}.png"
+          done < docs/images/v4/list.txt
+          rm docs/images/v4/list.txt
+          git rm -r -q docs/images/redesign
+          ls -la docs/images/v4
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/images
+          git commit -m "docs: README 截图换成 v4 截图基线（run ${{ github.run_id }}）"
+          git push origin HEAD:${{ github.ref_name }}
