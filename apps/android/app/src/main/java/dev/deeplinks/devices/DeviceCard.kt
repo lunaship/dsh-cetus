@@ -194,7 +194,7 @@ internal fun DeviceCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MonitorGlyph(tint = Dsh.labelSecondary, size = 24.dp)
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(DshSpace.s16))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 device.host.name,
@@ -203,7 +203,7 @@ internal fun DeviceCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(DshSpace.s2))
+            Spacer(Modifier.height(DshSpace.s4))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // E4：改用共享状态点。CONNECTING 仍保留品牌色（不是在线/离线二态）。
                 if (state == DeviceState.CONNECTING) {
@@ -216,7 +216,7 @@ internal fun DeviceCard(
                 } else {
                     HostStatusDot(state == DeviceState.ONLINE)
                 }
-                Spacer(Modifier.width(DshSpace.s6))
+                Spacer(Modifier.width(DshSpace.s8))
                 Text(
                     meta,
                     color = Dsh.labelSecondary,

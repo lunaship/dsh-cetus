@@ -14,6 +14,9 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import dev.deeplinks.native.DshSpace
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -123,6 +126,8 @@ fun DlSegmented(
                 enabled = enabled,
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size, baseShape = DlPill),
                 icon = {},
+                // 长文案（英文、四段）不截断：收窄内边距，放不下就折成两行
+                contentPadding = PaddingValues(horizontal = DshSpace.s8),
                 colors = SegmentedButtonDefaults.colors(
                     activeContainerColor = Dsh.primarySoft,
                     activeContentColor = Dsh.brand400,
@@ -139,8 +144,9 @@ fun DlSegmented(
                     Text(
                         label,
                         style = if (selected) DshType.bodyStrong else DshType.body,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
                     )
                 },
             )

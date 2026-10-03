@@ -36,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.ParentDataModifier
@@ -63,33 +65,25 @@ import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
 
 /**
- * Section 与行骨架（docs/visual-rules.md 第五节：设置、设备、Sheet 复用同一行结构）。
+ * Section 与行骨架（v4：docs/redesign-v4/visual-rules-v4.md §4，设置、设备复用同一行结构）。
  *
- * 一页 = [DshPageScaffold] 的画布底 + 若干 [DshSection]。Section 默认 **Flat**：
- * 行直接落在画布上，行间发丝线分组；只有总结、警告、独立账户或设备摘要才用
- * **Tonal**（[Dsh.bgSubtle] 容器 + container 12dp 圆角）。
- *
- * 行只有一种骨架 [DshListRow]：图标 · 标题 / 副标题 · 取值 · 尾标，
- * 开关、下拉、按钮行都是它的变体。行首图标默认 accentIcon 强调蓝（2026-10-02 Lody
- * 简化 3.3/L4：线性图标集中取色，页面不各自写），危险行强制 error。
- * 行间发丝线由 Section 自动画，起点跟随下一行的文字起点（有图标时让开图标）。
- *
- * [DshListSection] 是 [DshSection] 的迁移期别名（tonal 参数直通）；
- * 批次 6 起 DshGroupedPage / DshLargeTitle 兼容包装已删除——页面壳层一律用
- * [DshPageScaffold]，Section 一律用 [DshSection]。
+ * 一页 = 画布底 + 若干 [DshSection]。Section 一律平铺：行直接落在画布上，不画行间线，
+ * 靠组头分组；只有独立数据块（当前电脑）用 **Tonal**（surface1 容器色块 + container 圆角）。
+ * 行只有一种骨架 [DshListRow]：图标 · 标题 / 副标题 · 取值 · 尾标，开关、下拉、按钮行都是它的变体。
+ * 行首图标默认次要色，危险行强制 err。
  */
 
-private val RowPaddingH = 16.dp
+private val RowPaddingH = DshSpace.s20
 private val RowPaddingV = 12.dp
-private val IconSlot = 22.dp
+private val IconSlot = DshIconSize.lg
 /** 自有图标是满幅绘制（无内边距），18dp 与原先 22dp 的 Material 图标视觉等大。 */
-private val IconSize = 18.dp
+private val IconSize = DshIconSize.md
 /**
  * 图标槽与文字的间距。
  * 2026-09-28 重设计稿的列表行是 `16px 边距 + 32px 图标圈 + 12px 间距`（文字起点 60），
  * 取 s12 后 16+32+12 = 60 与稿子一致；原先的 14 是刻度外的存量（方案 2.3）。
  */
-private val IconGap = DshSpace.s12
+private val IconGap = DshSpace.s16
 /**
  * 单行最小高。
  * 方案 2.3 规定「设置行、列表行最小 52」，2026-09-28 重设计把原先的 48 提到 52。
@@ -98,6 +92,8 @@ private val RowMinHeight = 52.dp
 /** 右侧取值的最大宽度：取值贴右、尾标成一条竖线；超长时截断取值而不是挤压标题。 */
 private val ValueMaxWidth = 168.dp
 private val TextInsetWithIcon = RowPaddingH + IconSlot + IconGap
+/** 两行（有副标题）行的最小高（v4 §4）。 */
+private val RowMinHeightDouble = 64.dp
 
 private data class DividerInset(val start: Dp) : ParentDataModifier {
     override fun Density.modifyParentData(parentData: Any?): Any = this@DividerInset
@@ -112,13 +108,10 @@ enum class DshSectionContainer {
     /** 行直接落在画布上，行间发丝线分组。 */
     Flat,
 
-    /** tonal 容器（bgSubtle + container 圆角）：总结、警告、独立账户或设备摘要。 */
+    /** 容器色块（surface1 + container 圆角）：当前电脑这类独立数据块。 */
     Tonal,
 
-    /**
-     * 白色分组卡（bgCard + card 20dp 圆角，2026-10-02 Lody 简化 3.1）：
-     * 首页分区、设置分组、设备信息的内容承载面。行间发丝线从文字起点起算。
-     */
+    /** 兼容旧调用：v4 与 [Flat] 相同（不再画白卡）。 */
     Card,
 }
 
@@ -138,7 +131,7 @@ fun DshSection(
     onHeaderAction: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(top = if (header != null) 16.dp else 12.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(top = if (header != null) 0.dp else DshSpace.s8)) {
         if (header != null) {
             DshSectionHeader(
                 title = header,
@@ -155,12 +148,12 @@ fun DshSection(
             val collapsible = footer.length > FOOTER_COLLAPSE_LIMIT
             Text(
                 footer,
-                color = Dsh.labelTertiary,
-                style = DshType.captionRelaxed,
+                color = Dsh.tertiaryText,
+                style = DshType.supporting,
                 maxLines = if (collapsible && !footerExpanded) 1 else Int.MAX_VALUE,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s6)
+                    .padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s4, bottom = DshSpace.s8)
                     .then(
                         if (collapsible) {
                             Modifier.clickable(
@@ -229,56 +222,51 @@ fun DshSectionHeader(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = DshTouch.min)
-            .padding(start = contentStart),
+            .padding(start = contentStart, end = DshSpace.s8, top = DshSpace.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // v4 组头（同 DlSectionHeader）：13sp 600 次要色
         Text(
             title,
-            color = Dsh.labelTertiary,
-            style = DshType.titleSmall,
+            color = Dsh.labelSecondary,
+            style = DshType.supporting.copy(fontWeight = FontWeight.SemiBold),
             modifier = Modifier
                 .weight(1f)
                 .semantics { heading() },
         )
         if (actionLabel != null && onAction != null) {
-            val color = when {
-                !actionEnabled -> Dsh.labelDimmed
-                actionDanger -> Dsh.error
-                else -> Dsh.labelPrimary
-            }
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(DshRadius.control))
-                    .clickable(enabled = actionEnabled, role = Role.Button, onClick = onAction)
-                    .padding(horizontal = DshSpace.s8),
-                contentAlignment = Alignment.Center,
+            TextButton(
+                onClick = onAction,
+                enabled = actionEnabled,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = if (actionDanger) Dsh.err else Dsh.brand400,
+                    disabledContentColor = Dsh.tertiaryText,
+                ),
             ) {
-                Text(actionLabel, color = color, style = DshType.titleSmall)
+                Text(actionLabel, style = DshType.supporting.copy(fontWeight = FontWeight.SemiBold))
             }
         }
     }
 }
 
 /**
- * Section 行容器：自排版子节点，逐行画发丝分隔线（0 高度的节点——例如弹层锚点——不参与）。
- * [container] = Tonal 时加 bgSubtle 底 + container 圆角；Card 时加 bgCard 底 + card 圆角
- * （白色分组卡，页面内容承载面）；Flat 时行直接落在画布上。
+ * Section 行容器：自排版子节点（0 高度的节点——例如弹层锚点——不占位）。
+ * [container] = Tonal 时加 surface1 底 + container 圆角；其余行直接落在画布上。
  */
 @Composable
 private fun DshSectionRows(
     container: DshSectionContainer,
     content: @Composable () -> Unit,
 ) {
-    val dividerColor = Dsh.borderSubtle
+    // v4：平铺列表不画行间线；只有 Tonal（当前电脑这种独立数据块）是容器色块
+    val dividerColor = Color.Transparent
     val boundaries = remember { mutableListOf<Pair<Float, Float>>() }
     val surface = when (container) {
         DshSectionContainer.Tonal -> Modifier
+            .padding(horizontal = DshSpace.s12)
             .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgSubtle)
-        // v3：白卡统一走 dshCardSurface（发丝边 + 一级柔阴影）
-        DshSectionContainer.Card -> Modifier.dshCardSurface()
-        DshSectionContainer.Flat -> Modifier
+            .background(Dsh.surface1)
+        DshSectionContainer.Card, DshSectionContainer.Flat -> Modifier
     }
     Layout(
         content = content,
@@ -344,9 +332,8 @@ fun DshListRow(
     /** 副标题用等宽字体（方案 7：电脑卡的地址要等宽，让 IP 与端口对齐好读）。 */
     subtitleMono: Boolean = false,
     icon: ImageVector? = null,
-    // 行首线性图标默认强调色（2026-10-02 Lody 简化 3.3/L4）：设置 / 设备分组图标集中取
-    // accentIcon，页面不各自写颜色；危险行仍强制 error。
-    iconTint: Color = Dsh.accentIcon,
+    // 行首线性图标默认次要色（v4）；危险行仍强制 err。
+    iconTint: Color = Dsh.labelSecondary,
     value: String? = null,
     destructive: Boolean = false,
     enabled: Boolean = true,
@@ -413,8 +400,8 @@ private fun DshListRowLayout(
     iconSlot: Dp = IconSlot,
 ) {
     val titleColor = when {
-        !enabled -> Dsh.labelTertiary
-        destructive -> Dsh.error
+        !enabled -> Dsh.tertiaryText
+        destructive -> Dsh.err
         else -> Dsh.labelPrimary
     }
     val hasLeading = leading != null || icon != null
@@ -422,7 +409,7 @@ private fun DshListRowLayout(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = RowMinHeight)
+            .heightIn(min = if (subtitle.isNullOrBlank()) RowMinHeight else RowMinHeightDouble)
             .padding(horizontal = RowPaddingH, vertical = RowPaddingV),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -436,7 +423,11 @@ private fun DshListRowLayout(
                     Icon(
                         icon,
                         contentDescription = null,
-                        tint = if (destructive) Dsh.error else iconTint,
+                        tint = when {
+                            !enabled -> Dsh.tertiaryText
+                            destructive -> Dsh.err
+                            else -> iconTint
+                        },
                         modifier = Modifier.size(IconSize),
                     )
                 }
@@ -447,11 +438,11 @@ private fun DshListRowLayout(
             // 标题一行：真机上见过主机名带换行（配对时输入的名字含 \n），两行会把整行撑开、
             // 把右侧状态挤走。设置页的电脑卡与列表行都靠这一条保持单行。
             // 16/22 Medium（2026-10-01 R7）：列表主标题角色集中映射，页面不临时改。
-            Text(title, color = titleColor, style = DshType.listTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = titleColor, style = DshType.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     subtitle,
-                    color = Dsh.labelTertiary,
+                    color = if (enabled) Dsh.labelSecondary else Dsh.tertiaryText,
                     style = if (subtitleMono) DshType.supporting.copy(fontFamily = FontFamily.Monospace) else DshType.supporting,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -462,8 +453,8 @@ private fun DshListRowLayout(
             Spacer(Modifier.width(DshSpace.s12))
             Text(
                 value,
-                color = Dsh.labelTertiary,
-                style = DshType.body,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
@@ -483,7 +474,7 @@ private fun DshListRowLayout(
                 modifier = Modifier.padding(
                     start = RowPaddingH + if (hasLeading) iconSlot + IconGap else 0.dp,
                     end = RowPaddingH,
-                    bottom = 10.dp,
+                    bottom = DshSpace.s12,
                 ),
             )
         }
@@ -494,11 +485,11 @@ private fun DshListRowLayout(
 private fun DshListTrailingMark(trailing: DshListTrailing) {
     val (icon, tint, size) = when (trailing) {
         DshListTrailing.None -> return
-        DshListTrailing.Chevron -> Triple(ChevronRightOutline16, Dsh.labelTertiary, 16.dp)
-        DshListTrailing.Check -> Triple(CheckOutline16, Dsh.labelPrimary, 18.dp)
-        DshListTrailing.Select -> Triple(ChevronDownOutline16, Dsh.labelTertiary, 16.dp)
+        DshListTrailing.Chevron -> Triple(ChevronRightOutline16, Dsh.tertiaryText, DshIconSize.sm)
+        DshListTrailing.Check -> Triple(CheckOutline16, Dsh.brand400, DshIconSize.md)
+        DshListTrailing.Select -> Triple(ChevronDownOutline16, Dsh.tertiaryText, DshIconSize.sm)
     }
-    Spacer(Modifier.width(DshSpace.s6))
+    Spacer(Modifier.width(DshSpace.s8))
     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size))
 }
 
@@ -508,8 +499,8 @@ private fun DshListRowError(error: String, onRetry: (() -> Unit)?, modifier: Mod
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             s.saveFailedWithMessage.format(error),
-            color = Dsh.error,
-            style = DshType.captionRelaxed,
+            color = Dsh.err,
+            style = DshType.supporting,
             modifier = Modifier.weight(1f),
         )
         if (onRetry != null) {
@@ -521,7 +512,7 @@ private fun DshListRowError(error: String, onRetry: (() -> Unit)?, modifier: Mod
                     .padding(horizontal = DshSpace.s8),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(s.retry, color = Dsh.labelPrimary, style = DshType.titleSmall)
+                Text(s.retry, color = Dsh.brand400, style = DshType.supporting.copy(fontWeight = FontWeight.SemiBold))
             }
         }
     }
@@ -536,7 +527,7 @@ fun DshSwitchRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.accentIcon,
+    iconTint: Color = Dsh.labelSecondary,
     enabled: Boolean = true,
 ) {
     DshListRowLayout(
@@ -569,16 +560,18 @@ fun DshSwitchRow(
 
 @Composable
 fun dshSwitchColors(): SwitchColors = SwitchDefaults.colors(
-    // 开关开启态 = 品牌蓝轨（2026-10-02 Lody 简化 3.3/L4：线性图标与主入口放宽到品牌蓝）。
-    // 上一版墨色轨（inkFill/onInk）比内容抢眼；开关是状态不是动作，但开启轨取 brand400 后
-    // 视觉重量反而低于原墨色。拇指浅色 bgCard、深色 onInk（onInk 深色语义 = 内容前景，
-    // 在浅蓝轨上仍是最亮侧；ON/OFF 轨道明度差 ≥ 3:1，灰度可区分）。
-    checkedThumbColor = if (Dsh.isDark) Dsh.onInk else Dsh.bgCard,
-    checkedTrackColor = Dsh.switchOnTrack,
-    checkedBorderColor = Dsh.switchOnTrack,
-    uncheckedThumbColor = Dsh.labelSecondary,
-    uncheckedTrackColor = Dsh.bgSubtle,
-    uncheckedBorderColor = Dsh.borderStrong,
+    // v4 开关（与 DlListRow 同一套）：开 = 品牌色轨 + onBrand 拇指；关 = surface2 轨 + 描边
+    checkedThumbColor = Dsh.onBrand,
+    checkedTrackColor = Dsh.brand400,
+    checkedBorderColor = Dsh.brand400,
+    uncheckedThumbColor = Dsh.tertiaryText,
+    uncheckedTrackColor = Dsh.surface2,
+    uncheckedBorderColor = Dsh.outline,
+    disabledCheckedTrackColor = Dsh.surface2,
+    disabledCheckedThumbColor = Dsh.tertiaryText,
+    disabledUncheckedTrackColor = Dsh.surface1,
+    disabledUncheckedThumbColor = Dsh.outline,
+    disabledUncheckedBorderColor = Dsh.outline,
 )
 
 /**
@@ -595,7 +588,7 @@ fun DshSelectRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = Dsh.accentIcon,
+    iconTint: Color = Dsh.labelSecondary,
     saving: Boolean = false,
     error: String? = null,
     onRetry: (() -> Unit)? = null,
@@ -658,11 +651,11 @@ fun DshOptionsMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        containerColor = Dsh.bgCard,
+        containerColor = Dsh.surface2,
         shape = RoundedCornerShape(DshRadius.container),
         tonalElevation = 0.dp,
-        shadowElevation = 4.dp,
-        offset = DpOffset(0.dp, 4.dp),
+        shadowElevation = 0.dp,
+        offset = DpOffset(0.dp, DshSpace.s4),
     ) {
         Column(
             modifier = Modifier
@@ -672,7 +665,7 @@ fun DshOptionsMenu(
             if (description != null) {
                 Text(
                     description,
-                    color = Dsh.labelTertiary,
+                    color = Dsh.labelSecondary,
                     style = DshType.supporting,
                     modifier = Modifier.padding(horizontal = DshSpace.s16, vertical = DshSpace.s4),
                 )
@@ -684,18 +677,18 @@ fun DshOptionsMenu(
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
                         .selectable(selected = selected, role = Role.RadioButton) { onSelect(label, id) }
-                        .padding(horizontal = 14.dp),
+                        .padding(horizontal = DshSpace.s16),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         label,
-                        color = Dsh.labelPrimary,
-                        style = DshType.bodyLarge,
+                        color = if (selected) Dsh.brand400 else Dsh.labelPrimary,
+                        style = DshType.body,
                         fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                         modifier = Modifier.weight(1f),
                     )
                     if (selected) {
-                        Icon(CheckOutline16, contentDescription = null, tint = Dsh.labelPrimary, modifier = Modifier.size(DshIconSize.md))
+                        Icon(CheckOutline16, contentDescription = null, tint = Dsh.brand400, modifier = Modifier.size(DshIconSize.md))
                     }
                 }
             }
@@ -703,7 +696,7 @@ fun DshOptionsMenu(
     }
 }
 
-/** 按钮行：整行一个文字操作。普通操作跟正文同色，危险操作用红。 */
+/** 按钮行：整行一个操作。普通操作跟正文同色（图标次要色），危险操作用红。 */
 @Composable
 fun DshListActionRow(
     label: String,
@@ -714,9 +707,14 @@ fun DshListActionRow(
     enabled: Boolean = true,
 ) {
     val color = when {
-        !enabled -> Dsh.labelTertiary
-        destructive -> Dsh.error
+        !enabled -> Dsh.tertiaryText
+        destructive -> Dsh.err
         else -> Dsh.labelPrimary
+    }
+    val iconColor = when {
+        !enabled -> Dsh.tertiaryText
+        destructive -> Dsh.err
+        else -> Dsh.labelSecondary
     }
     Row(
         modifier = modifier
@@ -735,11 +733,11 @@ fun DshListActionRow(
     ) {
         if (icon != null) {
             Box(Modifier.size(IconSlot), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(IconSize))
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(IconSize))
             }
             Spacer(Modifier.width(IconGap))
         }
-        Text(label, color = color, style = DshType.bodyLarge, fontWeight = FontWeight.Medium)
+        Text(label, color = color, style = DshType.body, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -758,8 +756,8 @@ fun DshListNote(
 ) {
     Text(
         text,
-        color = if (error) Dsh.error else Dsh.labelTertiary,
-        style = DshType.body,
+        color = if (error) Dsh.err else Dsh.labelSecondary,
+        style = DshType.supporting,
         modifier = modifier.then(
             if (onClick == null) {
                 Modifier
@@ -772,7 +770,7 @@ fun DshListNote(
             .dividerInset(inset)
             .fillMaxWidth()
             .heightIn(min = RowMinHeight)
-            .padding(start = if (inset) TextInsetWithIcon else RowPaddingH, end = RowPaddingH, top = 14.dp, bottom = 14.dp),
+            .padding(start = if (inset) TextInsetWithIcon else RowPaddingH, end = RowPaddingH, top = DshSpace.s12, bottom = DshSpace.s12),
     )
 }
 
@@ -781,8 +779,8 @@ fun DshListNote(
 fun DshListCaption(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
-        color = Dsh.labelTertiary,
-        style = DshType.captionRelaxed,
+        color = Dsh.labelSecondary,
+        style = DshType.supporting,
         modifier = modifier.padding(start = RowPaddingH, end = RowPaddingH, top = DshSpace.s12),
     )
 }

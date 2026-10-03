@@ -93,6 +93,17 @@ val CloudOffOutline16: ImageVector by lazy {
     )
 }
 
+/** 铃铛（设置 · 通知，7.1）。 */
+val BellOutline16: ImageVector by lazy {
+    glyph(
+        "BellOutline16",
+        listOf(
+            "M3.9 11.6V7.1a4.1 4.1 0 0 1 8.2 0v4.5l1.2 1.3H2.7Z",
+            "M6.4 14.6a1.7 1.7 0 0 0 3.2 0",
+        ),
+    )
+}
+
 val CompressOutline16: ImageVector by lazy {
     glyph(
         "CompressOutline16",

@@ -2,6 +2,10 @@ package dev.deeplinks.native
 
 import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.core.persist
+import dev.deeplinks.core.conversationDefaults
+import dev.deeplinks.core.sectionComposer
+import dev.deeplinks.core.sectionOther
+import dev.deeplinks.core.sessionHistory
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.Host
@@ -82,6 +86,7 @@ import kotlinx.coroutines.withContext
 internal enum class SettingsDest {
     HOME,
     GENERAL,
+    NOTIFICATIONS,
     APPEARANCE,
     CONVERSATION,
     MODELS,
@@ -102,7 +107,6 @@ internal fun SettingsPageCanvas(content: @Composable ColumnScope.() -> Unit) {
             .verticalScroll(rememberScrollState())
             // 顶部避让悬浮 chrome（L9）：骨架实测高度经 LocalDshPageTopInset 注入
             .padding(top = LocalDshPageTopInset.current)
-            .padding(horizontal = DshSpace.s16)
             .padding(bottom = DshSpace.s32),
         content = content,
     )
@@ -113,11 +117,12 @@ private fun SettingsDest.label(): String {
     val s = DshS
     return when (this) {
         SettingsDest.HOME -> s.settingsTitle
-        SettingsDest.GENERAL -> s.tabGeneral
+        SettingsDest.GENERAL -> s.language
+        SettingsDest.NOTIFICATIONS -> s.sectionNotifications
         SettingsDest.APPEARANCE -> s.sectionAppearance
-        SettingsDest.CONVERSATION -> s.settingsConversation
+        SettingsDest.CONVERSATION -> s.conversationDefaults
         SettingsDest.MODELS -> s.tabModels
-        SettingsDest.SESSIONS -> s.tabSessions
+        SettingsDest.SESSIONS -> s.sessionHistory
         SettingsDest.ABOUT -> s.tabAbout
     }
 }
@@ -284,6 +289,10 @@ internal fun SettingsRoute(
                 }
             }
 
+            composable(SettingsDest.NOTIFICATIONS.name) {
+                SettingsPageCanvas { NotificationSettings() }
+            }
+
             composable(SettingsDest.APPEARANCE.name) {
                 SettingsPageCanvas {
                     AppearanceSettings(
@@ -411,11 +420,6 @@ internal fun SettingsHome(
     val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
     var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
     var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
-    var longTaskMinutes by remember { mutableStateOf(notifyPrefs.longTaskMinutes) }
-    var replyFirstLine by remember { mutableStateOf(notifyPrefs.notifyReplyFirstLine) }
-    var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
-    var quickApprove by remember { mutableStateOf(notifyPrefs.allowApproveFromNotification) }
-    var autoLoadRemoteImages by remember { mutableStateOf(notifyPrefs.autoLoadRemoteImages) }
     val alias = notifyPrefs.hostAlias
     val themeLabel = when (ThemeManager.currentThemeMode) {
         "light" -> s.themeLight
@@ -423,8 +427,8 @@ internal fun SettingsHome(
         else -> s.themeSystem
     }
 
-    // 设置页只用一种容器：扁平行 + 发丝分隔，已配对电脑也不另铺灰卡
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionComputer) {
+    // 7.1：当前电脑是页面上唯一一块容器色块，其余平铺
+    DshListSection(container = DshSectionContainer.Tonal) {
         if (host != null) {
             val address = hostDisplayName(host.baseUrl)
             // 四色状态点只读现有快照：绿=直连成功，黄=只能走远程，红=最近失败，灰=从未或很久没连。
@@ -451,7 +455,7 @@ internal fun SettingsHome(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         HostHealthDot(tone)
                         if (hostStatus != null) {
-                            Spacer(Modifier.width(DshSpace.s6))
+                            Spacer(Modifier.width(DshSpace.s8))
                             Text(
                                 hostStatus,
                                 color = Dsh.labelSecondary,
@@ -472,11 +476,30 @@ internal fun SettingsHome(
             )
         }
     }
+    DshListSection(header = s.sectionGeneral) {
+        DshListRow(
+            title = s.language,
+            icon = TranslateOutline16,
+            value = if (appSettings.language == "zh") s.langZh else s.langEn,
+            onClick = { onOpen(SettingsDest.GENERAL) },
+        )
+        DshListRow(
+            title = s.sectionNotifications,
+            icon = BellOutline16,
+            onClick = { onOpen(SettingsDest.NOTIFICATIONS) },
+        )
+        DshListRow(
+            title = s.sectionAppearance,
+            icon = PaletteOutline16,
+            value = themeLabel,
+            onClick = { onOpen(SettingsDest.APPEARANCE) },
+        )
+    }
     if (host != null) {
-        DshListSection(container = DshSectionContainer.Card, header = s.sectionAgent) {
+        DshListSection(header = s.sectionAgent) {
             DshListRow(
-                title = s.agentPermission,
-                icon = ShieldOutline16,
+                title = s.conversationDefaults,
+                icon = ChatOutline16,
                 value = dev.deeplinks.native.util.permissionPresetLabel(appSettings.permissionPreset, s),
                 onClick = { onOpen(SettingsDest.CONVERSATION) },
             )
@@ -487,19 +510,173 @@ internal fun SettingsHome(
             )
         }
     }
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionGeneral) {
+    DshListSection(header = s.sectionOther) {
+        if (host != null) {
+            DshListRow(
+                title = s.sessionHistory,
+                icon = ArchiveBoxOutline16,
+                onClick = { onOpen(SettingsDest.SESSIONS) },
+            )
+        }
         DshListRow(
+            title = s.tabAbout,
+            icon = InfoOutline16,
+            value = BuildConfig.VERSION_NAME,
+            onClick = { onOpen(SettingsDest.ABOUT) },
+        )
+    }
+    // K0：有崩溃记录时多一行「上次崩溃」（没有记录则不渲染）
+    CrashReportEntry()
+}
+
+// ---------- 通用：语言与配对（WI-004：服务端设置为唯一真实源，保存需读回校验） ----------
+
+@Composable
+internal fun LanguageSettings(
+    appSettings: AppSettings,
+    savingNs: String?,
+    saveErrors: Map<String, String>,
+    onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val s = DshS
+    DshListSection(footer = s.languageDesc) {
+        DshSelectRow(
             title = s.language,
             icon = TranslateOutline16,
             value = if (appSettings.language == "zh") s.langZh else s.langEn,
-            onClick = { onOpen(SettingsDest.GENERAL) },
+            options = listOf(s.langZh to "zh", s.langEn to "en"),
+            selectedId = appSettings.language,
+            saving = savingNs == "locale",
+            error = saveErrors["locale"],
+            onRetry = { onSave("locale", org.json.JSONObject().put("preference", appSettings.language), {}) },
+            onSelect = { _, id ->
+                LocaleManager.setLanguage(context, id)
+                onSave("locale", org.json.JSONObject().put("preference", id), {})
+            },
         )
-        DshListRow(
-            title = s.sectionAppearance,
-            icon = PaletteOutline16,
-            value = themeLabel,
-            onClick = { onOpen(SettingsDest.APPEARANCE) },
+    }
+}
+
+// ---------- 外观：主题 / 深色背景 / 字号 / 系统字体 / 动态取色 ----------
+
+@Composable
+internal fun AppearanceSettings(
+    savingNs: String?,
+    saveErrors: Map<String, String>,
+    onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val s = DshS
+    DshListSection(header = s.settingsTheme, footer = s.darkBackgroundDesc) {
+        DshSelectRow(
+            title = s.settingsTheme,
+            icon = ContrastOutline16,
+            value = when (ThemeManager.currentThemeMode) {
+                "light" -> s.themeLight
+                "dark" -> s.themeDark
+                else -> s.themeSystem
+            },
+            options = listOf(
+                s.themeLight to "light",
+                s.themeDark to "dark",
+                s.themeSystem to "system",
+            ),
+            selectedId = ThemeManager.currentThemeMode,
+            saving = savingNs == "ui-theme",
+            error = saveErrors["ui-theme"],
+            onRetry = { onSave("ui-theme", org.json.JSONObject().put("preference", ThemeManager.currentThemeMode), {}) },
+            onSelect = { _, id ->
+                ThemeManager.setThemeMode(context, id)
+                onSave("ui-theme", org.json.JSONObject().put("preference", id), {})
+            },
         )
+        DshSelectRow(
+            title = s.darkBackground,
+            icon = DarkOutline16,
+            value = if (ThemeManager.pureBlack) s.darkBackgroundBlack else s.darkBackgroundSoft,
+            options = listOf(s.darkBackgroundSoft to "soft", s.darkBackgroundBlack to "black"),
+            selectedId = if (ThemeManager.pureBlack) "black" else "soft",
+            onSelect = { _, id -> ThemeManager.setPureBlack(context, id == "black") },
+        )
+    }
+    DshListSection(header = s.sectionText) {
+        DshSelectRow(
+            title = s.settingsFontSize,
+            icon = TextSizeOutline16,
+            value = when (FontScaleManager.currentScale) {
+                FontScaleManager.SMALL -> s.fontSizeSmall
+                FontScaleManager.LARGE -> s.fontSizeLarge
+                else -> s.fontSizeDefault
+            },
+            options = listOf(
+                s.fontSizeSmall to FontScaleManager.SMALL,
+                s.fontSizeDefault to FontScaleManager.DEFAULT,
+                s.fontSizeLarge to FontScaleManager.LARGE,
+            ),
+            selectedId = FontScaleManager.currentScale,
+            onSelect = { _, id -> FontScaleManager.setScale(context, id) },
+        )
+    }
+}
+
+// ---------- 对话：预设 / 权限 / 繁忙行为 ----------
+
+@Composable
+internal fun ConversationSettings(
+    appSettings: AppSettings,
+    savingNs: String?,
+    saveErrors: Map<String, String>,
+    onShowFullAccessConfirm: () -> Unit,
+    onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
+) {
+    val s = DshS
+    DshListSection(header = s.sectionNewSessionDefaults, footer = s.agentPresetDesc) {
+        DshSelectRow(
+            title = s.agentPreset,
+            icon = AgentPresetOutline16,
+            value = presetDisplayName(appSettings.agentPreset, null, s),
+            options = listOf(
+                s.presetStandard to "standard",
+                s.presetCode to "ptc",
+                s.presetMinimal to "minimal",
+                s.presetCreator to "cordis",
+            ),
+            selectedId = appSettings.agentPreset,
+            saving = savingNs == "agent-presets",
+            error = saveErrors["agent-presets"],
+            onRetry = { onSave("agent-presets", org.json.JSONObject().put("default", appSettings.agentPreset), {}) },
+            onSelect = { _, id ->
+                onSave("agent-presets", org.json.JSONObject().put("default", id), {})
+            },
+        )
+        DshSelectRow(
+            title = s.permission,
+            icon = ShieldOutline16,
+            value = when (appSettings.permissionPreset) {
+                "read-only" -> s.permReadOnly
+                "danger-full-access" -> s.permFullAccess
+                else -> s.permWorkspaceWrite
+            },
+            options = listOf(
+                s.permReadOnly to "read-only",
+                s.permWorkspaceWrite to "workspace-write",
+                s.permFullAccess to "danger-full-access",
+            ),
+            selectedId = appSettings.permissionPreset,
+            saving = savingNs == "permission",
+            error = saveErrors["permission"],
+            onRetry = { onSave("permission", org.json.JSONObject().put("defaultPreset", appSettings.permissionPreset), {}) },
+            onSelect = { _, id ->
+                if (id == "danger-full-access") {
+                    onShowFullAccessConfirm()
+                } else {
+                    onSave("permission", org.json.JSONObject().put("defaultPreset", id), {})
+                }
+            },
+        )
+    }
+    DshListSection(header = s.sectionComposer) {
         val busyEnterId = canonicalBusyEnter(appSettings.busyEnter)
         DshSelectRow(
             title = s.busyEnter,
@@ -518,7 +695,33 @@ internal fun SettingsHome(
             description = s.busyEnterDesc,
         )
     }
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionNotifications, footer = s.notifyExplain) {
+    val notifyContext = androidx.compose.ui.platform.LocalContext.current
+    val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
+    var autoLoadRemoteImages by remember { mutableStateOf(notifyPrefs.autoLoadRemoteImages) }
+    // 第 2 步 B1：远程图片开关移到「隐私」分组。默认不自动加载——
+    // 对话里的网络图片可能被提示词注入用来外泄内容、暴露 IP。
+    DshListSection(header = s.sectionPrivacy, footer = s.autoLoadRemoteImagesFooter) {
+        DshSwitchRow(
+            title = s.autoLoadRemoteImages,
+            checked = autoLoadRemoteImages,
+            onCheckedChange = { autoLoadRemoteImages = it; notifyPrefs.autoLoadRemoteImages = it },
+        )
+    }
+}
+
+/** 7.4 通知：存本机（WorkspacePrefs），DshNotifier 从这里读。 */
+@Composable
+internal fun NotificationSettings() {
+    val s = DshS
+    val notifyContext = androidx.compose.ui.platform.LocalContext.current
+    val notifyPrefs = remember { dev.deeplinks.native.util.WorkspacePrefs(notifyContext) }
+    var notifyApproval by remember { mutableStateOf(notifyPrefs.notifyOnApproval) }
+    var notifyDone by remember { mutableStateOf(notifyPrefs.notifyOnDone) }
+    var longTaskMinutes by remember { mutableStateOf(notifyPrefs.longTaskMinutes) }
+    var replyFirstLine by remember { mutableStateOf(notifyPrefs.notifyReplyFirstLine) }
+    var backgroundTakeover by remember { mutableStateOf(notifyPrefs.backgroundTakeover) }
+    var quickApprove by remember { mutableStateOf(notifyPrefs.allowApproveFromNotification) }
+    DshListSection(footer = s.notifyExplain) {
         DshSwitchRow(
             title = s.notifyOnApproval,
             checked = notifyApproval,
@@ -584,172 +787,6 @@ internal fun SettingsHome(
             )
         }
     }
-    // 第 2 步 B1：远程图片开关移到「隐私」分组。默认不自动加载——
-    // 对话里的网络图片可能被提示词注入用来外泄内容、暴露 IP。
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionPrivacy, footer = s.autoLoadRemoteImagesFooter) {
-        DshSwitchRow(
-            title = s.autoLoadRemoteImages,
-            checked = autoLoadRemoteImages,
-            onCheckedChange = { autoLoadRemoteImages = it; notifyPrefs.autoLoadRemoteImages = it },
-        )
-    }
-    // K0：有崩溃记录时多一行「上次崩溃」（没有记录则不渲染）
-    CrashReportEntry()
-    // 方案 7：页脚「DeepLinks 版本号 · 关于」——原来「更多」分区里那一行降级成页脚，
-    // 「关于」仍可点进 ABOUT（开源许可在里面，不能丢）
-    DshListNote(
-        text = "DeepLinks ${BuildConfig.VERSION_NAME} · ${s.tabAbout}",
-        onClick = { onOpen(SettingsDest.ABOUT) },
-    )
-}
-
-// ---------- 通用：语言与配对（WI-004：服务端设置为唯一真实源，保存需读回校验） ----------
-
-@Composable
-internal fun LanguageSettings(
-    appSettings: AppSettings,
-    savingNs: String?,
-    saveErrors: Map<String, String>,
-    onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val s = DshS
-    DshListSection(container = DshSectionContainer.Card, footer = s.languageDesc) {
-        DshSelectRow(
-            title = s.language,
-            icon = TranslateOutline16,
-            value = if (appSettings.language == "zh") s.langZh else s.langEn,
-            options = listOf(s.langZh to "zh", s.langEn to "en"),
-            selectedId = appSettings.language,
-            saving = savingNs == "locale",
-            error = saveErrors["locale"],
-            onRetry = { onSave("locale", org.json.JSONObject().put("preference", appSettings.language), {}) },
-            onSelect = { _, id ->
-                LocaleManager.setLanguage(context, id)
-                onSave("locale", org.json.JSONObject().put("preference", id), {})
-            },
-        )
-    }
-}
-
-// ---------- 外观：主题 / 深色背景 / 字号 / 系统字体 / 动态取色 ----------
-
-@Composable
-internal fun AppearanceSettings(
-    savingNs: String?,
-    saveErrors: Map<String, String>,
-    onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val s = DshS
-    DshListSection(container = DshSectionContainer.Card, header = s.settingsTheme, footer = s.darkBackgroundDesc) {
-        DshSelectRow(
-            title = s.settingsTheme,
-            icon = ContrastOutline16,
-            value = when (ThemeManager.currentThemeMode) {
-                "light" -> s.themeLight
-                "dark" -> s.themeDark
-                else -> s.themeSystem
-            },
-            options = listOf(
-                s.themeLight to "light",
-                s.themeDark to "dark",
-                s.themeSystem to "system",
-            ),
-            selectedId = ThemeManager.currentThemeMode,
-            saving = savingNs == "ui-theme",
-            error = saveErrors["ui-theme"],
-            onRetry = { onSave("ui-theme", org.json.JSONObject().put("preference", ThemeManager.currentThemeMode), {}) },
-            onSelect = { _, id ->
-                ThemeManager.setThemeMode(context, id)
-                onSave("ui-theme", org.json.JSONObject().put("preference", id), {})
-            },
-        )
-        DshSelectRow(
-            title = s.darkBackground,
-            icon = DarkOutline16,
-            value = if (ThemeManager.pureBlack) s.darkBackgroundBlack else s.darkBackgroundSoft,
-            options = listOf(s.darkBackgroundSoft to "soft", s.darkBackgroundBlack to "black"),
-            selectedId = if (ThemeManager.pureBlack) "black" else "soft",
-            onSelect = { _, id -> ThemeManager.setPureBlack(context, id == "black") },
-        )
-    }
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionText) {
-        DshSelectRow(
-            title = s.settingsFontSize,
-            icon = TextSizeOutline16,
-            value = when (FontScaleManager.currentScale) {
-                FontScaleManager.SMALL -> s.fontSizeSmall
-                FontScaleManager.LARGE -> s.fontSizeLarge
-                else -> s.fontSizeDefault
-            },
-            options = listOf(
-                s.fontSizeSmall to FontScaleManager.SMALL,
-                s.fontSizeDefault to FontScaleManager.DEFAULT,
-                s.fontSizeLarge to FontScaleManager.LARGE,
-            ),
-            selectedId = FontScaleManager.currentScale,
-            onSelect = { _, id -> FontScaleManager.setScale(context, id) },
-        )
-    }
-}
-
-// ---------- 对话：预设 / 权限 / 繁忙行为 ----------
-
-@Composable
-internal fun ConversationSettings(
-    appSettings: AppSettings,
-    savingNs: String?,
-    saveErrors: Map<String, String>,
-    onShowFullAccessConfirm: () -> Unit,
-    onSave: (ns: String, patch: org.json.JSONObject, onSuccess: () -> Unit) -> Unit,
-) {
-    val s = DshS
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionNewSessionDefaults, footer = s.agentPresetDesc) {
-        DshSelectRow(
-            title = s.agentPreset,
-            icon = AgentPresetOutline16,
-            value = presetDisplayName(appSettings.agentPreset, null, s),
-            options = listOf(
-                s.presetStandard to "standard",
-                s.presetCode to "ptc",
-                s.presetMinimal to "minimal",
-                s.presetCreator to "cordis",
-            ),
-            selectedId = appSettings.agentPreset,
-            saving = savingNs == "agent-presets",
-            error = saveErrors["agent-presets"],
-            onRetry = { onSave("agent-presets", org.json.JSONObject().put("default", appSettings.agentPreset), {}) },
-            onSelect = { _, id ->
-                onSave("agent-presets", org.json.JSONObject().put("default", id), {})
-            },
-        )
-        DshSelectRow(
-            title = s.permission,
-            icon = ShieldOutline16,
-            value = when (appSettings.permissionPreset) {
-                "read-only" -> s.permReadOnly
-                "danger-full-access" -> s.permFullAccess
-                else -> s.permWorkspaceWrite
-            },
-            options = listOf(
-                s.permReadOnly to "read-only",
-                s.permWorkspaceWrite to "workspace-write",
-                s.permFullAccess to "danger-full-access",
-            ),
-            selectedId = appSettings.permissionPreset,
-            saving = savingNs == "permission",
-            error = saveErrors["permission"],
-            onRetry = { onSave("permission", org.json.JSONObject().put("defaultPreset", appSettings.permissionPreset), {}) },
-            onSelect = { _, id ->
-                if (id == "danger-full-access") {
-                    onShowFullAccessConfirm()
-                } else {
-                    onSave("permission", org.json.JSONObject().put("defaultPreset", id), {})
-                }
-            },
-        )
-    }
 }
 
 private fun openReleasePage(context: android.content.Context, url: String) {
@@ -770,7 +807,7 @@ internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Uni
     var newer by androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(dev.deeplinks.core.UpdateCheckPrefs.cachedNewer(context))
     }
-    DshListSection(container = DshSectionContainer.Card, footer = s.unofficialNotice) {
+    DshListSection(footer = s.unofficialNotice) {
         DshListRow(
             title = "DeepLinks",
             subtitle = s.aboutVersion.replace("%s", BuildConfig.VERSION_NAME),
@@ -794,7 +831,7 @@ internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Uni
             )
         }
     }
-    DshListSection(container = DshSectionContainer.Card, header = s.sectionLegal) {
+    DshListSection(header = s.sectionLegal) {
         DshListRow(
             title = s.openSourceLicense,
             icon = FileOutline16,
@@ -975,13 +1012,13 @@ internal fun SessionsSettingsContent(
         SessionListKind.Loading -> DshListSection { DshListNote(s.loading) }
         SessionListKind.Error -> DshListSection { DshListRetry(loadError ?: s.loadFailed, onRetry) }
         else -> {
-            DshListSection(container = DshSectionContainer.Card, header = s.sectionArchivedSessions) {
+            DshListSection(header = s.sectionArchivedSessions) {
                 if (archivedRows.isEmpty()) DshListNote(s.noArchivedSessions)
                 archivedRows.forEach { row ->
                     ManagedSessionRow(row, onRestore = { onRestore(row.sessionId) }, onClear = { onClear(row.sessionId) })
                 }
             }
-            DshListSection(container = DshSectionContainer.Card, header = s.sectionDeletedSessions) {
+            DshListSection(header = s.sectionDeletedSessions) {
                 if (deletedRows.isEmpty()) DshListNote(s.noDeletedSessions)
                 deletedRows.forEach { row ->
                     ManagedSessionRow(row, onRestore = { onRestore(row.sessionId) }, onClear = { onClear(row.sessionId) })
@@ -989,7 +1026,7 @@ internal fun SessionsSettingsContent(
             }
             if (archivedRows.size + deletedRows.size > 0) {
                 // 危险操作单独成组（红字 destructive 行），不再与普通设置行混排
-                DshListSection(container = DshSectionContainer.Card, footer = s.clearAllLocalRecordsDesc) {
+                DshListSection(footer = s.clearAllLocalRecordsDesc) {
                     DshListActionRow(
                         label = s.clearAllLocalRecords,
                         icon = TrashOutline16,

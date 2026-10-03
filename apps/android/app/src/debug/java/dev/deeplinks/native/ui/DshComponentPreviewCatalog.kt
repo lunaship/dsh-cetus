@@ -204,9 +204,7 @@ private fun DshCatalogPageScaffoldPreview() {
             title = "设置",
             navigation = DshPageNavigation.Back,
             onNavigateBack = {},
-            actions = {
-                DshIconAction(icon = SearchOutline16, contentDescription = "搜索", onClick = {})
-            },
+            actions = listOf(dev.deeplinks.native.ui.v4.DlTopBarAction(SearchOutline16, "搜索", {})),
         ) {
             DshSection(header = "通用") {
                 DshListRow(title = "语言", icon = TranslateOutline16, value = "中文", onClick = {})
