@@ -822,6 +822,7 @@ RFC 必须写清以下内容：
 | I3.1 | #83 | DLModels：按附录 C 写各响应的 `Codable` 类型（15 个主题文件），未知字段忽略、枚举 `unknown` 兜底、`remote` 三态；DLCore 文本兜底（DLCore → DLModels）；合同测试 `ContextInjectionContractTests`、`MobileModelsContractTests`。偏差：部分字段按 `src/` 推断（见 PR）；`relay: null` 不建模；history `goal` 未区分缺失与 null。三个 iOS 检查通过。squash `8e212cf`。 |
 | I3.2 | #84、#85（合入 main）、#86 | 插件侧：`scripts/export-contract-fixtures.mjs` 用假 Host 跑真实插件，生成 29 个 `testdata/mobile-contract/*.json`；`test/contract-fixtures.test.mjs` 在响应结构变了而 fixtures 没更新时失败。#85 修正假 Host 里透传投影的形状（stats / goal / todos 按 Android 解析）。main 两次 merge 进 `ios/main`（`dd56ff8`、`9a3fe06`）。iOS 侧：`MobileContractFixturesTests` 逐个解码，文件集合必须与对照表一致；`SessionGoal` 改按真实的嵌套形状解码。维护者授权自行审核合并。squash `1a372ed` / `4905b45`（main），`addd120`（ios/main）。 |
 | I3.3 | #87 | DLSecurity：`SecureStore` 协议 + `KeychainStore`（AfterFirstUnlockThisDeviceOnly、不同步、`accessGroup` 预留）+ `InMemorySecureStore`；`HostStore` actor 把 token / 指纹 / 远程密钥存进 Keychain，其余存沙盒 JSON，凭据缺失视为未配对并对账清理。`HostStoreContractTests` 用 `pair.json`。偏差：CI 不碰真实 Keychain；「卸载后不可恢复」需维护者在模拟器上手动验证。三个 iOS 检查通过。squash `eae7c37`。 |
+| I3.4 | #88 | 证书固定：共享向量 `testdata/tls-fingerprint/vectors.json`（RSA / EC P-256 / 中文 CN + 长 SAN 三张证书 DER + 规范化用例），插件、Android（仅测试文件）、iOS 三端都跑；DLSecurity `CertificateFingerprint` + `PinEvaluation`（`shouldPin` / `requirePin` 照搬 Android）；DLNet `PinnedSessionDelegate` 不一致时取消连接并记 `certificateChanged`，不删除凭据。偏差：委托本身没有单测（`serverTrust` 没法伪造），判定逻辑全在 `PinEvaluation` 里测；EC 向量必须用 named curve（JVM 不支持显式曲线参数）。iOS、Android、插件检查全部通过。squash `16f81ef`。 |
 
 
 ---
