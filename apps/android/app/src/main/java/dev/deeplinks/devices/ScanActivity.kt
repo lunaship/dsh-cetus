@@ -5,6 +5,8 @@ import dev.deeplinks.core.DeviceName
 import dev.deeplinks.core.EXTRA_AUTH_NOTICE
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
+import dev.deeplinks.core.scanHint
+import dev.deeplinks.core.scanTitle
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.applyDshSecureWindow
 
@@ -72,9 +74,12 @@ class ScanActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_scan)
         barcodeView = findViewById(R.id.barcode_scanner)
+        barcodeView.setStatusText("")
         pairingOverlay = findViewById(R.id.pairing_overlay)
         pairingStatus = findViewById(R.id.pairing_status)
         pairingProgress = findViewById(R.id.pairing_progress)
+        findViewById<android.widget.TextView>(R.id.scan_title).text = L.scanTitle
+        findViewById<android.widget.TextView>(R.id.scan_hint).text = L.scanHint
         val scanClose = findViewById<ImageButton>(R.id.scan_close)
         scanClose.contentDescription = L.close
         scanClose.setOnClickListener { finish() }
