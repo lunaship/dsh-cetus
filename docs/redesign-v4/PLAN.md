@@ -223,7 +223,13 @@
 
 ### R3.7 启动与配对（1.1–1.6）
 - 文件：`devices/SplashActivity.kt`、`devices/PairingPanel.kt`、`devices/PairQrFlow.kt`、`devices/PairingQr.kt`、`devices/ScanActivity.kt`、`core/StartupRouting.kt`。
-- 1.1 启动（仅品牌标）、1.2 欢迎/未配对（三步说明 + 扫码主按钮 + 输入配对码次按钮）、1.3 扫码（深色取景，提示文字对比度 ≥ 4.5:1）、1.4 输入配对码、1.5 等电脑批准、1.6 配对失败（列出尝试过的地址 + 建议）。
+- 1.1 启动（仅品牌标）、1.2 欢迎/未配对（三步说明 + 扫码主按钮 + 从相册识别次按钮）、1.3 扫码（深色取景，提示文字对比度 ≥ 4.5:1）、~~1.4 输入配对码~~（暂不做，见下方「1.4 决定」）、1.5 等电脑批准、1.6 配对失败（列出尝试过的地址 + 建议）。
+
+**1.4 决定（R5 后）：暂不做输入配对码，配对只走二维码（扫码 / 从相册识别）。**
+
+- 需要它的场景很少：能手输的前提是看得到电脑面板，而面板上就有二维码；镜头不行可以截图后从相册识别。
+- 局域网配对靠二维码里的证书指纹防同网冒充（`validateLanIdentity` 对私网 / 回环地址要求指纹，缺失即拒绝）。手输拿不到指纹，改成「首次信任 + 比对短指纹」等于把安全交给用户的核对习惯，不为一个低频入口降低现有保证。
+- 以后如果确有需要（例如电脑只有终端、显示不了二维码），用 PAKE（只凭配对码做双向认证）单独开一轮，插件、App、中继三端一起改，不做 TOFU 过渡。
 
 ### R3.8 系统层（8.1–8.3）
 - 文件：`core/DshNotifier.kt`、`core/CompletionNotifier.kt`、`core/CompletionNotice.kt`、`core/AppLocaleNotifications.kt`、`core/ApprovalActionReceiver.kt`、
@@ -295,4 +301,4 @@
 | R3.7 | #58 | 1.2 无设备时的欢迎页换成 v4：`>_` 标识、标题与说明、三步说明、主按钮「扫码配对」+ 文字按钮「从相册识别」；配对面板改成 `DlBottomSheet` + `DlListRow`。1.3 扫码页只加了顶部提示框（标题 + 说明，半透明黑底），取景框沿用 ZXing。偏差：1.1 启动页只用系统 splash 图标；没有 1.4 输入配对码（协议只支持二维码载荷）、1.5 等待批准页（待批准仍是 toast）、1.6 失败页（失败仍是页内提示文字）。新增截图 `WelcomeLightZh` / `WelcomeDarkEn` |
 | R3.8 | #59 | 8.2 审批通知标题改成「需要审批 · 会话名」，正文是哪个工具在等；默认不挂任何动作（只能点开 App），打开「允许在通知栏直接批准」且 Android 12+ 才给「拒绝 / 允许一次」。完成通知标题「会话名 · 已完成」、正文为结果首行，长任务完成通知也补上「查看改动 / 回复」两个动作；停止通知标题「会话名 · 已停止」、正文为原因。通知渠道名改成与 7.4 开关同名（「需要审批时」「任务完成时」）。8.1 锁屏公开版本沿用现状（只显示状态）。偏差：8.3 分享进来不弹会话选择，仍落在新任务草稿里预填（换会话需在首页再选）；通知小图标沿用已有单色 `ic_stat_dsh` |
 | R4 | #60 | `V4MigrationAllowlist` 清空并删除，共用的源码遍历工具改名 `ArchitectureSources`。剩余 13 个文件按 v4 修正：间距 s2/s6/10dp/13dp/3dp 归到 4 的倍数；`DshTileShape`、`DshRadius.card` 删除。删除 `DshGlass`、`DshEdgeFade`、`DshFloatingControls`、`DshCardSurface`、`DshTranslucentBar`、`DshPageChrome`、`DswPalette`，以及 `DshInbox` 里没人用的 `DshStatusIcon` / `DshGroupCard` / `DshCardDivider` / `DshSectionLabel`、`DshEmptyState`；`OverlayChrome` 仍在用（实底顶 / 底栏的高度回填），只去掉了毛玻璃采样层；移除 Kyant0 Backdrop 依赖及第三方说明。`HomeBalanceBanner` 改名 `HomeBalanceNotice`。偏差：`DshSyntaxPalette`（代码高亮配色）作为 token 文件允许写死色值；`ShareCatcherActivity` 的系统 `Theme.Translucent` 保留（无界面的跳板）；没有附 63 页对照表，README 截图未换 |
-| R5 | #62 | 补 R3.7 / R3.8 的偏差。1.5 等待批准页：配对返回 pending 后进入新路由 `pairWaiting`，用配对拿到的 token 每 2 秒请求 `/dsh-link/mobile/sessions`（200 = 已批准，403 + `pending` = 继续等，401 = 被拒或超时），显示本机名称与连接方式（局域网 / 远程）；取消会删掉本机这条记录。1.6 失败页（路由 `pairFailed`）：传输层失败按「没连上这台电脑」+ 三条建议，其余写原因；扫码页的失败也带回这一页，码不对（非 DSH 码 / 内容不全）仍在扫码页提示。8.3 分享选会话：`SharePickerSheet`（新任务 + 最近 6 个会话），选会话先切过去再预填。偏差：1.6 不列出逐个尝试过的地址（`pairWithQr` 只返回最后一个错误），「查看连接诊断」换成「返回」（失败时还没有可诊断的电脑）；8.3 只预填不发送，只有提示没有内容的分享不弹选择；1.4 输入配对码仍未做：局域网配对必须校验证书指纹（二维码里带），手输配对码拿不到指纹，要么首次信任 + 两边比对短指纹，要么改成 PAKE，需要另定方案 |
+| R5 | #62 | 补 R3.7 / R3.8 的偏差。1.5 等待批准页：配对返回 pending 后进入新路由 `pairWaiting`，用配对拿到的 token 每 2 秒请求 `/dsh-link/mobile/sessions`（200 = 已批准，403 + `pending` = 继续等，401 = 被拒或超时），显示本机名称与连接方式（局域网 / 远程）；取消会删掉本机这条记录。1.6 失败页（路由 `pairFailed`）：传输层失败按「没连上这台电脑」+ 三条建议，其余写原因；扫码页的失败也带回这一页，码不对（非 DSH 码 / 内容不全）仍在扫码页提示。8.3 分享选会话：`SharePickerSheet`（新任务 + 最近 6 个会话），选会话先切过去再预填。偏差：1.6 不列出逐个尝试过的地址（`pairWithQr` 只返回最后一个错误），「查看连接诊断」换成「返回」（失败时还没有可诊断的电脑）；8.3 只预填不发送，只有提示没有内容的分享不弹选择；1.4 输入配对码决定暂不做（见「1.4 决定」） |
