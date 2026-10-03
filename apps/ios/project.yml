@@ -1,0 +1,113 @@
+name: DeepLinks
+options:
+  bundleIdPrefix: dev.deeplinks.ios
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  DLModels:
+    path: Packages/DLModels
+  DLCore:
+    path: Packages/DLCore
+  DLSecurity:
+    path: Packages/DLSecurity
+  DLNet:
+    path: Packages/DLNet
+  DLRemote:
+    path: Packages/DLRemote
+  DLUI:
+    path: Packages/DLUI
+targets:
+  DeepLinks:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+    dependencies:
+      - target: NotificationService
+        embed: true
+      - target: LiveActivity
+        embed: true
+      - target: Share
+        embed: true
+      - package: DLModels
+      - package: DLCore
+      - package: DLSecurity
+      - package: DLNet
+      - package: DLRemote
+      - package: DLUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ""
+  NotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Extensions/NotificationService
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.notification-service
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Extensions/NotificationService/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+  LiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Extensions/LiveActivity
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.live-activity
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Extensions/LiveActivity/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+  Share:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Extensions/Share
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.share
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Extensions/Share/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+schemes:
+  DeepLinks:
+    build:
+      targets:
+        DeepLinks: all
+        NotificationService: all
+        LiveActivity: all
+        Share: all
+    run:
+      config: Debug
+    archive:
+      config: Release
