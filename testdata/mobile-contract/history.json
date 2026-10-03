@@ -112,16 +112,16 @@
       "role": "todo",
       "todos": [
         {
-          "text": "复现超时",
-          "done": true
+          "content": "复现超时",
+          "status": "completed"
         },
         {
-          "text": "调整超时配置",
-          "done": true
+          "content": "调整超时配置",
+          "status": "completed"
         },
         {
-          "text": "补回归测试",
-          "done": false
+          "content": "补回归测试",
+          "status": "in_progress"
         }
       ],
       "time": 1767225612000,
@@ -196,36 +196,37 @@
     },
     "sessionStats": {
       "turns": 2,
-      "toolCalls": 3,
-      "durationMs": 118000
+      "steps": 7,
+      "llmMs": 61000,
+      "toolMs": 42000,
+      "ttftMs": 1800,
+      "ttftSteps": 7,
+      "decodeMs": 52000,
+      "decodeTokens": 3450
     },
     "contextPressure": {
-      "usedTokens": 113950,
-      "windowTokens": 1048576,
-      "fraction": 0.11
+      "projectedTokens": 113950,
+      "contextWindow": 1048576
     },
     "contextBreakdown": {
-      "system": 4200,
-      "tools": 18600,
-      "history": 91150
+      "systemTokens": 4200,
+      "toolsTokens": 18600,
+      "messageTokens": 91150
     },
-    "todos": {
-      "items": [
-        {
-          "text": "复现超时",
-          "done": true
-        },
-        {
-          "text": "调整超时配置",
-          "done": true
-        },
-        {
-          "text": "补回归测试",
-          "done": false
-        }
-      ],
-      "revision": 2
-    },
+    "todos": [
+      {
+        "content": "复现超时",
+        "status": "completed"
+      },
+      {
+        "content": "调整超时配置",
+        "status": "completed"
+      },
+      {
+        "content": "补回归测试",
+        "status": "in_progress"
+      }
+    ],
     "estimatedCost": {
       "amount": 0.017237,
       "currency": "USD",
@@ -242,11 +243,13 @@
     }
   ],
   "goal": {
-    "id": "goal-login-1",
-    "revision": 3,
-    "objective": "修复登录接口超时并补齐回归测试",
-    "round": 2,
-    "maxGoalRounds": 8,
-    "phase": "running"
+    "goal": {
+      "id": "goal-login-1",
+      "revision": 3,
+      "objective": "修复登录接口超时并补齐回归测试",
+      "phase": "active",
+      "maxGoalRounds": 8
+    },
+    "roundsStarted": 2
   }
 }
