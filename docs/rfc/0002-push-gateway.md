@@ -1,8 +1,8 @@
 # DeepLinks 推送网关 RFC（DLPUSH/1）
 
-> 状态：草案（阶段 1 / I1.3）——停下等维护者安全审查后再进入 I6.2 实现。  
+> 状态：草案（阶段 1 / I1.3，按 PLAN v1.2 修订 HPKE）——停下等维护者安全审查后再进入 I6.2 实现。  
 > 写入：`docs/rfc/0002-push-gateway.md`  
-> 来源：`docs/ios/PLAN.md` 阶段 6；格式参照 `docs/rfc/0001-dlp1-remote-pipe.md`。  
+> 来源：`docs/ios/PLAN.md` 阶段 6（v1.2）；格式参照 `docs/rfc/0001-dlp1-remote-pipe.md`。  
 > 执行者须知：本文 §5 为协议合同（逐字节），§6–§8 为实现与红线。**有歧义时以 §5 为准，并在 PR 描述里提出，不要自行发明。**
 
 ---
@@ -79,18 +79,46 @@
 
 ```json
 {
-  "apnsToken": "<hex 或 base64 的 device token 字符串，实现统一为小写 hex>",
+  "apnsToken": "<小写 hex 的 device token>",
   "env": "sandbox" | "production",
   "bundleId": "<App bundle id>",
   "laToken": "<可选，Live Activity push-to-start token，缺省则省略键>"
 }
 ```
 
-- `sealed = HPKE.Seal(gatewayPub[kid], info = "dlpush/1 token", plaintext = UTF8(JSON))`
-  - 算法套件：CryptoKit HPKE（X25519 + HKDF-SHA256 + AES-128-GCM 或与 `circl` 对齐的套件；**测试向量锁定具体 KEM/KDF/AEAD ID**，见 `testdata/push/`）。
-  - `info` 字节为 ASCII：`dlpush/1 token`（含空格）。
-- 插件只保存 `{ gateway, kid, sealed, k, prefs }` 中的 `sealed` 与 `k` 等；**打不开** `sealed`。
-- 网关用 `kid` 对应私钥打开；Go 端用 Cloudflare `circl/hpke`（BSD-3）。
+**算法组合（已定，v1）**：RFC 9180 **base 模式**（`mode_base` = `0x00`）
+
+| 角色 | ID | 名称 |
+|---|---|---|
+| KEM | `0x0020` | DHKEM(X25519, HKDF-SHA256) |
+| KDF | `0x0001` | HKDF-SHA256 |
+| AEAD | `0x0003` | ChaCha20-Poly1305 |
+
+- CryptoKit：只用系统预置 `HPKE.Ciphersuite.Curve25519_SHA256_ChachaPoly`，**不自拼**套件。
+- Go（`cloudflare/circl`）：`hpke.NewSuite(hpke.KEM_X25519_HKDF_SHA256, hpke.KDF_HKDF_SHA256, hpke.AEAD_ChaCha20Poly1305)`。
+- `info` = UTF-8 `"dlpush/1 token"`（含空格）。
+- HPKE `aad` = UTF-8 `"dlpush/1|" + kid`（与内容加密的 AAD 不同，见 §5.4）。
+- 每个 HPKE 上下文只封装 **一条** 消息（序号 0）。
+- 算法组合与 `kid` **绑定**：换组合（例如日后 X-Wing）只能发新 `kid`，不在同一 `kid` 下协商。网关遇未知 `kid` 返回 **400**，不尝试其他组合。
+
+**线上格式**（字段 `sealed` 的值；无填充 base64url）：
+
+```json
+{
+  "v": 1,
+  "kid": "<string，与选用的网关公钥一致>",
+  "enc": "<base64url，32 字节 encapsulated key>",
+  "ct": "<base64url，HPKE ciphertext>"
+}
+```
+
+插件只保存 `sealed`（以及端到端 `k` 等），**打不开**它。网关用 `kid` 对应私钥 Open。
+
+**共享测试数据** `testdata/push/hpke/`（向量本体在阶段 6 由 Go 生成；本仓库先放占位与说明）：
+
+1. `rfc9180-a2-base.json`：RFC 9180 附录 A.2.1 官方向量。Go 完整验证（含固定临时密钥的 Seal）；CryptoKit 无法注入临时密钥，只用 `skRm + enc` 验证 Open。
+2. `dlpush-v1-*.json`：用本项目的 `info` / `aad` / 线上格式由 Go 生成；iOS 验证 Open 得相同明文。
+3. 负例与互通：篡改 `enc` / `ct` / `aad` / `kid` 必须失败；CI 中可 iOS Seal → Go Open（或内嵌期望密文）。
 
 ### 5.4 内容加密（插件 → 网关 → APNs → NSE）
 
@@ -132,15 +160,22 @@ NSE 规则：
 
 ```json
 {
-  "kid": "<string>",
-  "sealed": "<base64 HPKE ciphertext>",
+  "kid": "<string，须与 sealed.kid 一致>",
+  "sealed": {
+    "v": 1,
+    "kid": "<string>",
+    "enc": "<base64url>",
+    "ct": "<base64url>"
+  },
   "kind": "alert" | "la-update" | "la-start" | "la-end",
-  "ct": "<base64 nonce||ciphertext||tag>",
+  "ct": "<base64 nonce||ciphertext||tag，内容密文，非 HPKE>",
   "collapseId": "<string，≤ 64 字节建议>",
   "priority": "high" | "normal",
   "expiresIn": <秒，正整数>
 }
 ```
+
+`sealed` 亦可为上述对象的 UTF-8 JSON 字符串；实现选定一种并在测试向量中固定。顶层 `kid` 与 `sealed.kid` 不一致 → 400。
 
 响应：
 
@@ -276,7 +311,7 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 2. `.p8` 与 HPKE 私钥权限 0600，属主为服务用户；不进 git。
 3. 中继错误码与网关错误码均不得诱导 App 删除局域网凭据；删推送 `sealed` 只认 410 / 用户关闭 / 设备吊销。
 4. 不在通知或 Live Activity 上提供批准按钮。
-5. 测试向量与 iOS / 插件共用 `testdata/push/*.json`；改合同先改本 RFC 与向量。
+5. 测试向量与 iOS / 插件 / 网关共用 `testdata/push/hpke/`（及后续内容加密向量）；改合同先改本 RFC 与向量。
 
 ---
 
@@ -296,8 +331,9 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 
 ## 10. 验收清单
 
-- [ ] HPKE 向量：iOS Seal ↔ Go Open 互通
-- [ ] AES-GCM 向量：插件加密 ↔ NSE 解密；过期与失败兜底
+- [ ] HPKE：RFC 9180 A.2.1 官方向量（Go Seal+Open；iOS Open）
+- [ ] HPKE：`dlpush-v1-*` 项目向量；负例（篡改 enc/ct/aad/kid）
+- [ ] AES-GCM 内容向量：插件加密 ↔ NSE 解密；过期与失败兜底
 - [ ] 限流 429；APNs 假服务器 410 透传
 - [ ] 前台 SSE 抑制推送；collapse 合并；吊销清理
 - [ ] 日志脱敏检查
@@ -310,4 +346,5 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 
 | 日期 | 变更 |
 |---|---|
-| 2026-10-03 | I1.3 初稿：从 PLAN v1.1 阶段 6 抽出合同；待安全审查 |
+| 2026-10-03 | I1.3 初稿：从 PLAN v1.1 阶段 6 抽出合同 |
+| 2026-10-03 | 按 PLAN v1.2：锁定 HPKE 套件为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305；明确 `info`/`aad`/线上格式/`kid` 绑定；增加 `testdata/push/hpke/` 占位说明 |

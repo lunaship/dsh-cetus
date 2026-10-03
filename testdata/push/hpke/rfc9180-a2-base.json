@@ -1,0 +1,12 @@
+{
+  "_comment": "PLACEHOLDER — replace in I6.2 with RFC 9180 Appendix A.2.1 base-mode vectors for DHKEM(X25519, HKDF-SHA256) / HKDF-SHA256 / ChaCha20-Poly1305.",
+  "status": "placeholder",
+  "suite": {
+    "mode": "0x00",
+    "kem_id": "0x0020",
+    "kdf_id": "0x0001",
+    "aead_id": "0x0003"
+  },
+  "source": "RFC 9180 §A.2.1",
+  "vectors": []
+}

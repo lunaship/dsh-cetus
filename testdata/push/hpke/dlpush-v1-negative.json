@@ -1,0 +1,5 @@
+{
+  "_comment": "PLACEHOLDER — negative cases: mutate enc/ct/aad/kid; Open must fail. Filled in I6.2.",
+  "status": "placeholder",
+  "cases": []
+}
