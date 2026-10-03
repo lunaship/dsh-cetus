@@ -12,13 +12,13 @@
    - 用语义排版入口 `DshType.*`（`core/DshTypography.kt`），角色面由 `DshTypeScaleTest` 锁死。
    - 存量以 `app/src/test/resources/design-token-baseline.txt` 登记为**每文件上限**。
 2. **禁止裸色值**：不得写 `Color(0x...)`。颜色一律走 `Dsh.*`。
-   `Color(0x…)` 只允许出现在 `core/DshTheme.kt`。迁移期临时允许 `core/DswPalette.kt`，阶段 4 删除。
+   `Color(0x…)` 只允许出现在 `core/DshTheme.kt` 与代码高亮配色 `core/DshSyntaxPalette.kt`。
    字面量的 RGB 必须在 v4 token 表里（`DshPaletteProvenanceTest`），不再要求溯源到 Dsw。
 3. **间距**：`padding` / `spacedBy` / `PaddingValues` / `Spacer` 只用 4 的倍数，范围 4–32。
    由 `DshSpacingUsageTest` 强制。
 4. **圆角**：只用 8 / 12 / 16 / 28，外加全圆。由 `DshShapeRoleTest` 强制。
 5. **实底**：禁止 `blur(`、`RenderEffect`、`graphicsLayer { renderEffect`、`haze`。由 `DshSurfaceRoleTest` 强制。
-6. **迁移白名单**：还没改完的文件在 `V4MigrationAllowlist`。迁完一个模块就删对应条目，不要新增。
+6. **全量检查**：v4 迁移已完成，`V4MigrationAllowlist` 已删除；源码遍历统一用 `ArchitectureSources`，所有模块都受门禁约束。
 
 由 `DesignTokenUsageTest` 强制裸色值和裸字号：新增违规即让 `testDebugUnitTest` 失败。
 
@@ -80,5 +80,5 @@ CI（`.github/workflows/ci-android.yml`）按顺序跑：固定版本 ktlint →
 | 主题 | 文件 |
 |---|---|
 | 视觉合同（页面/表面/形状/排版/组件） | `docs/visual-rules.md` |
-| 截图基线重生成 | `../../.github/workflows/regen-screenshots.yml` |
-| 变更记录 | `../../CHANGELOG.md` |
+| 截图基线重生成 | `../../../.github/workflows/regen-screenshots.yml` |
+| 变更记录 | `../../../CHANGELOG.md` |

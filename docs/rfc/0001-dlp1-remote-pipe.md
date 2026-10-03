@@ -666,7 +666,7 @@ export class BootstrapTable {
    - 向量文件路径：JVM 单测的工作目录是 `apps/android/app`，用 `File("../../../testdata/dlp1/vectors.json")` 读取，不要复制到资源目录。
    - 模拟 Relay：新增测试依赖 `com.squareup.okhttp3:mockwebserver3`（版本跟 `libs.versions.toml` 里的 `okhttp` 一致），在 `libs.versions.toml` 登记后用 `testImplementation` 引入；用 `MockResponse.Builder().webSocketUpgrade(listener)` 实现最小 Relay 行为（发 `hello`、校验 `client_open`、发 `ready` 后回显二进制）。
    - 隧道测试至少覆盖：`ready` 前各种 `error` 码映射为对应的 `RouteConnectException` 子类；回显 1 MiB 数据完整无误；对端关闭后 socket 读到 EOF；在隧道上用自签证书 + 钉扎完成一次 TLS 握手与 HTTP 请求。
-7. 不要对任何 release 变体跑设备测试；M1 不需要真机（见 `apps/android/CLAUDE.md` 红线）。
+7. 不要对任何 release 变体跑设备测试；M1 不需要真机（见 `apps/android/AGENTS.md` 红线）。
 
 ### 10.5 面板 UI
 

@@ -144,4 +144,4 @@
 | Android | `cd apps/android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` | JDK + Android SDK |
 
 冒烟/联调必须用 `stateDir` 隔离，禁止触碰真实设备配对数据——原因与历史事故
-见根 [CLAUDE.md](../CLAUDE.md) 红线。
+见根 [AGENTS.md](../AGENTS.md) 红线。

@@ -6,7 +6,7 @@
 
 ## 0. 总则（所有 PR 必须遵守）
 
-### 0.1 红线（摘自 `CLAUDE.md` 与 `apps/android/CLAUDE.md`，违反即拒）
+### 0.1 红线（摘自 `AGENTS.md` 与 `apps/android/AGENTS.md`，违反即拒）
 
 - 冒烟 / 联调**必须**用隔离 `stateDir`（`node scripts/dev-isolated-host.mjs`），不得调用设备吊销类操作；对用户真实 `~/.dsh` 数据**只读**。
 - 不得改动线上官方中继 `relay.dshlinks.com` 的部署；中继代码改动只能走 PR，部署由维护者决定。

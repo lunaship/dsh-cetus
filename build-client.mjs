@@ -1,7 +1,6 @@
 /**
  * 组装 src/client.js —— 仅「手机连接」面板（配对码/二维码/设备管理）。
- * 移动布局壳（hanui）已迁出插件，由 App 注入（assets/mobile-client.js），
- * 插件不再持有任何页面布局代码。
+ * Android 使用原生 UI；插件只提供桌面端连接面板。
  */
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -13,8 +12,7 @@ const panel = readFileSync(join(root, "src", "panel.js"), "utf8")
 const header = `/**
  * dsh-links 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
  * 单模块：createPanelModule —— 「手机连接」面板（src/panel.js）
- * 说明：移动布局适配已由 Android App 注入（assets/mobile-client.js），
- *       本插件不注入任何页面布局，桌面端 DSH Web UI 保持原样。
+ * Android 使用原生 UI；本插件只提供桌面端连接面板。
  */
 `
 

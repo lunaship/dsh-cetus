@@ -1,8 +1,7 @@
 /**
  * dsh-links 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
  * 单模块：createPanelModule —— 「手机连接」面板（src/panel.js）
- * 说明：移动布局适配已由 Android App 注入（assets/mobile-client.js），
- *       本插件不注入任何页面布局，桌面端 DSH Web UI 保持原样。
+ * Android 使用原生 UI；本插件只提供桌面端连接面板。
  */
 /**
  * dsh-links 客户端面 · 面板模块（作为 createPanelModule 工厂被主模块组合调用）
