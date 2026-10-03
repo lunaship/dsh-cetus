@@ -8,12 +8,12 @@ struct TokenUsageTests {
             .deletingLastPathComponent()
         let roots = [
             iosRoot.appendingPathComponent("App", isDirectory: true),
-            iosRoot.appendingPathComponent("Packages/DLUI", isDirectory: true)
+            iosRoot.appendingPathComponent("Packages/DLUI", isDirectory: true),
         ]
         let forbidden = [
             "Color(red:",
             "UIColor(red:",
-            ".font(.system(size:"
+            ".font(.system(size:",
         ]
         var scanned = 0
         var violations: [String] = []
