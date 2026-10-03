@@ -1,5 +1,5 @@
 {
-  "_comment": "PLACEHOLDER — I6.2 Go generator fills positive Seal/Open cases using info=\"dlpush/1 token\", aad=\"dlpush/1|\"+kid, wire {v,kid,enc,ct}.",
+  "_comment": "PLACEHOLDER — I6.2 Go generator fills positive Seal/Open cases using info=\"dlpush/1 token\", aad=\"dlpush/1 token|\"+kid, wire object {v,kid,enc,ct}.",
   "status": "placeholder",
   "suite": {
     "mode": "0x00",
@@ -8,10 +8,11 @@
     "aead_id": "0x0003"
   },
   "info_utf8": "dlpush/1 token",
-  "aad_prefix_utf8": "dlpush/1|",
+  "aad_prefix_utf8": "dlpush/1 token|",
   "wire": {
     "v": 1,
-    "encoding": "base64url-nopad"
+    "encoding": "base64url-nopad",
+    "sealed_json_type": "object"
   },
   "cases": []
 }

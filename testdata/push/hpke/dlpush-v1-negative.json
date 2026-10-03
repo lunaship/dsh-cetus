@@ -1,5 +1,6 @@
 {
-  "_comment": "PLACEHOLDER — negative cases: mutate enc/ct/aad/kid; Open must fail. Filled in I6.2.",
+  "_comment": "PLACEHOLDER — negative cases: mutate enc/ct/aad/kid; wrong prefix \"dlpush/1 content|\" must fail Open. Filled in I6.2.",
   "status": "placeholder",
+  "wrong_aad_prefix_utf8": "dlpush/1 content|",
   "cases": []
 }
