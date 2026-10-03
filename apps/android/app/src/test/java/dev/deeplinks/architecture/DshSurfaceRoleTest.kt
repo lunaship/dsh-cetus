@@ -96,7 +96,7 @@ class DshSurfaceRoleTest {
 
     @Test
     fun selectionContainerIsOneRole() {
-        // 直接比运行时值：色值改为取自 Dsw 后，源码里已经没有可解析的字面量
+        // 直接比运行时值：色值在 DshTheme 里按亮 / 暗两套定义
         val violations = listOf("DarkDshColors" to DarkDshColors, "LightDshColors" to LightDshColors)
             .filter { (_, colors) -> colors.bgSelected != colors.bgNavSelected }
             .map { (name, colors) ->
@@ -125,6 +125,24 @@ class DshSurfaceRoleTest {
         }
         assertTrue(
             "浮层阴影越界（docs/visual-rules.md 第二节）：\n" + violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
+
+    @Test
+    fun noBlurRenderEffectOrHaze() {
+        val root = mainSourceRoot()
+        val effect = Regex("""\bblur\s*\(|\bRenderEffect\b|\brenderEffect\b|\bhaze\b""")
+        val violations = mutableListOf<String>()
+        for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
+            val rel = relative(root, file)
+            val hits = ArchitectureSources.codeLines(file).count { effect.containsMatchIn(it) }
+            if (hits > 0) {
+                violations += "$rel: $hits 处模糊 / RenderEffect / haze。v4 用实底，禁止这些调用"
+            }
+        }
+        assertTrue(
+            "实底门禁（docs/visual-rules.md §8）：\n" + violations.joinToString("\n"),
             violations.isEmpty(),
         )
     }

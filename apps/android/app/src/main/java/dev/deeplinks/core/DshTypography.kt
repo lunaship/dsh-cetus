@@ -5,121 +5,84 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import dev.deeplinks.R
 
 /**
- * DeepLinks type system — Plus Jakarta Sans.
- * Latin/UI copy uses Jakarta; CJK glyphs fall back to the system sans.
+ * v4 字阶（docs/visual-rules.md §5）：系统字体，只有 26 / 17 / 15 / 13 / 12 五档，
+ * 字重只用 400 / 500 / 600。代码、路径、命令用 [FontFamily.Monospace]。
  */
-val DshFontFamily = FontFamily(
-    Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
-    Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
-    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
-    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
-)
-
-fun dshTypography(family: FontFamily): Typography = Typography(
+fun dshTypography(): Typography = Typography(
     displayLarge = TextStyle(
-        fontFamily = family,
-        fontWeight = FontWeight.Bold,
-        fontSize = 34.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.4).sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 26.sp,
+        lineHeight = 32.sp,
     ),
     displayMedium = TextStyle(
-        fontFamily = family,
-        fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = (-0.3).sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 26.sp,
+        lineHeight = 32.sp,
     ),
     headlineLarge = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 30.sp,
-        letterSpacing = (-0.2).sp,
+        fontSize = 26.sp,
+        lineHeight = 32.sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = family,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp,
-        letterSpacing = (-0.15).sp,
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = family,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
-        letterSpacing = (-0.1).sp,
-    ),
-    titleLarge = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.SemiBold,
         fontSize = 17.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.sp,
+    ),
+    headlineSmall = TextStyle(
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        lineHeight = 24.sp,
+    ),
+    titleLarge = TextStyle(
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        lineHeight = 24.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Medium,
         fontSize = 15.sp,
         lineHeight = 22.sp,
-        letterSpacing = 0.01.sp,
     ),
     titleSmall = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         lineHeight = 18.sp,
-        letterSpacing = 0.02.sp,
     ),
     bodyLarge = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 26.sp,
-        letterSpacing = 0.01.sp,
+        fontSize = 15.sp,
+        lineHeight = 24.sp,
     ),
     bodyMedium = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
         lineHeight = 22.sp,
-        letterSpacing = 0.01.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.02.sp,
     ),
     labelLarge = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.02.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.03.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = family,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.04.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
     ),
 )
 
@@ -128,9 +91,8 @@ fun dshTypography(family: FontFamily): Typography = Typography(
  *
  * 每个角色映射到 [dshTypography] 定义的字阶，因此应用内字号（FontScaleManager）
  * 与系统 fontScale 会自动生效，且全 App 排版收敛到同一套语义。
- * 尺寸→角色：12→bodySmall、13→titleSmall、15→bodyMedium、15→titleMedium、
- * 16→bodyLarge、17→titleLarge、18→headlineSmall、20→headlineMedium、24→headlineLarge、
- * 28→displayMedium、34→displayLarge。
+ * 尺寸→角色：12→bodySmall/labelMedium、13→titleSmall/labelLarge、15→bodyLarge/bodyMedium/titleMedium、
+ * 17→titleLarge/headlineSmall/headlineMedium、26→displayLarge/displayMedium/headlineLarge。
  */
 /**
  * 数字用等宽数位（tnum）而不是换成等宽字体：统计、计数、耗时、增删行数都走这里，
@@ -186,7 +148,6 @@ object DshType {
     val captionRelaxed: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Normal,
             fontSize = 12.sp,
             lineHeight = 18.sp,
@@ -197,7 +158,6 @@ object DshType {
     val microRelaxed: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Normal,
             fontSize = 12.sp,
             lineHeight = 16.sp,
@@ -208,7 +168,6 @@ object DshType {
     val microMedium: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Medium,
             fontSize = 12.sp,
             lineHeight = 16.sp,
@@ -219,7 +178,6 @@ object DshType {
     val microStrong: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
             lineHeight = 16.sp,
@@ -233,36 +191,29 @@ object DshType {
     val captionMedium: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Medium,
             fontSize = 12.sp,
             lineHeight = 18.sp,
             letterSpacing = 0.01.sp,
         )
 
-    /** 14/20：列表行副标题、弹层副标题、设备卡次行（M3 列表 supporting text 规格）。 */
+    /** 13/18：列表行副标题、弹层副标题、设备卡次行。 */
     val supporting: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
             letterSpacing = 0.01.sp,
         )
 
-    /** 16/22 · Medium：列表主标题（2026-10-01 R7：26 是正文阅读行距，列表行用 22 收紧行距）。 */
-    /**
-     * 16/24 · Normal：列表主标题（2026-10-02 Lody 简化 3.2/3.4：两层文字行——元信息 +
-     * Normal 标题；Medium 只留给页面标题，22 的 Medium 旧规格由本角色取代）。
-     */
+    /** 15/22 · Normal：列表主标题。 */
     val listTitle: TextStyle
         @Composable @ReadOnlyComposable
         get() = TextStyle(
-            fontFamily = LocalDshFontFamily.current,
             fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
+            fontSize = 15.sp,
+            lineHeight = 22.sp,
             letterSpacing = 0.01.sp,
         )
 }

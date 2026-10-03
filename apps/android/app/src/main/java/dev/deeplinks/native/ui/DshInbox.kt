@@ -8,12 +8,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -34,8 +30,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
@@ -169,7 +163,7 @@ fun DshStatusChip(
         Row(
             modifier = modifier,
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
             Box(
                 modifier = Modifier
@@ -185,97 +179,13 @@ fun DshStatusChip(
         modifier = modifier
             .clip(RoundedCornerShape(DshRadius.full))
             .background(Dsh.bgSubtle)
-            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2),
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
             Icon(leading, contentDescription = null, tint = leadingTint, modifier = Modifier.size(DshIconSize.sm))
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
         }
         Text(text, color = Dsh.labelSecondary, style = DshType.captionMedium, maxLines = 1)
     }
-}
-
-// ============================================================
-// DshStatusIcon —— 32dp 状态图标圈（列表行首）
-// 完成 = 中性底 + successContent 图标；已停止 = 灰底方块；失败 = 错误色
-// ============================================================
-
-@Composable
-fun DshStatusIcon(
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    container: Color = Dsh.bgSubtle,
-    content: Color = Dsh.successContent,
-    size: Dp = 32.dp,
-    iconSize: Dp = 18.dp,
-) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(iconSize))
-    }
-}
-
-// ============================================================
-// DshGroupCard —— 白色分组卡（方案 2.3：圆角 composer、内边距 16）
-// 分层靠 tonal（灰底 + 白卡）+ v3 发丝边与一级柔阴影（dshCardSurface），不加 1dp 描边（SurfaceHierarchyTest）
-// ============================================================
-
-@Composable
-fun DshGroupCard(
-    modifier: Modifier = Modifier,
-    /** 内容内边距。首页卡片传 [DshSpace.s12]，让卡内文字与会话行标题落在同一条左边线（V2）。 */
-    contentPadding: PaddingValues = PaddingValues(DshSpace.s16),
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .dshCardSurface()
-            .padding(contentPadding),
-        content = content,
-    )
-}
-
-/** 分组卡内的分隔线：只画一根发丝线，左侧按行首内容缩进。 */
-@Composable
-fun DshCardDivider(
-    modifier: Modifier = Modifier,
-    leadingInset: Dp = 60.dp,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = leadingInset)
-            .height(1.dp)
-            .background(Dsh.borderSubtle),
-    )
-}
-
-// （DshFloatingPill 已删除：黑色「+ 新任务」悬浮胶囊由 2026-10-02 Lody 简化 4.1 的
-// 底部玻璃操作行（DshGlassCapsule + DshGlassCircle）取代。）
-
-// ============================================================
-// DshSectionLabel —— 分组标签（13 / Medium / 次要色）
-// 只有灰字，不挂计数（visual-rules 第五节）
-// ============================================================
-
-@Composable
-fun DshSectionLabel(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        modifier = modifier.padding(start = DshSpace.s4),
-        color = Dsh.labelSecondary,
-        style = DshType.titleSmall,
-        fontWeight = FontWeight.Medium,
-        maxLines = 1,
-    )
 }

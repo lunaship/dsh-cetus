@@ -15,12 +15,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.DarkDshColors
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshFontFamily
 import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
-import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
@@ -39,6 +37,8 @@ import dev.deeplinks.native.util.groupMessages
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.ToolGroupHeader
 import dev.deeplinks.native.MobileMessage
+import dev.deeplinks.native.ApprovalDecisionBar
+import dev.deeplinks.native.QuestionDecisionBar
 
 /**
  * 对话流：一轮完整回复、流式进行中、审批卡、提问卡。
@@ -52,16 +52,15 @@ private fun ChatFrame(dark: Boolean, english: Boolean = false, content: @Composa
     // 渲染环境（layoutlib）没有可用的 SharedPreferences，走 setLanguageForPreview
     // 只切内存态，保证英文预览里不再混中文。
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides if (dark) DarkDshColors else LightDshColors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
-            // v3：聊天画布是白底（bgCard），与生产 WorkspaceScreen 一致
-            Box(modifier = Modifier.fillMaxSize().background(Dsh.bgCard)) {
+            // v4：聊天画布是 background（与生产 WorkspaceScreen 一致）
+            Box(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
                 Column(
                     modifier = Modifier.padding(DshSpace.s16),
                     verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
@@ -289,28 +288,37 @@ internal fun ChatStreamingDark() {
 @Preview(name = "chat approvals light zh", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun ChatApprovalsLightZh() {
-    ChatFrame(dark = false) { Messages(approvals) }
+    ChatFrame(dark = false) { DecisionPage(approvals) { ApprovalDecisionBar(approvals[0], { _, _, _ -> }) } }
 }
 
 @PreviewTest
 @Preview(name = "chat approvals dark en", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun ChatApprovalsDarkEn() {
-    ChatFrame(dark = true, english = true) { Messages(approvals) }
+    ChatFrame(dark = true, english = true) { DecisionPage(approvals) { ApprovalDecisionBar(approvals[0], { _, _, _ -> }) } }
 }
 
 @PreviewTest
 @Preview(name = "chat question light en", showBackground = true, widthDp = 412, heightDp = 640)
 @Composable
 internal fun ChatQuestionLightEn() {
-    ChatFrame(dark = false, english = true) { Messages(listOf(question)) }
+    ChatFrame(dark = false, english = true) { DecisionPage(listOf(question)) { QuestionDecisionBar(question, { _, _, _ -> }) } }
 }
 
 @PreviewTest
 @Preview(name = "chat question dark zh", showBackground = true, widthDp = 412, heightDp = 640)
 @Composable
 internal fun ChatQuestionDarkZh() {
-    ChatFrame(dark = true) { Messages(listOf(question)) }
+    ChatFrame(dark = true) { DecisionPage(listOf(question)) { QuestionDecisionBar(question, { _, _, _ -> }) } }
+}
+
+/** v4 4.3 / 4.4：消息流里只留一行状态，决策栏替换输入区贴在底部。 */
+@Composable
+private fun DecisionPage(messages: List<MobileMessage>, bar: @Composable () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { Messages(messages) }
+        bar()
+    }
 }
 
 /**
@@ -324,7 +332,7 @@ private fun ProcessRows(dark: Boolean, english: Boolean) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Dsh.bgCard)
+                .background(Dsh.bgBase)
                 .padding(DshSpace.s16),
             verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
         ) {
@@ -388,7 +396,7 @@ internal fun ProcessRowDarkEn() {
 private fun ChatPage(dark: Boolean, english: Boolean) {
     ChatFrame(dark = dark, english = english) {
         val actions = rememberPreviewChatActions(completedTurn)
-        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgCard)) {
+        Column(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(DshSpace.s12),

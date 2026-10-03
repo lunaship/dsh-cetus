@@ -13,11 +13,9 @@ and `app/build.gradle.kts`.
 | ZXing Android Embedded | Apache-2.0 | https://github.com/journeyapps/zxing-android-embedded |
 | Coil | Apache-2.0 | https://github.com/coil-kt/coil |
 | OkHttp | Apache-2.0 | https://square.github.io/okhttp/ |
-| Kyant0 Backdrop + Shapes (frosted-glass top bar / composer, API 31+) | Apache-2.0 | https://github.com/Kyant0/AndroidLiquidGlass |
 | KaTeX 0.18.4 (bundled in APK assets, rendered via WebView) | MIT | https://github.com/KaTeX/KaTeX |
 | KaTeX fonts (bundled woff2) | SIL Open Font License 1.1 | https://github.com/KaTeX/KaTeX/tree/master/fonts |
 | Mermaid 11.17.2 (bundled in APK assets, rendered via WebView) | MIT | https://github.com/mermaid-js/mermaid |
-| Plus Jakarta Sans (bundled TTF font) | SIL Open Font License 1.1 | https://github.com/tokotype/PlusJakartaSans |
 
 ## KaTeX notice
 
@@ -58,22 +56,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY.
 
-## Plus Jakarta Sans notice
-
-Plus Jakarta Sans
-Copyright 2020 The Plus Jakarta Sans Project Authors
-https://github.com/tokotype/PlusJakartaSans
-
-This Font Software is licensed under the SIL Open Font License, Version 1.1.
-See https://openfontlicense.org
-
 ## dsh-mobile notice
 
 Parts of the Android client are adapted from DSH Mobile
 (https://github.com/Clarklevis1995/dsh-mobile): the lazy-layout Markdown
 splitter (`native/util/MarkdownLazySplit.kt`), the streaming-delta frame
-coalescing idea (`native/StreamCoalescing.kt`), the frosted-glass backdrop
-usage (`native/DshTranslucentBar.kt`), the queue / goal / scheduled-task
+coalescing idea (`native/StreamCoalescing.kt`), the queue / goal / scheduled-task
 interaction model and the privacy-safe diagnostics shape
 (`core/PrivacySafeDiagnostics.kt`). Licensed under the MIT License:
 

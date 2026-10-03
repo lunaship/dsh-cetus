@@ -372,7 +372,7 @@ fun LatexDisplayBlock(latex: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = DshSpace.s2),
+            .padding(vertical = DshSpace.s4),
         contentAlignment = Alignment.Center
     ) {
         LatexMathCanvas(drawn, Modifier.size(size))

@@ -33,6 +33,13 @@ fun notifySessionCompletion(
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .build()
     builder.setPublicVersion(publicNotification)
+    // v4 8.2：完成通知固定两个动作「查看改动 / 回复」，与 notifyTaskDone 一致。
+    listOf(
+        dev.deeplinks.native.ChangesL.viewChanges to DshNotifier.INTENT_ACTION_CHANGES,
+        L.notifReply to DshNotifier.INTENT_ACTION_REPLY,
+    ).forEachIndexed { index, (label, extraKey) ->
+        builder = builder.addAction(DshNotifier.deepLinkAction(context, host, sessionId, label, extraKey, 21 + index))
+    }
     DshNotifier.postNotification(context, DshNotifier.notificationId(host, sessionId, 2), builder.build())
 }
 

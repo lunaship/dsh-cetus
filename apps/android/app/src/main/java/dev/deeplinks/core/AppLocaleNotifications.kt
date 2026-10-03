@@ -35,3 +35,7 @@ val DshStrings.completionStatusStopped: String get() = translation("completionSt
 val DshStrings.completionBody: String get() = translation("completionBody")
 val DshStrings.completionPublic: String get() = translation("completionPublic")
 val DshStrings.completionPublicStatus: String get() = translation("completionPublicStatus")
+val DshStrings.notifApprovalTitle: String get() = translation("notifApprovalTitle")
+val DshStrings.notifTaskDoneTitle: String get() = translation("notifTaskDoneTitle")
+val DshStrings.notifTaskStoppedTitle: String get() = translation("notifTaskStoppedTitle")
+val DshStrings.notifReply: String get() = translation("notifReply")

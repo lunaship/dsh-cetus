@@ -278,7 +278,7 @@ fun DshTextTabs(
 ) {
     if (labels.isEmpty()) return
     val safeIndex = selectedIndex.coerceIn(0, labels.lastIndex)
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(DshSpace.s6)) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
         labels.forEachIndexed { index, label ->
             val selected = index == safeIndex
             val interaction = remember { MutableInteractionSource() }
@@ -293,7 +293,7 @@ fun DshTextTabs(
                         role = Role.Tab,
                         onClick = { onSelect(index) },
                     )
-                    .padding(horizontal = 10.dp),
+                    .padding(horizontal = DshSpace.s12),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
@@ -309,7 +309,7 @@ fun DshTextTabs(
                         letterSpacing = 0.sp,
                         maxLines = 1,
                     )
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(DshSpace.s4))
                     // 下划线：宽度跟随文字（Column 宽 = 文字宽），未选中时透明避免跳动
                     Box(
                         modifier = Modifier
@@ -343,7 +343,7 @@ fun DshSegmentedToggle(
             .height(32.dp)
             .clip(RoundedCornerShape(DshRadius.full))
             .background(Dsh.bgSubtle)
-            .padding(DshSpace.s2)
+            .padding(DshSpace.s4)
             .selectableGroup(),
     ) {
         labels.forEachIndexed { i, label ->
@@ -424,7 +424,7 @@ fun DshTag(
     val mod = modifier
         .clip(shape)
         .background(color)
-        .padding(horizontal = DshSpace.s8, vertical = DshSpace.s2)
+        .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
         .semantics {
             if (contentDescription != null) this.contentDescription = contentDescription
         }
@@ -473,7 +473,7 @@ fun DshBadge(
         modifier = modifier
             .clip(RoundedCornerShape(DshRadius.full))
             .background(color)
-            .padding(horizontal = if (showCount) 6.dp else 0.dp, vertical = if (showCount) 2.dp else 0.dp)
+            .padding(horizontal = if (showCount) DshSpace.s8 else 0.dp, vertical = if (showCount) 2.dp else 0.dp)
             .semantics {
                 this.contentDescription = contentDescription ?: fallbackDescription
             },
@@ -595,7 +595,7 @@ fun ChatLoadingSkeleton(
             .fillMaxWidth()
             .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12)
             .semantics { this.contentDescription = loadingLabel },
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
     ) {
         // 助手文本行（宽，左对齐）
         repeat(lineCount) { idx ->
@@ -752,7 +752,7 @@ fun DshPrimaryAction(
                 role = Role.Button,
                 onClick = onClick,
             )
-            .padding(horizontal = DshSpace.s24, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s24, vertical = DshSpace.s12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
@@ -791,7 +791,7 @@ fun DshStatusBadge(
         modifier = modifier
             .clip(RoundedCornerShape(DshRadius.full))
             .background(bg)
-            .padding(horizontal = 10.dp, vertical = 3.dp)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
             .semantics {
                 if (contentDescription != null) this.contentDescription = contentDescription
             },
@@ -804,7 +804,7 @@ fun DshStatusBadge(
                     .clip(CircleShape)
                     .background(accent),
             )
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
         }
         Text(text, color = fg, style = DshType.captionRelaxed, maxLines = 1)
     }

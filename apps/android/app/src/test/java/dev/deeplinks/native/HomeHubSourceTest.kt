@@ -18,51 +18,34 @@ class HomeHubSourceTest {
         return mainRoot().resolve("dev/deeplinks/native/$name")
     }
 
+    /** v4 2.1：首页不再用玻璃胶囊 / 悬浮条，顶栏是 DlTopBar 大标题。 */
     @Test
-    fun `HomeHeader has no HostBadge`() {
+    fun `home files use v4 components instead of glass`() {
+        for (name in listOf("HomeHub.kt", "WorkspaceSidebar.kt", "WorkspaceSidebarItems.kt")) {
+            val text = file(name).readText()
+            for (banned in listOf("DshGlass", "DshFloatingControls", "DshEdgeFade", "DshTranslucentBar", "DshCardRows")) {
+                assertFalse("$name 仍引用 $banned", text.contains(banned))
+            }
+        }
+        val header = file("HomeHub.kt").readText().let { it.substring(it.indexOf("internal fun HomeHeader(")) }
+        assertTrue(header.contains("DlTopBar("))
+        assertTrue(header.contains("large = true"))
+    }
+
+    /** v4 2.1：右下「新任务」FAB 回来了，底部搜索胶囊去掉（搜索在右上）。 */
+    @Test
+    fun `new task fab replaces bottom search bar`() {
+        assertTrue(file("WorkspaceSidebar.kt").readText().contains("HomeNewTaskFab("))
+        assertFalse(file("HomeHub.kt").readText().contains("HomeBottomBar"))
+    }
+
+    /** v4 2.6：长按菜单删除排最后且是危险色。 */
+    @Test
+    fun `long press sheet ends with danger delete`() {
         val text = file("HomeHub.kt").readText()
-        val start = text.indexOf("internal fun HomeHeader(")
-        val end = text.indexOf("\n}\n", start) + 3
-        val body = text.substring(start, end)
-        assertFalse("HomeHeader should not contain HostBadge", body.contains("HostBadge"))
-    }
-
-    /** 2026-10-02 真机反馈：工作区胶囊必须写出当前工作区，不能只剩一个看起来像禁用的漏斗。 */
-    @Test
-    fun `HomeHeader workspace capsule shows current workspace label`() {
-        val text = file("HomeHub.kt").readText()
-        val start = text.indexOf("internal fun HomeHeader(")
-        val end = text.indexOf("\n}\n", start) + 3
-        val body = text.substring(start, end)
-        assertTrue(body.contains("homeWorkspaceChipLabel(selectedWorkspace"))
-        assertFalse("漏斗图标看起来像禁用态", body.contains("FilterLinesOutline16"))
-    }
-
-    @Test
-    fun `workspace chip label falls back and truncates`() {
-        assertEquals("全部", homeWorkspaceChipLabel(null, "全部"))
-        assertEquals("全部", homeWorkspaceChipLabel("  ", "全部"))
-        val long = homeWorkspaceChipLabel("/home/me/a-very-long-workspace-name", "全部")
-        assertTrue(long.endsWith("…"))
-        assertTrue(long.length <= 12)
-    }
-
-    @Test
-    fun `HomeHeader has no hostName parameter`() {
-        val text = file("HomeHub.kt").readText()
-        val start = text.indexOf("internal fun HomeHeader(")
-        val end = text.indexOf("\n}\n", start) + 3
-        val body = text.substring(start, end)
-        assertFalse("HomeHeader should not have hostName parameter", body.contains("hostName"))
-    }
-
-    /** 2026-10-02 Lody 简化 4.1：黑色「+ 新任务」FAB 由底部玻璃操作行（HomeBottomBar）取代。 */
-    @Test
-    fun `HomeNewTaskFab is gone`() {
-        assertFalse(
-            "HomeNewTaskFab should no longer exist",
-            file("HomeHub.kt").readText().contains("HomeNewTaskFab") ||
-                file("WorkspaceSidebar.kt").readText().contains("HomeNewTaskFab"),
-        )
+        val body = text.substring(text.indexOf("internal fun HomeSessionSheetContent("))
+        val rows = Regex("""DlListRow\(title = s\.(\w+)""").findAll(body).map { it.groupValues[1] }.toList()
+        assertEquals(listOf("rename", "homeForkAsNew", "homeShareSession", "archiveSession", "deleteSession"), rows.take(5))
+        assertTrue(body.contains("title = s.deleteSession, leading = TrashOutline16, danger = true"))
     }
 }

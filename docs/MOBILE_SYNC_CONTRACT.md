@@ -63,6 +63,8 @@
 - **回退语义**：字段缺失（旧插件、推导不出、会话不在最近 20 个之内）时，App 写「运行中」/「已完成」。App 不得因为缺少字段而隐藏或改变会话行。
 - 边界：只对**最近 20 个**会话计算；按 `sessionId + updatedAt` 缓存，`updatedAt` 不变不重算；每次取 `session.history` 的 `maxMessages` 为 8，并发上限 4；单个会话失败只跳过该字段，不影响会话列表本身。
 
+消息类别（v4 R2.3）：历史投影的每条消息都带 `kind`。`user/message` 由插件分类：`user`（用户本人）、`injection`（system-reminder / skills 目录 / runtime context，另带 `labels: string[]`）、`goal_round`（另带 `goal: { round, maxRounds, objective }`，解析不到的字段为 `null`）、`model_changed`；其余消息的 `kind` 与 `role` 相同。`role` 保持原值（`injection` / `goal_round` 仍是 `context_injection`，`model_changed` 仍是 `system_notice`），旧 App 不受影响。App 以 `kind` 为准；`kind` 缺失（旧插件、实时流原始事件）时才按文本兜底，规则与 `testdata/context-injection-cases.json` 一致。
+
 产出文件：历史投影可含 `role: "produced_files"` 与 `files` 路径列表。具备 `capabilities.files.workspace` 时，`GET /dsh-link/mobile/sessions/:id/file?path=` 在该会话 cwd 沙箱内返回原始字节（默认上限 8MB）。路径越出工作区返回 403。旧 App 忽略未知 role，仍可走工具结果文本。
 
 工作区文件树（`capabilities.files.tree`）：`GET /dsh-link/mobile/sessions/:id/tree?path=` 列出该会话 cwd 沙箱内的**一层**目录，App 按层懒加载。与 `/file` 相同的门槛：只有持有该会话活跃 SSE 订阅的设备可调用，否则 403。

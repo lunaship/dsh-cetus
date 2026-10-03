@@ -235,7 +235,6 @@ internal fun ModelsSettingsPage(
             onClick = if (host != null) ({ showDefaultPicker = true }) else null,
         )
     }
-    ModelTierSettings(host, llmGroups)
 
     // ── 余额 ──
     DshListSection(

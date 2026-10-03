@@ -52,12 +52,10 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.deeplinks.core.dshRipple
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
@@ -65,7 +63,6 @@ import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.util.answerMetaSummary
 import dev.deeplinks.native.util.buildAnswerMeta
 import dev.deeplinks.native.util.formatClockTime
-import dev.deeplinks.native.util.isModelChangedNotice
 import dev.deeplinks.native.util.modelChangedFrom
 import dev.deeplinks.native.util.loadOlderKind
 import dev.deeplinks.native.util.LoadOlderKind
@@ -73,9 +70,8 @@ import dev.deeplinks.native.util.contextInjectionLabels
 import dev.deeplinks.native.util.decodeHtmlEntities
 import dev.deeplinks.native.util.goalRoundObjective
 import dev.deeplinks.native.util.goalRoundProgress
-import dev.deeplinks.native.util.isContextInjectionText
-import dev.deeplinks.native.util.isGoalRoundText
-import org.json.JSONObject
+import dev.deeplinks.native.util.MessageKind
+import dev.deeplinks.native.util.resolvedMessageKind
 
 // ---------- 消息渲染 ----------
 
@@ -84,8 +80,6 @@ import org.json.JSONObject
 internal fun MessageItem(
     msg: MobileMessage,
     running: Boolean = false,
-    onAnswerApproval: ((String, String, (Boolean) -> Unit) -> Unit)? = null,
-    onAnswerQuestion: ((String, org.json.JSONObject, (Boolean) -> Unit) -> Unit)? = null,
     onCopy: () -> Unit = {},
     onQuote: () -> Unit = {},
     onFork: () -> Unit = {},
@@ -106,6 +100,8 @@ internal fun MessageItem(
     textPart: String? = null,
     /** 拆行时只有最后一段带流式光标与操作行。 */
     isLastPart: Boolean = true,
+    /** 本轮的改动摘要（v4 轮尾第一项）：由消息流挪到轮末回复下面画，不再单独成行。 */
+    turnChanges: MobileMessage? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var selectOpen by remember { mutableStateOf(false) }
@@ -130,13 +126,13 @@ internal fun MessageItem(
         Modifier
     }
 
+    val kind = remember(msg.role, msg.kind, msg.text) { resolvedMessageKind(msg.role, msg.kind, msg.text) }
     Box {
         when {
-            msg.role == "context_injection" || isContextInjectionText(msg.text) -> {
-                if (isGoalRoundText(msg.text)) GoalRoundRow(msg.text) else ContextInjectionRow(msg.text)
-            }
+            kind == MessageKind.GOAL_ROUND -> GoalRoundRow(msg)
+            kind == MessageKind.INJECTION -> ContextInjectionRow(msg.text)
             // 模型切换提示：安静的居中一行（既不是用户气泡，也不是可展开的上下文注入）
-            msg.role == "system_notice" || isModelChangedNotice(msg.text) -> SystemNoticeRow(msg.text)
+            kind == MessageKind.MODEL_CHANGED -> SystemNoticeRow(msg.text)
             msg.role == "user" -> {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -146,18 +142,8 @@ internal fun MessageItem(
                 }
             }
             msg.role == "reasoning" -> ReasoningRow(msg.text, running || msg.running == true, msg.durationMs)
-            msg.role == "approval" -> ApprovalCard(
-                msg = msg,
-                onAnswer = { approvalId, outcome, onDone ->
-                    onAnswerApproval?.invoke(approvalId, outcome, onDone) ?: onDone(false)
-                }
-            )
-            msg.role == "question" -> QuestionCard(
-                msg = msg,
-                onAnswer = { rpcId, answer, onDone ->
-                    onAnswerQuestion?.invoke(rpcId, answer, onDone) ?: onDone(false)
-                }
-            )
+            msg.role == "approval" -> ApprovalCard(msg)
+            msg.role == "question" -> QuestionCard(msg)
             msg.role == "tool_call" -> CommandCard(msg.toolName ?: L.toolCallRole, msg.toolArgs, running)
             msg.role == "tool_result" -> CommandCard(
                 title = L.executionResultRole + (msg.durationMs?.let { " · ${formatTraceDuration(it)}" } ?: ""),
@@ -189,48 +175,29 @@ internal fun MessageItem(
                             streaming = msg.running == true && isLastPart,
                         )
                     }
-                    // 助手消息底部：复制 / 赞踩 / 时间（流式结束后淡入，只挂在轮末）
+                    // v4 4.2 轮尾：改动卡 → 元信息灰字 → 文字按钮（复制 / 重新生成 / 分享 / ⋯）
                     if (msg.role == "assistant" && showActions && isTurnEnd && isLastPart) {
+                        val changes = turnChanges?.changes
+                        if (changes != null && msg.running != true) {
+                            Box(Modifier.padding(top = DshSpace.s12)) {
+                                WorkspaceChangesCard(summary = changes, onOpen = { i -> onOpenChanges?.invoke(changes.seq, i) })
+                            }
+                        }
                         AnimatedVisibility(
                             visible = msg.running != true,
                             enter = fadeIn(animationSpec = tween(motionDuration(400))),
                             exit = fadeOut(animationSpec = tween(motionDuration(150))),
                         ) {
-                            // 2026-10-02 Lody 简化 4.3：轮尾一行灰字元信息「[模型名 ·] 时间 · 耗时」，
-                            // 复制 / 分支 / 赞踩收进行尾 ⋯ 菜单（沿用既有长按菜单锚点）。
-                            val meta = remember(msg.durationMs) {
-                                buildAnswerMeta(msg.durationMs)
-                            }
-                            val clock = formatClockTime(msg.time)
-                            val tail = listOfNotNull(
-                                turnModelLabel?.takeIf { it.isNotBlank() },
-                                clock.takeIf { it.isNotBlank() },
-                                meta?.let { answerMetaSummary(it) }?.takeIf { it.isNotBlank() },
-                            ).joinToString(" · ")
-                            Row(
-                                modifier = Modifier
-                                    .padding(top = DshSpace.s6)
-                                    .fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                if (tail.isNotBlank()) {
-                                    Text(
-                                        tail,
-                                        color = Dsh.labelTertiary,
-                                        style = DshType.microRelaxed,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                } else {
-                                    Spacer(Modifier.weight(1f))
-                                }
-                                MessageActionIcon(
-                                    icon = EllipsisOutline16,
-                                    contentDescription = L.moreActions,
-                                    onClick = { menuOpen = true },
-                                )
-                            }
+                            TurnEndTail(
+                                meta = turnEndMeta(msg, turnModelLabel),
+                                onCopy = {
+                                    dshHaptic(DshHaptic.Confirm)
+                                    onCopy()
+                                },
+                                onRegenerate = onRegenerate,
+                                onShare = { ShareIntents.shareText(context, msg.text, L.shareMessage) },
+                                onMore = { menuOpen = true },
+                            )
                         }
                     }
                 }
@@ -295,41 +262,69 @@ internal fun MessageItem(
             }
         )
         if (selectOpen) {
-            SelectTextDialog(text = msg.text, onDismiss = { selectOpen = false })
+            SelectTextDialog(text = msg.text, onDismiss = { selectOpen = false }, onCopy = onCopy, onQuote = onQuote)
         }
     }
 }
 
 @Composable
-private fun MessageActionIcon(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
+private fun turnEndMeta(msg: MobileMessage, turnModelLabel: String?): String {
+    val meta = remember(msg.durationMs) { buildAnswerMeta(msg.durationMs) }
+    return listOfNotNull(
+        turnModelLabel?.takeIf { it.isNotBlank() },
+        formatClockTime(msg.time).takeIf { it.isNotBlank() },
+        meta?.let { answerMetaSummary(it) }?.takeIf { it.isNotBlank() },
+    ).joinToString(" · ")
+}
+
+/** 轮尾元信息 + 文字按钮（4.2）：灰字一行，下面是复制 / 重新生成 / 分享，其余收进 ⋯。 */
+@Composable
+private fun TurnEndTail(
+    meta: String,
+    onCopy: () -> Unit,
+    onRegenerate: (() -> Unit)?,
+    onShare: () -> Unit,
+    onMore: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .semantics {
-                role = Role.Button
-                this.contentDescription = contentDescription
-            }
-            .clickable(interactionSource = interaction, indication = dshRipple(), onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(DshRadius.control)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = Dsh.labelSecondary,
-                modifier = Modifier.size(DshIconSize.sm),
+    Column(Modifier.fillMaxWidth().padding(top = DshSpace.s8)) {
+        if (meta.isNotBlank()) {
+            Text(
+                meta,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TurnTextButton(CopyOutline16, L.copy, onCopy)
+            if (onRegenerate != null) TurnTextButton(RefreshOutline16, L.regenerate, onRegenerate)
+            TurnTextButton(ShareOutline16, L.shareMessage, onShare)
+            Spacer(Modifier.weight(1f))
+            TurnTextButton(EllipsisOutline16, null, onMore, contentDescription = L.moreActions)
+        }
+    }
+}
+
+@Composable
+private fun TurnTextButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String?,
+    onClick: () -> Unit,
+    contentDescription: String? = null,
+) {
+    Row(
+        modifier = Modifier
+            .heightIn(min = DshTouch.min)
+            .clip(RoundedCornerShape(DshRadius.control))
+            .clickable(role = Role.Button, onClick = onClick)
+            .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
+            .padding(horizontal = DshSpace.s8),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s4),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
+        if (label != null) Text(label, color = Dsh.labelSecondary, style = DshType.supporting, maxLines = 1)
     }
 }
 
@@ -354,7 +349,7 @@ private fun RawMessageCard(msg: MobileMessage) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgCard)
+            .background(Dsh.surface1)
             .padding(DshSpace.s12)
     ) {
         Row(
@@ -374,16 +369,15 @@ private fun RawMessageCard(msg: MobileMessage) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.xs)
             )
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 L.unsupportedMessageType.format(msg.role),
                 color = Dsh.labelSecondary,
                 style = DshType.body,
-                lineHeight = 20.sp
             )
         }
         if (expanded) {
-            Spacer(Modifier.height(DshSpace.s6))
+            Spacer(Modifier.height(DshSpace.s8))
             Text(
                 detail,
                 fontFamily = FontFamily.Monospace,
@@ -409,7 +403,7 @@ private fun CompactionRow(summary: String, running: Boolean) {
                 stateDescription = if (expanded) L.collapse else L.expand
             }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { expanded = !expanded }
-            .padding(vertical = DshSpace.s2),
+            .padding(vertical = DshSpace.s4),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 16px leading 图标（上下文图标）
@@ -434,27 +428,25 @@ private fun CompactionRow(summary: String, running: Boolean) {
                 )
             }
         }
-        Spacer(Modifier.width(DshSpace.s6))
+        Spacer(Modifier.width(DshSpace.s8))
         Text(
             if (running) L.compressing else L.contextCompressed,
-            color = Dsh.labelPrimary.copy(alpha = 0.85f),
-            style = DshType.bodyLarge,
-            lineHeight = 24.sp
+            color = Dsh.labelSecondary,
+            style = DshType.supporting,
         )
         if (!running) {
             // 分隔点：padding 在 size 外面（原来写在固定 2dp 盒内不生效，只剩一粒贴字的小点）
             Box(
                 modifier = Modifier
-                    .padding(horizontal = DshSpace.s6)
+                    .padding(horizontal = DshSpace.s8)
                     .size(3.dp)
                     .clip(CircleShape)
                     .background(Dsh.labelTertiary)
             )
             Text(
                 summary.lineSequence().firstOrNull().orEmpty(),
-                color = Dsh.labelTertiary,
-                style = DshType.bodyLarge,
-                lineHeight = 24.sp,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -476,20 +468,22 @@ private fun CompactionRow(summary: String, running: Boolean) {
     ) {
         Text(
             summary,
-            color = Dsh.labelTertiary,
-            style = DshType.bodyLarge,
-            lineHeight = 24.sp,
-            modifier = Modifier.padding(start = 22.dp, top = DshSpace.s4, bottom = DshSpace.s4)
+            color = Dsh.labelSecondary,
+            style = DshType.supporting,
+            modifier = Modifier.padding(start = DshSpace.s24, top = DshSpace.s4, bottom = DshSpace.s4)
         )
     }
 }
 
 // goal 模式每轮注入的续跑提示：折叠为一行「目标轮次」，展开看 Objective 与轮次，不铺开整段系统指令
 @Composable
-private fun GoalRoundRow(text: String) {
+private fun GoalRoundRow(msg: MobileMessage) {
+    val text = msg.text
     var expanded by remember { mutableStateOf(false) }
-    val objective = remember(text) { goalRoundObjective(text) }
-    val progress = remember(text) { goalRoundProgress(text) }
+    val objective = remember(msg) { msg.goalObjective ?: goalRoundObjective(text) }
+    val progress = remember(msg) {
+        msg.goalRound?.let { r -> msg.goalMaxRounds?.let { "$r/$it" } ?: "$r" } ?: goalRoundProgress(text)
+    }
 
     Column(
         modifier = Modifier
@@ -514,7 +508,7 @@ private fun GoalRoundRow(text: String) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.xs)
             )
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 L.goalInjection,
                 color = Dsh.labelTertiary,
@@ -549,10 +543,10 @@ private fun GoalRoundRow(text: String) {
                 maxLines = 8,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(top = DshSpace.s6)
+                    .padding(top = DshSpace.s8)
                     .clip(RoundedCornerShape(DshRadius.container))
-                    .background(Dsh.bgSubtle.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = DshSpace.s8)
+                    .background(Dsh.surface1)
+                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
             )
         }
     }
@@ -626,13 +620,12 @@ private fun ContextInjectionRow(text: String) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.xs)
             )
-            Spacer(Modifier.width(DshSpace.s6))
+            Spacer(Modifier.width(DshSpace.s8))
             Text(
                 L.contextInjection,
                 color = Dsh.labelTertiary,
                 style = DshType.captionMedium,
                 fontWeight = FontWeight(500),
-                lineHeight = 18.sp
             )
             Text(
                 " · ",
@@ -670,10 +663,10 @@ private fun ContextInjectionRow(text: String) {
                 maxLines = 16,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .padding(top = DshSpace.s6)
+                    .padding(top = DshSpace.s8)
                     .clip(RoundedCornerShape(DshRadius.container))
-                    .background(Dsh.bgSubtle.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = DshSpace.s8)
+                    .background(Dsh.surface1)
+                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
             )
         }
     }
@@ -689,8 +682,8 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgInput)
+            .clip(RoundedCornerShape(DshRadius.block))
+            .background(Dsh.surface1)
     ) {
         Row(
             modifier = Modifier
@@ -701,7 +694,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                     stateDescription = if (expanded) L.collapse else L.expand
                 }
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = dshRipple()) { expanded = !expanded }
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -710,15 +703,13 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.sm)
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(DshSpace.s12))
             Text(
                 L.tasks,
                 color = Dsh.labelPrimary,
-                style = DshType.title,
-                fontWeight = FontWeight(500),
-                lineHeight = 24.sp
+                style = DshType.bodyStrong,
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(DshSpace.s12))
             Text(
                 L.todoCompleted.format(done, todos.size),
                 color = Dsh.labelTertiary,
@@ -746,7 +737,7 @@ private fun TodoPanel(todos: List<MobileTodoItem>) {
                 todos.forEach { todo ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TodoGlyph(todo.status)
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(DshSpace.s12))
                         Text(
                             todo.content,
                             color = Dsh.labelSecondary,
@@ -807,14 +798,14 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgSubtle)
+            .clip(RoundedCornerShape(DshRadius.block))
+            .background(Dsh.surface1)
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
         verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+            horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
         ) {
             Icon(
                 GoalOutline16,
@@ -839,7 +830,7 @@ private fun GoalPanel(text: String, goalSummary: String? = null) {
             )
             // 展开/折叠按钮
             Text(
-                text = if (expanded.value) "收起" else "展开",
+                text = if (expanded.value) L.collapse else L.expand,
                 color = Dsh.labelSecondary,
                 style = DshType.microMedium,
                 modifier = Modifier.clickable { expanded.value = !expanded.value },
@@ -934,12 +925,7 @@ private fun ReasoningRow(text: String, running: Boolean = false, durationMs: Lon
         expanded = expanded,
         onToggle = { expanded = !expanded },
     ) {
-        Text(
-            text,
-            color = Dsh.labelTertiary,
-            style = DshType.body,
-            fontStyle = FontStyle.Italic,
-        )
+        Text(text, color = Dsh.labelSecondary, style = DshType.supporting)
     }
 }
 
@@ -952,22 +938,15 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
             modifier = longPress
                 .align(Alignment.CenterEnd)
                 .widthIn(max = maxBubble)
-                .clip(RoundedCornerShape(
-                    topStart = DshRadius.composer,
-                    topEnd = DshRadius.composer,
-                    bottomStart = DshRadius.composer,
-                    bottomEnd = DshRadius.control
-                ))
-                // L5：用户气泡改浅品牌蓝（brand400 低透明度叠 bgCard 的预合成色）
-                .background(Dsh.userBubble)
-                .padding(horizontal = DshSpace.s16, vertical = 10.dp)
+                .clip(RoundedCornerShape(DshRadius.block))
+                // v4 4.1：用户消息右侧浅灰气泡（容器色）
+                .background(Dsh.surface1)
+                .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12)
         ) {
             Text(
                 text.trimEnd(),
                 color = Dsh.labelPrimary,
                 style = DshType.body,
-                lineHeight = 23.sp,
-                letterSpacing = (-0.1).sp
             )
         }
     }
@@ -977,7 +956,7 @@ private fun UserBubble(text: String, longPress: Modifier = Modifier) {
 private fun AssistantMarkdown(text: String, longPress: Modifier = Modifier, streaming: Boolean = false) {
     Column(
         modifier = longPress.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s12)
     ) {
         MarkdownContent(decodeHtmlEntities(text), streaming = streaming)
     }
@@ -995,13 +974,14 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                 .heightIn(min = DshTouch.min)
                 .clip(RoundedCornerShape(DshRadius.control))
                 .clickable(interactionSource = interaction, indication = dshRipple()) { expanded = !expanded }
-                .padding(horizontal = DshSpace.s6, vertical = DshSpace.s4),
+                .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (running) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(12.dp),
-                    color = Dsh.brand500,
+                    modifier = Modifier.size(DshIconSize.xs),
+                    color = Dsh.brand400,
+                    trackColor = Dsh.primarySoft,
                     strokeWidth = 1.5.dp,
                 )
                 Spacer(Modifier.width(DshSpace.s8))
@@ -1016,9 +996,8 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
             }
             Text(
                 title,
-                color = if (running) Dsh.labelSecondary else Dsh.labelTertiary,
-                style = DshType.title,
-                fontWeight = FontWeight(500),
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -1026,7 +1005,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
             if (running) {
                 Spacer(Modifier.width(DshSpace.s8))
                 ShimmerLabel(text = runningLabel.trimEnd('…', '.', '。'), working = true)
-                Spacer(Modifier.width(DshSpace.s6))
+                Spacer(Modifier.width(DshSpace.s8))
             }
             if (!body.isNullOrBlank()) {
                 Icon(
@@ -1044,7 +1023,7 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
         ) {
             Box(
                 modifier = Modifier
-                    .padding(start = 7.dp, top = DshSpace.s2)
+                    .padding(start = DshSpace.s8, top = DshSpace.s4)
                     .drawBehind {
                         val x = 3.5.dp.toPx()
                         drawLine(rail, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
@@ -1060,9 +1039,9 @@ private fun CommandCard(title: String, body: String?, running: Boolean = false, 
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(DshRadius.control))
-                        .background(Dsh.bgCode)
-                        .padding(horizontal = 10.dp, vertical = DshSpace.s8),
+                        .clip(RoundedCornerShape(DshRadius.container))
+                        .background(Dsh.surface1)
+                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
                 )
             }
         }

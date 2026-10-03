@@ -68,7 +68,7 @@ fun DshTextField(
                 color = Dsh.labelSecondary,
                 style = DshType.label,
                 fontWeight = FontWeight(500),
-                modifier = Modifier.padding(bottom = DshSpace.s4, start = DshSpace.s2),
+                modifier = Modifier.padding(bottom = DshSpace.s4, start = DshSpace.s4),
             )
         }
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -101,7 +101,7 @@ fun DshTextField(
                             .then(heightModifier)
                             .background(Dsh.bgInput, shape)
                             .border(1.dp, borderColor, shape)
-                            .padding(horizontal = 13.dp, vertical = 13.dp),
+                            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s12),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         if (value.isEmpty() && placeholder != null) {
@@ -127,7 +127,7 @@ fun DshTextField(
                 text = errorText,
                 color = Dsh.error,
                 style = DshType.microRelaxed,
-                modifier = Modifier.padding(top = DshSpace.s4, start = DshSpace.s2),
+                modifier = Modifier.padding(top = DshSpace.s4, start = DshSpace.s4),
             )
         }
     }

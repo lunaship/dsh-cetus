@@ -66,6 +66,15 @@ data class MobileMessage(
     val changes: WorkspaceChangesSummary? = null,
     /** goal/write 事件携带的目标文本（role=goal 时使用） */
     val goalSummary: String? = null,
+    /**
+     * 插件下发的展示类别（v4 R2.3）：user / injection / goal_round / model_changed，其余与 role 相同。
+     * null = 旧插件或实时流，由 [dev.deeplinks.native.util.resolvedMessageKind] 按文本兜底。
+     */
+    val kind: String? = null,
+    /** kind=goal_round 时插件解析好的轮次（整数，不再从文本里抠） */
+    val goalRound: Int? = null,
+    val goalMaxRounds: Int? = null,
+    val goalObjective: String? = null,
 )
 
 data class MobileTodoItem(val content: String, val status: String = "pending")
@@ -1385,6 +1394,10 @@ internal fun parseHistoryResponse(root: JSONObject, beforeSeq: Long?): HistoryRe
             files = parseHistoryFiles(obj),
             turn = if (obj.has("turn") && !obj.isNull("turn")) obj.optInt("turn") else null,
             changes = obj.optJSONObject("changes")?.let { parseWorkspaceChanges(it, obj.optLong("seq", 0L)) },
+            kind = obj.optNullableString("kind"),
+            goalRound = obj.optJSONObject("goal")?.optIntOrNull("round"),
+            goalMaxRounds = obj.optJSONObject("goal")?.optIntOrNull("maxRounds"),
+            goalObjective = obj.optJSONObject("goal")?.optNullableString("objective"),
         )
     }
     // stats（StatsLine：轮次/步骤/LLM 耗时/工具调用/首 token/吞吐/缓存/tokens）
@@ -1451,3 +1464,6 @@ internal fun childWorkspacePath(dir: String, name: String): String =
 /** 上一级目录的相对路径；根的上一级仍是根。 */
 internal fun parentWorkspacePath(dir: String): String =
     dir.substringBeforeLast('/', missingDelimiterValue = "")
+
+private fun JSONObject.optIntOrNull(key: String): Int? =
+    if (has(key) && !isNull(key)) optInt(key) else null

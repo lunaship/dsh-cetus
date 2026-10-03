@@ -14,11 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,23 +28,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
 import dev.deeplinks.core.goalActiveLabel
 import dev.deeplinks.core.goalBlockedLabel
-import dev.deeplinks.core.goalCompleteLabel
-import dev.deeplinks.core.goalClear
 import dev.deeplinks.core.goalClearMessage
 import dev.deeplinks.core.goalClearTitle
+import dev.deeplinks.core.goalClearAction
+import dev.deeplinks.core.goalCompleteLabel
 import dev.deeplinks.core.goalEdit
 import dev.deeplinks.core.goalMaxRounds
 import dev.deeplinks.core.goalMaxRoundsInvalid
-import dev.deeplinks.core.goalMore
 import dev.deeplinks.core.goalObjective
-import dev.deeplinks.core.goalPause
 import dev.deeplinks.core.goalPausedLabel
-import dev.deeplinks.core.goalResume
 import dev.deeplinks.core.goalRounds
 import dev.deeplinks.core.goalRoundsOf
 import dev.deeplinks.core.queueContext
@@ -69,15 +66,16 @@ import dev.deeplinks.core.scheduledTasks
 import dev.deeplinks.core.schedulesAll
 import dev.deeplinks.core.schedulesEmpty
 import dev.deeplinks.core.schedulesEmptyHint
+import dev.deeplinks.core.schedulesFootnote
 import dev.deeplinks.core.schedulesThisSession
-import dev.deeplinks.native.ui.DshEmptyState
-import dev.deeplinks.native.ui.DshErrorState
+import dev.deeplinks.core.slotClear
 import dev.deeplinks.native.ui.DshIconAction
-import dev.deeplinks.native.ui.DshListRow
-import dev.deeplinks.native.ui.DshListSection
-import dev.deeplinks.native.ui.DshSegmentedToggle
-import dev.deeplinks.native.ui.DshSheet
-import dev.deeplinks.native.ui.DshTextField
+import dev.deeplinks.native.ui.v4.DlBottomSheet
+import dev.deeplinks.native.ui.v4.DlListRow
+import dev.deeplinks.native.ui.v4.DlRowTrailing
+import dev.deeplinks.native.ui.v4.DlSegmented
+import dev.deeplinks.native.ui.v4.DlSpinner
+import dev.deeplinks.native.ui.v4.DlTextField
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -105,7 +103,7 @@ internal fun QueuedPromptsStrip(
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
     ) {
         Text(L.queueTitle.format(items.size), color = Dsh.labelTertiary, style = DshType.microMedium)
         items.take(MAX_VISIBLE_QUEUE).forEach { item ->
@@ -142,7 +140,7 @@ private fun QueuedPromptRow(
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = DshTouch.min),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
     ) {
         Icon(QueueOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
         Text(queuePlacementLabel(item.placement), color = Dsh.labelSecondary, style = DshType.microMedium)
@@ -157,7 +155,7 @@ private fun QueuedPromptRow(
             modifier = Modifier.weight(1f),
         )
         if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s2)
+            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s4)
         } else if (item.editable) {
             if (item.placement == "queued") {
                 DshIconAction(RightUpOutline16, L.queueSteer, onSteer, iconSize = DshIconSize.sm, visualSize = DshSpace.s32)
@@ -183,65 +181,19 @@ internal fun goalRoundsLabel(goal: SessionGoal): String? = when {
     else -> L.goalRounds.format(goal.roundsStarted)
 }
 
-/** 吸顶摘要里的结构化目标行：状态 + 内容 + 暂停 / 继续 + 更多（编辑 / 清除）。 */
+/** ⋯ 菜单「目标」入口：有可管理目标时打开编辑对话框。 */
 @Composable
-internal fun GoalControlRow(goal: SessionGoal, control: SessionControlController) {
-    var menuOpen by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf(false) }
-    var confirmClear by remember { mutableStateOf(false) }
+internal fun GoalEditHost(open: Boolean, control: SessionControlController, onDismiss: () -> Unit) {
+    val goal = control.goal.value
+    if (!open || goal == null) return
     val busy = control.busy.value?.startsWith("goal:") == true
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
-    ) {
-        Icon(GoalOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
-        Text(goalPhaseLabel(goal.phase), color = Dsh.labelSecondary, style = DshType.microMedium)
-        Column(Modifier.weight(1f)) {
-            Text(goal.objective, color = Dsh.labelPrimary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            goalRoundsLabel(goal)?.let { Text(it, color = Dsh.labelTertiary, style = DshType.microRelaxed, maxLines = 1) }
-        }
-        if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(DshIconSize.sm), color = Dsh.labelSecondary, strokeWidth = DshSpace.s2)
-        } else {
-            DshIconAction(
-                if (goal.active) PauseOutline16 else PlayOutline16,
-                if (goal.active) L.goalPause else L.goalResume,
-                { control.pauseOrResumeGoal() },
-                iconSize = DshIconSize.sm,
-                visualSize = DshSpace.s32,
-            )
-            Box {
-                DshIconAction(EllipsisOutline16, L.goalMore, { menuOpen = true }, iconSize = DshIconSize.sm, visualSize = DshSpace.s32)
-                DshMenu(
-                    expanded = menuOpen,
-                    onDismiss = { menuOpen = false },
-                    items = listOf(
-                        DshMenuItem(EditOutline16, L.goalEdit) { menuOpen = false; editing = true },
-                        DshMenuItem(TrashOutline16, L.goalClear, danger = true, dividerBefore = true) { menuOpen = false; confirmClear = true },
-                    ),
-                )
-            }
-        }
-    }
-    control.error.value?.takeIf { control.queue.value.isEmpty() }?.let {
-        Text(it, color = Dsh.error, style = DshType.captionRelaxed)
-    }
-    if (editing) {
-        GoalEditDialog(goal, saving = busy, onDismiss = { editing = false }) { objective, rounds ->
-            control.editGoal(objective, rounds) { ok -> if (ok) editing = false }
-        }
-    }
-    if (confirmClear) {
-        DshConfirmDialog(
-            title = L.goalClearTitle,
-            message = L.goalClearMessage,
-            confirmLabel = L.goalClear,
-            danger = true,
-            saving = busy,
-            onDismiss = { confirmClear = false },
-            onConfirm = { control.clearGoal { ok -> if (ok) confirmClear = false } },
-        )
+    GoalEditDialog(
+        goal,
+        saving = busy,
+        onDismiss = onDismiss,
+        onClear = { control.clearGoal { ok -> if (ok) onDismiss() } },
+    ) { objective, rounds ->
+        control.editGoal(objective, rounds) { ok -> if (ok) onDismiss() }
     }
 }
 
@@ -253,31 +205,43 @@ internal fun parseGoalRounds(raw: String): Int? {
     return if (n in 1..1000) n else -1
 }
 
+/**
+ * 5.13 编辑目标：目标内容 + 最多轮数；「清除目标」红字放在按钮行最左边，点了先二次确认。
+ * [onClear] 为 null 时不显示清除。
+ */
 @Composable
-internal fun GoalEditDialog(goal: SessionGoal, saving: Boolean, onDismiss: () -> Unit, onSave: (String, Int?) -> Unit) {
+internal fun GoalEditDialog(
+    goal: SessionGoal,
+    saving: Boolean,
+    onDismiss: () -> Unit,
+    onClear: (() -> Unit)? = null,
+    onSave: (String, Int?) -> Unit,
+) {
     var objective by remember(goal.ref) { mutableStateOf(goal.objective) }
     var rounds by remember(goal.ref) { mutableStateOf(goal.maxGoalRounds?.toString().orEmpty()) }
+    var confirmClear by remember(goal.ref) { mutableStateOf(false) }
     val parsedRounds = parseGoalRounds(rounds)
     val roundsInvalid = parsedRounds == -1
     DshDialogFrame(onDismiss = onDismiss, dismissible = !saving) { requestDismiss ->
         DshDialogTitle(L.goalEdit)
         Spacer(Modifier.height(DshSpace.s16))
-        DshTextField(
+        DlTextField(
             value = objective,
             onValueChange = { objective = it },
             label = L.goalObjective,
+            enabled = !saving,
             singleLine = false,
-            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
         )
         Spacer(Modifier.height(DshSpace.s12))
-        DshTextField(
+        DlTextField(
             value = rounds,
             onValueChange = { rounds = it.filter(Char::isDigit).take(4) },
             label = L.goalMaxRounds,
+            enabled = !saving,
             isError = roundsInvalid,
-            errorText = if (roundsInvalid) L.goalMaxRoundsInvalid else null,
-            modifier = Modifier.fillMaxWidth(),
         )
+        if (roundsInvalid) DshDialogError(L.goalMaxRoundsInvalid)
         DshDialogButtons(
             dismissLabel = L.cancel,
             onDismiss = requestDismiss,
@@ -286,6 +250,22 @@ internal fun GoalEditDialog(goal: SessionGoal, saving: Boolean, onDismiss: () ->
             enabled = !saving,
             confirmEnabled = objective.isNotBlank() && !roundsInvalid &&
                 (objective.trim() != goal.objective || parsedRounds != goal.maxGoalRounds),
+            leadingLabel = if (onClear != null) L.goalClearAction else null,
+            onLeading = { confirmClear = true },
+        )
+    }
+    if (confirmClear && onClear != null) {
+        DshConfirmDialog(
+            title = L.goalClearTitle,
+            message = L.goalClearMessage,
+            confirmLabel = L.slotClear,
+            danger = true,
+            saving = saving,
+            onDismiss = { confirmClear = false },
+            onConfirm = {
+                confirmClear = false
+                onClear()
+            },
         )
     }
 }
@@ -305,49 +285,29 @@ internal fun scheduleSubtitle(task: ScheduledTask): String = listOfNotNull(
     formatScheduleTime(task.lastDeliveredAt)?.let { L.scheduleLastDelivered.format(it) },
 ).joinToString(" · ")
 
-/** 定时任务面板：本会话 / 全部会话两档；点一条可改标题与提示词或删除（DSH 不开放远程新建）。 */
+/**
+ * 5.12 定时任务：本会话 / 全部会话两档 + 列表。点一条可改标题与提示词或删除。
+ * DSH 不开放远程新建，也没有暂停接口，所以没有开关；状态写在副标题里。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ScheduledTasksSheet(open: Boolean, control: SessionControlController, hasSession: Boolean, onDismiss: () -> Unit) {
     if (!open) return
     var all by remember { mutableStateOf(!hasSession) }
     var editing by remember { mutableStateOf<ScheduledTask?>(null) }
     LaunchedEffect(all) { control.loadSchedules(all) }
-    val tasks = control.schedules.value
-    DshSheet(onDismiss = onDismiss, title = L.scheduledTasks, showClose = true, skipPartiallyExpanded = true) {
-        if (hasSession) {
-            DshSegmentedToggle(
-                labels = listOf(L.schedulesThisSession, L.schedulesAll),
-                selectedIndex = if (all) 1 else 0,
-                onSelect = { all = it == 1 },
-                modifier = Modifier.padding(bottom = DshSpace.s12),
-            )
-        }
-        val loadError = control.schedulesError.value
-        when {
-            control.schedulesLoading.value && tasks.isEmpty() -> Box(Modifier.fillMaxWidth().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(modifier = Modifier.size(DshIconSize.lg), color = Dsh.labelSecondary, strokeWidth = DshSpace.s2)
-            }
-            loadError != null && tasks.isEmpty() -> DshErrorState(
-                title = loadError,
-                actionLabel = L.retry,
-                onAction = { control.loadSchedules(all) },
-                compact = true,
-            )
-            tasks.isEmpty() -> DshEmptyState(title = L.schedulesEmpty, message = L.schedulesEmptyHint, compact = true)
-            else -> Column(Modifier.verticalScroll(rememberScrollState())) {
-                DshListSection {
-                    tasks.forEach { task ->
-                        DshListRow(
-                            title = task.title.ifBlank { task.prompt.lineSequence().firstOrNull().orEmpty().take(40) },
-                            subtitle = scheduleSubtitle(task),
-                            icon = if (task.active) ChecklistOutline16 else CheckOutline16,
-                            enabled = control.busy.value == null,
-                            onClick = { editing = task },
-                        )
-                    }
-                }
-            }
-        }
+    DlBottomSheet(onDismissRequest = onDismiss, title = L.scheduledTasks) {
+        ScheduledTasksContent(
+            tasks = control.schedules.value,
+            loading = control.schedulesLoading.value,
+            loadError = control.schedulesError.value,
+            showScope = hasSession,
+            all = all,
+            enabled = control.busy.value == null,
+            onScopeChange = { all = it },
+            onRetry = { control.loadSchedules(all) },
+            onOpen = { editing = it },
+        )
     }
     editing?.let { task ->
         ScheduleEditDialog(
@@ -359,6 +319,58 @@ internal fun ScheduledTasksSheet(open: Boolean, control: SessionControlControlle
             onDelete = { control.deleteSchedule(task, all) { ok -> if (ok) editing = null } },
         )
     }
+}
+
+/** 弹层正文，截图直接画这一块。 */
+@Composable
+internal fun ScheduledTasksContent(
+    tasks: List<ScheduledTask>,
+    loading: Boolean,
+    loadError: String?,
+    showScope: Boolean,
+    all: Boolean,
+    enabled: Boolean,
+    onScopeChange: (Boolean) -> Unit,
+    onRetry: () -> Unit,
+    onOpen: (ScheduledTask) -> Unit,
+) {
+    if (showScope) {
+        DlSegmented(
+            options = listOf(L.schedulesThisSession, L.schedulesAll),
+            selectedIndex = if (all) 1 else 0,
+            onSelect = { onScopeChange(it == 1) },
+            modifier = Modifier.fillMaxWidth().padding(start = DshSpace.s24, end = DshSpace.s24, bottom = DshSpace.s8),
+        )
+    }
+    when {
+        loading && tasks.isEmpty() -> Box(Modifier.fillMaxWidth().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
+            DlSpinner()
+        }
+        loadError != null && tasks.isEmpty() -> DlListRow(
+            title = loadError,
+            danger = true,
+            trailing = DlRowTrailing.TextAction(L.retry, onRetry),
+        )
+        tasks.isEmpty() -> DlListRow(title = L.schedulesEmpty, subtitle = L.schedulesEmptyHint, leading = ClockOutline16, enabled = false)
+        else -> Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+            tasks.forEach { task ->
+                DlListRow(
+                    title = task.title.ifBlank { task.prompt.lineSequence().firstOrNull().orEmpty().take(40) },
+                    subtitle = scheduleSubtitle(task),
+                    leading = ClockOutline16,
+                    trailing = DlRowTrailing.Chevron,
+                    enabled = enabled,
+                    onClick = { onOpen(task) },
+                )
+            }
+        }
+    }
+    Text(
+        L.schedulesFootnote,
+        style = DshType.supporting,
+        color = Dsh.labelSecondary,
+        modifier = Modifier.padding(horizontal = DshSpace.s24, vertical = DshSpace.s8),
+    )
 }
 
 @Composable
@@ -377,24 +389,17 @@ private fun ScheduleEditDialog(
         DshDialogTitle(L.scheduleEdit)
         DshDialogMessage(scheduleRuleLabel(task) + "\n" + L.scheduleTimingNote)
         Spacer(Modifier.height(DshSpace.s16))
-        DshTextField(value = title, onValueChange = { title = it }, label = L.scheduleTitle, modifier = Modifier.fillMaxWidth())
+        DlTextField(value = title, onValueChange = { title = it }, label = L.scheduleTitle, enabled = !saving)
         Spacer(Modifier.height(DshSpace.s12))
-        DshTextField(
+        DlTextField(
             value = prompt,
             onValueChange = { prompt = it },
             label = L.schedulePrompt,
+            enabled = !saving,
             singleLine = false,
-            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
         )
         DshDialogError(error)
-        TextButton(
-            onClick = { confirmDelete = true },
-            enabled = !saving,
-            colors = ButtonDefaults.textButtonColors(contentColor = Dsh.error),
-            modifier = Modifier.padding(top = DshSpace.s12),
-        ) {
-            Text(L.scheduleDelete, style = DshType.labelLarge)
-        }
         DshDialogButtons(
             dismissLabel = L.cancel,
             onDismiss = requestDismiss,
@@ -402,6 +407,8 @@ private fun ScheduleEditDialog(
             onConfirm = { onSave(title, prompt) },
             enabled = !saving,
             confirmEnabled = prompt.isNotBlank() && (title != task.title || prompt != task.prompt),
+            leadingLabel = L.delete,
+            onLeading = { confirmDelete = true },
         )
     }
     if (confirmDelete) {
@@ -411,6 +418,7 @@ private fun ScheduleEditDialog(
             confirmLabel = L.delete,
             danger = true,
             saving = saving,
+            icon = TrashOutline16,
             onDismiss = { confirmDelete = false },
             onConfirm = { confirmDelete = false; onDelete() },
         )

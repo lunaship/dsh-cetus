@@ -18,13 +18,11 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.DarkDshColors
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshFontFamily
 import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.LocalDshColors
-import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
@@ -36,6 +34,10 @@ import dev.deeplinks.native.WorkspaceChangesPanel
 import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.WorkspaceFileDiff
 import dev.deeplinks.native.WorkspaceTopBar
+import dev.deeplinks.native.FilePreviewPage
+import dev.deeplinks.native.PreviewEmptyState
+import dev.deeplinks.core.previewTitle
+import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
 
 /** 本轮改动：轮末卡片、顶栏入口、审查面（列表 / 对比，手机全屏与宽屏贴右）。 */
 
@@ -44,12 +46,11 @@ private fun ChangesFrame(dark: Boolean, english: Boolean = false, content: @Comp
     // E1：直接读全局 LocaleManager.strings 的组件也要跟着 english 切语言（详见
     // ChatFeedScreenshotTest.ChatFrame 同位置注释）。
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides if (dark) DarkDshColors else LightDshColors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             Box(modifier = Modifier.fillMaxSize().background(Dsh.bgBase)) { content() }
@@ -114,13 +115,11 @@ private fun CardWall() {
     ) {
         Text("Top bar", color = Dsh.labelTertiary, style = DshType.label)
         WorkspaceTopBar(
-            running = false,
             title = "对照 Paseo 设计左滑改动面板",
-            showBack = true,
             onNavigate = {},
             menuExpanded = false,
             onMenuExpandedChange = {},
-            menuItems = emptyList(),
+            menu = dev.deeplinks.native.SessionMenu.Empty,
         )
         Text("Multi-file card", color = Dsh.labelTertiary, style = DshType.label)
         WorkspaceChangesCard(summary = multi, onOpen = {})
@@ -144,6 +143,8 @@ private fun PanelShot(fileIndex: Int?, wrap: Boolean = true) {
         summaries = listOf(multi, single),
         loadSummary = { null },
         loadDiff = { _, _ -> sampleDiff },
+        onAskAboutFile = {},
+        onAskAboutTurn = {},
     )
 }
 
@@ -180,4 +181,35 @@ internal fun ChangesPanelDiffLight() {
 @Composable
 internal fun ChangesPanelDiffWideDark() {
     ChangesFrame(dark = true) { PanelShot(fileIndex = 1, wrap = false) }
+}
+
+private val sampleFile = """# Android 协作规则
+
+## 红线
+- 不对 release 变体跑 connectedReleaseAndroidTest
+- 截图基线只由 regen 工作流生成
+- 主线程不做网络 I/O
+
+## 门禁
+./gradlew :app:assembleDebug \
+  :app:testDebugUnitTest \
+  :app:lintDebug
+"""
+
+@PreviewTest
+@Preview(name = "file preview light", showBackground = true, widthDp = 412, heightDp = 640)
+@Composable
+internal fun FilePreviewLight() {
+    ChangesFrame(dark = false) { FilePreviewPage("apps/android/CLAUDE.md", sampleFile, onDismiss = {}, onQuote = {}) }
+}
+
+@PreviewTest
+@Preview(name = "preview empty dark", showBackground = true, widthDp = 412, heightDp = 420)
+@Composable
+internal fun PreviewEmptyDark() {
+    ChangesFrame(dark = true) {
+        Box(Modifier.fillMaxSize().background(Dsh.bgOverlay), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+            DlBottomSheetSurface(title = dev.deeplinks.core.DshS.previewTitle) { PreviewEmptyState() }
+        }
+    }
 }

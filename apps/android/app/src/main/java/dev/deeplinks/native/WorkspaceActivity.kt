@@ -1,10 +1,12 @@
 package dev.deeplinks.native
+import dev.deeplinks.native.util.workspaceDisplayName
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.CrashRecorder
 import dev.deeplinks.core.Host
+import dev.deeplinks.core.fileQuotePrefill
 import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
@@ -62,7 +64,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
-import dev.deeplinks.native.util.isContextInjectionText
+import dev.deeplinks.native.util.legacyRoleForKind
+import dev.deeplinks.native.util.resolvedMessageKind
 import dev.deeplinks.native.util.optNullableString
 import dev.deeplinks.native.util.parseStoppedReason
 import dev.deeplinks.native.util.WorkspaceAccount
@@ -73,6 +76,8 @@ import dev.deeplinks.native.util.normalizeWorkspacePath
 import dev.deeplinks.native.util.reconcileDeletedWorkspaces
 import dev.deeplinks.native.util.workspaceGroupKey
 import dev.deeplinks.native.util.chatCanvasKind
+import dev.deeplinks.native.ui.v4.DlTone
+import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.util.composerSuggestionVisible
 import dev.deeplinks.native.util.lastGroupEndedAssistant
 import dev.deeplinks.native.util.ChatCanvasKind
@@ -402,14 +407,10 @@ fun WorkspaceScreen(
         renameTarget = session
     }
     // viewMode：chat / trace（全局；持久化，仅 tab 切回记忆上次）
-    var viewMode by remember {
-        val saved = localStore.viewMode
-        mutableStateOf(if (saved in setOf("chat", "trace")) saved else "chat")
-    }
+    // v4 4.7：轨迹是 ⋯ 菜单进入的二级页，每次打开都从对话开始，不再记住上次的视图
+    var viewMode by remember { mutableStateOf("chat") }
     fun selectViewMode(mode: String) {
-        val next = if (mode in setOf("chat", "trace")) mode else "chat"
-        viewMode = next
-        localStore.viewMode = next
+        viewMode = if (mode == "trace") "trace" else "chat"
     }
     // searchQuery：侧边栏搜索文本（持久化文本，不持久化结果）
     var searchQuery by remember { mutableStateOf(localStore.historyQuery) }
@@ -1231,11 +1232,13 @@ fun WorkspaceScreen(
                         arr.optJSONObject(i)?.optString("text").orEmpty()
                     }
                 }
-                val role = if (isContextInjectionText(text)) "context_injection" else "user"
+                val kind = resolvedMessageKind("user", null, text) // 实时流没有插件 kind，同规则兜底
+                val role = legacyRoleForKind(kind)
                 upsertStreamMessage(
                     MobileMessage(
                         id = "msg-${item.seq}",
                         role = role,
+                        kind = kind,
                         text = text,
                         time = item.time,
                         type = "text",
@@ -1789,6 +1792,7 @@ fun WorkspaceScreen(
         }
     }
 
+    var showShareSheet by remember { mutableStateOf(false) }
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
         onNewSession = { openNewTaskDraft() },
@@ -1810,6 +1814,7 @@ fun WorkspaceScreen(
         onForkSession = { forkNow(it, closeDrawer = true) },
         onCreateSessionIn = { createSessionIn(it) },
         onDeleteWorkspace = { openDeleteWorkspace(it) },
+        onShareSession = { sid -> selectSession(sid); showPhoneChat(); showShareSheet = true },
         onToggleSearch = {
             sidebarSearchOpen = !sidebarSearchOpen
             if (!sidebarSearchOpen && searchQuery.isBlank()) {
@@ -1848,13 +1853,8 @@ fun WorkspaceScreen(
     val offlineSinceLabel = if (hostReachable) null else dev.deeplinks.native.util.lastOnlineLabel(LastOnlineStore.read(context))
 
     // 首页审批卡（D1-A）：只给手机接管的审批按钮；takenOverByPhone 见 MobileMessage 注释。
-    val homePendingApproval = remember(messages, currentSessionId) {
-        if (currentSessionId == null) null
-        else messages.lastOrNull {
-            it.role == "approval" && it.approvalId != null &&
-                it.requestStatus == REQUEST_PENDING && it.takenOverByPhone
-        }
-    }
+    // 首页收件箱（2.1）：当前会话里手机能处理的审批 / 提问，与对话页决策栏同一条规则
+    val homePendingApproval = remember(messages, currentSessionId) { currentSessionId?.let { pendingDecision(messages) } }
     // 发送主体：新任务面板与输入卡共用同一条路径（原先内联在对话页分支里）。
     var submitComposer: () -> Unit = {}
             submitComposer = {
@@ -2116,36 +2116,15 @@ fun WorkspaceScreen(
             val contentUnderTop by remember { derivedStateOf { listState.canScrollBackward } }
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
-            var showShareSheet by remember { mutableStateOf(false) }
             var showSchedules by remember { mutableStateOf(false) }
             var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
-            val topBarMenuItems = workspaceHeaderMenuItems(
-                canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null,
-                onCloseMenu = { headerMenuOpen = false },
-                onBrowseFiles = { showFileBrowser = true },
-                onRename = { currentSession?.let { openRename(it) } },
-                onShare = { showShareSheet = true },
-                onUsage = { showUsage = true },
-                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
-                onArchive = {
-                    currentSession?.let { session ->
-                        archiveSessionNow(session) { err ->
-                            if (err == null) {
-                                showArchiveUndo(session.sessionId)
-                            } else {
-                                sessionsLoadError = err
-                            }
-                        }
-                    }
-                },
-                onDelete = { currentSession?.let { openDeleteSession(it) } },
-            )
             ScheduledTasksSheet(showSchedules, workspaceViewModel.sessionControl, currentSessionId != null) { showSchedules = false }
             if (showUsage) UsageSheet(sessionStats) { showUsage = false }
             if (showShareSheet) {
                 val sid = currentSessionId
                 ConversationShareSheet(
+                    preview = currentSession?.let { conversationSharePreview(displaySessionTitle(it.title), it.cwd, messages) },
                     onDismiss = { showShareSheet = false },
                     onShareImage = {
                         showShareSheet = false
@@ -2178,55 +2157,60 @@ fun WorkspaceScreen(
             }
             var showPreviewSheet by remember { mutableStateOf(false) }
             if (showPreviewSheet) PreviewEntrySheet(client, host) { showPreviewSheet = false }
-            val menuWithSubagents = rememberWorkspaceOverflowMenu(
-                topBarMenuItems, activeSubagentCount, viewMode, workspaceViewModel.previewSupported.value,
-                onToggleViewMode = { headerMenuOpen = false; selectViewMode(if (viewMode == "trace") "chat" else "trace") },
-                onOpenSubagents = { headerMenuOpen = false; showSubagentSheet = true },
-                onOpenPreview = { headerMenuOpen = false; showPreviewSheet = true },
+            var showGoalEdit by remember { mutableStateOf(false) }
+            GoalEditHost(showGoalEdit, workspaceViewModel.sessionControl) { showGoalEdit = false }
+            val sessionMenu = if (composeNewSession && currentSessionId == null) SessionMenu.Empty else sessionMenu(
+                onClose = { headerMenuOpen = false },
+                changes = pinnedChanges, onChanges = { pinnedChanges?.let { latest -> scope.launch { changesPanel.open(latest.seq, null) } } },
+                canBrowseFiles = workspaceViewModel.filesTreeSupported.value && currentSessionId != null, onBrowseFiles = { showFileBrowser = true },
+                viewMode = viewMode, onToggleViewMode = { selectViewMode(if (viewMode == "trace") "chat" else "trace") },
+                subagentCount = activeSubagentCount, onSubagents = { showSubagentSheet = true },
+                onUsage = { showUsage = true },
+                previewSupported = workspaceViewModel.previewSupported.value, onPreview = { showPreviewSheet = true },
+                canGoal = workspaceViewModel.sessionControl.goal.value?.manageable == true, onGoal = { showGoalEdit = true },
+                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
+                onRename = { currentSession?.let { openRename(it) } },
+                onFork = { currentSessionId?.let { forkNow(it) } },
+                onShare = { showShareSheet = true },
             )
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
             Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
             Box(modifier = Modifier.fillMaxWidth()) {
+                val traceOpen = viewMode == "trace"
+                BackHandler(enabled = traceOpen) { selectViewMode("chat") }
                 WorkspaceTopBar(
-                    running = running,
                 // 草稿态标题固定「新任务」；有会话显示会话名；无会话且非草稿留空（起始块已删）
                 title = when {
+                    traceOpen -> MenuL.menuTrace
                     composeNewSession && currentSessionId == null -> L.homeNewTask
                     currentSessionId == null -> ""
                     else -> currentSession?.title?.let(::displaySessionTitle) ?: L.newSession
                 },
-                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」；草稿态不显示
-                subtitle = if (composeNewSession && currentSessionId == null) {
-                    null
+                // 第二行：工作区 · 电脑名，执行中换成「正在执行 · 第 N 步 · M 分钟」；草稿态只写电脑名（3.1）
+                subtitle = if (traceOpen) {
+                    remember(messages) { traceSummaryLine(messages) }
+                } else if (composeNewSession && currentSessionId == null) {
+                    hostLabel
                 } else {
                     chatTopSubtitle(running, currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'), hostLabel, currentSession?.activity, elapsedSec)
                 },
-                showBack = !dshLayout.persistentSidebar,
                 onNavigate = {
-                    if (dshLayout.persistentSidebar) {
+                    if (traceOpen) {
+                        selectViewMode("chat")
+                    } else if (dshLayout.persistentSidebar) {
                         sidebarCollapsed = !sidebarCollapsed
                     } else {
                         showPhoneSessions()
                     }
                 },
-                subagentCount = activeSubagentCount,
-                onOpenSubagents = { showSubagentSheet = true },
                 menuExpanded = headerMenuOpen,
                 onMenuExpandedChange = { headerMenuOpen = it },
-                // 草稿态不显示「⋯」菜单（N1）
-                menuItems = if (composeNewSession && currentSessionId == null) emptyList() else menuWithSubagents,
+                menu = if (traceOpen) SessionMenu.Empty else sessionMenu,
+                diff = if (traceOpen) null else pinnedChanges?.takeIf { it.total > 0 }?.let { c -> DlDiffStat(c.added, c.deleted) { scope.launch { changesPanel.open(c.seq, null) } } },
             )
             }
 
-            // ===== 设备不可达横幅：离线时不强退到设备页，给「重试 / 设备」 =====
-            DeviceUnreachableBanner(
-                hostName = hostLabel,
-                visible = !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty(),
-                onRetry = { refreshSessions(reportFailure = true) },
-                onOpenDevice = { onOpenDevice(null) },
-            )
-
-            // ===== 断线重连横幅（SSE 断开时提示；客户端自动退避重连；复用 DshBanner） =====
+            // ===== 状态槽（v4 4.1 / 4.5 / 4.8）：断线 > 目标 + 计划 > 预览，一次只显示一条 =====
             val streamState = streamClient?.connectionState
             val streamBanner = streamBannerKind(
                 hasSession = currentSessionId != null,
@@ -2237,14 +2221,25 @@ fun WorkspaceScreen(
                 everConnected = streamEverConnected,
                 quietElapsed = streamQuietElapsed,
             )
-            StreamReconnectBanner(
-                kind = streamBanner,
-                onRetry = { streamClient?.reconnect() },
+            val inChat = viewMode == "chat" && currentSessionId != null
+            val previewPorts = rememberPreviewDetections(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
+            val planItems = remember(messages) { latestPlanItems(messages) }
+            SessionStatusSlot(
+                status = sessionStatus(
+                    stream = streamBanner,
+                    unreachableHost = hostLabel.takeIf { !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty() },
+                    goal = workspaceViewModel.sessionControl.goal.value.takeIf { inChat },
+                    goalSummary = workspaceViewModel.currentGoalSummary.value.takeIf { inChat },
+                    plan = if (inChat) planItems else emptyList(),
+                    running = running,
+                    previewPorts = previewPorts,
+                    onRetryStream = { streamClient?.reconnect() },
+                    onRetryHost = { refreshSessions(reportFailure = true) },
+                    onOpenDevice = { onOpenDevice(null) },
+                ),
+                control = workspaceViewModel.sessionControl,
+                modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp),
             )
-            PreviewDetectBanner(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
-            if (viewMode == "chat" && currentSessionId != null) {
-                SessionChromeGoals(workspaceViewModel.currentGoalSummary.value, messages, running, Modifier.align(Alignment.CenterHorizontally).widthIn(max = dshLayout.contentMaxWidthDp.dp), workspaceViewModel.sessionControl)
-            }
             } // 顶部 chrome 结束
             // 方案 A（2026-10-02）：顶 / 底 chrome 实底，不再叠边缘渐隐（实底与渐隐色不一致会出现白雾）。
 
@@ -2376,27 +2371,17 @@ fun WorkspaceScreen(
                 contentPadding = PaddingValues(
                     start = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
                     end = COMPOSER_SIDE_CLEARANCE + DshSpace.s8,
-                    top = topChromeDp + DshSpace.s10,
-                    bottom = bottomChromeDp + DshSpace.s10,
+                    top = topChromeDp + DshSpace.s12,
+                    bottom = bottomChromeDp + DshSpace.s12,
                 )
             ) {
                 if (messages.isEmpty()) {
                     if (composeNewSession && currentSessionId == null) {
                         newTaskDraftCanvas(
                             lastTask = draftLastTask,
-                            workspaces = workspaceCatalogItems.map { it.path },
-                            selectedWorkspace = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
-                            modeLabel = presetDisplayName(
-                                draftPresetId(pendingAgentPreset, appSettings.agentPreset),
-                                null,
-                            ),
+                            workspaceLabel = (pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace)?.let(::workspaceDisplayName),
                             onOpenLastTask = { sid -> selectSession(sid); showPhoneChat() },
-                            onSelectWorkspace = { cwd ->
-                                pendingSessionCwd = cwd
-                                workspacePrefs.lastSelectedWorkspace = cwd
-                            },
                             onOpenWorkspacePicker = { showDraftWorkspacePicker = true },
-                            onOpenModePicker = { showAgentPresetPicker = true },
                         )
                     } else {
                     chatEmptyCanvas(
@@ -2430,7 +2415,6 @@ fun WorkspaceScreen(
                         sweepingId = sweepingId,
                         actions = chatActions,
                         isRunning = running,
-                        pinnedChangesSeq = pinnedChanges?.seq,
                     )
                     // 对齐网页 TurnStatus（Deep diving...）：整轮生成期间都在流尾显示思考中扫光
                     if (shouldShowTurnStatus(messages, running || isSending)) {
@@ -2534,22 +2518,27 @@ fun WorkspaceScreen(
                 )
             }
             // ===== bottom chrome（WI-006：发送队列/输入卡/统计栏同一容器，统一安全区与 IME） =====
-            // R11：通栏玻璃 → 留边距圆角浮岛（dshGlass Floating：轻折射/高光/柔和阴影），
-            // 输入卡本体保持实色（R5 近实色面）；岛尺寸经 overlayBottomChrome 实测回填。
+            // v4：输入区是实底容器（DlComposer 自带边距），建议行 / 队列在其上方
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
-                    .padding(bottom = 8.dp)
-                    // L12：输入行是两块独立玻璃（InputBar 内部）；座位行 / 建议行直接浮在内容上，
-                    // 由底部渐隐托底——PR3 的整块浮岛外圈玻璃取消
                     .onGloballyPositioned { composerTopPx = it.positionInRoot().y }
             ) {
                 // 工作区 + Harness 模式（新会话草稿模式下置于输入卡上方，开聊后收拢隐藏）
                 // 发送中不堆 QueueDock；插话/引导/排队由发送槽转圈表示（状态写进动作）
                 if (viewMode == "chat") {
+                // v4 4.3 / 4.4：待你拍板的审批 / 提问替换输入区
+                val decision = remember(messages, currentSessionId) { currentSessionId?.let { pendingDecision(messages) } }
+                if (decision != null) {
+                    DecisionBarHost(
+                        decision = decision,
+                        onAnswerApproval = { id, outcome, done -> currentSessionId?.let { workspaceViewModel.answerApproval(it, id, outcome, done) } ?: done(false) },
+                        onAnswerQuestion = { id, answer, done -> currentSessionId?.let { workspaceViewModel.answerQuestion(it, id, answer, done) } ?: done(false) },
+                        modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
+                    )
+                } else {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
                     QueuedPromptsStrip(workspaceViewModel.sessionControl, { restored -> inputText = if (inputText.isBlank()) restored else inputText + "\n" + restored }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
@@ -2565,7 +2554,7 @@ fun WorkspaceScreen(
                             pendingBlocked = homePendingApproval != null,
                             online = hostReachable,
                         ),
-                        changesCount = pinnedChanges?.total?.takeIf { it > 0 },
+                        changesCount = null,
                         onSuggestion = { text ->
                             inputText = text
                             if (composerFocusShouldEmit(ComposerFocusSource.CommandInsert)) composerFocusToken++
@@ -2611,6 +2600,8 @@ fun WorkspaceScreen(
                 compact = composerSeatsCompact(containerWidthDp.value),
                 onOpenModelPicker = { loadModelCatalog(openPicker = true) },
                 onOpenPermissionPicker = { showPermissionPicker = true },
+                presetLabel = if (composeNewSession && currentSessionId == null) presetDisplayName(draftPresetId(pendingAgentPreset, appSettings.agentPreset), null) else null,
+                onOpenPresetPicker = { showAgentPresetPicker = true },
                 onToggleVoice = {
                     if (isListening) {
                         onStopVoiceInput()
@@ -2656,8 +2647,6 @@ fun WorkspaceScreen(
                 actionError = composerActionError,
                 composerFocusRequester = composerFocusRequester,
                 focusToken = composerFocusToken,
-                // 方案 A：输入区坐在实底上，不再采样背后内容（采样会让被实底挡住的正文从胶囊里透出来）
-                backdrop = null,
                 onSend = {
                     // 不可逆权限升级：无论从哪个入口触发，都不直发，先走二次确认。
                     if (isDangerPermissionCommand(inputText)) {
@@ -2678,6 +2667,8 @@ fun WorkspaceScreen(
                     message = L.confirmFullAccessMessage,
                     confirmLabel = L.confirm,
                     danger = true,
+                    icon = ShieldOutline16,
+                    iconTone = DlTone.Wait,
                     onDismiss = { showFullAccessSendConfirm = false },
                     onConfirm = {
                         showFullAccessSendConfirm = false
@@ -2685,6 +2676,7 @@ fun WorkspaceScreen(
                     },
                 )
             }
+                } // 决策栏 / 输入区
                 }
             } // bottom chrome 容器结束
             } // 底部 chrome 叠层结束
@@ -2700,6 +2692,9 @@ fun WorkspaceScreen(
         // 稿 04 底部提问条：预填「关于 <文件> 的改动：」，收起面板回聊天
         onAskAboutFile = { file ->
             inputText = ChangesL.askAboutFilePrefill.format(file.display) + inputText; scope.launch { changesPanel.settle(false) }; showPhoneChat()
+        },
+        onAskAboutTurn = { turn ->
+            inputText = ChangesL.askAboutTurnPrefill.format(turn.turn) + inputText; scope.launch { changesPanel.settle(false) }; showPhoneChat()
         },
     )
 
@@ -2751,12 +2746,12 @@ fun WorkspaceScreen(
             registryReady = workspaceRegistryReady,
             selectedPath = pendingSessionCwd ?: workspacePrefs.lastSelectedWorkspace,
             onDismiss = { showDraftWorkspacePicker = false },
+            onAddWorkspace = { showAddWorkspace = true },
             onPick = { path ->
+                // v4 3.2：选「不绑定工作区」也生效（null = 只聊天）
                 showDraftWorkspacePicker = false
-                if (path != null) {
-                    pendingSessionCwd = path
-                    workspacePrefs.lastSelectedWorkspace = path
-                }
+                pendingSessionCwd = path
+                workspacePrefs.lastSelectedWorkspace = path
             },
         )
     }
@@ -2766,6 +2761,7 @@ fun WorkspaceScreen(
             catalog = modelCatalog,
             loading = modelCatalogLoading,
             error = modelCatalogError,
+            contextPercent = usageFigures(sessionStats)?.let { contextUsedPercent(it.contextUsedTokens, it.contextWindowTokens) },
             onRetry = { loadModelCatalog(openPicker = true) },
             onDismiss = { showModelPicker = false },
             onSelect = { provider, model, effort ->
@@ -2777,11 +2773,9 @@ fun WorkspaceScreen(
                         currentModel = model,
                         currentReasoningEffort = effort,
                     )
-                    showModelPicker = false
                     return@ModelPickerSheet
                 }
-                // 立刻关闭并乐观更新座位（N2）；后台 selectModel 成功校正、失败回滚。
-                showModelPicker = false
+                // 不关弹层，乐观更新座位（N2）；后台 selectModel 成功校正、失败回滚。
                 workspaceViewModel.selectModelOptimistic(sid, provider, model, effort) { message ->
                     modelCatalogError = message
                 }
@@ -2898,6 +2892,7 @@ fun WorkspaceScreen(
         val path = normalizeWorkspacePath(rawPath)
         DshConfirmDialog(
             title = L.deleteWorkspaceTitle,
+            icon = TrashOutline16,
             message = L.deleteWorkspaceMessage.format(path.substringAfterLast('/')),
             confirmLabel = L.delete,
             danger = true,
@@ -2948,6 +2943,7 @@ fun WorkspaceScreen(
     deleteSessionTarget?.let { target ->
         DshConfirmDialog(
             title = L.deleteSessionTitle,
+            icon = TrashOutline16,
             message = L.deleteSessionMessage.format(displaySessionTitle(target.title)),
             confirmLabel = L.delete,
             danger = true,
@@ -2993,6 +2989,8 @@ fun WorkspaceScreen(
             loadDir = client::getWorkspaceTree,
             fetchFile = client::getSessionFile,
             onDismiss = { showFileBrowser = false },
+            rootName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'),
+            onQuote = { path -> inputText = L.fileQuotePrefill.format(path) + inputText; showFileBrowser = false },
         )
     }
 }

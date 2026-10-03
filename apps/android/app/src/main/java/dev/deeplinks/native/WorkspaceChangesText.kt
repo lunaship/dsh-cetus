@@ -15,6 +15,8 @@ internal object ChangesL {
         "viewChanges" to "查看改动 (%d)",
         "editedFile" to "已编辑 %s",
         "editedFiles" to "已编辑 %d 个文件",
+        "changedFiles" to "改了 %d 个文件",
+        "viewAllChanges" to "查看全部改动",
         "moreFiles" to "还有 %d 个文件",
         "viewAllFiles" to "查看全部 %d 个",
         "expandHiddenRows" to "展开中间 %d 行",
@@ -38,6 +40,12 @@ internal object ChangesL {
         "empty" to "这个会话还没有可查看的改动",
         "loadFailed" to "对比加载失败",
         "listPartial" to "文件列表不完整：%s",
+        "askAboutTurn" to "就这些改动提问",
+        "askAboutTurnPrefill" to "关于第 %d 轮的这些改动：",
+        "askAboutThisFile" to "就这个文件提问",
+        "previousShort" to "上一个",
+        "nextShort" to "下一个",
+        "fileCount" to "%d 个文件",
     )
 
     private val en = mapOf(
@@ -45,6 +53,8 @@ internal object ChangesL {
         "viewChanges" to "View changes (%d)",
         "editedFile" to "Edited %s",
         "editedFiles" to "Edited %d files",
+        "changedFiles" to "Changed %d files",
+        "viewAllChanges" to "View all changes",
         "moreFiles" to "%d more files",
         "viewAllFiles" to "View all %d",
         "expandHiddenRows" to "Show %d hidden lines",
@@ -68,6 +78,12 @@ internal object ChangesL {
         "unavailable" to "This comparison is no longer available",
         "loadFailed" to "Couldn't load the comparison",
         "listPartial" to "File list incomplete: %s",
+        "askAboutTurn" to "Ask about these changes",
+        "askAboutTurnPrefill" to "About the changes in turn %d: ",
+        "askAboutThisFile" to "Ask about this file",
+        "previousShort" to "Previous",
+        "nextShort" to "Next",
+        "fileCount" to "%d files",
     )
 
     private fun t(key: String): String = (if (LocaleManager.language == "en") en else zh)[key] ?: key
@@ -76,6 +92,8 @@ internal object ChangesL {
     val viewChanges get() = t("viewChanges")
     val editedFile get() = t("editedFile")
     val editedFiles get() = t("editedFiles")
+    val changedFiles get() = t("changedFiles")
+    val viewAllChanges get() = t("viewAllChanges")
     val moreFiles get() = t("moreFiles")
     val viewAllFiles get() = t("viewAllFiles")
     val expandHiddenRows get() = t("expandHiddenRows")
@@ -99,6 +117,12 @@ internal object ChangesL {
     val loadFailed get() = t("loadFailed")
     val unavailable get() = t("unavailable")
     val listPartial get() = t("listPartial")
+    val askAboutTurn get() = t("askAboutTurn")
+    val askAboutTurnPrefill get() = t("askAboutTurnPrefill")
+    val askAboutThisFile get() = t("askAboutThisFile")
+    val previousShort get() = t("previousShort")
+    val nextShort get() = t("nextShort")
+    val fileCount get() = t("fileCount")
 
     fun note(note: DiffNote, diff: WorkspaceFileDiff.Text): String = when (note) {
         DiffNote.CREATED -> created

@@ -2,8 +2,8 @@ package dev.deeplinks.native
 
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.util.groupMessages
-import dev.deeplinks.native.util.isContextInjectionText
-import dev.deeplinks.native.util.isGoalRoundText
+import dev.deeplinks.native.util.MessageKind
+import dev.deeplinks.native.util.resolvedMessageKind
 
 internal data class ChatFeedModel(
     val lastCompletedAssistantId: String?,
@@ -51,8 +51,7 @@ internal fun dedupeById(messages: List<MobileMessage>): List<MobileMessage> {
  * 不再铺进对话流（轨迹 Tab 仍能看到过程）；目标轮次（`<goal_round>`）是用户可见的目标信息，保留。
  */
 internal fun isHiddenContextInjection(msg: MobileMessage): Boolean =
-    (msg.role == "context_injection" || isContextInjectionText(msg.text)) &&
-        !isGoalRoundText(msg.text)
+    resolvedMessageKind(msg.role, msg.kind, msg.text) == MessageKind.INJECTION
 
 /**
  * 「正在扫过」的行 id：只有运行中的 tool_call / tool_result / reasoning 才能抢状态条，
@@ -78,10 +77,14 @@ internal fun isTurnEnd(groups: List<MessageGroup>, index: Int, running: Boolean)
     val current = groups.getOrNull(index) ?: return false
     val msg = (current as? MessageGroup.Single)?.msg ?: return false
     if (msg.role != "assistant") return false
-    val next = groups.getOrNull(index + 1)
-    return when {
-        next is MessageGroup.Single && next.msg.role == "user" -> true
-        index == groups.lastIndex && !running -> true
-        else -> false
+    // 轮末 = 到下一条用户消息（或列表末尾且未在运行）之前，后面只剩系统提示 / 改动 / 产出文件这类尾项
+    for (j in index + 1..groups.lastIndex) {
+        val next = groups[j]
+        val role = (next as? MessageGroup.Single)?.msg?.role ?: return false
+        when (role) {
+            "user" -> return true
+            "assistant", "reasoning", "tool_call", "tool_result", "approval", "question" -> return false
+        }
     }
+    return !running
 }

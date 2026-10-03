@@ -11,10 +11,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
@@ -23,21 +21,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.font.FontFamily
 
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshNotifier
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshCardDivider
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.util.MessageGroup
 import dev.deeplinks.native.util.activityLine
@@ -54,7 +48,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 /** 从消息列表提取最上方（最新）的 goal 摘要文本。 */
 internal fun latestGoalSummary(messages: List<MobileMessage>): String? {
@@ -72,42 +65,6 @@ internal fun latestGoalSummary(messages: List<MobileMessage>): String? {
     return null
 }
 
-/** todo 进度统计。 */
-internal data class TodoProgress(
-    val pending: Int = 0,
-    val inProgress: Int = 0,
-    val done: Int = 0,
-    val total: Int = 0,
-) {
-    val hasActive: Boolean get() = pending > 0 || inProgress > 0
-}
-
-/** 吸顶摘要条：执行中的目标 + todo 进度，悬浮在顶部 chrome 里，只出现这一处。 */
-@Composable
-internal fun ChatStickySummary(
-    goalOverride: String?,
-    messages: List<MobileMessage>,
-    isRunning: Boolean,
-    modifier: Modifier = Modifier,
-    /** 插件给了结构化目标（含 CAS 引用）时显示可操作的目标行，未执行（如已暂停）也常驻。 */
-    goal: SessionGoal? = null,
-    control: SessionControlController? = null,
-    /** 结构化目标已经画在顶栏下方的目标卡里时，吸顶条只留待办，避免同一段目标出现两次。 */
-    suppressGoalText: Boolean = false,
-) {
-    val derivedGoal = remember(messages) { latestGoalSummary(messages) }
-    val todos = remember(messages) { latestTodoProgress(messages) }
-    val summary = if (suppressGoalText) null else goalOverride?.takeIf { it.isNotBlank() } ?: derivedGoal
-    StickyTaskSummaryCard(
-        goalSummary = summary,
-        todoProgress = todos,
-        isRunning = isRunning,
-        modifier = modifier,
-        goal = if (suppressGoalText) null else goal?.takeIf { it.manageable && control != null },
-        control = if (suppressGoalText) null else control,
-    )
-}
-
 /**
  * 活动摘要行（2026-10-02 Lody 简化 4.3）：一批工具调用 + 相邻思考收成一行灰字，
  * 下方一根发丝线；整行点按切到轨迹视图看明细。运行中显示「◌ 当前命令」。
@@ -115,177 +72,60 @@ internal fun ChatStickySummary(
  */
 @Composable
 private fun ToolSummaryCard(summary: MessageGroup.ToolSummary, onOpenTrace: () -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = DshTouch.min)
-                .clip(RoundedCornerShape(DshRadius.control))
-                .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (summary.running) {
-                Text(
-                    text = "◌ ",
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                )
-                ShimmerLabel(
-                    text = summary.lastToolName ?: L.executing,
-                    working = true,
-                )
-            } else {
-                val line = activityLine(summary.activity).joinToString(" · ")
-                    .ifBlank { L.toolSummary.format(summary.count) }
-                Text(
-                    text = line,
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (summary.failedCount > 0) {
-                    Spacer(Modifier.width(DshSpace.s6))
-                    Text(
-                        text = L.toolSummaryFailed.format(summary.failedCount),
-                        color = Dsh.error,
-                        style = DshType.captionRelaxed,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-        DshCardDivider(leadingInset = DshSpace.s12)
-    }
-}
-
-internal fun latestTodoProgress(messages: List<MobileMessage>): TodoProgress {
-    var pending = 0
-    var inProgress = 0
-    var done = 0
-    var latestTodoMsg: MobileMessage? = null
-    for (msg in messages.asReversed()) {
-        if (msg.role == "todo") { latestTodoMsg = msg; break }
-    }
-    if (latestTodoMsg != null) {
-        for (t in latestTodoMsg.todos) {
-            when (t.status) {
-                "pending", "todo" -> pending++
-                "in_progress", "inprogress", "running" -> inProgress++
-                "done", "completed", "complete" -> done++
-            }
-        }
-    }
-    return TodoProgress(pending, inProgress, done, pending + inProgress + done)
-}
-
-/**
- * 粘性任务摘要卡片：在消息列表顶端粘住，始终可见（不随消息滚出视野）。
- * 生产打磨参考：hermes-mobile #943（TaskProgressChip 模式）、AgenticX StickyTaskBar。
- *
- * 显示内容：
- * - 活动目标（goal_round objective 或显式 goal 消息）
- * - todo 进度（pending / in_progress / done 计数条）
- *
- * 条件：仅在 isRunning == true 且存在可显示内容时出现。
- */
-@Composable
-internal fun StickyTaskSummaryCard(
-    goalSummary: String?,
-    todoProgress: TodoProgress,
-    isRunning: Boolean,
-    modifier: Modifier = Modifier,
-    goal: SessionGoal? = null,
-    control: SessionControlController? = null,
-) {
-    val managedGoal = goal?.takeIf { control != null }
-    if (!isRunning && managedGoal == null) return
-    val hasGoal = !goalSummary.isNullOrBlank()
-    val hasTodos = isRunning && todoProgress.hasActive
-    if (!hasGoal && !hasTodos && managedGoal == null) return
-
-    Box(
-        modifier = modifier
+    // v4 4.1：过程收成灰色单行（图标 + 摘要 + ›），运行中是转圈 + 等宽命令；不画分隔线、不做卡片
+    Row(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(Dsh.bgInput.copy(alpha = 0.92f))
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
+            .heightIn(min = DshTouch.min)
+            .clip(RoundedCornerShape(DshRadius.control))
+            .clickable(role = Role.Button, onClickLabel = L.viewInTrace, onClick = onOpenTrace)
+            .padding(vertical = DshSpace.s4),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
-            // 目标行：结构化目标可操作（暂停 / 继续 / 编辑 / 清除），否则只读摘要
-            if (managedGoal != null && control != null) {
-                GoalControlRow(managedGoal, control)
-            } else if (hasGoal) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        GoalOutline16,
-                        contentDescription = null,
-                        tint = Dsh.labelSecondary,
-                        modifier = Modifier.size(DshIconSize.sm),
-                    )
-                    Text(
-                        text = L.goalRole,
-                        color = Dsh.labelSecondary,
-                        style = DshType.microMedium,
-                    )
-                    Text(
-                        text = goalSummary.take(60) + if (goalSummary.length > 60) "…" else "",
-                        color = Dsh.labelPrimary,
-                        style = DshType.caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+        if (summary.running) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(DshIconSize.sm),
+                color = Dsh.brand400,
+                trackColor = Dsh.primarySoft,
+                strokeWidth = 2.dp,
+            )
+            val label = if (summary.lastToolName == null) L.thinkingActive else L.executing
+            Text(label.trimEnd('…', '.', '。'), color = Dsh.labelPrimary, style = DshType.supporting, maxLines = 1)
+            Text(
+                text = summary.lastToolName.orEmpty(),
+                color = Dsh.tertiaryText,
+                style = DshType.supporting.copy(fontFamily = FontFamily.Monospace),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Icon(
+                if (summary.activity.thinkingMs != null) SparkleOutline16 else CodeOutline16,
+                contentDescription = null,
+                tint = Dsh.labelSecondary,
+                modifier = Modifier.size(DshIconSize.sm),
+            )
+            val line = activityLine(summary.activity).joinToString(" · ")
+                .ifBlank { L.toolSummary.format(summary.count) }
+            Text(
+                text = line,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (summary.failedCount > 0) {
+                Text(
+                    text = L.toolSummaryFailed.format(summary.failedCount),
+                    color = Dsh.err,
+                    style = DshType.supporting,
+                    maxLines = 1,
+                )
             }
-            // todo 进度条
-            if (hasTodos) {
-                val total = todoProgress.total
-                if (total > 0) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(DshSpace.s6),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = "${todoProgress.done}/$total",
-                            color = Dsh.labelTertiary,
-                            style = DshType.microRelaxed,
-                            maxLines = 1,
-                        )
-                        val segments = buildList {
-                            repeat(todoProgress.done) { add(Dsh.success) }
-                            repeat(todoProgress.inProgress) { add(Dsh.labelSecondary) }
-                            repeat(todoProgress.pending) { add(Dsh.labelTertiary) }
-                        }
-                        if (segments.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(DshRadius.full)),
-                                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                            ) {
-                                segments.forEach { color ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(1f / segments.size)
-                                            .height(4.dp)
-                                            .background(color),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            Icon(ChevronRightOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.xs))
         }
     }
 }
@@ -321,50 +161,6 @@ internal class ChatFeedActions(
     /** 工具摘要行点按：切到轨迹视图看明细。 */
     val openTrace: () -> Unit = {},
 ) {
-    fun onAnswerApproval(): (String, String, (Boolean) -> Unit) -> Unit = { approvalId, outcome, onDone ->
-        val sid = currentSessionId()
-        if (sid == null) {
-            onDone(false)
-        } else {
-            scope.launch(Dispatchers.IO) {
-                val accepted = try {
-                    client.answerApproval(sid, approvalId, outcome)
-                } catch (_: Exception) {
-                    false
-                }
-                withContext(Dispatchers.Main) {
-                    if (accepted) {
-                        setMessages(
-                            messages().map { msg ->
-                                if (msg.approvalId == approvalId) {
-                                    applyRequestState(msg, approvalUiStatus(outcome), outcome)
-                                } else msg
-                            },
-                        )
-                        DshNotifier.cancelApproval(context, host, sid)
-                    }
-                    onDone(accepted)
-                }
-            }
-        }
-    }
-
-    fun onAnswerQuestion(): (String, JSONObject, (Boolean) -> Unit) -> Unit = { rpcId, answer, onDone ->
-        val sid = currentSessionId()
-        if (sid == null) {
-            onDone(false)
-        } else {
-            scope.launch(Dispatchers.IO) {
-                val accepted = try {
-                    client.answerQuestion(sid, rpcId, answer)
-                } catch (_: Exception) {
-                    false
-                }
-                withContext(Dispatchers.Main) { onDone(accepted) }
-            }
-        }
-    }
-
     fun onCopy(msg: MobileMessage): () -> Unit = {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("dsh message", msg.text))
@@ -494,7 +290,11 @@ internal fun LazyListScope.chatMessageItems(
         }
     }
     val turnEnds = turnEndAssistantIds(groups, isRunning)
-    val foldedGroups = foldToolCalls(groups, viewMode = "chat")
+    val folded = foldToolCalls(groups, viewMode = "chat")
+    // v4 4.2：本轮改动卡挂到轮末回复下面（改动 → 元信息 → 按钮），不再单独成行
+    val turnChanges = turnChangesByAssistant(folded, turnEnds)
+    val attached = turnChanges.values.mapTo(HashSet()) { it.id }
+    val foldedGroups = if (attached.isEmpty()) folded else folded.filterNot { (it as? MessageGroup.Single)?.msg?.id in attached }
     // 轮尾元信息的模型名（4.3）：只认本轮出现过的模型切换标记，不伪造逐条模型字段
     val turnModelById = turnEndModelLabels(foldedGroups, turnEnds)
     val rows = chatFeedRows(foldedGroups, isRunning)
@@ -525,8 +325,6 @@ internal fun LazyListScope.chatMessageItems(
                     MessageItem(
                         msg = group.msg,
                         running = sweepingId != null && group.msg.id == sweepingId,
-                        onAnswerApproval = actions.onAnswerApproval(),
-                        onAnswerQuestion = actions.onAnswerQuestion(),
                         onCopy = actions.onCopy(group.msg),
                         onQuote = actions.onQuote(group.msg),
                         onFork = actions.onFork(),
@@ -542,6 +340,7 @@ internal fun LazyListScope.chatMessageItems(
                         isTurnEnd = row.isTurnEnd,
                         textPart = row.part,
                         isLastPart = row.partIndex == row.partCount - 1,
+                        turnChanges = turnChanges[group.msg.id],
                     )
                 }
                 is MessageGroup.ToolGroup -> ToolGroupHeader(
@@ -605,6 +404,22 @@ internal fun turnEndModelLabels(
                 current = dev.deeplinks.native.util.modelChangedFrom(msg.text) ?: current
             msg.role == "assistant" && msg.id in turnEnds ->
                 current?.let { out[msg.id] = it }
+        }
+    }
+    return out
+}
+
+/** 轮末回复 id → 同一轮里紧随其后的改动摘要（中间没有新的用户消息）。 */
+internal fun turnChangesByAssistant(foldedGroups: List<MessageGroup>, turnEnds: Set<String>): Map<String, MobileMessage> {
+    if (turnEnds.isEmpty()) return emptyMap()
+    val out = mutableMapOf<String, MobileMessage>()
+    var lastEnd: String? = null
+    for (group in foldedGroups) {
+        val msg = (group as? MessageGroup.Single)?.msg ?: continue
+        when {
+            msg.role == "user" -> lastEnd = null
+            msg.role == "assistant" && msg.id in turnEnds -> lastEnd = msg.id
+            msg.role == ROLE_WORKSPACE_CHANGES && msg.changes != null -> lastEnd?.let { if (it !in out) out[it] = msg }
         }
     }
     return out

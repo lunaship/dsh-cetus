@@ -12,18 +12,23 @@ import java.io.File
  * - 任何文件的裸字号数量超过基线 -> 失败；
  * - 迁移使数量下降后应把基线调小（允许收敛，禁止回涨）。
  *
- * 白名单只放 token 定义文件（DshTheme / DshTypography / DshSyntaxPalette / DswPalette）。
+ * Color(0x…) 只允许出现在 core/DshTheme.kt 与代码高亮配色 core/DshSyntaxPalette.kt。
  */
 class DesignTokenUsageTest {
 
     private val fontRegex = Regex("""\b\d+(\.\d+)?\.sp\b""")
     private val colorRegex = Regex("""Color\(0x""")
 
-    private val allowlist = setOf(
+    private val colorLiteralFiles = setOf(
+        "dev/deeplinks/core/DshTheme.kt",
+        "dev/deeplinks/core/DshSyntaxPalette.kt",
+    )
+
+    /** 字号定义文件不计入裸字号基线。 */
+    private val fontTokenFiles = setOf(
         "dev/deeplinks/core/DshTheme.kt",
         "dev/deeplinks/core/DshTypography.kt",
         "dev/deeplinks/core/DshSyntaxPalette.kt",
-        "dev/deeplinks/core/DswPalette.kt",
     )
 
     private fun mainSourceRoot(): File {
@@ -67,18 +72,17 @@ class DesignTokenUsageTest {
 
         for (file in root.walkTopDown().filter { it.isFile && it.extension == "kt" }) {
             val rel = relative(root, file)
-            if (rel in allowlist) continue
             var fontLines = 0
             var colorLines = 0
             file.forEachLine { line ->
                 if (fontRegex.containsMatchIn(line)) fontLines++
                 if (colorRegex.containsMatchIn(line)) colorLines++
             }
-            if (colorLines > 0) {
+            if (colorLines > 0 && rel !in colorLiteralFiles) {
                 violations += rel + ": " + colorLines + " 处裸色值 Color(0x...)，请改用 Dsh 颜色角色"
             }
             val limit = limits[rel] ?: 0
-            if (fontLines > limit) {
+            if (rel !in fontTokenFiles && fontLines > limit) {
                 violations += rel + ": 裸字号 " + fontLines + " 处，超过基线 " + limit + "，请改用 DshType"
             }
         }
@@ -139,8 +143,8 @@ class DesignTokenUsageTest {
     }
 
     /**
-     * 圆角只能取 DshRadius / DshTileShape / CircleShape：细条与进度条用 full，
-     * 色块用 xs，卡片用 group，图标底板用 DshTileShape。存量已清零，不设基线。
+     * 圆角只能取 DshRadius / CircleShape：细条与进度条用 full，
+     * 色块用 xs，卡片用 group。存量已清零，不设基线。
      */
     @Test
     fun cornerRadiiComeFromTokens() {
@@ -154,7 +158,7 @@ class DesignTokenUsageTest {
             }
         }
         assertTrue(
-            "裸圆角（请改用 DshRadius.* / DshTileShape / CircleShape）：\n" + offenders.joinToString("\n"),
+            "裸圆角（请改用 DshRadius.* / CircleShape）：\n" + offenders.joinToString("\n"),
             offenders.isEmpty()
         )
     }

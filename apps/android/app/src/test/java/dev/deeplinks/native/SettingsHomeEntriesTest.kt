@@ -35,12 +35,14 @@ class SettingsHomeEntriesTest {
     }
 
     @Test
-    fun `SettingsHome has exactly 5 DshListSection top-level`() {
+    fun `SettingsHome has exactly 3 headed DshListSection (7_1 general agent other)`() {
         val text = file("SettingsRoute.kt").readText()
         val homeStart = text.indexOf("internal fun SettingsHome(")
         val homeEnd = text.indexOf("\n}\n", homeStart) + 3
         val homeBody = text.substring(homeStart, homeEnd)
         val sections = Regex("""DshListSection\((container\s*=\s*DshSectionContainer\.Card,\s*)?header\s*=""").findAll(homeBody).map { it.range.first }.toList()
-        assertEquals(5, sections.size)
+        assertEquals(3, sections.size)
+        // 7.1：当前电脑是唯一一块容器色块
+        assertEquals(1, Regex("""DshSectionContainer\.Tonal""").findAll(homeBody).count())
     }
 }

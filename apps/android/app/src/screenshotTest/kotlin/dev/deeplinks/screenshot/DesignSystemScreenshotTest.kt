@@ -1,26 +1,15 @@
 package dev.deeplinks.screenshot
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Spacer
-import dev.deeplinks.native.util.HomeSection
-import dev.deeplinks.native.HomeApprovalCard
-import androidx.compose.ui.draw.alpha
-import dev.deeplinks.native.HomeEmptyStarters
-import dev.deeplinks.native.HomeOfflineCard
-import dev.deeplinks.native.HomeSectionHeader
-import dev.deeplinks.native.HomeHeader
-import dev.deeplinks.native.HomeBottomBar
 import dev.deeplinks.native.ComposerSuggestionsRow
+import dev.deeplinks.native.SessionMenuContent
+import dev.deeplinks.native.sessionMenu
+import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
+import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.EllipsisOutline16
 import dev.deeplinks.native.ArrowLeftOutline16
-import dev.deeplinks.native.FilterLinesOutline16
 import dev.deeplinks.native.SettingsOutline16
 import dev.deeplinks.native.PlusOutline16
-import dev.deeplinks.native.ui.DshGlassCapsule
-import dev.deeplinks.native.ui.DshGlassCapsuleIcon
-import dev.deeplinks.native.ui.DshGlassCapsuleLabel
-import dev.deeplinks.native.ui.DshGlassCircle
-import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.SparkleOutline16
 import dev.deeplinks.native.ArchiveBoxOutline16
 import androidx.compose.material3.Icon
@@ -74,11 +63,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -101,7 +88,6 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.DarkDshColors
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.core.DshFontFamily
 import dev.deeplinks.core.DshStringsEn
 import dev.deeplinks.core.DshStringsZh
 import dev.deeplinks.core.DshType
@@ -109,7 +95,6 @@ import dev.deeplinks.core.LightDshColors
 import dev.deeplinks.core.pureBlack
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.LocalDshColors
-import dev.deeplinks.core.LocalDshFontFamily
 import dev.deeplinks.core.LocalDshStrings
 import dev.deeplinks.core.LocaleManager
 import dev.deeplinks.core.dshTypography
@@ -128,20 +113,15 @@ import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.SettingsPageCanvas
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.BranchOutline16
-import dev.deeplinks.native.StopFill16
 import dev.deeplinks.native.CloudOffOutline16
 import dev.deeplinks.native.DocumentCheckOutline16
 import dev.deeplinks.native.ListOutline16
 import dev.deeplinks.native.LockOutline16
 import dev.deeplinks.native.UploadOutline16
-import dev.deeplinks.native.ui.DshCardDivider
 import dev.deeplinks.native.ui.DshChipTone
-import dev.deeplinks.native.ui.DshGroupCard
 import dev.deeplinks.native.ui.DshPillButton
 import dev.deeplinks.native.ui.DshPillTone
-import dev.deeplinks.native.ui.DshSectionLabel
 import dev.deeplinks.native.ui.DshStatusChip
-import dev.deeplinks.native.ui.DshStatusIcon
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSection
@@ -156,36 +136,50 @@ import dev.deeplinks.native.CommandSuggestions
 import dev.deeplinks.native.ComposerContextStrip
 import dev.deeplinks.native.InputBar
 import dev.deeplinks.native.WorkspaceChangesSummary
-import dev.deeplinks.native.DshMenuItem
 import dev.deeplinks.native.SearchOutline16
-import dev.deeplinks.native.MobileSession
-import dev.deeplinks.native.MobileSessionActivity
-import dev.deeplinks.native.MobileSessionResult
 import dev.deeplinks.native.MobileSessionStats
-import dev.deeplinks.native.SessionRowItem
-import dev.deeplinks.native.ui.DshCardRows
 import dev.deeplinks.native.UsagePanel
 import dev.deeplinks.native.WorkspaceTopBar
 import dev.deeplinks.native.chatEmptyCanvas
-import dev.deeplinks.native.newTaskDraftCanvas
-import dev.deeplinks.native.DraftLastTask
 import dev.deeplinks.native.ComposerSeatsRow
-import dev.deeplinks.native.StreamReconnectBanner
+import dev.deeplinks.native.OfflineStatusSlot
+import dev.deeplinks.native.PreviewStatusSlot
+import dev.deeplinks.native.SessionStatus
+import dev.deeplinks.native.sessionStatus
 import dev.deeplinks.native.ui.ChatLoadingSkeleton
 import dev.deeplinks.native.util.ChatCanvasKind
 import dev.deeplinks.native.util.StreamBannerKind
 import dev.deeplinks.native.ui.DshBadge
 import dev.deeplinks.native.ui.DshBanner
 import dev.deeplinks.native.ui.DshBannerTone
-import dev.deeplinks.native.COMPOSER_ISLAND_INNER_CLEARANCE
-import dev.deeplinks.native.COMPOSER_SIDE_CLEARANCE
 import dev.deeplinks.native.DshRadius
-import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.ui.DshFilterChip
-import dev.deeplinks.native.ui.DshGlassTier
-import dev.deeplinks.native.ui.dshGlass
 import dev.deeplinks.native.ui.DshTag
 import dev.deeplinks.native.ui.DshTextTabs
+import dev.deeplinks.core.dshColorScheme
+import dev.deeplinks.native.GlobeOutline16
+import dev.deeplinks.native.GoalOutline16
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import dev.deeplinks.native.ui.v4.DlAction
+import dev.deeplinks.native.ui.v4.DlButtonStyle
+import dev.deeplinks.native.ui.v4.DlChip
+import dev.deeplinks.native.ui.v4.DlChipStyle
+import dev.deeplinks.native.ui.v4.DlComposer
+import dev.deeplinks.native.ui.v4.DlDecisionBar
+import dev.deeplinks.native.ui.v4.DlDecisionOption
+import dev.deeplinks.native.ui.v4.DlDialogSurface
+import dev.deeplinks.native.ui.v4.DlInboxItem
+import dev.deeplinks.native.ui.v4.DlListRow
+import dev.deeplinks.native.ui.v4.DlRowTrailing
+import dev.deeplinks.native.ui.v4.DlSectionHeader
+import dev.deeplinks.native.ui.v4.DlSegmented
+import dev.deeplinks.native.ui.v4.DlSendState
+import dev.deeplinks.native.ui.v4.DlStatusSlot
+import dev.deeplinks.native.ui.v4.DlTone
+import dev.deeplinks.native.ui.v4.DlTopBar
+import dev.deeplinks.native.ui.v4.DlTopBarAction
+import dev.deeplinks.native.ui.v4.DlTopBarNav
 
 /**
  * Compose Preview Screenshot Testing 基线（AGP 内置）。
@@ -206,12 +200,11 @@ internal fun ShotFrame(dark: Boolean, english: Boolean = false, content: @Compos
     // SharedPreferences，所以走 setLanguageForPreview 只切内存态，英文预览不混中文。
     LocaleManager.setLanguageForPreview(if (english) "en" else "zh")
     val colors = if (dark) DarkDshColors else LightDshColors
-    val typography = dshTypography(DshFontFamily)
-    MaterialTheme(typography = typography) {
+    val typography = dshTypography()
+    MaterialTheme(colorScheme = dshColorScheme(colors), typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides colors,
             LocalDshStrings provides if (english) DshStringsEn else DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             content()
@@ -264,50 +257,6 @@ private fun InboxWall(english: Boolean = false) {
         DshStatusChip(if (english) "Done" else "完成", DshChipTone.Done)
         DshStatusChip(if (english) "Stopped" else "已停止", DshChipTone.Remote)
     }
-    SectionTitle(if (english) "Status icons — done / running / offline / needs unlock"
-        else "Status icons — 完成 / 进行中 / 离线 / 需解锁")
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        DshStatusIcon(DocumentCheckOutline16)
-        DshStatusIcon(ClockOutline16, container = Dsh.bgSubtle, content = Dsh.labelSecondary)
-        DshStatusIcon(CloudOffOutline16, container = Dsh.bgSubtle, content = Dsh.labelTertiary)
-        DshStatusIcon(LockOutline16, container = Dsh.bgSubtle, content = Dsh.warnLabel)
-        DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
-    }
-    SectionTitle(if (english) "Group card — white card + 32dp status rows + divider"
-        else "Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
-    DshGroupCard {
-        DshListRow(
-            title = if (english) "Approval status sync" else "完善审批状态同步",
-            subtitle = if (english) "Running go test ./... · step 12" else "正在运行 go test ./... · 第 12 步",
-            value = if (english) "3 min" else "3 分钟",
-            iconSlot = 32.dp,
-        )
-        DshCardDivider()
-        DshListRow(
-            title = "2026-09-27_DSH-L",
-            subtitle = if (english) "Done · changed 79 files, gate all green" else "完成 · 改了 79 个文件，门禁全绿",
-            value = if (english) "Yesterday" else "昨天",
-            leading = { DshStatusIcon(DocumentCheckOutline16) },
-            iconSlot = 32.dp,
-        )
-        DshCardDivider()
-        DshListRow(
-            title = if (english) "Fix mobile model switch" else "修复手机模型切换",
-            subtitle = if (english) "Stopped · you interrupted this turn" else "已停止 · 你中断了这一轮",
-            value = if (english) "Thu" else "周四",
-            leading = {
-                DshStatusIcon(
-                    StopFill16,
-                    container = Dsh.bgSubtle,
-                    content = Dsh.labelSecondary,
-                    iconSize = 16.dp,
-                )
-            },
-            iconSlot = 32.dp,
-        )
-    }
-    SectionTitle(if (english) "Section label" else "分组标签")
-    DshSectionLabel(if (english) "Waiting for you" else "等你处理")
     SectionTitle(if (english) "Icons — new this round (doc / cloud / list / lock / upload / branch)"
         else "Icons — 本次新增（文档/云/列表/锁/上传/分支）")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -349,12 +298,11 @@ private fun PureBlackWall(content: @Composable () -> Unit) {
     // 纯黑基线只出中文一张：全局语言固定回中文，避免上一张英文预览把它带成英文。
     LocaleManager.setLanguageForPreview("zh")
     val colors = DarkDshColors.pureBlack()
-    val typography = dshTypography(DshFontFamily)
+    val typography = dshTypography()
     MaterialTheme(typography = typography) {
         CompositionLocalProvider(
             LocalDshColors provides colors,
             LocalDshStrings provides DshStringsZh,
-            LocalDshFontFamily provides DshFontFamily,
             LocalTextStyle provides typography.bodyMedium,
         ) {
             Column(
@@ -477,8 +425,11 @@ private fun SettingsHomeWall() {
 @Composable
 private fun ChromeWall() {
     SectionTitle("Stream banner")
-    StreamReconnectBanner(kind = StreamBannerKind.Connecting, onRetry = {})
-    StreamReconnectBanner(kind = StreamBannerKind.Failed, onRetry = {})
+    for (kind in listOf(StreamBannerKind.Retrying, StreamBannerKind.Failed)) {
+        val status = sessionStatus(kind, null, null, null, emptyList(), running = false, previewPorts = listOf(5173))
+        OfflineStatusSlot(status as SessionStatus.Offline)
+    }
+    PreviewStatusSlot(SessionStatus.Preview(listOf(5173)))
     SectionTitle("Context meter rows")
     ContextMeterRow(label = "System prompt", value = "5.1K", swatchColor = Dsh.systemAccent)
     ContextMeterRow(label = "Tools", value = "2.4K", swatchColor = Dsh.toolsAccent)
@@ -552,32 +503,18 @@ private val sampleSessionStats = MobileSessionStats(
 )
 
 /**
- * 对话页输入区：上下文条 + 输入卡（两层输入区），按生产结构包进浮岛（R11）。
- * 预览不带采样源（backdrop = null），展示的正是 4.5 回退表「无背景源 → 普通表面」
- * 的形态；玻璃折射/模糊的运行时效果由真机录屏验证（D04）。
- * 真机上「没有消息」的画布下方就是它——空会话的起点是输入框占位句。
+ * 对话页输入区（v4 4.1）：建议行 + 实底输入区（DlComposer），与生产 WorkspaceScreen 同构。
  * ChatBottomWall 与空态画布帧共用，样例数据（含上下文占用）保持单一来源。
  */
 @Composable
 private fun ChatComposerArea(modifier: Modifier = Modifier) {
     val stats = sampleSessionStats
-    Column(
-        modifier = modifier
-            .padding(horizontal = COMPOSER_SIDE_CLEARANCE)
-            .dshGlass(
-                tier = DshGlassTier.Floating,
-                backdrop = null,
-                shape = RoundedCornerShape(DshRadius.modal),
-            )
-            .padding(
-                start = COMPOSER_ISLAND_INNER_CLEARANCE,
-                end = COMPOSER_ISLAND_INNER_CLEARANCE,
-                top = DshSpace.s6,
-            ),
-    ) {
-        ComposerContextStrip(
+    Column(modifier = modifier.background(Dsh.bgBase)) {
+        ComposerSuggestionsRow(
             online = true,
-            changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 6, added = 250, deleted = 50, files = emptyList()),
+            suggestionsVisible = true,
+            changesCount = null,
+            onSuggestion = {},
             onOpenChanges = {},
         )
         InputBar(
@@ -635,18 +572,45 @@ internal fun ChatBottomDarkEn() {
 @Composable
 private fun TopBarWall(english: Boolean = false) {
     WorkspaceTopBar(
-        running = true,
-        title = if (english) "Research t3code mobile design" else "调研 t3code 移动端设计并对比项目",
-        subtitle = "dsh-links · Mac mini",
-        showBack = true,
+        title = if (english) "Sync approval state" else "完善审批状态同步",
+        subtitle = if (english) "dsh-links · Running · Step 12" else "dsh-links · 运行中 · 第 12 步",
         onNavigate = {},
         menuExpanded = false,
         onMenuExpandedChange = {},
-        menuItems = listOf(
-            DshMenuItem(SearchOutline16, if (english) "Search tool calls" else "搜索工具调用") {},
-            DshMenuItem(SearchOutline16, if (english) "Rename session" else "重命名会话") {},
-        ),
+        menu = sessionMenu(onClose = {}),
+        diff = DlDiffStat(148, 37) {},
     )
+}
+
+/** v4 4.9：会话 ⋯ 菜单（弹层静态外观）。 */
+@Composable
+private fun SessionMenuWall() {
+    val menu = sessionMenu(
+        onClose = {},
+        changes = WorkspaceChangesSummary(seq = 1, turn = 3, total = 4, added = 62, deleted = 9, files = emptyList()),
+        canBrowseFiles = true,
+        subagentCount = 2,
+        previewSupported = true,
+        canGoal = true,
+        canSchedules = true,
+    )
+    Column(Modifier.fillMaxSize().background(Dsh.bgOverlay), verticalArrangement = Arrangement.Bottom) {
+        DlBottomSheetSurface { SessionMenuContent(menu) }
+    }
+}
+
+@PreviewTest
+@Preview(name = "session menu light zh", showBackground = true, widthDp = 412, heightDp = 860)
+@Composable
+internal fun SessionMenuLightZh() {
+    ShotFrame(dark = false, english = false) { SessionMenuWall() }
+}
+
+@PreviewTest
+@Preview(name = "session menu dark en", showBackground = true, widthDp = 412, heightDp = 860)
+@Composable
+internal fun SessionMenuDarkEn() {
+    ShotFrame(dark = true, english = true) { SessionMenuWall() }
 }
 
 @PreviewTest
@@ -748,40 +712,6 @@ internal fun RemoteImagePlaceholder() {
 internal fun RemoteImagePlaceholderDarkEn() {
     ShotFrame(dark = true, english = true) {
         RemoteImageBlock(url = "https://example.com/a.png")
-    }
-}
-
-// ---- 第 3 步：首页审批卡（C1 Outline 按钮）/ 设置隐私分组预览 ----
-
-@PreviewTest
-@Preview(name = "home approval card", showBackground = true, widthDp = 412, heightDp = 260)
-@Composable
-internal fun HomeApprovalCardLight() {
-    ShotFrame(dark = false) {
-        HomeApprovalCard(
-            title = "任务首页改版",
-            workspaceLabel = "dsh-links",
-            timeLabel = "2 分钟前",
-            toolName = "./gradlew :app:connectedDebugAndroidTest",
-            onReject = {},
-            onApprove = {},
-        )
-    }
-}
-
-@PreviewTest
-@Preview(name = "home approval card dark en", showBackground = true, widthDp = 412, heightDp = 260)
-@Composable
-internal fun HomeApprovalCardDarkEn() {
-    ShotFrame(dark = true, english = true) {
-        HomeApprovalCard(
-            title = "Redesign home inbox",
-            workspaceLabel = "dsh-links",
-            timeLabel = "2 min ago",
-            toolName = "./gradlew :app:connectedDebugAndroidTest",
-            onReject = {},
-            onApprove = {},
-        )
     }
 }
 
@@ -1192,236 +1122,7 @@ internal fun DevicesDarkEn() {
     ShotFrame(dark = true, english = true) { DevicesWall() }
 }
 
-/**
- * 新任务草稿态（F09 补齐）：生产结构 [newTaskDraftCanvas]（对话页 LazyColumn 的
- * messages.isEmpty() 分支）+ 固定业务状态——继续上次 / 工作区胶囊 / 智能体预设。
- */
-@Composable
-private fun NewTaskDraftWall(english: Boolean) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        newTaskDraftCanvas(
-            lastTask = DraftLastTask(
-                sessionId = "preview",
-                title = if (english) "Refactor settings into grouped list" else "重构设置页为分组列表",
-                workspaceLabel = "/Users/me/dsh-links",
-            ),
-            workspaces = listOf("/Users/me/dsh-links", "/Users/me/relay"),
-            selectedWorkspace = "/Users/me/dsh-links",
-            modeLabel = if (english) "Balanced" else "均衡",
-            onOpenLastTask = {},
-            onSelectWorkspace = {},
-            onOpenWorkspacePicker = {},
-            onOpenModePicker = {},
-        )
-    }
-}
-
-@PreviewTest
-@Preview(name = "new task draft light zh", showBackground = true, widthDp = 412, heightDp = 900)
-@Composable
-internal fun NewTaskDraftLightZh() {
-    ShotFrame(dark = false, english = false) { NewTaskDraftWall(english = false) }
-}
-
-@PreviewTest
-@Preview(name = "new task draft dark en", showBackground = true, widthDp = 412, heightDp = 900)
-@Composable
-internal fun NewTaskDraftDarkEn() {
-    ShotFrame(dark = true, english = true) { NewTaskDraftWall(english = true) }
-}
-
-/**
- * 首页（任务中心）墙：顶栏 → 工作区筛选条 → 等待确认 / 进行中 / 今天 / 昨天 → 开始新任务。
- * 会话时间都给 0，避免相对时间随时钟漂移导致基线抖动。
- */
-@Composable
-private fun SidebarWall(english: Boolean = false) {
-    fun session(
-        id: String,
-        title: String,
-        running: Boolean = false,
-        awaiting: Boolean = false,
-        activity: MobileSessionActivity? = null,
-        lastResult: MobileSessionResult? = null,
-        stoppedReason: String? = null,
-    ) = MobileSession(
-        sessionId = id,
-        title = title,
-        // 真实一点的更新时间：进行中的行要有「3 分钟」这类已运行时长（方案 3.5 要求行尾有时长），
-        // 最近的行要有「昨天 / 周五」。全填 0L 会让墙上看不到任何时间，掩盖真实问题。
-        updatedAt = System.currentTimeMillis() - if (running) 3L * 60_000 else 26L * 3_600_000,
-        stoppedReason = stoppedReason,
-        running = running,
-        blank = false,
-        cwd = "/Users/me/dsh-links",
-        agentPreset = null,
-        awaitingInput = awaiting,
-        activity = activity,
-        lastResult = lastResult,
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Dsh.bgBase)
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        HomeHeader(
-            online = true,
-            offlineSinceLabel = null,
-            workspaces = listOf("/Users/me/dsh-links", "/Users/me/Hermes-perch"),
-            selectedWorkspace = null,
-            onSelectWorkspace = {},
-            onAddWorkspace = {},
-            onDeleteWorkspace = {},
-            onOpenArchived = {},
-            onOpenSettings = {},
-            backdrop = null,
-        )
-        // 2026-10-02 简化：分区内容进白色分组卡（DshCardRows）
-        HomeSectionHeader(HomeSection.AWAITING)
-        DshCardRows {
-            // 稿 07：最早一件展开成审批行（手机已接管），其余收成行
-            HomeApprovalCard(
-                title = if (english) "Home inbox redesign" else "任务首页改版",
-                workspaceLabel = "dsh-links",
-                timeLabel = if (english) "2 min ago" else "2 分钟前",
-                toolName = "./gradlew :app:connectedDebugAndroidTest",
-                onReject = {},
-                onApprove = {},
-            )
-            SessionRowItem(session("s5", if (english) "Relay deploy check" else "Relay 部署检查", running = true, awaiting = true), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-        }
-        HomeSectionHeader(HomeSection.RUNNING)
-        DshCardRows {
-            SessionRowItem(session("s2", if (english) "Approval status sync" else "完善审批状态同步", running = true, activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12)), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-        }
-        HomeSectionHeader(HomeSection.RECENT)
-        // 「最近」：元信息行有工作区与停止原因，结果一句话在标题下第二行（L7 文件数只认改动卡）
-        DshCardRows {
-            SessionRowItem(session("r0", if (english) "Interrupted during gate run" else "跑门禁时被中断", stoppedReason = "interrupted"), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-            SessionRowItem(session("s3", if (english) "Fix mobile model switch" else "修复手机模型切换", lastResult = MobileSessionResult(text = if (english) "You interrupted this turn" else "你中断了这一轮")), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-            SessionRowItem(session("s4", if (english) "Tidy workspace navigation" else "整理工作区导航", lastResult = MobileSessionResult(text = if (english) "Gate run all green" else "门禁全绿", files = 6)), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-            SessionRowItem(session("s6", if (english) "Fill in mobile tests" else "补齐移动端测试", lastResult = MobileSessionResult(text = if (english) "Added 3 test cases" else "补了 3 个用例", files = 3)), isSelected = false, onClick = {}, onRename = {}, onFork = {})
-        }
-        Spacer(Modifier.height(12.dp))
-        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
-    }
-}
-
-/**
- * 离线墙（稿 08）：顶栏空心灰点 + 「离线 · N 分钟前在线」、重连卡顶掉概况行、
- * 列表 72% 不透明、进行中行换成静止时钟 + 「最后看到：」、新任务置灰。
- */
-@Composable
-private fun HomeOfflineWall(english: Boolean = false) {
-    val session = MobileSession(
-        sessionId = "s2",
-        title = if (english) "Approval status sync" else "完善审批状态同步",
-        updatedAt = 0L,
-        running = true,
-        blank = false,
-        cwd = "/Users/me/dsh-links",
-        agentPreset = null,
-        activity = MobileSessionActivity(kind = "tool", label = "go test ./...", step = 12),
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Dsh.bgBase)
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        HomeHeader(
-            online = false,
-            offlineSinceLabel = if (english) "10 min ago" else "10 分钟前",
-            workspaces = listOf("/Users/me/dsh-links"),
-            selectedWorkspace = null,
-            onSelectWorkspace = {},
-            onAddWorkspace = {},
-            onDeleteWorkspace = {},
-            onOpenArchived = {},
-            onOpenSettings = {},
-            backdrop = null,
-        )
-        HomeOfflineCard(hostName = "Mac mini", sinceLabel = if (english) "10 min ago" else "10 分钟前", onRetry = {}, onOpenConnectionMode = {})
-        HomeSectionHeader(HomeSection.RUNNING)
-        Box(Modifier.alpha(0.72f)) {
-            DshCardRows {
-                SessionRowItem(
-                    session = session,
-                    isSelected = false,
-                    onClick = {},
-                    onRename = {},
-                    onFork = {},
-                    offline = true,
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Box(Modifier.alpha(0.72f)) { HomeBottomBar(online = false, onOpenSearch = {}, onNewTask = {}, backdrop = null) }
-    }
-}
-
-/** 空态墙（稿 09）：没有要你处理的事 + 三行起手式 + 悬浮新任务。 */
-@Composable
-private fun HomeEmptyWall() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Dsh.bgBase)
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        HomeHeader(
-            online = true,
-            offlineSinceLabel = null,
-            workspaces = emptyList(),
-            selectedWorkspace = null,
-            onSelectWorkspace = {},
-            onAddWorkspace = {},
-            onDeleteWorkspace = {},
-            onOpenArchived = {},
-            onOpenSettings = {},
-            backdrop = null,
-        )
-        // 空态不画概况行（稿 09 没有「0 件等你处理」）
-        Spacer(Modifier.height(12.dp))
-        HomeEmptyStarters(onPick = {})
-        Spacer(Modifier.height(12.dp))
-        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
-    }
-}
-
-@PreviewTest
-@Preview(name = "home offline light zh", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeOfflineLightZh() {
-    Wall(dark = false, english = false) { HomeOfflineWall(english = false) }
-}
-
-@PreviewTest
-@Preview(name = "home offline dark en", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeOfflineDarkEn() {
-    Wall(dark = true, english = true) { HomeOfflineWall(english = true) }
-}
-
-@PreviewTest
-@Preview(name = "home empty light zh", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeEmptyLightZh() {
-    Wall(dark = false, english = false) { HomeEmptyWall() }
-}
-
-@PreviewTest
-@Preview(name = "home empty dark en", showBackground = true, widthDp = 412, heightDp = 620)
-@Composable
-internal fun HomeEmptyDarkEn() {
-    Wall(dark = true, english = true) { HomeEmptyWall() }
-}
-
-/** 2026-10-02 简化：悬浮玻璃控件 + 建议行（继续 / 复核 / 查看改动 (N)）+ 底部操作行。 */
+/** 建议行（继续 / 复核 / 查看改动 (N)）。 */
 @Composable
 private fun GlassControlsWall(english: Boolean = false) {
     Column(
@@ -1431,35 +1132,14 @@ private fun GlassControlsWall(english: Boolean = false) {
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SectionTitle(if (english) "Glass capsule / circle (fallback surface in baseline)" else "悬浮玻璃胶囊 / 圆钮（基线为回退实色面）")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            DshGlassCapsule(onClick = {}, backdrop = null) {
-                DshGlassCapsuleLabel("DeepLinks")
-                Spacer(Modifier.width(6.dp))
-                HostStatusDot(true)
-            }
-            DshGlassCapsule(onClick = {}, backdrop = null) {
-                DshGlassCapsuleIcon(FilterLinesOutline16, "filter", onClick = {}, enabled = false)
-                DshGlassCapsuleIcon(SettingsOutline16, DshS.settingsTitle, onClick = {})
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DshGlassCircle(icon = ArrowLeftOutline16, contentDescription = "back", onClick = {}, backdrop = null)
-            DshGlassCircle(icon = EllipsisOutline16, contentDescription = "more", onClick = {}, backdrop = null)
-            DshGlassCircle(icon = PlusOutline16, contentDescription = "add", onClick = {}, backdrop = null, iconTint = Dsh.accentIcon)
-            DshGlassCircle(icon = PlusOutline16, contentDescription = "disabled", onClick = {}, enabled = false, backdrop = null)
-        }
         SectionTitle(if (english) "Composer suggestions (continue / review / view changes)" else "建议行（继续 / 复核 / 查看改动）")
         ComposerSuggestionsRow(
             online = true,
             suggestionsVisible = true,
-            changesCount = 6,
+            changesCount = null,
             onSuggestion = {},
             onOpenChanges = {},
         )
-        SectionTitle(if (english) "Home bottom bar (search capsule + accent plus)" else "首页底部操作行（搜索胶囊 + 强调色圆形 +）")
-        HomeBottomBar(online = true, onOpenSearch = {}, onNewTask = {}, backdrop = null)
-        HomeBottomBar(online = false, onOpenSearch = {}, onNewTask = {}, backdrop = null)
     }
 }
 
@@ -1477,16 +1157,372 @@ internal fun HomeBottomBarDarkEn() {
     Wall(dark = true, english = true) { GlassControlsWall(english = true) }
 }
 
-@PreviewTest
-@Preview(name = "sidebar light zh", showBackground = true, widthDp = 412, heightDp = 980)
+// ===== v4 基础组件（R2.2）：每个组件浅色（中文）/ 深色（英文），各含常规、长文本、禁用态 =====
+
 @Composable
-internal fun SidebarLightZh() {
-    Wall(dark = false, english = false) { SidebarWall(english = false) }
+private fun V4Wall(dark: Boolean, content: @Composable (en: Boolean) -> Unit) {
+    ShotFrame(dark = dark, english = dark) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Dsh.bgBase)
+                .padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            content(dark)
+        }
+    }
+}
+
+private fun pick(en: Boolean, zh: String, english: String) = if (en) english else zh
+
+@Composable
+private fun V4TopBarCases(en: Boolean) {
+    DlTopBar(
+        title = pick(en, "完善审批状态同步", "Sync approval state"),
+        subtitle = pick(en, "dsh-links · 运行中 · 第 12 步", "dsh-links · Running · step 12"),
+        diff = DlDiffStat(148, 37) {},
+        actions = listOf(DlTopBarAction(EllipsisOutline16, "more", {})),
+    )
+    DlTopBar(
+        title = "DeepLinks",
+        subtitle = pick(en, "MacBook Pro · 在线", "MacBook Pro · Online"),
+        nav = DlTopBarNav.None,
+        large = true,
+        actions = listOf(DlTopBarAction(SearchOutline16, "search", {}), DlTopBarAction(SettingsOutline16, "settings", {})),
+    )
+    DlTopBar(
+        title = pick(en, "一个非常非常长的会话标题，用来检查标题在顶栏里会不会被截断显示", "A very very long session title that must be truncated inside the top bar"),
+        subtitle = pick(en, "一个同样很长的副标题 · 工作区 · 状态 · 第 128 步", "An equally long subtitle · workspace · state · step 128"),
+        nav = DlTopBarNav.Close,
+        showDivider = true,
+        actions = listOf(DlTopBarAction(ShareOutline16, "share", {}, enabled = false)),
+    )
 }
 
 @PreviewTest
-@Preview(name = "sidebar dark en", showBackground = true, widthDp = 412, heightDp = 980)
+@Preview(name = "v4 top bar light zh", showBackground = true, widthDp = 412, heightDp = 260)
 @Composable
-internal fun SidebarDarkEn() {
-    Wall(dark = true, english = true) { SidebarWall(english = true) }
+internal fun V4TopBarLightZh() = V4Wall(dark = false) { V4TopBarCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 top bar dark en", showBackground = true, widthDp = 412, heightDp = 260)
+@Composable
+internal fun V4TopBarDarkEn() = V4Wall(dark = true) { V4TopBarCases(it) }
+
+@Composable
+private fun V4ListRowCases(en: Boolean) {
+    Column {
+        DlListRow(pick(en, "语言", "Language"), leading = TranslateOutline16, trailing = DlRowTrailing.Value(pick(en, "简体中文", "English")), onClick = {})
+        DlListRow(pick(en, "通知", "Notifications"), subtitle = pick(en, "审批、完成、失败", "Approvals, done, failed"), leading = InfoOutline16, trailing = DlRowTrailing.Chevron, onClick = {})
+        DlListRow(pick(en, "允许在通知栏直接批准", "Approve from notification"), subtitle = pick(en, "不推荐：手机收不到完整参数", "Not recommended: the phone cannot see full arguments"), leading = WarningOutline16, leadingTint = DlTone.Wait, trailing = DlRowTrailing.Switch(true) {})
+        DlListRow(pick(en, "跟随系统", "Follow system"), trailing = DlRowTrailing.Radio(true), onClick = {})
+        DlListRow(pick(en, "深色", "Dark"), trailing = DlRowTrailing.Check(true), onClick = {})
+        DlListRow(pick(en, "这是一个非常长的列表行标题，用来检查换行和尾部控件之间的距离是否合适", "A very long list row title used to check wrapping against the trailing control"), subtitle = pick(en, "副标题也很长，最多显示三行，超出部分用省略号结束，保证列表行高度可控。", "The subtitle is long too and wraps up to three lines before it is ellipsized."), leading = FileOutline16, trailing = DlRowTrailing.TextAction(pick(en, "重新检查", "Recheck")) {})
+        DlListRow(pick(en, "远程中继", "Remote relay"), subtitle = pick(en, "未开启", "Off"), leading = GlobeOutline16, trailing = DlRowTrailing.Switch(false) {}, enabled = false)
+        DlListRow(pick(en, "解除配对", "Unpair"), subtitle = pick(en, "同时从电脑端吊销本机", "Also revokes this phone on the computer"), leading = UnlinkOutline16, danger = true, onClick = {})
+    }
 }
+
+@PreviewTest
+@Preview(name = "v4 list row light zh", showBackground = true, widthDp = 412, heightDp = 640)
+@Composable
+internal fun V4ListRowLightZh() = V4Wall(dark = false) { V4ListRowCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 list row dark en", showBackground = true, widthDp = 412, heightDp = 640)
+@Composable
+internal fun V4ListRowDarkEn() = V4Wall(dark = true) { V4ListRowCases(it) }
+
+@Composable
+private fun V4SectionHeaderCases(en: Boolean) {
+    Column {
+        DlSectionHeader(pick(en, "等你处理", "Needs you"), trailing = "2")
+        DlSectionHeader(pick(en, "通用", "General"))
+        DlSectionHeader(pick(en, "一个很长很长的分组标题，用来检查右侧文字按钮是否被挤掉", "A very long section title that must not push the trailing action out"), trailing = pick(en, "全部", "All"), onTrailingClick = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 section header light zh", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun V4SectionHeaderLightZh() = V4Wall(dark = false) { V4SectionHeaderCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 section header dark en", showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+internal fun V4SectionHeaderDarkEn() = V4Wall(dark = true) { V4SectionHeaderCases(it) }
+
+@Composable
+private fun V4StatusSlotCases(en: Boolean) {
+    DlStatusSlot(
+        title = pick(en, "目标 · 第 3/8 轮 · 计划 4/7", "Goal · round 3/8 · plan 4/7"),
+        meta = pick(en, "正在：补审批过期的单测", "Now: tests for expired approvals"),
+        icon = GoalOutline16,
+        onExpandedChange = {},
+        expandedContent = {},
+    )
+    DlStatusSlot(
+        title = pick(en, "把审批状态做成双向同步", "Make approval state sync both ways"),
+        meta = pick(en, "进行中 · 第 3/8 轮", "In progress · round 3/8"),
+        icon = GoalOutline16,
+        expanded = true,
+        onExpandedChange = {},
+        expandedContent = {
+            Text(pick(en, "定位事件只推给发起端", "Find why events only reach the origin"), style = DshType.supporting, color = Dsh.labelSecondary)
+            Text(pick(en, "补审批过期的单测", "Add tests for expired approvals"), style = DshType.bodyStrong, color = Dsh.labelPrimary)
+        },
+    )
+    DlStatusSlot(
+        title = pick(en, "连接已断开，正在重连…", "Disconnected, reconnecting…"),
+        meta = pick(en, "已尝试 3 次 · 局域网", "3 attempts · LAN"),
+        icon = CloudOffOutline16,
+        tone = DlTone.Err,
+    )
+    DlStatusSlot(
+        title = pick(en, "等你批准：运行一个非常长的命令，标题只显示一行，超出部分用省略号结束", "Needs approval: a very long command whose title stays on a single line and is ellipsized"),
+        icon = WarningOutline16,
+        tone = DlTone.Wait,
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 status slot light zh", showBackground = true, widthDp = 412, heightDp = 420)
+@Composable
+internal fun V4StatusSlotLightZh() = V4Wall(dark = false) { V4StatusSlotCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 status slot dark en", showBackground = true, widthDp = 412, heightDp = 420)
+@Composable
+internal fun V4StatusSlotDarkEn() = V4Wall(dark = true) { V4StatusSlotCases(it) }
+
+@Composable
+private fun V4InboxItemCases(en: Boolean) {
+    Column {
+        DlInboxItem(
+            status = pick(en, "等你批准", "Needs approval"),
+            tone = DlTone.Wait,
+            workspace = "dsh-links",
+            time = pick(en, "2 分钟", "2 min"),
+            title = pick(en, "发布 beta.28 前跑一遍真机测试", "Run device tests before beta.28"),
+            command = "./gradlew :app:connectedDebugAndroidTest",
+            actions = listOf(
+                DlAction(pick(en, "拒绝", "Deny"), {}),
+                DlAction(pick(en, "允许一次", "Allow once"), {}, DlButtonStyle.Filled),
+            ),
+        )
+        DlInboxItem(
+            workspace = "dsh-links",
+            time = pick(en, "3 分钟", "3 min"),
+            title = pick(en, "完善审批状态同步", "Sync approval state"),
+            preview = pick(en, "正在运行 go test ./... · 第 12 步", "Running go test ./... · step 12"),
+            running = true,
+        )
+        DlInboxItem(
+            status = pick(en, "完成", "Done"),
+            tone = DlTone.Ok,
+            workspace = pick(en, "一个名字特别长的工作区目录用来检查省略", "a-workspace-with-a-really-long-directory-name"),
+            time = pick(en, "昨天", "Yesterday"),
+            title = pick(en, "一个很长的会话标题，最多显示两行，超过两行的部分会用省略号结束，避免条目高度失控", "A long session title that wraps to at most two lines before it is ellipsized so the row height stays bounded"),
+            preview = pick(en, "改了 4 个文件 · +62 −9", "Changed 4 files · +62 −9"),
+        )
+        DlInboxItem(
+            status = pick(en, "等你回答", "Needs answer"),
+            tone = DlTone.Wait,
+            workspace = "relay",
+            time = pick(en, "8 分钟", "8 min"),
+            title = pick(en, "中继限流策略", "Relay rate limit"),
+            preview = pick(en, "问：每台设备每分钟上限设成 60 还是 120？", "Q: 60 or 120 requests per device per minute?"),
+            actions = listOf(DlAction(pick(en, "回答", "Answer"), {}, enabled = false)),
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 inbox item light zh", showBackground = true, widthDp = 412, heightDp = 600)
+@Composable
+internal fun V4InboxItemLightZh() = V4Wall(dark = false) { V4InboxItemCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 inbox item dark en", showBackground = true, widthDp = 412, heightDp = 600)
+@Composable
+internal fun V4InboxItemDarkEn() = V4Wall(dark = true) { V4InboxItemCases(it) }
+
+@Composable
+private fun V4ComposerCases(en: Boolean) {
+    DlComposer(
+        text = "",
+        onTextChange = {},
+        placeholder = pick(en, "补充说明，这一步结束后发给它", "Add a note; it is sent after this step"),
+        sendState = DlSendState.Stop,
+        onSend = {},
+        onAttach = {},
+        modelLabel = "step-5-preview · " + pick(en, "高", "High"),
+        permissionLabel = pick(en, "工作区内修改", "Workspace write"),
+    )
+    DlComposer(
+        text = pick(en, "这是一段很长的输入内容，用来检查输入框在多行时的高度和行距是否合适，以及发送按钮是否保持在右下角。", "A long draft used to check multi-line height and line spacing, and that the send button stays bottom-right."),
+        onTextChange = {},
+        placeholder = "",
+        sendState = DlSendState.Send,
+        onSend = {},
+        onAttach = {},
+        modelLabel = "deepseek-v4 · " + pick(en, "中", "Medium"),
+        permissionLabel = pick(en, "完全权限", "Full access"),
+        permissionRisk = true,
+        attachments = {
+            Box(Modifier.size(48.dp).background(Dsh.surface2, RoundedCornerShape(DshRadius.control)))
+            Box(Modifier.size(48.dp).background(Dsh.surface2, RoundedCornerShape(DshRadius.control)))
+        },
+    )
+    DlComposer(
+        text = pick(en, "连上后再发送", "Send after reconnecting"),
+        onTextChange = {},
+        placeholder = "",
+        sendState = DlSendState.Disabled,
+        onSend = {},
+        onAttach = {},
+        modelLabel = "step-5-preview",
+        permissionLabel = pick(en, "只读", "Read only"),
+    )
+    DlComposer(
+        text = "",
+        onTextChange = {},
+        placeholder = pick(en, "给智能体发消息", "Message the agent"),
+        sendState = DlSendState.Mic,
+        onSend = {},
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 composer light zh", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun V4ComposerLightZh() = V4Wall(dark = false) { V4ComposerCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 composer dark en", showBackground = true, widthDp = 412, heightDp = 560)
+@Composable
+internal fun V4ComposerDarkEn() = V4Wall(dark = true) { V4ComposerCases(it) }
+
+@Composable
+private fun V4DecisionBarCases(en: Boolean) {
+    DlDecisionBar(
+        status = pick(en, "等你批准", "Needs approval"),
+        meta = pick(en, "2 分钟前", "2 min ago"),
+        question = pick(en, "要运行这个命令吗？", "Run this command?"),
+        command = "./gradlew :app:connectedDebugAndroidTest --tests 'dev.deeplinks.architecture.*' --stacktrace",
+        note = pick(en, "工作区 dsh-links · 在电脑上执行 · 当前权限：工作区内修改", "Workspace dsh-links · runs on the computer · permission: workspace write"),
+        secondary = DlAction(pick(en, "拒绝", "Deny"), {}),
+        primary = DlAction(pick(en, "允许一次", "Allow once"), {}),
+    )
+    DlDecisionBar(
+        status = pick(en, "等你回答", "Needs answer"),
+        meta = pick(en, "问题 1/2", "Question 1/2"),
+        question = pick(en, "每台设备每分钟的请求上限设成多少？", "What should the per-device limit per minute be?"),
+        options = listOf(
+            DlDecisionOption(pick(en, "60 次（推荐，与现在的面板一致）", "60 (recommended, matches the panel)"), true, {}),
+            DlDecisionOption(pick(en, "120 次", "120"), false, {}),
+            DlDecisionOption(pick(en, "自己写答案", "Write my own answer"), false, {}, custom = true),
+        ),
+        secondary = DlAction(pick(en, "跳过", "Skip"), {}),
+        primary = DlAction(pick(en, "下一题", "Next"), {}, enabled = false),
+    )
+}
+
+@PreviewTest
+@Preview(name = "v4 decision bar light zh", showBackground = true, widthDp = 412, heightDp = 680)
+@Composable
+internal fun V4DecisionBarLightZh() = V4Wall(dark = false) { V4DecisionBarCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 decision bar dark en", showBackground = true, widthDp = 412, heightDp = 680)
+@Composable
+internal fun V4DecisionBarDarkEn() = V4Wall(dark = true) { V4DecisionBarCases(it) }
+
+@Composable
+private fun V4BottomSheetCases(en: Boolean) {
+    Box(Modifier.fillMaxSize().background(Dsh.bgOverlay), contentAlignment = Alignment.BottomCenter) {
+        DlBottomSheetSurface(
+            title = pick(en, "模型与推理", "Model and reasoning"),
+            subtitle = pick(en, "只影响这个会话；这是一个较长的副标题，用来检查换行", "Only affects this session; a longer subtitle to check wrapping"),
+        ) {
+            DlListRow("step-5-preview", subtitle = pick(en, "阶跃星辰 · 上下文 256K", "StepFun · 256K context"), trailing = DlRowTrailing.Radio(true), onClick = {})
+            DlListRow("deepseek-v4", subtitle = pick(en, "DeepSeek 账户 · 上下文 128K", "DeepSeek account · 128K context"), trailing = DlRowTrailing.Radio(false), onClick = {})
+            DlListRow("legacy-model", subtitle = pick(en, "不可用", "Unavailable"), trailing = DlRowTrailing.Radio(false), enabled = false, onClick = {})
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 bottom sheet light zh", showBackground = true, widthDp = 412, heightDp = 480)
+@Composable
+internal fun V4BottomSheetLightZh() = V4Wall(dark = false) { V4BottomSheetCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 bottom sheet dark en", showBackground = true, widthDp = 412, heightDp = 480)
+@Composable
+internal fun V4BottomSheetDarkEn() = V4Wall(dark = true) { V4BottomSheetCases(it) }
+
+@Composable
+private fun V4DialogCases(en: Boolean) {
+    Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        DlDialogSurface(
+            title = pick(en, "删除这个会话？", "Delete this session?"),
+            text = pick(en, "会从手机列表移除「完善审批状态同步」，并在电脑端归档。30 天内可以在 设置 › 会话记录 里恢复。", "Removes \u201cSync approval state\u201d from the phone and archives it on the computer. Restore within 30 days in Settings › Sessions."),
+            icon = TrashOutline16,
+            dismiss = DlAction(pick(en, "取消", "Cancel"), {}),
+            confirm = DlAction(pick(en, "删除", "Delete"), {}, DlButtonStyle.Danger),
+        )
+        DlDialogSurface(
+            title = pick(en, "编辑目标", "Edit goal"),
+            leading = DlAction(pick(en, "清除目标", "Clear goal"), {}, DlButtonStyle.Danger),
+            dismiss = DlAction(pick(en, "取消", "Cancel"), {}),
+            confirm = DlAction(pick(en, "保存", "Save"), {}, enabled = false),
+            content = {
+                Text(pick(en, "把审批状态做成双向同步，并补齐真机验证", "Make approval state sync both ways and verify on device"), style = DshType.body, color = Dsh.labelPrimary)
+            },
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 dialog light zh", showBackground = true, widthDp = 412, heightDp = 520)
+@Composable
+internal fun V4DialogLightZh() = V4Wall(dark = false) { V4DialogCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 dialog dark en", showBackground = true, widthDp = 412, heightDp = 520)
+@Composable
+internal fun V4DialogDarkEn() = V4Wall(dark = true) { V4DialogCases(it) }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun V4ChipCases(en: Boolean) {
+    FlowRow(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DlChip(pick(en, "全部", "All"), {}, selected = true)
+        DlChip("dsh-links", {}, selected = false)
+        DlChip(pick(en, "跑一遍测试", "Run the tests"), {})
+        DlChip(pick(en, "工作区内修改", "Workspace write"), {}, icon = ShieldOutline16, style = DlChipStyle.Filled)
+        DlChip(pick(en, "完全权限", "Full access"), {}, icon = ShieldOutline16, tone = DlTone.Wait, style = DlChipStyle.Filled)
+        DlChip(pick(en, "一个非常长的建议文字，用来检查 chip 的截断", "A very long suggestion used to check chip truncation"), {})
+        DlChip(pick(en, "不可用", "Disabled"), {}, enabled = false)
+    }
+    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        DlSegmented(listOf(pick(en, "低", "Low"), pick(en, "中", "Medium"), pick(en, "高", "High")), 1, {})
+        DlSegmented(listOf(pick(en, "浅色", "Light"), pick(en, "深色", "Dark"), pick(en, "跟随系统", "System")), 2, {}, enabled = false)
+    }
+}
+
+@PreviewTest
+@Preview(name = "v4 chip light zh", showBackground = true, widthDp = 412, heightDp = 320)
+@Composable
+internal fun V4ChipLightZh() = V4Wall(dark = false) { V4ChipCases(it) }
+
+@PreviewTest
+@Preview(name = "v4 chip dark en", showBackground = true, widthDp = 412, heightDp = 320)
+@Composable
+internal fun V4ChipDarkEn() = V4Wall(dark = true) { V4ChipCases(it) }
