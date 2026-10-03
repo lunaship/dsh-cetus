@@ -1,5 +1,6 @@
 import UIKit
 
+@MainActor
 func makeDecisionContent(
     status: String,
     question: String,

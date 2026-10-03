@@ -27,7 +27,9 @@ final class DLGlassBar: UIView {
         let previous = holder.subviews
         content.translatesAutoresizingMaskIntoConstraints = false
         let apply = {
-            previous.forEach { $0.removeFromSuperview() }
+            for view in previous {
+                view.removeFromSuperview()
+            }
             holder.addSubview(content)
             NSLayoutConstraint.activate([
                 content.leadingAnchor.constraint(equalTo: holder.leadingAnchor, constant: 12),
@@ -51,6 +53,7 @@ final class DLGlassBar: UIView {
     }
 }
 
+@MainActor
 func dlBarButton(
     title: String,
     prominent: Bool,
