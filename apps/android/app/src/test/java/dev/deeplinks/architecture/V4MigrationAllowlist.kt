@@ -12,19 +12,16 @@ internal object V4MigrationAllowlist {
     val files: Set<String> = setOf(
         "dev/deeplinks/core/DshSyntaxPalette.kt",
         "dev/deeplinks/core/DswPalette.kt",
-        "dev/deeplinks/devices/DeviceCard.kt",
         "dev/deeplinks/native/DshMenu.kt",
         "dev/deeplinks/native/DshMotion.kt",
         "dev/deeplinks/native/DshSpace.kt",
         "dev/deeplinks/native/MarkdownContent.kt",
         "dev/deeplinks/native/MathRenderer.kt",
         "dev/deeplinks/native/ProducedFiles.kt",
-        "dev/deeplinks/native/SettingsRoute.kt",
         "dev/deeplinks/native/ui/DshAdvancedComponents.kt",
         "dev/deeplinks/native/ui/DshCardSurface.kt",
         "dev/deeplinks/native/ui/DshComponents.kt",
         "dev/deeplinks/native/ui/DshEmptyState.kt",
-        "dev/deeplinks/native/ui/DshGroupedList.kt",
         "dev/deeplinks/native/ui/DshInbox.kt",
     )
 
