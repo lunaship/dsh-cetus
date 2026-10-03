@@ -25,6 +25,8 @@ import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 
 import androidx.activity.ComponentActivity
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -190,6 +192,27 @@ fun DevicesScreen(
         unpairSaving = false
     }
 
+    // ---------- 配对面板（底部滑出） ----------
+    // M1：从相册识别——Photo Picker 选图，IO 线程解码二维码，再走共用配对流程。
+    val albumPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) { QrImageDecoder.decodeUri(context, uri) }
+            if (text.isNullOrBlank()) {
+                onHostNotice(L.qrImageNotFound)
+                return@launch
+            }
+            onPairQrText(text, {
+                reload()
+                if (sheet) onDismissSheet()
+            }, { message -> onHostNotice(message) })
+        }
+    }
+    val launchScan = { if (sheet) onDismissSheet(); onScanClick() }
+    val launchAlbum = { albumPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+
     // ---------- 页面骨架（工作区内为底部面板，否则整页） ----------
     var showDiagnostics by remember { mutableStateOf(false) }
     val currentDevice = device
@@ -220,6 +243,8 @@ fun DevicesScreen(
             onUnpair = ::requestUnpair,
             onRecheck = { refreshHealth() },
             onAddDevice = { showPairingPanel = true },
+            onScan = launchScan,
+            onAlbum = launchAlbum,
             alias = alias,
             onRename = { renameOpen = true },
             showsBack = showsBack,
@@ -228,41 +253,12 @@ fun DevicesScreen(
         )
     }
 
-    // ---------- 配对面板（底部滑出） ----------
-    // M1：从相册识别——Photo Picker 选图，IO 线程解码二维码，再走共用配对流程。
-    val albumPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val text = withContext(Dispatchers.IO) { QrImageDecoder.decodeUri(context, uri) }
-            if (text.isNullOrBlank()) {
-                onHostNotice(L.qrImageNotFound)
-                return@launch
-            }
-            onPairQrText(text, {
-                reload()
-                if (sheet) onDismissSheet()
-            }, { message -> onHostNotice(message) })
-        }
-    }
     if (showPairingPanel) {
         PairingPanel(
             replacing = device != null,
             onDismiss = { showPairingPanel = false },
-            onScan = {
-                showPairingPanel = false
-                if (sheet) onDismissSheet()
-                onScanClick()
-            },
-            onAlbum = {
-                showPairingPanel = false
-                albumPicker.launch(
-                    androidx.activity.result.PickVisualMediaRequest(
-                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly,
-                    ),
-                )
-            },
+            onScan = { showPairingPanel = false; launchScan() },
+            onAlbum = { showPairingPanel = false; launchAlbum() },
         )
     }
 
@@ -359,6 +355,8 @@ private fun DevicesPage(
     onUnpair: (DeviceUi) -> Unit,
     onRecheck: () -> Unit,
     onAddDevice: () -> Unit,
+    onScan: () -> Unit = onAddDevice,
+    onAlbum: () -> Unit = onAddDevice,
     alias: String = "",
     onRename: () -> Unit = {},
     showsBack: Boolean = false,
@@ -374,7 +372,7 @@ private fun DevicesPage(
         val current = device
         if (current == null) {
             Box(Modifier.weight(1f)) {
-                EmptyDevicesState(onAdd = onAddDevice)
+                EmptyDevicesState(onScan = onScan, onAlbum = onAlbum)
             }
             notice?.let { msg ->
                 Box(Modifier.padding(horizontal = DshSpace.s16).padding(bottom = DshSpace.s16)) { DevicesNotice(msg) }
