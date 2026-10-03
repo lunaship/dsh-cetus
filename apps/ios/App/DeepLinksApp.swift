@@ -1,5 +1,13 @@
 import SwiftUI
 
+struct RootView: View {
+    var body: some View {
+        NavigationStack {
+            EmptyView()
+        }
+    }
+}
+
 @main
 struct DeepLinksApp: App {
     @Environment(\.scenePhase) private var scenePhase
@@ -7,12 +15,10 @@ struct DeepLinksApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                EmptyView()
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                observedPhase = newPhase
-            }
+            RootView()
+                .onChange(of: scenePhase) { _, newPhase in
+                    observedPhase = newPhase
+                }
         }
     }
 }

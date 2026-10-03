@@ -5,9 +5,9 @@ let package = Package(
     name: "DLNet",
     platforms: [.iOS(.v26)],
     products: [
-        .library(name: "DLNet", targets: ["DLNet"]),
+        .library(name: "DLNet", targets: ["DLNet"])
     ],
     targets: [
-        .target(name: "DLNet"),
+        .target(name: "DLNet")
     ]
 )

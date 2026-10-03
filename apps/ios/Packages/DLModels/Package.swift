@@ -5,9 +5,9 @@ let package = Package(
     name: "DLModels",
     platforms: [.iOS(.v26)],
     products: [
-        .library(name: "DLModels", targets: ["DLModels"]),
+        .library(name: "DLModels", targets: ["DLModels"])
     ],
     targets: [
-        .target(name: "DLModels"),
+        .target(name: "DLModels")
     ]
 )

@@ -33,18 +33,86 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Install tools
+        run: brew install xcodegen swift-format
+
+      - name: Check formatting
+        run: swift-format lint --strict --recursive --configuration .swift-format .
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build Debug and Release
+        run: |
+          set -eu
+          for config in Debug Release; do
+            xcodebuild \
+              -scheme DeepLinks \
+              -destination 'generic/platform=iOS Simulator' \
+              -configuration "$config" \
+              build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO
+          done
+
+  test:
+    name: iOS unit tests
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Generate project
         run: xcodegen generate
 
-      - name: Build Debug
-        run: >
-          xcodebuild
-          -scheme DeepLinks
-          -destination 'generic/platform=iOS Simulator'
-          -configuration Debug
-          build
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
+      - name: Run unit tests
+        run: |
+          set -eu
+          DEST=$(sh scripts/simulator-destination.sh)
+          xcodebuild \
+            -scheme DeepLinks \
+            -destination "$DEST" \
+            -only-testing:DeepLinksTests/ModelsLoadTests \
+            test \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+  screenshots:
+    name: iOS screenshot check
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Compare screenshot baselines
+        run: |
+          set -eu
+          DEST=$(sh scripts/simulator-destination.sh)
+          xcodebuild \
+            -scheme DeepLinks \
+            -destination "$DEST" \
+            -only-testing:DeepLinksTests/EmptyRootSnapshotTests \
+            test \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO

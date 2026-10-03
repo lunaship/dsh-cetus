@@ -1,0 +1,70 @@
+name: Regenerate iOS screenshot baselines
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ios/main, main]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ios-regen-screenshots.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    name: Regen iOS screenshots
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.title, '[regen-ios-baselines]')
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Record empty-page baselines
+        run: |
+          set -eu
+          DEST=$(sh scripts/simulator-destination.sh)
+          set +e
+          RECORD_SNAPSHOTS=1 xcodebuild \
+            -scheme DeepLinks \
+            -destination "$DEST" \
+            -only-testing:DeepLinksTests/EmptyRootSnapshotTests \
+            test \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain -- apps/ios/Tests/__Snapshots__)" ]; then
+            exit "$status"
+          fi
+
+      - name: Commit baselines
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -eu
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add apps/ios/Tests/__Snapshots__
+          if git diff --cached --quiet; then
+            echo "no baseline changes"
+            exit 0
+          fi
+          git commit -m "test(ios): 由 CI 重生成截图基线"
+          git push
