@@ -765,6 +765,7 @@ RFC 必须写清以下内容：
 
 | 子项 | PR | 结论 / 偏差 |
 |---|---|---|
+| I0.0 | #65 | 方案原文放入 `docs/ios/PLAN.md`，顶部状态改为已采纳（2026-10-03），其余未改。PR 目标 `ios/main`。Node gates、Go gates、DLP/1 end to end 全绿；Android 工作流不触发。squash 合并为 `1cd0b5d`。 |
 | I0.1 | | |
 
 ---
