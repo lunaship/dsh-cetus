@@ -179,8 +179,8 @@ struct MobileModelsContractTests {
                                    "amountMin": 0.25, "amountMax": 1.0 }
               },
               "queue": [{ "id": "q-1", "placement": "queued", "text": "接着跑", "images": 0 }],
-              "goal": { "ref": { "id": "goal-1", "revision": 3 }, "objective": "ship it", "phase": "active",
-                        "maxGoalRounds": 8, "roundsStarted": 1 },
+              "goal": { "goal": { "id": "goal-1", "revision": 3, "objective": "ship it", "phase": "active",
+                                  "maxGoalRounds": 8 }, "roundsStarted": 1 },
               "unknownTopLevel": true
             }
             """
@@ -214,6 +214,7 @@ struct MobileModelsContractTests {
         #expect(history.queue?.first?.placement == .queued)
         #expect(history.goal?.phase == .active)
         #expect(history.goal?.ref?.revision == 3)
+        #expect(history.goal?.roundsStarted == 1)
         #expect(history.nextBeforeSeq == 10)
         #expect(history.maxSeq == 23)
     }

@@ -336,7 +336,8 @@ public enum CostSource: DLStringEnum {
 }
 
 /// 结构化目标（含 CAS 引用与 phase），App 据此提供暂停 / 继续 / 编辑 / 清除。
-/// 投影由 DSH 定义，字段面与 Android `SessionGoal` 一致。
+/// 插件原样透传 DSH 的 goal 投影：`{ goal: { id, revision, objective, phase, maxGoalRounds }, roundsStarted }`；
+/// 与 Android `parseSessionGoal` 一样也接受扁平形状（字段直接在顶层）。编码时写回嵌套形状。
 public struct SessionGoal: Codable, Equatable, Sendable {
     public var ref: SessionGoalRef?
     public var objective: String?
@@ -356,6 +357,45 @@ public struct SessionGoal: Codable, Equatable, Sendable {
         self.phase = phase
         self.maxGoalRounds = maxGoalRounds
         self.roundsStarted = roundsStarted
+    }
+
+    private enum OuterKeys: String, CodingKey {
+        case goal
+        case roundsStarted
+    }
+
+    private enum GoalKeys: String, CodingKey {
+        case id
+        case revision
+        case objective
+        case phase
+        case maxGoalRounds
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let outer = try decoder.container(keyedBy: OuterKeys.self)
+        let goal =
+            (try? outer.decodeNil(forKey: .goal)) == false
+            ? try outer.nestedContainer(keyedBy: GoalKeys.self, forKey: .goal)
+            : try decoder.container(keyedBy: GoalKeys.self)
+        let id = try goal.decodeIfPresent(String.self, forKey: .id)
+        let revision = try goal.decodeIfPresent(Int.self, forKey: .revision)
+        ref = id == nil && revision == nil ? nil : SessionGoalRef(id: id, revision: revision)
+        objective = try goal.decodeIfPresent(String.self, forKey: .objective)
+        phase = try goal.decodeIfPresent(GoalPhase.self, forKey: .phase)
+        maxGoalRounds = try goal.decodeIfPresent(Int.self, forKey: .maxGoalRounds)
+        roundsStarted = try outer.decodeIfPresent(Int.self, forKey: .roundsStarted)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var outer = encoder.container(keyedBy: OuterKeys.self)
+        var goal = outer.nestedContainer(keyedBy: GoalKeys.self, forKey: .goal)
+        try goal.encodeIfPresent(ref?.id, forKey: .id)
+        try goal.encodeIfPresent(ref?.revision, forKey: .revision)
+        try goal.encodeIfPresent(objective, forKey: .objective)
+        try goal.encodeIfPresent(phase, forKey: .phase)
+        try goal.encodeIfPresent(maxGoalRounds, forKey: .maxGoalRounds)
+        try outer.encodeIfPresent(roundsStarted, forKey: .roundsStarted)
     }
 }
 
