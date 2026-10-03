@@ -11,7 +11,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.EstimatedCost
-import dev.deeplinks.native.HomeBalanceBanner
+import dev.deeplinks.native.HomeBalanceNotice
 import dev.deeplinks.native.HomeBalancePreview
 import dev.deeplinks.native.MobileSessionStats
 import dev.deeplinks.native.UsagePanel
@@ -22,7 +22,7 @@ import dev.deeplinks.native.UsagePanel
 internal fun BalanceAlertLightZh() {
     ShotFrame(dark = false, english = false) {
         Column(Modifier.fillMaxSize().background(Dsh.bgBase).padding(DshSpace.s16)) {
-            HomeBalanceBanner(onOpenSettings = {}, preview = HomeBalancePreview("充值余额低于 ¥10.00"))
+            HomeBalanceNotice(onOpenSettings = {}, preview = HomeBalancePreview("充值余额低于 ¥10.00"))
         }
     }
 }

@@ -29,30 +29,19 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
-import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * 叠层布局（UI 精简整改第 5 步）：内容铺满，顶部 / 底部 chrome 悬浮在上，
  * chrome 实测高度回填给内容区做 contentPadding——不再用写死的占位高度。
  */
 @Stable
-internal class OverlayChromeState(val backdrop: LayerBackdrop? = null) {
+internal class OverlayChromeState {
     var topPx by mutableIntStateOf(0)
     var bottomPx by mutableIntStateOf(0)
 }
 
-/** 带毛玻璃采样层：内容区挂 [overlayBackdropSource]，顶 / 底 chrome 的 dshTranslucent 从中取样模糊。 */
 @Composable
-internal fun rememberOverlayChromeState(): OverlayChromeState {
-    val backdrop = rememberLayerBackdrop()
-    return remember(backdrop) { OverlayChromeState(backdrop) }
-}
-
-/** 挂在被 chrome 覆盖的内容区（chrome 的同级，不能是祖先，否则会递归采样）。 */
-internal fun Modifier.overlayBackdropSource(state: OverlayChromeState): Modifier =
-    state.backdrop?.let { this.layerBackdrop(it) } ?: this
+internal fun rememberOverlayChromeState(): OverlayChromeState = remember { OverlayChromeState() }
 
 @Composable
 internal fun OverlayChromeState.topDp(): Dp = with(LocalDensity.current) { topPx.toDp() }

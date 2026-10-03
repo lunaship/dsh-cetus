@@ -108,40 +108,10 @@ private fun DshStateScaffold(
             }
         }
         if (footnote != null) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(DshSpace.s12))
             Text(footnote, color = Dsh.labelTertiary, style = DshType.captionRelaxed, textAlign = TextAlign.Center)
         }
     }
-}
-
-/**
- * 空数据态：中性线性图标 + 标题 + 说明 + 可选文字操作。
- * 标题降一级，不与页面主任务争夺视觉焦点；主要引导交给 Composer
- * placeholder 与附件入口，不放大尺寸情绪插画。
- */
-@Composable
-fun DshEmptyState(
-    title: String,
-    modifier: Modifier = Modifier,
-    message: String? = null,
-    graphic: (@Composable () -> Unit)? = null,
-    actionLabel: String? = null,
-    onAction: (() -> Unit)? = null,
-    footnote: String? = null,
-    compact: Boolean = false,
-) {
-    DshStateScaffold(
-        title = title,
-        modifier = modifier,
-        titleStyle = DshType.titleLarge,
-        message = message,
-        graphic = graphic,
-        actionLabel = actionLabel,
-        onAction = onAction,
-        footnote = footnote,
-        compact = compact,
-        solidAction = false,
-    )
 }
 
 /**

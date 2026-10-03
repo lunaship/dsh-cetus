@@ -151,7 +151,7 @@ internal fun ProducedFilesRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(DshRadius.container))
             .background(Dsh.bgInput)
-            .padding(horizontal = DshSpace.s12, vertical = 10.dp),
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s12),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -160,7 +160,7 @@ internal fun ProducedFilesRow(
                 tint = Dsh.labelTertiary,
                 modifier = Modifier.size(DshIconSize.sm),
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(DshSpace.s12))
             Text(
                 L.producedFiles,
                 color = Dsh.labelPrimary,
@@ -202,7 +202,7 @@ internal fun ProducedFilesRow(
                             onClick = { if (!loading) openPath(path) },
                             onLongClick = { copyPath(path) },
                         )
-                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
+                        .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

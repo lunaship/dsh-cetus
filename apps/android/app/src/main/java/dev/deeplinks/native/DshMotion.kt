@@ -44,12 +44,6 @@ object DshRadius {
     /** 容器（12dp）：普通卡片、状态面板、菜单。 */
     val container = 12.dp
 
-    /**
-     * 分组卡（20dp）：灰底上的白色分组卡（DshSectionContainer.Card，2026-10-02 Lody 简化 3.1）。
-     * 不复用已删除的 group 旧名；只允许共享组件（native/ui/）引用，页面文件出现即门禁失败。
-     */
-    val card = 20.dp
-
     /** Composer（22dp）：聊天输入卡与任务入口——少量品牌签名形状，普通卡片不得复制。 */
     val composer = 22.dp
 
@@ -62,13 +56,6 @@ object DshRadius {
     /** 全圆（999dp）：Filter chip、状态 pill、圆形按钮、进度轨道。 */
     val full = 999.dp
 }
-
-/**
- * 图标底板：按边长 28% 取圆角，不同尺寸比例一致，不再各自写 16dp、20dp、22dp。
- * 只允许品牌 mark、头像和确实需要方形底板的设备图标使用（docs/visual-rules.md 第三节）；
- * 普通列表行用 24dp 线性图标，不走底板。
- */
-val DshTileShape = RoundedCornerShape(percent = 28)
 
 /** 底部弹层通用 shape：顶部两角 [DshRadius.modal]（M3 28dp）。 */
 val DshSheetShape = RoundedCornerShape(topStart = DshRadius.modal, topEnd = DshRadius.modal)

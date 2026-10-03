@@ -328,8 +328,7 @@ class ComponentLanguageTest {
         for (file in ktFiles(root)) {
             val rel = relative(root, file)
             if (rel.startsWith("dev/deeplinks/native/ui/v4/")) continue
-            if (V4MigrationAllowlist.allows(rel)) continue
-            val lines = V4MigrationAllowlist.codeLines(file)
+            val lines = ArchitectureSources.codeLines(file)
             val cardHits = lines.count { card.containsMatchIn(it) }
             if (cardHits > 0) {
                 violations += "$rel: M3 Card/ElevatedCard $cardHits 处，页面必须用 v4 组件"

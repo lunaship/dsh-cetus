@@ -7,20 +7,18 @@ import org.junit.Test
  * 形状门禁（docs/visual-rules.md §4）。
  *
  * 圆角只允许 8 / 12 / 16 / 28，外加全圆（[DshRadius.full]、CircleShape、50%）。
- * 还没改完的文件见 [V4MigrationAllowlist]。
  */
 class DshShapeRoleTest {
 
     @Test
     fun cornersStayOnV4Steps() {
-        val root = V4MigrationAllowlist.mainSourceRoot()
+        val root = ArchitectureSources.mainSourceRoot()
         val motion = root.resolve("dev/deeplinks/native/DshMotion.kt").readText()
         val roles = radiusRoles(motion)
         val violations = mutableListOf<String>()
-        for (file in V4MigrationAllowlist.kotlinFiles(root)) {
-            val rel = V4MigrationAllowlist.relative(root, file)
-            if (V4MigrationAllowlist.allows(rel)) continue
-            val text = V4MigrationAllowlist.codeLines(file).joinToString("\n")
+        for (file in ArchitectureSources.kotlinFiles(root)) {
+            val rel = ArchitectureSources.relative(root, file)
+            val text = ArchitectureSources.codeLines(file).joinToString("\n")
             for (match in Regex("""DshRadius\.(\w+)""").findAll(text)) {
                 val name = match.groupValues[1]
                 val dp = roles[name]

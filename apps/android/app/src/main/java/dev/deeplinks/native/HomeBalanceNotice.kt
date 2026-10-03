@@ -46,7 +46,7 @@ internal object BalanceSnapshot {
 }
 
 @Composable
-internal fun HomeBalanceBanner(
+internal fun HomeBalanceNotice(
     onOpenSettings: () -> Unit,
     preview: HomeBalancePreview? = null,
 ) {
@@ -56,11 +56,11 @@ internal fun HomeBalanceBanner(
     }
     val context = androidx.compose.ui.platform.LocalContext.current
     val host = remember { runCatching { dev.deeplinks.core.HostStore.current(context) }.getOrNull() } ?: return
-    HomeBalanceBannerLive(host, onOpenSettings)
+    HomeBalanceNoticeLive(host, onOpenSettings)
 }
 
 @Composable
-private fun HomeBalanceBannerLive(host: Host, onOpenSettings: () -> Unit) {
+private fun HomeBalanceNoticeLive(host: Host, onOpenSettings: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val key = remember(host.slotKey) { appSettingsHostCacheId(host) }
     val scope = rememberCoroutineScope()

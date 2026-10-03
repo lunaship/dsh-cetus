@@ -124,7 +124,7 @@ internal fun MarkdownContent(text: String, streaming: Boolean = false) {
                                 cap = StrokeCap.Round,
                             )
                         }
-                        .padding(start = DshSpace.s12, top = DshSpace.s2, bottom = DshSpace.s2)
+                        .padding(start = DshSpace.s12, top = DshSpace.s4, bottom = DshSpace.s4)
                 ) {
                     InlineMarkdownText(block.content, color = Dsh.labelSecondary, streaming = streamTail)
                 }
@@ -199,7 +199,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Dsh.bgCodeBanner)
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s2),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(L.tableLabel, color = Dsh.labelTertiary, style = DshType.microRelaxed, modifier = Modifier.weight(1f))
@@ -216,7 +216,7 @@ private fun MarkdownTableBlock(rows: List<List<String>>) {
                 style = DshType.microRelaxed,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6)
+                    .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8)
                     .semantics { contentDescription = error },
             )
         }
@@ -264,7 +264,7 @@ private fun TableGrid(rows: List<List<String>>, compact: Boolean = true) {
                             .fillMaxHeight()
                             .background(if (rowIdx == 0) Dsh.bgSubtle else Color.Transparent)
                             .border(0.5.dp, Dsh.borderSubtle)
-                            .padding(horizontal = 10.dp, vertical = if (compact) 6.dp else 10.dp)
+                            .padding(horizontal = DshSpace.s12, vertical = if (compact) DshSpace.s8 else DshSpace.s12)
                     ) {
                         // 单元格也解析行内标记（**粗体** / `code` / 链接），不再原样显示星号
                         InlineMarkdownText(
@@ -294,7 +294,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Dsh.bgCodeBanner)
-                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s6),
+                .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -343,7 +343,7 @@ private fun MarkdownCodeBlock(lang: String?, content: String) {
                 .fillMaxWidth()
                 // 稿 03 的代码块是**自动换行**的（原先横向滚动：静态截图里看不出区别，但真机上
                 // 长行要靠手指拖才能看全）。看改动页的差异区另有悬挂缩进实现，与此互不影响。
-                .padding(horizontal = DshSpace.s16, vertical = 10.dp)
+                .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12)
         )
     }
 }

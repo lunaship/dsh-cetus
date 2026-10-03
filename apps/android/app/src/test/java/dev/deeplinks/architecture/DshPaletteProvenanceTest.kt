@@ -6,13 +6,11 @@ import dev.deeplinks.core.contrastRatio
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * 色源门禁（docs/visual-rules.md §2）。
  *
- * 硬编码颜色的 RGB 必须落在 v4 token 表里。不再要求颜色溯源到 Dsw / `--dsw-*`。
- * 还没改完的文件见 [V4MigrationAllowlist]。
+ * 硬编码颜色的 RGB 必须落在 v4 token 表里。代码高亮配色（GitHub 主题色）是独立的 token 层，不受此限。
  */
 class DshPaletteProvenanceTest {
 
@@ -28,12 +26,12 @@ class DshPaletteProvenanceTest {
 
     @Test
     fun colorLiteralsStayOnTheV4TokenTable() {
-        val root = V4MigrationAllowlist.mainSourceRoot()
+        val root = ArchitectureSources.mainSourceRoot()
         val offenders = mutableListOf<String>()
-        for (file in V4MigrationAllowlist.kotlinFiles(root)) {
-            val rel = V4MigrationAllowlist.relative(root, file)
-            if (V4MigrationAllowlist.allows(rel)) continue
-            V4MigrationAllowlist.codeLines(file).forEachIndexed { index, line ->
+        for (file in ArchitectureSources.kotlinFiles(root)) {
+            val rel = ArchitectureSources.relative(root, file)
+            if (rel in SYNTAX_PALETTE_FILES) continue
+            ArchitectureSources.codeLines(file).forEachIndexed { index, line ->
                 for (match in COLOR_LITERAL.findAll(line)) {
                     if (!isV4ColorLiteral(match.groupValues[1])) {
                         offenders += "$rel:${index + 1}  ${line.trim()}"
@@ -48,22 +46,6 @@ class DshPaletteProvenanceTest {
     }
 
     @Test
-    fun migrationAllowlistNamesRealFiles() {
-        val root = V4MigrationAllowlist.mainSourceRoot()
-        val missing = V4MigrationAllowlist.files.filterNot { File(root, it).isFile }
-        assertTrue("白名单指向不存在的文件：\n" + missing.joinToString("\n"), missing.isEmpty())
-    }
-
-    @Test
-    fun paletteMirrorHasNoHandWrittenRoles() {
-        val root = V4MigrationAllowlist.mainSourceRoot()
-        val code = File(root, "dev/deeplinks/core/DswPalette.kt").readLines()
-            .filterNot { it.trimStart().let { line -> line.startsWith("//") || line.startsWith("*") || line.startsWith("/*") } }
-        val offenders = code.filter { Regex("""\bDsh(Colors)?\.""").containsMatchIn(it) }
-        assertTrue("DswPalette.kt 不得引用 DshColors 角色：\n" + offenders.joinToString("\n"), offenders.isEmpty())
-    }
-
-    @Test
     fun solidBrandFillCarriesItsIcon() {
         for ((name, colors) in listOf("light" to LightDshColors, "dark" to DarkDshColors)) {
             val ratio = contrastRatio(colors.onBrand, colors.brand500)
@@ -72,6 +54,7 @@ class DshPaletteProvenanceTest {
     }
 
     private companion object {
+        val SYNTAX_PALETTE_FILES = setOf("dev/deeplinks/core/DshSyntaxPalette.kt")
         val COLOR_LITERAL = Regex("""Color\(0x([0-9A-Fa-f]{6,8})""")
 
         /** visual-rules-v4 §2，加上纯黑背景开关的 #000000 / #141416。 */

@@ -97,7 +97,7 @@ internal fun DshMenu(
                             contentDescription = item.label
                         }
                         .clickable(interactionSource = interaction, indication = dshRipple(), onClick = item.onClick)
-                        .padding(horizontal = 10.dp),
+                        .padding(horizontal = DshSpace.s12),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -106,7 +106,7 @@ internal fun DshMenu(
                         tint = if (item.danger) Dsh.error else Dsh.labelSecondary,
                         modifier = Modifier.size(DshIconSize.sm)
                     )
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(DshSpace.s12))
                     Text(
                         item.label,
                         color = if (item.danger) Dsh.error else Dsh.labelPrimary,
