@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**审批瀑布**
+
+- DSH `0.1.7-alpha.1` 的钩子复验未能完成：云端隔离 host 可以配对、开会话、收 SSE，但没有 `DEEPSEEK_API_KEY`，回合在工具调用前以 `MISSING_CREDENTIAL` 结束。探针与 `GET .../requests` 都是空的，不能据此判断钩子触发还是不触发。详见 `docs/COMPATIBILITY.md`。
+
 **重设计 v4**
 
 - 设计稿、页面截图和执行方案放在 `docs/redesign-v4/`。proposal 002 的「自行合并到 main」自 v4 起作废，见该目录 `PLAN.md` 第 1 节。
