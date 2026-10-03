@@ -82,6 +82,7 @@ jobs:
             -scheme DeepLinks \
             -destination "$DEST" \
             -only-testing:DeepLinksTests/ModelsLoadTests \
+            -only-testing:DeepLinksTests/TokenUsageTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
