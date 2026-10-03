@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.CrashRecorder
 import dev.deeplinks.core.Host
+import dev.deeplinks.core.fileQuotePrefill
 import dev.deeplinks.core.L
 import dev.deeplinks.native.MobileSession
 import dev.deeplinks.native.MobileMessage
@@ -2692,6 +2693,9 @@ fun WorkspaceScreen(
         onAskAboutFile = { file ->
             inputText = ChangesL.askAboutFilePrefill.format(file.display) + inputText; scope.launch { changesPanel.settle(false) }; showPhoneChat()
         },
+        onAskAboutTurn = { turn ->
+            inputText = ChangesL.askAboutTurnPrefill.format(turn.turn) + inputText; scope.launch { changesPanel.settle(false) }; showPhoneChat()
+        },
     )
 
     // Snackbar 叠在抽屉/遮罩之上（抽屉打开时仍可见可点）；底部让开输入区：
@@ -2985,6 +2989,8 @@ fun WorkspaceScreen(
             loadDir = client::getWorkspaceTree,
             fetchFile = client::getSessionFile,
             onDismiss = { showFileBrowser = false },
+            rootName = currentSession?.cwd?.trimEnd('/')?.substringAfterLast('/'),
+            onQuote = { path -> inputText = L.fileQuotePrefill.format(path) + inputText; showFileBrowser = false },
         )
     }
 }

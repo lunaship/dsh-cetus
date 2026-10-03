@@ -230,12 +230,16 @@ internal fun ProducedFilesRow(
         }
     }
 
-    preview?.let { current -> ProducedPreviewDialog(current) { preview = null } }
+    preview?.let { current -> ProducedPreviewDialog(current, onDismiss = { preview = null }) }
 }
 
 /** 图片 / 文本预览对话框（本轮产出与工作区文件浏览共用）。 */
 @Composable
-internal fun ProducedPreviewDialog(current: ProducedPreview, onDismiss: () -> Unit) {
+internal fun ProducedPreviewDialog(
+    current: ProducedPreview,
+    onDismiss: () -> Unit,
+    onQuote: ((String) -> Unit)? = null,
+) {
     when (current) {
         is ProducedPreview.Image -> Dialog(onDismissRequest = { onDismiss() }) {
             Box(
@@ -262,52 +266,6 @@ internal fun ProducedPreviewDialog(current: ProducedPreview, onDismiss: () -> Un
                 )
             }
         }
-        is ProducedPreview.Text -> Dialog(onDismissRequest = { onDismiss() }) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .clip(RoundedCornerShape(DshRadius.container))
-                    .background(Dsh.bgCard)
-                    .padding(DshSpace.s16),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        producedFileName(current.path),
-                        color = Dsh.labelPrimary,
-                        style = DshType.bodyStrong,
-                        fontWeight = FontWeight(600),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(DshRadius.control))
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = L.close
-                            }
-                            .clickable { onDismiss() }
-                            .padding(horizontal = DshSpace.s8),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(L.close, color = Dsh.labelTertiary, style = DshType.microRelaxed,)
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    current.body,
-                    fontFamily = FontFamily.Monospace,
-                    style = DshType.captionRelaxed,
-                    color = Dsh.labelSecondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                )
-            }
-        }
+        is ProducedPreview.Text -> FilePreviewDialog(current.path, current.body, onDismiss, onQuote)
     }
 }

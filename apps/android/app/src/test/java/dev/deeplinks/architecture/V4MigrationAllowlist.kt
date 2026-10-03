@@ -20,7 +20,6 @@ internal object V4MigrationAllowlist {
         "dev/deeplinks/native/MathRenderer.kt",
         "dev/deeplinks/native/ProducedFiles.kt",
         "dev/deeplinks/native/SettingsRoute.kt",
-        "dev/deeplinks/native/WorkspaceChangesPanel.kt",
         "dev/deeplinks/native/ui/DshAdvancedComponents.kt",
         "dev/deeplinks/native/ui/DshCardSurface.kt",
         "dev/deeplinks/native/ui/DshComponents.kt",
