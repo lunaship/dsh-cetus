@@ -808,6 +808,7 @@ RFC 必须写清以下内容：
 | I1.4 | #72 | 新增 `apps/ios/AGENTS.md`（含 I1.5a 设计稿用法约束）。阶段 1 文档完成，停下等审核。 |
 | — | #73（合入 main） | PLAN 升为已采纳 v1.2；设计稿整体替换（去掉输入配对码）；随后 merge 进 `ios/main`（`4e6cf1f`）。 |
 | I1.3 | #74 | 按 PLAN v1.2 修订 RFC 0002：锁定 HPKE 套件与线上格式；新增 `testdata/push/hpke/` 占位与说明。 |
+| I1.2 | #75 | `page-mapping.md` 补 7.6 对话默认；冲突清单标注输入配对码已与设计稿对齐。停下等审核四份文档与 BrandFill。 |
 
 ---
 
