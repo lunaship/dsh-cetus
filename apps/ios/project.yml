@@ -120,6 +120,7 @@ targets:
       - target: DeepLinks
       - package: DLModels
       - package: DLCore
+      - package: DLSecurity
       - package: DLUI
       - package: SnapshotTesting
         product: SnapshotTesting
