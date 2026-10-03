@@ -1,6 +1,5 @@
 package dev.deeplinks.native
 
-import dev.deeplinks.native.DshIconSize
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.foundation.layout.width
@@ -32,10 +30,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,11 +44,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -68,7 +60,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -82,6 +73,17 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
 import dev.deeplinks.core.dshRipple
+import dev.deeplinks.native.ui.v4.DlAction
+import dev.deeplinks.native.ui.v4.DlButton
+import dev.deeplinks.native.ui.v4.DlButtonStyle
+import dev.deeplinks.native.ui.v4.DlSize
+import dev.deeplinks.native.ui.v4.DlSpinner
+import dev.deeplinks.native.ui.v4.DlTopBar
+import dev.deeplinks.native.ui.v4.DlTopBarAction
+import dev.deeplinks.native.ui.v4.DlTopBarNav
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -211,7 +213,7 @@ private suspend fun PointerInputScope.detectPanelSwipe(
     inSystemEdge: (Float) -> Boolean,
 ) {
     val sign = if (opening) -1f else 1f
-    val flingPx = 600.dp.toPx()
+    val flingPx = FLING_VELOCITY.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
         if (opening == state.opened || inSystemEdge(down.position.x)) return@awaitEachGesture
@@ -254,6 +256,8 @@ private suspend fun PointerInputScope.detectPanelSwipe(
     }
 }
 
+private val FLING_VELOCITY = 600.dp
+
 private sealed interface DiffLoad {
     data object Loading : DiffLoad
     /** 4.4：这份对比已不可用（服务端 404 changes_unavailable，或返回 path 与请求文件不符）。 */
@@ -274,6 +278,8 @@ internal fun WorkspaceChangesPanel(
     loadDiff: suspend (Long, Int) -> WorkspaceFileDiff,
     /** 稿 04 的底部提问条：带这个文件的上下文回到对话页输入框（null 时不画那一条）。 */
     onAskAboutFile: ((ChangedFile) -> Unit)? = null,
+    /** 6.1 底部「就这些改动提问」：带这一轮的上下文回到对话页输入框。 */
+    onAskAboutTurn: ((WorkspaceChangesSummary) -> Unit)? = null,
 ) {
     state.animationMs = motionDuration(DshDuration.slow)
     val scope = rememberCoroutineScope()
@@ -311,7 +317,7 @@ internal fun WorkspaceChangesPanel(
                     .clickable(interactionSource = null, indication = null) { scope.launch { state.settle(false) } },
             )
         }
-        val hairline = Dsh.borderSubtle
+        val hairline = Dsh.outline
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -321,7 +327,7 @@ internal fun WorkspaceChangesPanel(
                 .background(Dsh.bgBase)
                 .drawWithContent {
                     drawContent()
-                    if (!fullScreen) drawLine(hairline, Offset(0f, 0f), Offset(0f, size.height), 1.dp.toPx())
+                    if (!fullScreen) drawLine(hairline, Offset(0f, 0f), Offset(0f, size.height), Stroke.HairlineWidth.coerceAtLeast(1f))
                 }
                 .pointerInput(widthPx) {
                     detectPanelSwipe(state, scope, widthPx, opening = false, inSystemEdge = { false })
@@ -330,76 +336,53 @@ internal fun WorkspaceChangesPanel(
         ) {
             val index = state.fileIndex
             val file = index?.let { current?.files?.getOrNull(it) }
+            val close = { scope.launch { state.settle(false) }; Unit }
             if (current == null) {
-                PanelHeader(title = ChangesL.changes, onClose = { scope.launch { state.settle(false) } })
+                DlTopBar(title = ChangesL.changes, nav = DlTopBarNav.Close, onNav = close)
                 Box(Modifier.fillMaxSize().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
-                    Text(ChangesL.empty, color = Dsh.labelTertiary, style = DshType.body)
+                    Text(ChangesL.empty, color = Dsh.labelSecondary, style = DshType.body)
                 }
             } else if (file == null) {
                 TurnHeader(
                     summary = current,
                     summaries = summaries,
                     onSelectTurn = { state.seq = it },
-                    onClose = { scope.launch { state.settle(false) } },
+                    onClose = close,
                 )
-                FileList(current, onOpenFile = { state.fileIndex = it })
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) { FileList(current, onOpenFile = { state.fileIndex = it }) }
+                    if (onAskAboutTurn != null) {
+                        DlButton(
+                            DlAction(ChangesL.askAboutTurn, { onAskAboutTurn(current) }),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
+                        )
+                    }
+                }
             } else {
                 FileHeader(
                     file = file,
-                    index = index,
-                    count = current.files.size,
                     wrap = state.wrap,
                     onToggleWrap = { state.wrap = !state.wrap },
-                    onSelectFile = { state.fileIndex = it },
                     onBack = { state.fileIndex = null },
                 )
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f)) { FileDiffBody(state, current.seq, index, file, loadDiff) }
-                    if (onAskAboutFile != null) {
-                        AskAboutFileBar(file = file, onClick = { onAskAboutFile(file) })
-                    }
+                    FileBottomBar(
+                        index = index,
+                        count = current.files.size,
+                        onSelectFile = { state.fileIndex = it },
+                        onAsk = onAskAboutFile?.let { ask -> { ask(file) } },
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-private fun PanelIconButton(icon: ImageVector, description: String, onClick: () -> Unit, tint: androidx.compose.ui.graphics.Color = Dsh.labelSecondary) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
-            .semantics {
-                role = Role.Button
-                contentDescription = description
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(DshIconSize.sm))
-    }
-}
-
-@Composable
-private fun PanelHeader(title: String, onClose: () -> Unit, subtitle: String? = null, trailing: @Composable () -> Unit = {}) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .padding(horizontal = DshSpace.s4),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        PanelIconButton(CloseOutline16, L.close, onClose)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
-            Text(title, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) {
-                Text(subtitle, color = Dsh.labelTertiary, style = DshType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        trailing()
-    }
-}
+/** `+a −d`：副标题里的纯文字版本（两侧都写，0 也写）。 */
+private fun diffText(added: Int, deleted: Int): String = "+$added \u2212$deleted"
 
 @Composable
 private fun TurnHeader(
@@ -410,46 +393,40 @@ private fun TurnHeader(
 ) {
     // summaries 从新到旧：下标越大越旧
     val position = summaries.indexOfFirst { it.seq == summary.seq }
-    PanelHeader(
-        title = ChangesL.cardTitle(summary),
-        subtitle = ChangesL.turn.format(summary.turn),
-        onClose = onClose,
-    ) {
-        DiffStat(summary.added, summary.deleted)
-        if (summaries.size > 1) {
-            Spacer(Modifier.width(DshSpace.s4))
-            val older = summaries.getOrNull(position + 1)
-            val newer = if (position > 0) summaries[position - 1] else null
-            PanelIconButton(
-                ChevronLeftOutline16,
-                ChangesL.olderTurn,
-                onClick = { older?.let { onSelectTurn(it.seq) } },
-                tint = if (older != null) Dsh.labelSecondary else Dsh.labelDimmed,
-            )
-            PanelIconButton(
-                ChevronRightOutline16,
-                ChangesL.newerTurn,
-                onClick = { newer?.let { onSelectTurn(it.seq) } },
-                tint = if (newer != null) Dsh.labelSecondary else Dsh.labelDimmed,
+    val older = summaries.getOrNull(position + 1)
+    val newer = if (position > 0) summaries[position - 1] else null
+    DlTopBar(
+        title = ChangesL.changes,
+        subtitle = listOf(
+            ChangesL.turn.format(summary.turn),
+            ChangesL.fileCount.format(summary.total),
+            diffText(summary.added, summary.deleted),
+        ).joinToString(" · "),
+        nav = DlTopBarNav.Close,
+        onNav = onClose,
+        actions = if (summaries.size > 1) {
+            listOf(
+                DlTopBarAction(ChevronLeftOutline16, ChangesL.olderTurn, { older?.let { onSelectTurn(it.seq) } }, enabled = older != null),
+                DlTopBarAction(ChevronRightOutline16, ChangesL.newerTurn, { newer?.let { onSelectTurn(it.seq) } }, enabled = newer != null),
             )
         } else {
-            Spacer(Modifier.width(DshSpace.s12))
-        }
-    }
+            emptyList()
+        },
+    )
 }
 
 @Composable
 private fun FileList(summary: WorkspaceChangesSummary, onOpenFile: (Int) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         itemsIndexed(summary.files, key = { i, f -> "$i:${f.path}" }) { index, file ->
-            ChangedFileRow(file = file, onClick = { onOpenFile(index) }, startPadding = 16.dp)
+            PanelFileRow(file = file, onClick = { onOpenFile(index) })
         }
         if (!summary.complete) {
             item(key = "partial") {
                 Text(
                     ChangesL.moreFiles.format(summary.total - summary.files.size),
-                    color = Dsh.labelTertiary,
-                    style = DshType.caption,
+                    color = Dsh.labelSecondary,
+                    style = DshType.supporting,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
                 )
             }
@@ -457,92 +434,85 @@ private fun FileList(summary: WorkspaceChangesSummary, onOpenFile: (Int) -> Unit
     }
 }
 
+/** 6.1 文件行：文件名等宽 + 目录次要色，右侧 `+n −m`。 */
 @Composable
-private fun FileHeader(
-    file: ChangedFile,
-    index: Int,
-    count: Int,
-    wrap: Boolean,
-    onToggleWrap: () -> Unit,
-    onSelectFile: (Int) -> Unit,
-    onBack: () -> Unit,
-) {
+private fun PanelFileRow(file: ChangedFile, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .padding(horizontal = DshSpace.s4),
+            .heightIn(min = DlSize.rowDouble)
+            .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = file.display
+            }
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PanelIconButton(ChevronLeftOutline16, ChangesL.backToFiles, onBack)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = DshSpace.s4)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                file.name,
+                color = Dsh.labelPrimary,
+                style = DshType.body.copy(fontFamily = FontFamily.Monospace),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (file.directory.isNotEmpty()) {
                 Text(
-                    file.name,
-                    color = Dsh.labelPrimary,
-                    style = DshType.bodyStrong,
+                    file.directory,
+                    color = Dsh.labelSecondary,
+                    style = DshType.supporting,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                // 稿 04 的文件条：‹ 文件名 1 / N ›——知道「第几个 / 共几个」才敢用左右滑
-                Spacer(Modifier.width(DshSpace.s6))
-                Text(
-                    "${index + 1} / $count",
-                    color = Dsh.labelTertiary,
-                    style = DshType.caption,
-                    maxLines = 1,
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (file.directory.isNotEmpty()) {
-                    Text(
-                        file.directory,
-                        color = Dsh.labelTertiary,
-                        style = DshType.caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    Spacer(Modifier.width(DshSpace.s6))
-                }
-                DiffStat(file.added, file.deleted)
-            }
         }
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(if (wrap) Dsh.brandTint else Dsh.bgBase)
-                .clickable(interactionSource = null, indication = dshRipple(), onClick = onToggleWrap)
-                .semantics {
-                    role = Role.Switch
-                    contentDescription = ChangesL.wrapLines
-                    stateDescription = if (wrap) "on" else "off"
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                WrapOutline16,
-                contentDescription = null,
-                tint = if (wrap) Dsh.brand500 else Dsh.labelSecondary,
-                modifier = Modifier.size(DshIconSize.sm),
-            )
+        Spacer(Modifier.width(DshSpace.s12))
+        when {
+            file.binary -> Text("BIN", color = Dsh.tertiaryText, style = DshType.supporting)
+            file.oversized -> Text("\u2014", color = Dsh.tertiaryText, style = DshType.supporting)
+            else -> DiffStat(file.added, file.deleted)
         }
-        if (count > 1) {
-            PanelIconButton(
-                ChevronUpOutline16,
-                ChangesL.previousFile,
-                onClick = { if (index > 0) onSelectFile(index - 1) },
-                tint = if (index > 0) Dsh.labelSecondary else Dsh.labelDimmed,
-            )
-            PanelIconButton(
-                ChevronDownOutline16,
-                ChangesL.nextFile,
-                onClick = { if (index < count - 1) onSelectFile(index + 1) },
-                tint = if (index < count - 1) Dsh.labelSecondary else Dsh.labelDimmed,
-            )
-        }
+    }
+}
+
+@Composable
+private fun FileHeader(
+    file: ChangedFile,
+    wrap: Boolean,
+    onToggleWrap: () -> Unit,
+    onBack: () -> Unit,
+) {
+    DlTopBar(
+        title = file.name,
+        subtitle = listOfNotNull(file.directory.ifEmpty { null }, diffText(file.added, file.deleted)).joinToString(" · "),
+        nav = DlTopBarNav.Back,
+        onNav = onBack,
+        actions = listOf(DlTopBarAction(WrapOutline16, ChangesL.wrapLines, onToggleWrap, selected = wrap)),
+        showDivider = true,
+    )
+}
+
+/** 6.2 底部：上一个 / 下一个文件 + 就这个文件提问。 */
+@Composable
+private fun FileBottomBar(index: Int, count: Int, onSelectFile: (Int) -> Unit, onAsk: (() -> Unit)?) {
+    HorizontalDivider(color = Dsh.outline)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DlButton(
+            DlAction(ChangesL.previousShort, { onSelectFile(index - 1) }, DlButtonStyle.Text, enabled = index > 0),
+            compact = true,
+        )
+        DlButton(
+            DlAction(ChangesL.nextShort, { onSelectFile(index + 1) }, DlButtonStyle.Text, enabled = index < count - 1),
+            compact = true,
+        )
+        Spacer(Modifier.weight(1f))
+        if (onAsk != null) DlButton(DlAction(ChangesL.askAboutThisFile, onAsk), compact = true)
     }
 }
 
@@ -586,14 +556,14 @@ private fun FileDiffBody(
     }
     when (val current = load) {
         DiffLoad.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Dsh.brand400)
+            DlSpinner()
         }
         DiffLoad.Unavailable -> Column(
             modifier = Modifier.fillMaxSize().padding(DshSpace.s24),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // 4.4：不显示旧内容，也不透出服务端原文；给重试
-            Text(ChangesL.unavailable, color = Dsh.labelPrimary, style = DshType.body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(ChangesL.unavailable, color = Dsh.labelPrimary, style = DshType.body, textAlign = TextAlign.Center)
             DiffRetryText { attempt++ }
         }
         is DiffLoad.Failed -> Column(
@@ -602,7 +572,7 @@ private fun FileDiffBody(
         ) {
             Text(ChangesL.loadFailed, color = Dsh.labelPrimary, style = DshType.body)
             if (current.message.isNotBlank()) {
-                Text(current.message, color = Dsh.labelTertiary, style = DshType.caption, modifier = Modifier.padding(top = DshSpace.s4))
+                Text(current.message, color = Dsh.labelSecondary, style = DshType.supporting, modifier = Modifier.padding(top = DshSpace.s4))
             }
             DiffRetryText { attempt++ }
         }
@@ -617,17 +587,7 @@ private fun FileDiffBody(
 /** 「重试」文字按钮（加载失败 / 对比已不可用共用，4.4）。 */
 @Composable
 private fun DiffRetryText(onClick: () -> Unit) {
-    Text(
-        L.retry,
-        color = Dsh.brand400,
-        style = DshType.title,
-        modifier = Modifier
-            .padding(top = DshSpace.s12)
-            .heightIn(min = DshTouch.min)
-            .clip(RoundedCornerShape(DshRadius.full))
-            .clickable(interactionSource = null, indication = dshRipple()) { onClick() }
-            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
-    )
+    DlButton(DlAction(L.retry, onClick, DlButtonStyle.Text), modifier = Modifier.padding(top = DshSpace.s12))
 }
 
 @Composable
@@ -635,11 +595,11 @@ private fun DiffNoteRow(text: String) {
     Text(
         text,
         color = Dsh.labelSecondary,
-        style = DshType.caption,
+        style = DshType.supporting,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Dsh.bgTrack)
-            .padding(horizontal = DshSpace.s16, vertical = 10.dp),
+            .background(Dsh.surface1)
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
     )
 }
 
@@ -661,7 +621,7 @@ private fun DiffLines(diff: WorkspaceFileDiff.Text, wrap: Boolean) {
         val gutterChars = digits * 2 + 4
         val longest = remember(rows) { rows.maxOfOrNull { it.text.length }?.coerceAtMost(4_000) ?: 0 }
         val contentWidth = with(density) {
-            maxOf(maxWidth, ((gutterChars + longest) * charWidthPx).toDp() + 24.dp)
+            maxOf(maxWidth, ((gutterChars + longest) * charWidthPx).toDp() + DshSpace.s24)
         }
         // 自动换行时文本列的真实可用宽度：整宽 −（实测的行号列 + 标记列）− 内边距 − 安全余量。
         // 上一版按「字符数 = 宽度 / 单字宽」估算，偏乐观导致长行被裁；这次改成实测像素宽，
@@ -714,21 +674,21 @@ private fun DiffLineRow(
     onExpandFold: (Int) -> Unit = {},
 ) {
     val (bg, signColor, sign) = when (row.kind) {
-        DiffRow.Kind.ADD -> Triple(Dsh.success.copy(alpha = 0.12f), Dsh.success, "+")
-        DiffRow.Kind.DELETE -> Triple(Dsh.error.copy(alpha = 0.12f), Dsh.error, "−")
-        DiffRow.Kind.HUNK -> Triple(Dsh.bgTrack, Dsh.labelTertiary, "")
-        DiffRow.Kind.CONTEXT -> Triple(Dsh.bgCode, Dsh.labelTertiary, " ")
+        DiffRow.Kind.ADD -> Triple(Dsh.okSoft, Dsh.ok, "+")
+        DiffRow.Kind.DELETE -> Triple(Dsh.errSoft, Dsh.err, "−")
+        DiffRow.Kind.HUNK -> Triple(Dsh.surface1, Dsh.tertiaryText, "")
+        DiffRow.Kind.CONTEXT -> Triple(Dsh.bgCode, Dsh.tertiaryText, " ")
         // 折叠行：灰底、无行号，点一下展开（本轮先落到能渲染且不崩，交互下一片接）
-        DiffRow.Kind.FOLD -> Triple(Dsh.bgCodeBanner, Dsh.labelSecondary, "")
+        DiffRow.Kind.FOLD -> Triple(Dsh.surface1, Dsh.labelSecondary, "")
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(bg)
-            .padding(horizontal = DshSpace.s8, vertical = 1.dp),
+            .padding(horizontal = DshSpace.s8),
     ) {
         if (row.kind == DiffRow.Kind.HUNK) {
-            Text(row.text, color = Dsh.labelTertiary, style = style, maxLines = 1, softWrap = false)
+            Text(row.text, color = Dsh.tertiaryText, style = style, maxLines = 1, softWrap = false)
             return@Row
         }
         if (row.kind == DiffRow.Kind.FOLD) {
@@ -748,7 +708,7 @@ private fun DiffLineRow(
         // 稿 04：行号列只显示**新文件**的行号；删除行没有新行号，就留空（不是显示旧行号）
         Text(
             (row.newNo?.toString() ?: "").padStart(digits),
-            color = Dsh.labelTertiary,
+            color = Dsh.tertiaryText,
             style = style,
             maxLines = 1,
             softWrap = false,
@@ -822,41 +782,4 @@ private fun diffLineText(row: DiffRow, emphasis: Color): AnnotatedString = build
         cursor = end
     }
     put(cursor, row.text.length)
-}
-
-/**
- * 稿 04 的底部提问条：贴着差异区底部的输入形状按钮。
- * 只负责「看起来像输入框、点一下带着这个文件的上下文回对话页」，真正的输入在对话页完成
- * ——那里已经有草稿、附件、模型与发送链路，重做一套不划算。
- */
-@Composable
-private fun AskAboutFileBar(file: ChangedFile, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = DshTouch.min)
-                .clip(RoundedCornerShape(DshRadius.composer))
-                .background(Dsh.bgInput)
-                .clickable(interactionSource = null, indication = dshRipple(), onClick = onClick)
-                .semantics { role = Role.Button; contentDescription = ChangesL.askAboutFile }
-                .padding(horizontal = DshSpace.s16),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(MessageOutline16, contentDescription = null, tint = Dsh.labelTertiary, modifier = Modifier.size(DshIconSize.sm))
-            Spacer(Modifier.width(DshSpace.s8))
-            Text(
-                ChangesL.askAboutFile,
-                color = Dsh.labelTertiary,
-                style = DshType.body,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
 }

@@ -34,6 +34,10 @@ import dev.deeplinks.native.WorkspaceChangesPanel
 import dev.deeplinks.native.WorkspaceChangesSummary
 import dev.deeplinks.native.WorkspaceFileDiff
 import dev.deeplinks.native.WorkspaceTopBar
+import dev.deeplinks.native.FilePreviewPage
+import dev.deeplinks.native.PreviewEmptyState
+import dev.deeplinks.core.previewTitle
+import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
 
 /** 本轮改动：轮末卡片、顶栏入口、审查面（列表 / 对比，手机全屏与宽屏贴右）。 */
 
@@ -139,6 +143,8 @@ private fun PanelShot(fileIndex: Int?, wrap: Boolean = true) {
         summaries = listOf(multi, single),
         loadSummary = { null },
         loadDiff = { _, _ -> sampleDiff },
+        onAskAboutFile = {},
+        onAskAboutTurn = {},
     )
 }
 
@@ -175,4 +181,35 @@ internal fun ChangesPanelDiffLight() {
 @Composable
 internal fun ChangesPanelDiffWideDark() {
     ChangesFrame(dark = true) { PanelShot(fileIndex = 1, wrap = false) }
+}
+
+private val sampleFile = """# Android 协作规则
+
+## 红线
+- 不对 release 变体跑 connectedReleaseAndroidTest
+- 截图基线只由 regen 工作流生成
+- 主线程不做网络 I/O
+
+## 门禁
+./gradlew :app:assembleDebug \
+  :app:testDebugUnitTest \
+  :app:lintDebug
+"""
+
+@PreviewTest
+@Preview(name = "file preview light", showBackground = true, widthDp = 412, heightDp = 640)
+@Composable
+internal fun FilePreviewLight() {
+    ChangesFrame(dark = false) { FilePreviewPage("apps/android/CLAUDE.md", sampleFile, onDismiss = {}, onQuote = {}) }
+}
+
+@PreviewTest
+@Preview(name = "preview empty dark", showBackground = true, widthDp = 412, heightDp = 420)
+@Composable
+internal fun PreviewEmptyDark() {
+    ChangesFrame(dark = true) {
+        Box(Modifier.fillMaxSize().background(Dsh.bgOverlay), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+            DlBottomSheetSurface(title = dev.deeplinks.core.DshS.previewTitle) { PreviewEmptyState() }
+        }
+    }
 }

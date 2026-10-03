@@ -40,6 +40,12 @@ internal object ChangesL {
         "empty" to "这个会话还没有可查看的改动",
         "loadFailed" to "对比加载失败",
         "listPartial" to "文件列表不完整：%s",
+        "askAboutTurn" to "就这些改动提问",
+        "askAboutTurnPrefill" to "关于第 %d 轮的这些改动：",
+        "askAboutThisFile" to "就这个文件提问",
+        "previousShort" to "上一个",
+        "nextShort" to "下一个",
+        "fileCount" to "%d 个文件",
     )
 
     private val en = mapOf(
@@ -72,6 +78,12 @@ internal object ChangesL {
         "unavailable" to "This comparison is no longer available",
         "loadFailed" to "Couldn't load the comparison",
         "listPartial" to "File list incomplete: %s",
+        "askAboutTurn" to "Ask about these changes",
+        "askAboutTurnPrefill" to "About the changes in turn %d: ",
+        "askAboutThisFile" to "Ask about this file",
+        "previousShort" to "Previous",
+        "nextShort" to "Next",
+        "fileCount" to "%d files",
     )
 
     private fun t(key: String): String = (if (LocaleManager.language == "en") en else zh)[key] ?: key
@@ -105,6 +117,12 @@ internal object ChangesL {
     val loadFailed get() = t("loadFailed")
     val unavailable get() = t("unavailable")
     val listPartial get() = t("listPartial")
+    val askAboutTurn get() = t("askAboutTurn")
+    val askAboutTurnPrefill get() = t("askAboutTurnPrefill")
+    val askAboutThisFile get() = t("askAboutThisFile")
+    val previousShort get() = t("previousShort")
+    val nextShort get() = t("nextShort")
+    val fileCount get() = t("fileCount")
 
     fun note(note: DiffNote, diff: WorkspaceFileDiff.Text): String = when (note) {
         DiffNote.CREATED -> created

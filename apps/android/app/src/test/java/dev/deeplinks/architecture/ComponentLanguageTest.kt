@@ -73,7 +73,6 @@ class ComponentLanguageTest {
          */
         val PILL_SHAPE_BUDGET = mapOf(
             "dev/deeplinks/native/WorkspaceSheets.kt" to 1,
-            "dev/deeplinks/native/WorkspaceChangesPanel.kt" to 1,
             "dev/deeplinks/native/ProducedFiles.kt" to 1,
             "dev/deeplinks/native/WorkspaceChrome.kt" to 0,
             "dev/deeplinks/native/HomeHub.kt" to 1,

@@ -1,13 +1,25 @@
 package dev.deeplinks.native
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
+import dev.deeplinks.core.fileTreeReadOnly
+import dev.deeplinks.core.fileTreeFolder
+import dev.deeplinks.native.ui.v4.DlBottomSheet
+import dev.deeplinks.native.ui.v4.DlListRow
+import dev.deeplinks.native.ui.v4.DlRowTrailing
+import dev.deeplinks.native.ui.v4.DlSpinner
+import dev.deeplinks.native.ui.v4.DlTone
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,13 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
-import dev.deeplinks.native.ui.DshListRow
-import dev.deeplinks.native.ui.DshListTrailing
-import dev.deeplinks.native.ui.DshSheet
 import dev.deeplinks.native.util.ProducedFileKind
 import dev.deeplinks.native.util.decodeProducedText
 import dev.deeplinks.native.util.formatFileSize
@@ -52,12 +60,17 @@ private sealed interface DirState {
  * 目录进入 / 上一级；图片与文本就地预览（复用本轮产出的预览框），其它文件复制路径。
  * 插件未宣告 `capabilities.files.tree` 时入口不出现。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun WorkspaceFileBrowserSheet(
     sessionId: String,
     loadDir: (sessionId: String, path: String) -> WorkspaceDirListing,
     fetchFile: (sessionId: String, path: String) -> Pair<String, ByteArray>,
     onDismiss: () -> Unit,
+    /** 面包屑第一段：工作区目录名；null 时写「工作区根目录」。 */
+    rootName: String? = null,
+    /** 6.4「引用到对话」：带着文件路径回输入框；null 时不出这个动作。 */
+    onQuote: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -80,11 +93,7 @@ internal fun WorkspaceFileBrowserSheet(
         }
     }
 
-    fun copyPath(path: String) {
-        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-            as android.content.ClipboardManager
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("workspace path", path))
-    }
+    fun copyPath(path: String) = copyWorkspacePath(context, path)
 
     fun openFile(entry: WorkspaceDirEntry) {
         val path = childWorkspacePath(dir, entry.name)
@@ -121,41 +130,25 @@ internal fun WorkspaceFileBrowserSheet(
         }
     }
 
-    DshSheet(
-        onDismiss = onDismiss,
-        title = L.browseFiles,
-        subtitle = if (dir.isEmpty()) L.fileTreeRoot else dir,
-        showClose = true,
-        skipPartiallyExpanded = true,
-    ) {
+    DlBottomSheet(onDismissRequest = onDismiss, title = L.browseFiles) {
+        Breadcrumb(
+            root = rootName?.takeIf { it.isNotBlank() } ?: L.fileTreeRoot,
+            dir = dir,
+            onOpen = { dir = it },
+        )
         // 固定为屏高比例：切换目录时弹层不随条目数跳动，矮屏也放得下
-        LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f)) {
-            if (dir.isNotEmpty()) {
-                item(key = "..") {
-                    DshListRow(
-                        title = L.fileTreeUp,
-                        icon = ArrowLeftOutline16,
-                        trailing = DshListTrailing.None,
-                        onClick = { dir = parentWorkspacePath(dir) },
-                    )
-                }
-            }
+        LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.66f)) {
             when (val s = state) {
                 DirState.Loading -> item(key = "loading") {
-                    Box(Modifier.fillMaxWidth().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = Dsh.labelSecondary,
-                        )
-                    }
+                    Box(Modifier.fillMaxWidth().padding(DshSpace.s24), contentAlignment = Alignment.Center) { DlSpinner() }
                 }
                 is DirState.Failed -> item(key = "failed") {
-                    DshListRow(
+                    DlListRow(
                         title = L.fileTreeLoadFailed,
-                        error = s.message,
-                        onRetry = { reloadTick++ },
-                        trailing = DshListTrailing.None,
+                        subtitle = s.message,
+                        leading = WarningOutline16,
+                        leadingTint = DlTone.Err,
+                        trailing = DlRowTrailing.TextAction(L.retry) { reloadTick++ },
                     )
                 }
                 is DirState.Loaded -> {
@@ -179,9 +172,41 @@ internal fun WorkspaceFileBrowserSheet(
                 }
             }
         }
+        EmptyNote(L.fileTreeReadOnly)
     }
 
-    preview?.let { current -> ProducedPreviewDialog(current) { preview = null } }
+    preview?.let { current -> ProducedPreviewDialog(current, { preview = null }, onQuote) }
+}
+
+/** 6.3 面包屑：根名 / 各级目录，等宽；点任一级回到那一级。 */
+@Composable
+private fun Breadcrumb(root: String, dir: String, onOpen: (String) -> Unit) {
+    val parts = dir.split('/').filter { it.isNotEmpty() }
+    val scroll = rememberScrollState()
+    LaunchedEffect(dir) { scroll.scrollTo(scroll.maxValue) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scroll)
+            .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val style = DshType.supporting.copy(fontFamily = FontFamily.Monospace)
+        val segments = listOf(root to "") + parts.mapIndexed { i, name -> name to parts.take(i + 1).joinToString("/") }
+        segments.forEachIndexed { i, (name, path) ->
+            if (i > 0) Text("/", style = style, color = Dsh.tertiaryText)
+            val last = i == segments.lastIndex
+            Text(
+                name,
+                style = style,
+                color = if (last) Dsh.labelPrimary else Dsh.labelSecondary,
+                maxLines = 1,
+                modifier = Modifier
+                    .clickable(enabled = !last, role = Role.Button) { onOpen(path) }
+                    .padding(horizontal = DshSpace.s4, vertical = DshSpace.s8),
+            )
+        }
+    }
 }
 
 @Composable
@@ -197,15 +222,15 @@ private fun FileEntryRow(
         notice != null -> notice
         entry.outside -> L.fileTreeOutside
         entry.isFile -> entry.size?.let(::formatFileSize)
+        entry.isDir -> L.fileTreeFolder
         else -> null
     }
-    DshListRow(
+    DlListRow(
         title = entry.name,
         subtitle = subtitle,
-        icon = if (entry.isDir) FolderOpenOutline16 else FileOutline16,
-        iconTint = if (entry.isDir) Dsh.labelSecondary else Dsh.labelTertiary,
+        leading = if (entry.isDir) FolderOpenOutline16 else FileOutline16,
         enabled = !entry.outside && !opening,
-        trailing = if (entry.isDir) DshListTrailing.Chevron else DshListTrailing.None,
+        trailing = if (entry.isDir) DlRowTrailing.Chevron else DlRowTrailing.None,
         onClick = when {
             entry.outside -> null
             entry.isDir -> onOpenDir
@@ -219,8 +244,8 @@ private fun FileEntryRow(
 private fun EmptyNote(text: String) {
     Text(
         text,
-        color = Dsh.labelTertiary,
-        style = DshType.caption,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = DshSpace.s16, vertical = DshSpace.s12),
+        color = Dsh.tertiaryText,
+        style = DshType.supporting,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = DshSpace.s20, vertical = DshSpace.s12),
     )
 }

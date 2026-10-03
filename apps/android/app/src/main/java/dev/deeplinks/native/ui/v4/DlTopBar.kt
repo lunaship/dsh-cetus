@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +44,8 @@ data class DlTopBarAction(
     val contentDescription: String,
     val onClick: () -> Unit,
     val enabled: Boolean = true,
+    /** 开关类动作（如自动换行）：非 null 时按开 / 关着色并读出状态。 */
+    val selected: Boolean? = null,
 )
 
 /** 对话页 diff 角标：`+n −m`。 */
@@ -66,6 +69,8 @@ fun DlTopBar(
     showDivider: Boolean = false,
     subtitleContent: (@Composable () -> Unit)? = null,
     onSubtitleClick: (() -> Unit)? = null,
+    /** 标题用等宽字（6.5 预览顶栏的地址）。 */
+    monoTitle: Boolean = false,
 ) {
     require(actions.size <= 2) { "DlTopBar 最多 2 个动作" }
     Column(modifier.fillMaxWidth().background(Dsh.bgBase)) {
@@ -91,7 +96,11 @@ fun DlTopBar(
             ) {
                 Text(
                     title,
-                    style = if (large) DshType.displayLarge else DshType.titleLarge,
+                    style = when {
+                        large -> DshType.displayLarge
+                        monoTitle -> DshType.titleLarge.copy(fontFamily = FontFamily.Monospace)
+                        else -> DshType.titleLarge
+                    },
                     color = Dsh.labelPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -112,7 +121,14 @@ fun DlTopBar(
             }
             if (diff != null) DlDiffBadge(diff)
             for (action in actions) {
-                DlIconButton(action.icon, action.contentDescription, action.onClick, enabled = action.enabled)
+                DlIconButton(
+                    action.icon,
+                    action.contentDescription,
+                    action.onClick,
+                    enabled = action.enabled,
+                    tint = if (action.selected == true) Dsh.brand400 else Dsh.labelPrimary,
+                    selected = action.selected,
+                )
             }
         }
         if (showDivider) HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
@@ -126,8 +142,14 @@ internal fun DlIconButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     tint: androidx.compose.ui.graphics.Color = Dsh.labelPrimary,
+    selected: Boolean? = null,
 ) {
-    IconButton(onClick = onClick, enabled = enabled) {
+    val toggle = if (selected != null) {
+        Modifier.semantics { stateDescription = if (selected) "on" else "off" }
+    } else {
+        Modifier
+    }
+    IconButton(onClick = onClick, enabled = enabled, modifier = toggle) {
         Icon(
             icon,
             contentDescription = contentDescription,
