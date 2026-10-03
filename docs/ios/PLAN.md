@@ -821,6 +821,7 @@ RFC 必须写清以下内容：
 | I2.6 | #82 | `Localizable.xcstrings`（英文 + 简体中文，语义 key）与 `scripts/check-ios-locales.mjs`（key 对齐、格式符类型一致）。三个 iOS 检查通过。squash `8a6c8a2`。 |
 | I3.1 | #83 | DLModels：按附录 C 写各响应的 `Codable` 类型（15 个主题文件），未知字段忽略、枚举 `unknown` 兜底、`remote` 三态；DLCore 文本兜底（DLCore → DLModels）；合同测试 `ContextInjectionContractTests`、`MobileModelsContractTests`。偏差：部分字段按 `src/` 推断（见 PR）；`relay: null` 不建模；history `goal` 未区分缺失与 null。三个 iOS 检查通过。squash `8e212cf`。 |
 | I3.2 | #84、#85（合入 main）、#86 | 插件侧：`scripts/export-contract-fixtures.mjs` 用假 Host 跑真实插件，生成 29 个 `testdata/mobile-contract/*.json`；`test/contract-fixtures.test.mjs` 在响应结构变了而 fixtures 没更新时失败。#85 修正假 Host 里透传投影的形状（stats / goal / todos 按 Android 解析）。main 两次 merge 进 `ios/main`（`dd56ff8`、`9a3fe06`）。iOS 侧：`MobileContractFixturesTests` 逐个解码，文件集合必须与对照表一致；`SessionGoal` 改按真实的嵌套形状解码。维护者授权自行审核合并。squash `1a372ed` / `4905b45`（main），`addd120`（ios/main）。 |
+| I3.3 | #87 | DLSecurity：`SecureStore` 协议 + `KeychainStore`（AfterFirstUnlockThisDeviceOnly、不同步、`accessGroup` 预留）+ `InMemorySecureStore`；`HostStore` actor 把 token / 指纹 / 远程密钥存进 Keychain，其余存沙盒 JSON，凭据缺失视为未配对并对账清理。`HostStoreContractTests` 用 `pair.json`。偏差：CI 不碰真实 Keychain；「卸载后不可恢复」需维护者在模拟器上手动验证。三个 iOS 检查通过。squash `eae7c37`。 |
 
 
 ---
