@@ -41,6 +41,7 @@ jobs:
         run: |
           set -eu
           DEST=$(sh scripts/simulator-destination.sh)
+          set +e
           RECORD_SNAPSHOTS=1 xcodebuild \
             -scheme DeepLinks \
             -destination "$DEST" \
@@ -48,6 +49,11 @@ jobs:
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain -- apps/ios/Tests/__Snapshots__)" ]; then
+            exit "$status"
+          fi
 
       - name: Commit baselines
         working-directory: ${{ github.workspace }}
@@ -55,7 +61,7 @@ jobs:
           set -eu
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          git add apps/ios/Tests
+          git add apps/ios/Tests/__Snapshots__
           if git diff --cached --quiet; then
             echo "no baseline changes"
             exit 0
