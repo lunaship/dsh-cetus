@@ -786,6 +786,7 @@ RFC 必须写清以下内容：
 | I0.0 | #65 | 方案原文放入 `docs/ios/PLAN.md`，顶部状态改为已采纳（2026-10-03），其余未改。PR 目标 `ios/main`。Node gates、Go gates、DLP/1 end to end 全绿；Android 工作流不触发。squash 合并为 `1cd0b5d`。 |
 | I0.1 | #66（合入 main） | **触发**。DSH `0.1.7-alpha.1` 上 `approval/request` 与 `user-questions/request` 均被调用；手机可提交「允许一次」与澄清答案。默认 `workspace-write` 下工作区写入约 45 秒无审批；`read-only` 下 `write` 稳定触发。结论写入 main 的 `docs/COMPATIBILITY.md`。 |
 | I0.0b | #67 | PLAN 升级到已采纳的 v1.1；保留 I0.0 记录并写入 I0.1 结论。 |
+| I1.5a | #68 | 设计稿原样入库 `apps/ios/docs/design/`（PNG + README + src）。已知冲突：1.2/1.3 设计稿有「输入配对码」，以 PLAN 为准去掉。 |
 
 ---
 
