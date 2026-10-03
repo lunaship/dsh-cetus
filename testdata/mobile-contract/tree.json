@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "path": "",
+  "total": 6,
+  "truncated": false,
+  "entries": [
+    {
+      "name": "assets",
+      "type": "dir"
+    },
+    {
+      "name": "config",
+      "type": "dir"
+    },
+    {
+      "name": "link-to-src",
+      "link": true,
+      "type": "dir"
+    },
+    {
+      "name": "src",
+      "type": "dir"
+    },
+    {
+      "name": "README.md",
+      "type": "file",
+      "size": 74,
+      "mtimeMs": 1767225600000
+    },
+    {
+      "name": "outside.log",
+      "type": "symlink",
+      "outside": true
+    }
+  ]
+}

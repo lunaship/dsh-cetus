@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "protocol": 2,
+  "capabilities": {
+    "protocol": 2,
+    "sync": {
+      "resync": true,
+      "catchupIntegrity": true
+    },
+    "questions": {
+      "multi": true,
+      "serverValidation": true
+    },
+    "requests": {
+      "snapshot": true,
+      "reconnectGraceMs": 30000
+    },
+    "control": {
+      "queue": true,
+      "goals": true,
+      "schedules": true
+    },
+    "files": {
+      "workspace": true,
+      "maxBytes": 8388608,
+      "tree": true,
+      "treeMaxEntries": 2000,
+      "sha256": true,
+      "changes": true,
+      "diff": true,
+      "diffMaxLines": 5000
+    },
+    "diagnostics": {
+      "v": 1
+    },
+    "events": {
+      "host": true
+    },
+    "preview": {
+      "v": 1,
+      "detect": 1
+    }
+  },
+  "host": {
+    "name": "<hostName>",
+    "deviceId": "<hostId>"
+  },
+  "device": {
+    "name": "iPhone 15 Pro"
+  },
+  "sessions": [
+    {
+      "sessionId": "sess-demo-login",
+      "title": "修复登录超时",
+      "updatedAt": 1767225616000,
+      "running": true,
+      "blank": false,
+      "cwd": "<fixtureRoot>/workspace",
+      "origin": "user",
+      "activity": {
+        "kind": "tool",
+        "label": "go test ./...",
+        "step": 12,
+        "startedAt": 1767225615000
+      }
+    },
+    {
+      "sessionId": "sess-demo-report",
+      "title": "整理周报",
+      "updatedAt": 1767225626000,
+      "running": false,
+      "blank": false,
+      "cwd": "<fixtureRoot>/workspace",
+      "agentPreset": "writer",
+      "origin": "user",
+      "lastResult": {
+        "text": "周报已写入 docs/weekly.md：门禁全绿，改动已提交。",
+        "files": 3,
+        "added": 120,
+        "deleted": 45
+      }
+    },
+    {
+      "sessionId": "sess-demo-stopped",
+      "title": "部署到预发环境",
+      "updatedAt": 1767225636000,
+      "running": false,
+      "blank": false,
+      "cwd": "<fixtureRoot>/workspace",
+      "origin": "user",
+      "stoppedReason": "interrupted"
+    },
+    {
+      "sessionId": "sess-demo-refactor",
+      "title": "重构登录模块",
+      "updatedAt": 1767225646000,
+      "running": true,
+      "blank": false,
+      "cwd": "<fixtureRoot>/workspace",
+      "origin": "user",
+      "activity": {
+        "kind": "tool",
+        "label": "edit src/auth.js",
+        "step": 3,
+        "startedAt": 1767225642000
+      }
+    }
+  ],
+  "archivedSessionIds": [
+    "sess-demo-archived"
+  ],
+  "webPath": "/",
+  "relay": null,
+  "remote": null
+}

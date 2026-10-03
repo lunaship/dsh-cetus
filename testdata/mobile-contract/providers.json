@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "writable": true,
+  "providers": [
+    {
+      "provider": "deepseek-account",
+      "displayName": "DeepSeek",
+      "kind": "account",
+      "active": true,
+      "custom": false,
+      "keyRef": null,
+      "credential": null,
+      "models": [
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro",
+          "contextWindow": 131072,
+          "maxTokens": 8192
+        }
+      ],
+      "modelsEditable": false,
+      "canDiscover": false
+    },
+    {
+      "provider": "deepseek-official",
+      "displayName": "DeepSeek 开放平台",
+      "kind": "api",
+      "active": true,
+      "custom": false,
+      "keyRef": "DEEPSEEK_API_KEY",
+      "credential": {
+        "configured": true,
+        "writable": false,
+        "source": "environment"
+      },
+      "models": [
+        {
+          "id": "deepseek-v4",
+          "name": "DeepSeek V4",
+          "contextWindow": null,
+          "maxTokens": null
+        }
+      ],
+      "modelsEditable": true,
+      "canDiscover": true
+    },
+    {
+      "provider": "zai",
+      "displayName": "Z.ai",
+      "kind": "api",
+      "active": true,
+      "custom": false,
+      "keyRef": "ZAI_API_KEY",
+      "credential": {
+        "configured": true,
+        "writable": true,
+        "source": null
+      },
+      "models": [
+        {
+          "id": "glm-5.3",
+          "name": "GLM-5.3",
+          "contextWindow": 1000000,
+          "maxTokens": null
+        }
+      ],
+      "modelsEditable": true,
+      "canDiscover": true
+    }
+  ],
+  "addable": [
+    {
+      "provider": "openai",
+      "displayName": "OpenAI"
+    }
+  ]
+}

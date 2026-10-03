@@ -1,0 +1,10 @@
+{
+  "previews": [
+    {
+      "previewId": "<previewId>",
+      "label": "Vite",
+      "port": 4173,
+      "expiresAt": 1767232800000
+    }
+  ]
+}

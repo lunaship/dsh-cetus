@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "token": "<token>",
+  "deviceId": "<deviceId>",
+  "name": "iPad Pro",
+  "urls": [
+    "https://<lanAddress>:<port>"
+  ],
+  "pending": true,
+  "pendingExpiresAt": 1767225900000
+}
