@@ -112,6 +112,7 @@ targets:
     dependencies:
       - target: DeepLinks
       - package: DLModels
+      - package: DLUI
       - package: SnapshotTesting
         product: SnapshotTesting
     settings:

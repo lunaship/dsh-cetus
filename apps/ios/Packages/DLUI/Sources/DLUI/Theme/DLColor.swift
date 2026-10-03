@@ -15,3 +15,16 @@ public enum DLColor {
     /// App asset `BrandFill`. Dark appearance is the single provisional token `#4C66E6`.
     public static let brandFill = Color("BrandFill")
 }
+
+public enum DLUIKitColor {
+    public static let label = UIColor.label
+    public static let secondaryLabel = UIColor.secondaryLabel
+    public static let tertiaryLabel = UIColor.tertiaryLabel
+    public static let background = UIColor.systemBackground
+    public static let groupedBackground = UIColor.systemGroupedBackground
+    public static let fill = UIColor.systemFill
+    public static let wait = UIColor.systemOrange
+    public static let ok = UIColor.systemGreen
+    public static let err = UIColor.systemRed
+    public static var brandFill: UIColor { UIColor(named: "BrandFill") ?? .label }
+}

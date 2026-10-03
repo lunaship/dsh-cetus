@@ -113,7 +113,8 @@ jobs:
           xcodebuild \
             -scheme DeepLinks \
             -destination "$DEST" \
-            -only-testing:DeepLinksTests/EmptyRootSnapshotTests \
+            -skip-testing:DeepLinksTests/ModelsLoadTests \
+            -skip-testing:DeepLinksTests/TokenUsageTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
