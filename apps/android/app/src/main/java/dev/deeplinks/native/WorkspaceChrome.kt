@@ -18,6 +18,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import dev.deeplinks.native.ui.v4.DlSize
+import dev.deeplinks.native.ui.v4.DlLabelStrong
+import dev.deeplinks.native.ui.v4.DlOverlayColor
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -307,19 +311,19 @@ internal fun CommandSuggestions(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 340.dp)
-                .shadow(4.dp, RoundedCornerShape(DshRadius.container), clip = false)
-                .clip(RoundedCornerShape(DshRadius.container))
-                .background(Dsh.bgCard)
+                .clip(RoundedCornerShape(DshRadius.block))
+                .background(DlOverlayColor)
+                .border(1.dp, Dsh.outline, RoundedCornerShape(DshRadius.block))
                 .verticalScroll(rememberScrollState())
-                .padding(DshSpace.s8),
+                .padding(vertical = DshSpace.s8),
         ) {
             grouped.forEach { (group, entries) ->
                 if (!filtering) {
                     Text(
                         group.displayName,
-                        color = Dsh.labelTertiary,
-                        style = DshType.microMedium,
-                        modifier = Modifier.padding(start = DshSpace.s12, top = DshSpace.s8, bottom = DshSpace.s4),
+                        color = Dsh.labelSecondary,
+                        style = DlLabelStrong,
+                        modifier = Modifier.padding(start = DshSpace.s16, top = DshSpace.s8, bottom = DshSpace.s4),
                     )
                 }
                 entries.forEach { entry ->
@@ -334,49 +338,42 @@ internal fun CommandSuggestions(
     }
 }
 
+/** 5.1 指令行：图标 + 「/trigger 名称」+ 一行说明；过滤时第一条用品牌浅底高亮（回车即选）。 */
 @Composable
 private fun PaletteRow(command: PaletteCommand, highlighted: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(DshRadius.container))
-            .background(if (highlighted) Dsh.bgSubtle else Color.Transparent)
+            .heightIn(min = DlSize.rowSingle)
+            .background(if (highlighted) Dsh.primarySoft else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = DshSpace.s8, vertical = DshSpace.s8),
+            .padding(horizontal = DshSpace.s16, vertical = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(DshRadius.control))
-                .background(if (highlighted) Dsh.brandTint else Dsh.bgSubtle),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                paletteIcon(command),
-                contentDescription = null,
-                tint = if (highlighted) Dsh.brand500 else Dsh.labelSecondary,
-                modifier = Modifier.size(DshIconSize.sm),
-            )
-        }
-        Spacer(Modifier.width(DshSpace.s12))
+        Icon(
+            paletteIcon(command),
+            contentDescription = null,
+            tint = if (highlighted) Dsh.brand400 else Dsh.labelSecondary,
+            modifier = Modifier.size(DshIconSize.md),
+        )
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(command.title, color = Dsh.labelPrimary, style = DshType.body, maxLines = 1)
-                Spacer(Modifier.width(DshSpace.s8))
-                Text(
-                    command.trigger,
-                    color = Dsh.labelTertiary,
-                    style = DshType.captionRelaxed,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
+                Text(command.trigger, color = Dsh.labelPrimary, style = DshType.bodyStrong, maxLines = 1)
+                if (command.title != command.trigger) {
+                    Text(
+                        command.title,
+                        color = Dsh.labelPrimary,
+                        style = DshType.body,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             Text(
                 command.description,
-                color = Dsh.labelTertiary,
-                style = DshType.captionRelaxed,
+                color = Dsh.labelSecondary,
+                style = DshType.supporting,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

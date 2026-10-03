@@ -7,12 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +32,7 @@ import dev.deeplinks.core.workspaceUsePath
 import dev.deeplinks.native.ui.v4.DlAction
 import dev.deeplinks.native.ui.v4.DlBottomSheet
 import dev.deeplinks.native.ui.v4.DlButton
+import dev.deeplinks.native.ui.v4.DlTextField
 import dev.deeplinks.native.ui.v4.DlButtonStyle
 import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.native.ui.v4.DlRowTrailing
@@ -244,33 +242,13 @@ internal fun AddWorkspaceContent(
         modifier = Modifier.fillMaxWidth().padding(horizontal = DshSpace.s24),
         verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
     ) {
-        OutlinedTextField(
+        DlTextField(
             value = value,
             onValueChange = onValueChange,
+            label = L.workspaceNameOrPath,
+            placeholder = L.workspacePathExample,
             enabled = !submitting,
-            singleLine = true,
-            label = { Text(L.workspaceNameOrPath) },
-            placeholder = { Text(L.workspacePathExample) },
             isError = isError,
-            textStyle = DshType.body.copy(color = Dsh.labelPrimary),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Dsh.labelPrimary,
-                unfocusedTextColor = Dsh.labelPrimary,
-                disabledTextColor = Dsh.tertiaryText,
-                focusedContainerColor = Dsh.bgBase.copy(alpha = 0f),
-                unfocusedContainerColor = Dsh.bgBase.copy(alpha = 0f),
-                disabledContainerColor = Dsh.bgBase.copy(alpha = 0f),
-                cursorColor = Dsh.brand400,
-                focusedBorderColor = Dsh.brand400,
-                unfocusedBorderColor = Dsh.outline,
-                disabledBorderColor = Dsh.outline,
-                errorBorderColor = Dsh.err,
-                focusedLabelColor = Dsh.brand400,
-                unfocusedLabelColor = Dsh.labelSecondary,
-                errorLabelColor = Dsh.err,
-            ),
-            shape = RoundedCornerShape(DshRadius.container),
-            modifier = Modifier.fillMaxWidth(),
         )
         Text(supporting, style = DshType.supporting, color = if (isError) Dsh.err else Dsh.labelSecondary)
         Row(

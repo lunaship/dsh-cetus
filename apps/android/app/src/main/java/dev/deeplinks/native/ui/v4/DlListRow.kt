@@ -44,7 +44,8 @@ sealed interface DlRowTrailing {
 
 /**
  * v4 列表行（7.1、7.2）：前导图标（可选）+ 标题 + 副标题 + 尾部。
- * 单行 52dp、双行 64dp；左右 20dp。[danger] 把标题和图标改成错误色（解除配对、删除）。
+ * 单行 52dp、双行 64dp；左右 20dp。[danger] 把标题和图标改成错误色（解除配对、删除）；
+ * [titleTone] 只改标题颜色（5.3「完全权限」用 Wait 橙色）。
  * 开关 / 单选 / 复选行整行可点。
  */
 @Composable
@@ -54,6 +55,7 @@ fun DlListRow(
     subtitle: String? = null,
     leading: ImageVector? = null,
     leadingTint: DlTone? = null,
+    titleTone: DlTone? = null,
     trailing: DlRowTrailing = DlRowTrailing.None,
     danger: Boolean = false,
     enabled: Boolean = true,
@@ -84,6 +86,7 @@ fun DlListRow(
     val titleColor = when {
         !enabled -> Dsh.tertiaryText
         danger -> Dsh.err
+        titleTone != null -> titleTone.color
         else -> Dsh.labelPrimary
     }
     Row(

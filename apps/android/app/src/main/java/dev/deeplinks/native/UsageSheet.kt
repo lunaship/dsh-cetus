@@ -8,37 +8,36 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.tabularNums
-import dev.deeplinks.native.ui.DshSheet
+import dev.deeplinks.native.ui.v4.DlBigNumber
+import dev.deeplinks.native.ui.v4.DlBottomSheet
+import dev.deeplinks.native.ui.v4.DlPill
+import dev.deeplinks.native.ui.v4.DlSize
 import dev.deeplinks.native.util.compactDuration
 import dev.deeplinks.native.util.compactTokens
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * 会话用量底部面板。点上下文环，或会话「⋯」里的「用量」打开。
+ * 5.7 会话用量：一个大数字 + 上下文进度条 + 键值行。点上下文环，或会话「⋯」里的「用量」打开。
  * stats 为 null 是旧 Host：只说明没有数据，不发额外请求。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun UsageSheet(stats: MobileSessionStats?, onDismiss: () -> Unit) {
-    DshSheet(
-        onDismiss = onDismiss,
-        title = DshS.sessionStatsSheetTitle,
-        showClose = true,
-        skipPartiallyExpanded = true,
-    ) {
+    DlBottomSheet(onDismissRequest = onDismiss, title = DshS.sessionStatsSheetTitle) {
         UsagePanel(stats)
     }
 }
@@ -52,27 +51,30 @@ internal fun UsagePanel(stats: MobileSessionStats?) {
             DshS.translation("usageEmpty"),
             color = Dsh.labelSecondary,
             style = DshType.body,
-            modifier = Modifier.padding(vertical = DshSpace.s12),
+            modifier = Modifier.padding(horizontal = DshSpace.s24, vertical = DshSpace.s12),
         )
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
-        UsageLine(DshS.translation("usageUncached"), compactTokens(figures.uncachedInputTokens))
-        UsageLine(DshS.translation("usageCacheRead"), compactTokens(figures.cacheReadTokens))
-        UsageLine(DshS.translation("usageOutput"), compactTokens(figures.outputTokens))
-        UsageLine(DshS.translation("usageTotal"), compactTokens(figures.totalTokens), strong = true)
+    Column(Modifier.fillMaxWidth().padding(horizontal = DshSpace.s24)) {
+        DlBigNumber(compactTokens(figures.totalTokens), DshS.translation("usageTokensUnit"))
         formatEstimate(stats?.estimatedCost)?.let { estimate ->
-            UsageLine(DshS.translation("usageEstimateLabel"), estimate)
+            Text(estimate, style = DshType.supporting, color = Dsh.labelSecondary)
         }
-        UsageLine(DshS.statsCacheHitLabel, formatPercent(figures.cacheHitRate))
-        UsageLine(DshS.translation("usageTurns"), figures.turns.toString())
-        UsageLine(DshS.translation("usageSteps"), figures.steps.toString())
-        UsageLine(DshS.translation("usageLlmTime"), formatDurationOrDash(figures.llmMs))
-        UsageLine(DshS.translation("usageToolTime"), formatDurationOrDash(figures.toolMs))
-        UsageLine(DshS.translation("usageAvgTtft"), formatDurationOrDash(figures.avgTtftMs?.toLong()))
-        UsageLine(DshS.tokenRateUnit, formatSpeed(figures.outputTokensPerSec))
-        if (figures.contextWindowTokens > 0) {
-            ContextUsageBlock(figures)
+        if (figures.contextWindowTokens > 0) ContextUsageBlock(figures)
+        Column(Modifier.padding(top = DshSpace.s12)) {
+            UsageLine(DshS.statsCacheHitLabel, formatPercent(figures.cacheHitRate))
+            UsageLine(
+                DshS.translation("usageIoLabel"),
+                listOf(figures.uncachedInputTokens, figures.cacheReadTokens, figures.outputTokens)
+                    .joinToString(" / ") { compactTokens(it) },
+            )
+            UsageLine(DshS.translation("usageTurnsSteps"), "${figures.turns} / ${figures.steps}")
+            UsageLine(
+                DshS.translation("usageTimesLabel"),
+                formatDurationOrDash(figures.llmMs) + " / " + formatDurationOrDash(figures.toolMs),
+            )
+            UsageLine(DshS.translation("usageAvgTtft"), formatDurationOrDash(figures.avgTtftMs?.toLong()))
+            UsageLine(DshS.tokenRateUnit, formatSpeed(figures.outputTokensPerSec))
         }
     }
 }
@@ -80,95 +82,71 @@ internal fun UsagePanel(stats: MobileSessionStats?) {
 @Composable
 private fun ContextUsageBlock(figures: UsageFigures) {
     val percent = contextUsedPercent(figures.contextUsedTokens, figures.contextWindowTokens) ?: return
-    Column(verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
-        UsageLine(
-            DshS.statsContextWindow,
-            "${compactTokens(figures.contextUsedTokens)} / ${compactTokens(figures.contextWindowTokens)} · $percent%",
-        )
+    Column(Modifier.padding(top = DshSpace.s16), verticalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(DshS.contextUsed, style = DshType.supporting, color = Dsh.labelPrimary, modifier = Modifier.weight(1f))
+            Text(
+                "${compactTokens(figures.contextUsedTokens)} / ${compactTokens(figures.contextWindowTokens)} · $percent%",
+                style = DshType.supporting.tabularNums(),
+                color = Dsh.labelSecondary,
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(DshSpace.s4)
-                .clip(RoundedCornerShape(DshRadius.micro))
-                .background(Dsh.bgTrack),
+                .clip(DlPill)
+                .background(Dsh.surface2),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(percent / 100f)
                     .fillMaxHeight()
-                    .background(if (percent > 80) Dsh.warn else Dsh.brand500),
+                    .background(if (percent > 80) Dsh.wait else Dsh.brand400),
             )
         }
-        if (figures.breakdown.isNotEmpty()) {
-            BreakdownBar(figures.breakdown)
-            figures.breakdown.forEach { slice ->
-                ContextMeterRow(
-                    label = breakdownLabel(slice.key),
-                    value = compactTokens(slice.tokens),
-                    swatchColor = breakdownColor(slice.key),
-                )
-            }
+        breakdownCaption(figures)?.let { caption ->
+            Text(caption, style = DshType.supporting, color = Dsh.labelSecondary)
         }
     }
 }
 
+/** 「系统 12% · 工具 9% · 消息 25%」：占整个上下文窗口的比例，只用文字不用色条。 */
 @Composable
-private fun BreakdownBar(slices: List<UsageSlice>) {
-    val total = slices.sumOf { it.tokens.toDouble() }.takeIf { it > 0.0 } ?: return
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(DshSpace.s8)
-            .clip(RoundedCornerShape(DshRadius.micro)),
-    ) {
-        slices.forEach { slice ->
-            val weight = (slice.tokens.toDouble() / total).toFloat().coerceAtLeast(0.001f)
-            Box(
-                modifier = Modifier
-                    .weight(weight)
-                    .fillMaxHeight()
-                    .background(breakdownColor(slice.key)),
-            )
-        }
+private fun breakdownCaption(figures: UsageFigures): String? {
+    if (figures.breakdown.isEmpty() || figures.contextWindowTokens <= 0) return null
+    val parts = mutableListOf<String>()
+    for (slice in figures.breakdown) {
+        val pct = contextUsedPercent(slice.tokens, figures.contextWindowTokens) ?: 0
+        parts += "${breakdownLabel(slice.key)} $pct%"
     }
+    return parts.joinToString(" · ")
 }
 
 @Composable
-private fun UsageLine(label: String, value: String, strong: Boolean = false) {
+private fun UsageLine(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = DlSize.rowSingle - DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             label,
-            color = Dsh.labelSecondary,
-            style = if (strong) DshType.bodyStrong else DshType.body,
+            color = Dsh.labelPrimary,
+            style = DshType.body,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            value,
-            color = Dsh.labelPrimary,
-            style = (if (strong) DshType.bodyStrong else DshType.body).tabularNums(),
-            maxLines = 1,
-        )
+        Text(value, color = Dsh.labelSecondary, style = DshType.body.tabularNums(), maxLines = 1)
     }
 }
 
 @Composable
 private fun breakdownLabel(key: String): String = when (key) {
-    "system" -> DshS.systemPrompt
+    "system" -> DshS.translation("usageSystemShort")
     "tools" -> DshS.tools
-    "messages" -> DshS.chatMessages
+    "messages" -> DshS.translation("usageMessagesShort")
     else -> key
-}
-
-@Composable
-private fun breakdownColor(key: String): Color = when (key) {
-    "system" -> Dsh.systemAccent
-    "tools" -> Dsh.toolsAccent
-    else -> Dsh.brand400
 }
 
 private fun formatPercent(rate: Double?): String =

@@ -136,7 +136,12 @@ internal fun SessionGoalStatus(
         onClear = managed?.let { { confirmClear = true } },
     )
     if (editing && goal != null) {
-        GoalEditDialog(goal, saving = busy, onDismiss = { editing = false }) { objective, rounds ->
+        GoalEditDialog(
+            goal,
+            saving = busy,
+            onDismiss = { editing = false },
+            onClear = { control.clearGoal { ok -> if (ok) editing = false } },
+        ) { objective, rounds ->
             control.editGoal(objective, rounds) { ok -> if (ok) editing = false }
         }
     }
