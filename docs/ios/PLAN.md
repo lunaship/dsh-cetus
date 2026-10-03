@@ -815,6 +815,7 @@ RFC 必须写清以下内容：
 | I1.3 | #76 | PLAN 升为已采纳 v1.3；RFC 0002：`sealed` 仅对象、AAD 域分离 `token|`/`content|`；新增 `testdata/push/content/` 占位。 |
 | I2.1 | #77 | 工程骨架：`project.yml`、空 `NavigationStack`、说明文案与隐私清单、三个扩展占位、六个本地包。CI `iOS build`（macos-26，Debug）通过。 |
 | I2.2 | #78 | 三条工作流：`ci-ios.yml`（Debug+Release 构建、单测、空页面截图校验、swift-format）、`ios-regen-screenshots.yml`（空页面基线）、`ci-push.yml`（仅 `push/`）。PR 上三个检查为 iOS build、iOS unit tests、iOS screenshot check。squash `37692d3`。 |
+| I2.3 | #79 | 主题 token：`AccentColor`、`BrandFill`（深色暂定 `#4C66E6`，只在该色集）、`DLColor`、`DLFont`、`TokenUsageTests`。三个 iOS 检查通过。squash `403a646`。 |
 
 
 ---
