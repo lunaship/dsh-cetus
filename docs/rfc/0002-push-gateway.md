@@ -1,0 +1,313 @@
+# DeepLinks 推送网关 RFC（DLPUSH/1）
+
+> 状态：草案（阶段 1 / I1.3）——停下等维护者安全审查后再进入 I6.2 实现。  
+> 写入：`docs/rfc/0002-push-gateway.md`  
+> 来源：`docs/ios/PLAN.md` 阶段 6；格式参照 `docs/rfc/0001-dlp1-remote-pipe.md`。  
+> 执行者须知：本文 §5 为协议合同（逐字节），§6–§8 为实现与红线。**有歧义时以 §5 为准，并在 PR 描述里提出，不要自行发明。**
+
+---
+
+## 1. 一句话结论
+
+手机离开 App 后，由用户电脑上的插件把**端到端加密**的通知密文交给开源、无状态的推送网关；网关只负责把密文转给 APNs。网关看不到通知内容，也没有任何路径向电脑发命令。批准与回复仍走原来的局域网 / Tailscale / DLP/1 中继。
+
+---
+
+## 2. 为什么要做
+
+- iOS 后台会断开 SSE；没有推送就无法在离开 App 后提示审批、提问、完成、失败。
+- 不用 OneSignal 等第三方：内容与设备身份不应交给闭源中介。
+- 官方网关可自建替换；默认关闭，用户主动开启。
+
+---
+
+## 3. 威胁模型与目标
+
+**信任边界**
+
+| 角色 | 可信度 | 可见 / 可做 |
+|---|---|---|
+| 插件（用户电脑） | 用户侧可信 | 持有端到端密钥 `K`；构造明文；持有封装后的 APNs token（打不开） |
+| 推送网关 | **不可信** | 打开 HPKE 封装拿到 APNs token；向 APNs 发密文；看不到明文；不能伪造可解密通知 |
+| APNs | 不可信中转 | 看到通用标题 / 正文模板 + 密文字段；看不到 `K` |
+| 手机 App / NSE | 用户侧可信 | 持有 `K`；解密并展示；点击后走既有 HostClient |
+
+**网关被攻破的最坏结果**：通知丢失或延迟；泄露「某设备在某时刻收到推送」的元数据；**看不到内容**；**伪造不了**可被 NSE 解密的通知（没有 `K`）。
+
+**不做**
+
+- 网关不存用户数据、不提供注册库、不向电脑下发任何命令。
+- 通知栏不提供「允许 / 拒绝」动作（只能打开 App）。
+- 锁屏不显示命令、文件名或会话标题原文（标题由本机按 `sessionRef` 查）。
+
+---
+
+## 4. 架构
+
+```text
+插件（用户电脑）──① 加密内容 + 封装 token──▶ 推送网关（官方，开源）──② HTTP/2 + JWT──▶ APNs ──③──▶ iPhone（NSE 解密）
+手机 ──④ 批准 / 回复（局域网 / Tailscale / 中继）──▶ 插件
+```
+
+1. 插件在设备**没有**活跃前台 SSE 时，才为该设备发推送。
+2. 推送通道只有下行。
+3. Live Activity 更新走同一网关（`kind: la-*`），content-state 只含非敏感字段。
+
+部署（维护者，阶段 9）：香港服务器；域名 `push.dshlinks.com`；Caddy TLS 反代到本机端口；与 `relay.dshlinks.com` 同机时必须是独立进程与独立 systemd 服务。
+
+---
+
+## 5. 协议合同（DLPUSH/1）
+
+### 5.1 版本与标识
+
+- 协议名：`dlpush/1`（出现在 HPKE `info` 与 AES-GCM AAD 中）。
+- 明文 JSON 字段 `v` 固定为整数 `1`。
+- 网关 HTTP API 前缀：`/v1/`。
+
+### 5.2 密钥
+
+| 密钥 | 生成方 | 存放 | 用途 |
+|---|---|---|---|
+| 网关 HPKE 密钥对（X25519），带 `kid` | 维护者 | 私钥只在网关；公钥在 `GET /v1/keys` 公开，并编进 App | 手机把 APNs token 封装给网关 |
+| 端到端内容密钥 `K`（32 字节） | 手机，每台设备一把 | 手机 Keychain（与 NSE 共享 access group）；插件 state（随设备吊销删除） | 加密通知内容 |
+| APNs `.p8` | 维护者在 Apple 后台生成 | 只在网关的环境变量 / 0600 文件 | 网关向 APNs 签 JWT |
+
+### 5.3 封装 token（手机 → 插件 → 网关）
+
+手机构造明文对象（UTF-8 JSON，键顺序不限；实现序列化后作为 HPKE plaintext）：
+
+```json
+{
+  "apnsToken": "<hex 或 base64 的 device token 字符串，实现统一为小写 hex>",
+  "env": "sandbox" | "production",
+  "bundleId": "<App bundle id>",
+  "laToken": "<可选，Live Activity push-to-start token，缺省则省略键>"
+}
+```
+
+- `sealed = HPKE.Seal(gatewayPub[kid], info = "dlpush/1 token", plaintext = UTF8(JSON))`
+  - 算法套件：CryptoKit HPKE（X25519 + HKDF-SHA256 + AES-128-GCM 或与 `circl` 对齐的套件；**测试向量锁定具体 KEM/KDF/AEAD ID**，见 `testdata/push/`）。
+  - `info` 字节为 ASCII：`dlpush/1 token`（含空格）。
+- 插件只保存 `{ gateway, kid, sealed, k, prefs }` 中的 `sealed` 与 `k` 等；**打不开** `sealed`。
+- 网关用 `kid` 对应私钥打开；Go 端用 Cloudflare `circl/hpke`（BSD-3）。
+
+### 5.4 内容加密（插件 → 网关 → APNs → NSE）
+
+```text
+ct = AES-256-GCM(
+  key   = K,                    // 32 bytes
+  nonce = random 12 bytes,
+  aad   = "dlpush/1|" || deviceId,   // ASCII 前缀 + 设备 ID 原文字节
+  plaintext = UTF8(JSON)
+)
+```
+
+传输时 `ct` 为 `nonce || ciphertext || tag` 的 base64（标准，无换行）；字段名 `e`。
+
+明文 JSON：
+
+```json
+{
+  "v": 1,
+  "type": "approval" | "question" | "completed" | "failed" | "stopped",
+  "sessionId": "<string>",
+  "title": "<string，可给 NSE 换标题；锁屏模板仍用通用文案>",
+  "tool": "<可选，仅 approval>",
+  "ts": <unix 秒，整数>
+}
+```
+
+NSE 规则：
+
+1. 解密成功且 `now - ts ≤ 15 * 60`：用明文替换通知标题与正文；`tool` **不**在锁屏展示。
+2. `ts` 超过 15 分钟：显示通用文案。
+3. 解密失败：显示「DeepLinks 有新的任务动态」。
+
+### 5.5 网关 HTTP 接口
+
+#### `POST /v1/push`
+
+请求 JSON：
+
+```json
+{
+  "kid": "<string>",
+  "sealed": "<base64 HPKE ciphertext>",
+  "kind": "alert" | "la-update" | "la-start" | "la-end",
+  "ct": "<base64 nonce||ciphertext||tag>",
+  "collapseId": "<string，≤ 64 字节建议>",
+  "priority": "high" | "normal",
+  "expiresIn": <秒，正整数>
+}
+```
+
+响应：
+
+| 状态 | 含义 |
+|---|---|
+| 200 | 已接受并转交 APNs（或假服务器） |
+| 400 | 请求格式 / `kid` / 解密 sealed 失败 |
+| 410 | APNs 报告 token 失效（`BadDeviceToken` / Unregistered）；插件应删除该设备 `sealed` |
+| 429 | 限流 |
+
+无其他成功码；响应体可含 `{ "ok": true }` 或 `{ "error": "<短码>" }`，**不得**回显 `sealed` / `ct` / token。
+
+#### `GET /v1/keys`
+
+```json
+{
+  "keys": [
+    { "kid": "<current>", "publicKey": "<base64 raw 32-byte X25519>" },
+    { "kid": "<previous>", "publicKey": "<base64 ...>" }
+  ]
+}
+```
+
+轮换期两把并存；无上一把时数组长度 1。
+
+#### `GET /healthz`
+
+```json
+{ "ok": true, "version": "<semver or git describe>" }
+```
+
+**禁止**：任何注册、查询设备、列出 token、持久化用户数据的接口。网关无数据库。
+
+### 5.6 APNs 请求（网关构造）
+
+#### `kind: alert`
+
+- Header：`apns-push-type: alert`
+- `apns-priority`: `10`（审批、提问）或 `5`（完成 / 失败 / 停止）；与请求 `priority` 映射：`high`→10，`normal`→5
+- `apns-collapse-id` = 请求 `collapseId`
+- `apns-expiration` = now + `expiresIn`
+- Body：
+
+```json
+{
+  "aps": {
+    "alert": { "title": "DeepLinks", "body": "有新的任务动态" },
+    "mutable-content": 1,
+    "thread-id": "<会话哈希，稳定短串>",
+    "interruption-level": "time-sensitive"
+  },
+  "e": "<ct base64>",
+  "k": "<kid>"
+}
+```
+
+`interruption-level: time-sensitive` **只**给 `type` 为 `approval` / `question` 的推送（插件侧在构造前决定）；完成类用默认级别且可不带该字段。需要 App 开启 Time Sensitive Notifications 能力。
+
+#### `kind: la-update` / `la-start` / `la-end`
+
+- `apns-push-type: liveactivity`
+- topic：`<bundleId>.push-type.liveactivity`
+- content-state **只允许**：
+
+```json
+{
+  "state": "<string enum，实现锁定>",
+  "step": <int>,
+  "startedAt": <unix 秒>,
+  "waitingCount": <int>,
+  "sessionRef": "<不透明序号>"
+}
+```
+
+标题由 Widget 从 App Group 按 `sessionRef` 本地查找。命令、文件名不得出现。
+
+### 5.7 防滥用与隐私
+
+- 限流键：`sha256(sealed)`（内存计数器）。默认：每分钟 10 条、每小时 120 条（环境变量可配）。
+- 日志只记：计数、HTTP 状态、耗时、`kind`、限流命中。**不记** `sealed`、`ct`、APNs token、客户端 IP、`deviceId`、明文。
+- APNs 410 / `BadDeviceToken`：网关对插件原样回 410。
+
+### 5.8 密钥轮换
+
+1. 网关新增密钥对 → `GET /v1/keys` 同时返回新旧。
+2. 新版 App 用新 `kid` 重新封装并 `POST .../push/register`。
+3. 旧 `kid` 保留至少 **90 天**再下线。
+4. `.p8` 怀疑泄露：Apple 后台吊销并重建；网关换环境变量重启。
+
+### 5.9 可自建
+
+Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」设置可填自定义网关地址与公钥（Debug / 自编译默认可见；官方构建隐藏）。
+
+---
+
+## 6. 插件侧规则（I6.3，对 main，安全审查后合并）
+
+### 6.1 文件与能力
+
+- 新文件 `src/push-sink.js`：订阅主机事件差分；无前台 SSE 才推送。
+- `collapseId = deviceId + sessionId + type`；同一会话 30 秒内最多一条完成类通知。
+- 重试：网络错误指数退避最多 3 次；410 删 `sealed`；429 退避。
+- `pluginCapabilities()` 增加 `push: { v: 1 }`。
+
+### 6.2 手机 API
+
+- `POST /dsh-link/mobile/push/register`：body `{ gateway, kid, sealed, k, prefs }`。`k` 仅在证书固定的 HTTPS 上传输。
+- `DELETE /dsh-link/mobile/push/register`：注销。
+- 写入经设备变更闸门；吊销设备时同步删除该设备推送数据。
+
+合同细节写入 `docs/MOBILE_SYNC_CONTRACT.md`「推送」节；`COMPATIBILITY.md` / `PRIVACY.md` 同步边界说明。
+
+### 6.3 面板
+
+「手机连接」每台设备显示「推送：已开启 / 未开启」，可一键关闭。
+
+---
+
+## 7. App / NSE 规则（I6.4）
+
+1. `registerForRemoteNotifications` → 取 `GET /v1/keys` → HPKE 封装 → 生成 `K` 存 Keychain → 调插件注册。
+2. 设置 7.4：总开关默认关；开启前说明页写明内容端到端加密、网关看不到。
+3. 通知分类：`approval`、`question`、`completed`、`failed`；只有「打开」动作。
+4. 点击：打开对应会话；不在列表则刷新；仍找不到则停首页并提示。
+5. `hiddenPreviewsBodyPlaceholder` = `DeepLinks · 有新的任务动态`。
+6. NSE：**不联网**、不读设备 token；只读共享 Keychain 的 `K`；控制内存与耗时。
+
+---
+
+## 8. 执行红线
+
+1. 网关无状态、无用户数据库；禁止为「方便调试」记录密文或 token。
+2. `.p8` 与 HPKE 私钥权限 0600，属主为服务用户；不进 git。
+3. 中继错误码与网关错误码均不得诱导 App 删除局域网凭据；删推送 `sealed` 只认 410 / 用户关闭 / 设备吊销。
+4. 不在通知或 Live Activity 上提供批准按钮。
+5. 测试向量与 iOS / 插件共用 `testdata/push/*.json`；改合同先改本 RFC 与向量。
+
+---
+
+## 9. 实现指引（摘要）
+
+| 组件 | 位置 | 依赖（许可证） |
+|---|---|---|
+| 网关 | `push/cmd/dlpush`、`internal/{hpke,apns,limit,http}` | `sideshow/apns2`（MIT）、`cloudflare/circl`（BSD-3） |
+| 插件 | `src/push-sink.js` + 注册路由 | 无新 npm 加密依赖（用 Node crypto） |
+| iOS | App + `Extensions/NotificationService` | CryptoKit |
+
+网关配置：`DLPUSH_LISTEN`、`DLPUSH_HPKE_KEYS`、`APNS_KEY_P8_PATH`、`APNS_KEY_ID`、`APNS_TEAM_ID`、`APNS_BUNDLE_ID`、`DLPUSH_RATE_*`。
+
+门禁（在 `push/`）：`gofmt -l . && go vet ./... && go build ./... && go test ./... -race`。
+
+---
+
+## 10. 验收清单
+
+- [ ] HPKE 向量：iOS Seal ↔ Go Open 互通
+- [ ] AES-GCM 向量：插件加密 ↔ NSE 解密；过期与失败兜底
+- [ ] 限流 429；APNs 假服务器 410 透传
+- [ ] 前台 SSE 抑制推送；collapse 合并；吊销清理
+- [ ] 日志脱敏检查
+- [ ] 模拟器 `simctl push` 验证 NSE（无需付费账号）
+- [ ] 真实 APNs 送达留到阶段 9
+
+---
+
+## 11. 变更记录
+
+| 日期 | 变更 |
+|---|---|
+| 2026-10-03 | I1.3 初稿：从 PLAN v1.1 阶段 6 抽出合同；待安全审查 |
