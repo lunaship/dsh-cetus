@@ -1,6 +1,7 @@
 # DeepLinks iOS：从 0 到 1 执行方案
 
-> 状态：已采纳 v1.1（2026-10-03）。
+> 状态：已采纳 v1.2（2026-10-03）。
+> v1.2 变更：HPKE 算法组合定为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305 并规定测试向量；补 7.6 对话默认；设计稿去掉“输入配对码”；RFC 0002 先留在 `ios/main`，阶段 6 随插件 PR 一起进 main。
 > v1.1 变更：I1.5 改为 HTML 设计稿（I1.5a 已完成）+ 模拟器截图验收（I1.5b）；决策栏按钮改为实色；深色 BrandFill 暂定 `#4C66E6`；推送网关部署到维护者的香港服务器；新增执行规则第 11 条（agent 无法本地编译 iOS）。
 > 写给两类读者：维护者（做决定、付费、审核）和执行 PR 的 agent（按编号领取）。
 > 基线：`lunaship/dsh-links` main @ `7b9c164`（v4 重设计已合入）。
@@ -514,6 +515,7 @@ Figma 无法由 agent 操作，改为两步：
 - 7.3 连接诊断：每项一行，SF Symbol 表示状态，副标题给原因或建议；顶栏“复制结果”（只复制枚举与数字）。
 - 7.4 通知：总开关、“需要审批时”、“任务完成时”、Live Activity 开关、“通过官方网关推送”说明行（阶段 6）。
 - 7.5 外观：主题（跟随系统 / 浅色 / 深色）。字号跟随系统动态字体，不做 App 内滑杆（平台差异）。
+- 7.6 对话默认：新会话的智能体预设、权限、默认模型；运行中再次发送的方式（排队发送 / 引导 / 插话等，选项以插件声明为准）。接口与 Android 相同。（v1.1 补：原文漏写）
 - 7.7–7.11 模型与余额、供应商、更换 API 密钥（空输入框，不显示旧密钥）、获取模型、余额提醒：接口与 Android 相同。
 - 7.12 会话记录、7.13 关于（版本号、开源许可）、7.14 法律文档、7.15 上次崩溃（MetricKit 诊断，本机查看、用户主动导出）。
 
@@ -594,6 +596,19 @@ RFC 必须写清以下内容：
 - 手机：`sealed = HPKE.Seal(gatewayPub[kid], info="dlpush/1 token", plaintext={apnsToken, env: "sandbox"|"production", bundleId, laToken?})`，用 CryptoKit 的 HPKE（iOS 17+ 可用）。
 - 插件只保存 `sealed`，打不开它。
 - 网关：用 `kid` 对应的私钥打开；Go 端用 Cloudflare `circl/hpke`（BSD-3）。
+- **算法组合（已定，v1）**：RFC 9180 base 模式（`mode_base`，0x00），
+  - KEM：DHKEM(X25519, HKDF-SHA256)，`0x0020`
+  - KDF：HKDF-SHA256，`0x0001`
+  - AEAD：ChaCha20-Poly1305，`0x0003`
+  - CryptoKit：`HPKE.Ciphersuite.Curve25519_SHA256_ChachaPoly`（系统预置组合，不自拼）；Go：`hpke.NewSuite(hpke.KEM_X25519_HKDF_SHA256, hpke.KDF_HKDF_SHA256, hpke.AEAD_ChaCha20Poly1305)`。
+  - `info` = UTF-8 `"dlpush/1 token"`；`aad` = UTF-8 `"dlpush/1|" + kid`；每个上下文只封装一条消息（序号 0）。
+  - 线上格式：`{"v":1,"kid":"…","enc":"<base64url，32 字节>","ct":"<base64url>"}`，无填充 base64url。
+  - 算法组合与 `kid` 绑定：将来换组合（如 CryptoKit 的 X-Wing 后量子组合）只能发新 `kid`，不在同一 `kid` 下协商。网关遇到未知 `kid` 返回 400，不尝试其他组合。
+  - 选择理由：两端都有现成实现、RFC 9180 附录 A.2 有该组合的官方测试向量、ChaCha20 在所有 CPU 上都是常数时间。
+- **共享测试数据** `testdata/push/hpke/`：
+  1. `rfc9180-a2-base.json`：RFC 9180 附录 A.2.1 的官方向量。Go 端完整验证（含固定临时密钥的 seal）；CryptoKit 无法注入临时密钥，只用 `skRm + enc` 验证 open。
+  2. `dlpush-v1-*.json`：用本项目的 `info / aad / 线上格式` 由 Go 生成的向量，iOS 端验证 open 得到相同明文。
+  3. 反向用例：CI 中 iOS 单测 seal 一条，写入产物，由 Go 测试 open（或在 iOS 测试里内嵌 Go 预先 open 的期望结果）；以及篡改 `enc / ct / aad / kid` 必须失败的负例。
 
 **内容加密**
 

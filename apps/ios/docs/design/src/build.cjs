@@ -190,7 +190,7 @@ S['1.2-welcome']=()=>`${sbar()}
 </div>
 <div class="abs" style="left:20px;right:20px;bottom:44px">
  <div class="big brand" style="height:54px;border-radius:27px">${I('IoQrCodeOutline',22,'#fff')}扫码配对</div>
- <div class="row hl acc" style="justify-content:center;gap:36px;margin-top:18px;font-weight:500"><span>从相册识别</span><span>输入配对码</span></div>
+ <div class="row hl acc" style="justify-content:center;gap:36px;margin-top:18px;font-weight:500"><span>从相册识别</span></div>
  <div class="row sh l2" style="justify-content:center;margin-top:16px">先看看演示</div>
  <div class="cap l3" style="text-align:center;margin-top:18px">非官方社区项目 · 与 DeepSeek 无隶属关系</div>
 </div>${hi()}`;
@@ -208,7 +208,7 @@ ${sbar(true)}
 <div class="abs fn" style="left:0;right:0;top:568px;text-align:center;color:rgba(255,255,255,.75)">二维码在 dsh 的「手机连接」面板里</div>
 <div class="abs row" style="left:0;right:0;bottom:44px;justify-content:center">
  <div class="glass row" style="height:50px;border-radius:25px;padding:0 6px;background:rgba(60,60,64,.45);color:#fff">
-  <div class="row sh" style="gap:7px;padding:0 14px;font-weight:600">${I('IoImagesOutline',19,'#fff')}从相册选择</div><div style="width:.5px;height:22px;background:rgba(255,255,255,.3)"></div><div class="row sh" style="gap:7px;padding:0 14px;font-weight:600">${I('IoKeypadOutline',19,'#fff')}输入配对码</div></div></div>${hi('#fff')}`;
+  <div class="row sh" style="gap:7px;padding:0 14px;font-weight:600">${I('IoImagesOutline',19,'#fff')}从相册选择</div></div></div>${hi('#fff')}`;
 
 /* ---------- 8.x Live Activity (lock screen) ---------- */
 S['8.4-live-activity']=(th)=>{const d=th==='dark';const card=d?'rgba(30,30,34,.55)':'rgba(255,255,255,.55)';const tx=d?'#fff':'#000';const t2=d?'rgba(235,235,245,.6)':'rgba(60,60,67,.65)';
@@ -250,7 +250,7 @@ return `<div class="abs" style="inset:0;background:${d?'linear-gradient(#24262d,
 S['brandfill-candidates']=()=>{const c=[['#4F6AEB','4.57'],['#4C66E6','4.83 · 推荐'],['#4A63E0','5.06'],['#3F5BD6','5.71 · 与浅色同色']];
 return `${sbar()}<div class="abs lt" style="left:20px;top:100px">深色主按钮</div><div class="abs sh l2" style="left:20px;right:20px;top:146px">白字对比度都 ≥ 4.5:1。在 iPhone 深色模式、亮度中等时全屏看，选最舒服的一个。</div>
 <div class="abs" style="left:20px;right:20px;top:210px">${c.map(([h,r])=>`<div style="margin-bottom:22px"><div class="row fn l2" style="margin-bottom:8px"><span class="mono f1">${h}</span><span>${r}</span></div><div class="row" style="gap:10px"><div class="big gray f1">拒绝</div><div class="big f1" style="background:${h};color:#fff">允许一次</div></div></div>`).join('')}
-<div class="fn l2" style="margin-top:6px">参照：强调色（文字、图标）</div><div class="row hl" style="gap:24px;margin-top:8px;color:#8B9DFF"><span>从相册识别</span><span>输入配对码</span>${I('IoSettingsOutline',22,'#8B9DFF')}</div></div>${hi()}`};
+<div class="fn l2" style="margin-top:6px">参照：强调色（文字、图标）</div><div class="row hl" style="gap:24px;margin-top:8px;color:#8B9DFF"><span>从相册识别</span>${I('IoSettingsOutline',22,'#8B9DFF')}</div></div>${hi()}`};
 
 const order=['1.2-welcome','1.3-scan','2.1-home','4.1-chat-running','4.3-chat-approval','4.4-chat-question','6.1-changes','6.2-diff','7.1-settings','8.4-live-activity','8.5-dynamic-island','brandfill-candidates'];
 let html=`<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>`;

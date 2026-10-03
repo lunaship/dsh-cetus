@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**审批瀑布**
+
+- DSH `0.1.7-alpha.1` 上复验通过：隔离 host + 临时探针证实 `approval/request` 与 `user-questions/request` 都会触发；手机 API 可提交「允许一次」与澄清答案，写文件在批准后完成。默认 `workspace-write` 下工作区写入未出审批；`read-only` 下 `write` 会出审批。详见 `docs/COMPATIBILITY.md`。
+
 **重设计 v4**
 
 - 设计稿、页面截图和执行方案放在 `docs/redesign-v4/`。proposal 002 的「自行合并到 main」自 v4 起作废，见该目录 `PLAN.md` 第 1 节。
