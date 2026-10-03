@@ -1,9 +1,11 @@
 # DeepLinks iOS：从 0 到 1 执行方案
 
-> 状态：已采纳（2026-10-03）。
+> 状态：已采纳 v1.1（2026-10-03）。
+> v1.1 变更：I1.5 改为 HTML 设计稿（I1.5a 已完成）+ 模拟器截图验收（I1.5b）；决策栏按钮改为实色；深色 BrandFill 暂定 `#4C66E6`；推送网关部署到维护者的香港服务器；新增执行规则第 11 条（agent 无法本地编译 iOS）。
 > 写给两类读者：维护者（做决定、付费、审核）和执行 PR 的 agent（按编号领取）。
 > 基线：`lunaship/dsh-links` main @ `7b9c164`（v4 重设计已合入）。
 > 页面编号（1.x–8.x）与 `docs/redesign-v4/design-v4.html` 一一对应；iOS 子项编号用 `I<阶段>.<序号>`。
+> iOS 设计稿：`apps/ios/docs/design/`（PNG + `README.md`），与本文冲突时以本文为准并在 PR 中指出。
 
 ---
 
@@ -88,6 +90,10 @@
 8. **双语**：所有文案进 String Catalog（`Localizable.xcstrings`），简体中文与英文同时提交。
 9. **进度记录**：每合并一个 PR，在本文第 11 节追加一行（子项、PR、结论或偏差）。
 10. **不发布**：不改版本号、不打 tag、不建 Release，只在 CHANGELOG“未发布（main）”下记一行。
+11. **编译环境**：云端 agent 运行在 Linux，没有 Xcode，无法本地编译、测试或截图 iOS 代码。
+    - 以 `ci-ios.yml`（macOS runner）的结果作为唯一门禁；CI 不绿不合并，不得在 PR 里声称“本地已通过”。
+    - 每次 push 后等待 CI 结果再继续；失败时读 CI 日志修复，计入第 5 条的 3 次上限。
+    - 需要真机或交互调试的事项，写进 PR 的“需维护者在 Mac 上验证”清单，然后停下。
 
 ---
 
@@ -223,7 +229,7 @@ macOS runner 计费分钟是 Linux 的 10 倍：截图校验只在改了 `apps/i
 
 ### I0.3 下载设计资源（维护者）
 
-1. 从 Apple Design Resources 下载 iOS 27 的 Figma（或 Sketch）设计套件。
+1. （可选）从 Apple Design Resources 下载 iOS 27 设计套件，仅作对照；本项目设计稿不在 Figma 上画（见 I1.5）。
 2. 下载 SF Symbols App。
 3. 安装 Icon Composer（随 Xcode 提供）。
 
@@ -259,15 +265,24 @@ macOS runner 计费分钟是 Linux 的 10 倍：截图校验只在改了 `apps/i
 
 iOS 协作规则：目录契约、依赖方向、门禁命令、红线（第 3 节）、截图规则、“UI 改动必须对应页面编号”。
 
-### I1.5 高保真设计稿（维护者 + agent 协作）
+### I1.5 设计稿（HTML 近似稿 + 模拟器验收）
 
-1. 在 iOS 27 Figma 套件上画 10 个关键页面，每页浅色 / 深色：
-   首页（2.1）、对话运行中（4.1）、待审批（4.3）、回答问题（4.4）、改动列表（6.1）、diff（6.2）、设置首页（7.1）、欢迎配对（1.2）、扫码（1.3）、Live Activity（锁屏 + 灵动岛）。
-2. 导出 PNG，用“照片”传到 iPhone 上全屏看，检查：字号是否舒适、品牌蓝在玻璃上是否清楚、深色主按钮对比度。
-3. 确定深色模式 `BrandFill` 的最终色值（要求：白色 17pt 中粗体文字对比度 ≥ 4.5:1）。
-4. 设计稿放 `apps/ios/docs/design/`，文件名带页面编号。
+Figma 无法由 agent 操作，改为两步：
 
-**停下**：维护者审核 I1.1–I1.5，通过后进入阶段 2。
+**I1.5a HTML 近似稿（已完成，维护者验收）**
+
+1. 已交付到 `apps/ios/docs/design/`：1.2 欢迎、1.3 扫码、2.1 首页、4.1 运行中、4.3 待审批、4.4 回答问题、6.1 改动、6.2 diff、7.1 设置、8.4 锁屏 Live Activity，浅色 / 深色各一张，1206×2622（iPhone 17 Pro @3x）；另有 8.5 灵动岛状态评审图、总览图与 `brandfill-candidates--dark.png`。生成脚本在 `design/src/`。
+2. 维护者把 PNG 传到 iPhone 用“照片”全屏查看：字号、层级、信息量。
+3. 维护者在深色模式下比较 `brandfill-candidates--dark.png`，定深色 `BrandFill`（候选 `#4F6AEB` / `#4C66E6` / `#4A63E0` / `#3F5BD6`，白色 17pt 中粗体对比度均 ≥ 4.5:1）。未定之前用 `#4C66E6`。
+4. 用法约束（写进 `apps/ios/AGENTS.md`）：PNG 只定布局与层级；实现一律用系统组件、SF Symbols、动态字体与附录色板 token；**禁止从 PNG 取色或按像素复刻**。玻璃效果在 PNG 中是近似，以 I1.5b 为准。
+
+**I1.5b 模拟器截图验收（阶段 2 结束时，维护者验收）**
+
+1. 阶段 2 骨架完成后，由 CI（`ios-regen-screenshots.yml`）用演示数据为上面 10 个页面生成模拟器截图：浅色、深色、降低透明度、最大动态字体各一套。
+2. 截图与 I1.5a 并排放进 PR，逐页列出差异；差异只允许来自系统组件的真实表现。
+3. 维护者在真机（免费签名安装）上抽查玻璃可读性，确认后才进入阶段 3。
+
+**停下**：维护者审核 I1.1–I1.4 与 I1.5a，通过后进入阶段 2。
 
 ---
 
@@ -291,7 +306,7 @@ iOS 协作规则：目录契约、依赖方向、门禁命令、红线（第 3 �
 
 ### I2.3 主题与 token（`DLUI/Theme`）
 
-- Assets：`AccentColor`（浅 `#3F5BD6` / 深 `#8B9DFF`）、`BrandFill`（浅 `#3F5BD6` / 深 待 I1.5 定值）。
+- Assets：`AccentColor`（浅 `#3F5BD6` / 深 `#8B9DFF`）、`BrandFill`（浅 `#3F5BD6` / 深 `#4C66E6`，暂定，维护者在 I1.5a 定值）。
 - `DLColor`：只暴露语义名（`label`、`secondaryLabel`、`tertiaryLabel`、`background`、`groupedBackground`、`fill`、`wait`、`ok`、`err`、`accent`、`brandFill`），内部映射到系统色。
 - `DLFont`：`title`、`headline`、`body`、`meta`、`caption`、`mono(_:)`，全部基于动态字体文字样式。
 - 架构测试 `TokenUsageTests`：扫描 `App/` 与 `DLUI/` 源码，出现 `Color(red:`、`UIColor(red:`、`.font(.system(size:` 即失败（`DLUI/Theme` 目录除外）。
@@ -449,7 +464,7 @@ iOS 协作规则：目录契约、依赖方向、门禁命令、红线（第 3 �
 - `DLComposerView`（UIKit）：贴 `keyboardLayoutGuide`；结构：附件缩略图（输入框上方）→ 输入框 → 下方一行（“+”、模型 · 推理 chip、权限 chip、发送 / 停止 / 麦克风）。
 - 外层一个玻璃容器（`UIGlassEffect`，或 SwiftUI `GlassEffectContainer` 包装，以 spike 结论为准）；发送键用品牌色实心。
 - 草稿按主机落盘；发送途中被系统回收的消息回来后回填，不自动重发。
-- `DLDecisionBar`：与输入区同一个容器，用形变动画（`glassEffectID` / UIKit 对应动画）切换；内容：状态行 + 问题 + 命令块（实色底等宽）+ 按钮（左“拒绝”`.glass`，右“允许一次”`.glassProminent` + BrandFill）；提问：单选 / 多选 / 自己写答案，“上一题 / 跳过（仅可选题）/ 下一题”。
+- `DLDecisionBar`：与输入区同一个容器，用形变动画（`glassEffectID` / UIKit 对应动画）切换；内容：状态行 + 问题 + 命令块（实色底等宽）+ 按钮（左“拒绝”灰色填充 `.bordered`，右“允许一次”`.borderedProminent` + BrandFill；决策栏本身是玻璃，内部元素一律实色，不叠玻璃）；对话内容在决策栏出现时降到约 42% 不透明度；提问：单选 / 多选 / 自己写答案，“上一题 / 跳过（仅可选题）/ 下一题”。
 - 只处理手机能处理的最新一条（与 Android R3.1c 规则一致）；批准时 `.sensoryFeedback(.success)`。
 - 消息流在决策栏出现时整体降低不透明度（content layer dim），与 4.3 一致。
 
@@ -656,7 +671,10 @@ RFC 必须写清以下内容：
 
 ### I6.6 部署（维护者，阶段 9 开通账号后）
 
-1. 与中继同一台 VPS；域名 `push.dshlinks.com`；Caddy 自动签 TLS，反代到 `127.0.0.1:<端口>`。
+1. 部署在维护者的香港服务器（大陆延迟低、可与 APNs 保持 HTTP/2 长连接、无需 ICP 备案）；域名 `push.dshlinks.com`；Caddy 自动签 TLS，反代到 `127.0.0.1:<端口>`。
+   - 若中继 `relay.dshlinks.com` 也在这台机器：网关是独立进程与独立 systemd 服务，各自设 `MemoryMax`，健康检查分开，任何一方崩溃不影响另一方。
+   - 上线前从大陆家宽与移动网络各测一次 `mtr push.dshlinks.com`。
+   - 备选：网关核心逻辑保持“无状态 + 可替换 APNs 发送层”，日后可增加 Cloudflare Workers 版本作为第二地址；现阶段不做。插件发送失败只重试与退避，最终静默放弃，不影响主流程。
 2. systemd 服务；`.p8` 与 HPKE 私钥放 `/etc/dlpush/`，权限 0600，属主为服务用户。
 3. 监控：`/healthz` 外部探活；APNs 失败率、429 次数告警。
 4. 备份：只需要备份 `.p8` 与 HPKE 私钥（离线保存）；网关本身无数据。
@@ -766,7 +784,7 @@ RFC 必须写清以下内容：
 | 子项 | PR | 结论 / 偏差 |
 |---|---|---|
 | I0.0 | #65 | 方案原文放入 `docs/ios/PLAN.md`，顶部状态改为已采纳（2026-10-03），其余未改。PR 目标 `ios/main`。Node gates、Go gates、DLP/1 end to end 全绿；Android 工作流不触发。squash 合并为 `1cd0b5d`。 |
-| I0.1 | | |
+| I0.1 | #66（合入 main） | **触发**。DSH `0.1.7-alpha.1` 上 `approval/request` 与 `user-questions/request` 均被调用；手机可提交「允许一次」与澄清答案。默认 `workspace-write` 下工作区写入约 45 秒无审批；`read-only` 下 `write` 稳定触发。结论写入 main 的 `docs/COMPATIBILITY.md`。 |
 
 ---
 
@@ -825,7 +843,8 @@ RFC 必须写清以下内容：
 - 系统导航栏、工具栏、`.sheet`、`Menu`、`alert`、`confirmationDialog`（自动带玻璃，不额外处理）。
 - 自定义玻璃只有两处：输入区（`DLComposerView`）与决策栏（`DLDecisionBar`），共用一个容器。
 - 浮在相机画面上的关闭按钮。
-- 按钮样式：主操作 `.glassProminent`（BrandFill），次操作 `.glass`。
+- 按钮样式：独立浮在内容上的主操作用 `.glassProminent`（BrandFill），次操作用 `.glass`；**放在玻璃容器内部**（输入区、决策栏）的按钮用 `.borderedProminent`（BrandFill）/ `.bordered` 实色，不叠玻璃。
+- 同屏最多一个品牌实心按钮：首页给“新任务”，列表里的“允许一次”用 `.bordered` + accent tint。
 
 **禁止**
 
@@ -865,9 +884,9 @@ RFC 必须写清以下内容：
 
 | 时间点 | 事项 |
 |---|---|
-| 阶段 0 | 确认 I0.1 结论；装好 Xcode、XcodeGen；免费 Apple ID 登录；iPhone 开开发者模式；下载 iOS 27 设计套件 |
-| 阶段 1 | 审核 4 份文档与 10 页设计稿；定深色 BrandFill 色值 |
-| 阶段 2 | （可选）把 Mac 注册为 self-hosted runner |
+| 阶段 0 | 确认 I0.1 结论；装好 Xcode、XcodeGen；免费 Apple ID 登录；iPhone 开开发者模式 |
+| 阶段 1 | 审核 4 份文档；在 iPhone 上全屏看 I1.5a 设计稿；定深色 BrandFill 色值 |
+| 阶段 2 | I1.5b：对照模拟器截图，真机抽查玻璃可读性；（可选）把 Mac 注册为 self-hosted runner |
 | 阶段 5 | 确认 DLP/1 spike 选 A 还是 B |
 | 阶段 6 | 审核 RFC 0002 与插件推送 PR；生成网关 HPKE 密钥对 |
 | 阶段 9 | 开通开发者账号；建 App ID 与能力；生成 `.p8` 并离线备份；部署网关；建 App Store Connect 记录；提交 TestFlight 与审核 |
