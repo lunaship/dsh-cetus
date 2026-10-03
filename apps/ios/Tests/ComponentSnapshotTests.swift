@@ -11,39 +11,39 @@ final class ComponentSnapshotTests: XCTestCase {
     }
 
     func testInboxRow() {
-        assertSwiftUI(ComponentScenes.inbox, height: 160)
+        assertSwiftUI(ComponentSceneFactory.inbox, height: 160)
     }
 
     func testStatusSlot() {
-        assertSwiftUI(ComponentScenes.status, height: 80)
+        assertSwiftUI(ComponentSceneFactory.status, height: 80)
     }
 
     func testChip() {
-        assertSwiftUI(ComponentScenes.chip, height: 80)
+        assertSwiftUI(ComponentSceneFactory.chip, height: 80)
     }
 
     func testProcessLine() {
-        assertSwiftUI(ComponentScenes.process, height: 64)
+        assertSwiftUI(ComponentSceneFactory.process, height: 64)
     }
 
     func testCodeBlock() {
-        assertSwiftUI(ComponentScenes.code, height: 120)
+        assertSwiftUI(ComponentSceneFactory.code, height: 120)
     }
 
     func testEmptyState() {
-        assertSwiftUI(ComponentScenes.empty, height: 320)
+        assertSwiftUI(ComponentSceneFactory.empty, height: 320)
     }
 
     func testBanner() {
-        assertSwiftUI(ComponentScenes.banner, height: 120)
+        assertSwiftUI(ComponentSceneFactory.banner, height: 120)
     }
 
     func testComposer() {
-        assertUIKit(ComponentScenes.composer, height: 96)
+        assertUIKit(ComponentSceneFactory.composer, height: 96)
     }
 
     func testDecisionBar() {
-        assertUIKit(ComponentScenes.decision, height: 220)
+        assertUIKit(ComponentSceneFactory.decision, height: 220)
     }
 
     private func assertSwiftUI<V: View>(

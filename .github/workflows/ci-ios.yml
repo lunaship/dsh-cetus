@@ -83,6 +83,7 @@ jobs:
             -destination "$DEST" \
             -only-testing:DeepLinksTests/ModelsLoadTests \
             -only-testing:DeepLinksTests/TokenUsageTests \
+            -only-testing:DeepLinksTests/DemoFixturesTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
@@ -115,6 +116,7 @@ jobs:
             -destination "$DEST" \
             -skip-testing:DeepLinksTests/ModelsLoadTests \
             -skip-testing:DeepLinksTests/TokenUsageTests \
+            -skip-testing:DeepLinksTests/DemoFixturesTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

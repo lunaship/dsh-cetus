@@ -1,0 +1,40 @@
+{
+  "longText": "This line is intentionally long so the component shows truncation or wrapping instead of a short label.",
+  "inbox": {
+    "title": "Review the diff",
+    "workspace": "notes",
+    "time": "2:14 PM",
+    "status": "Waiting",
+    "preview": "Allow once to edit the README"
+  },
+  "status": {
+    "title": "Offline",
+    "meta": "Retry"
+  },
+  "chip": {
+    "title": "Allow once"
+  },
+  "process": {
+    "text": "Thought 6s · Read 4 files ›"
+  },
+  "code": {
+    "text": "git status"
+  },
+  "empty": {
+    "title": "No sessions",
+    "systemImage": "tray",
+    "message": "Sessions you start will show up here."
+  },
+  "banner": {
+    "text": "Offline. Messages will send when you reconnect."
+  },
+  "composer": {
+    "text": "Draft"
+  },
+  "decision": {
+    "status": "Waiting",
+    "question": "Allow this command once?",
+    "secondaryTitle": "Don't allow",
+    "primaryTitle": "Allow once"
+  }
+}
