@@ -252,7 +252,7 @@ private fun HomeInboxPage(
                         )
                     }
                 }
-                item(key = "home-balance") { HomeBalanceBanner(onOpenSettings = { actions.onOpenSettings() }) }
+                item(key = "home-balance") { HomeBalanceNotice(onOpenSettings = { actions.onOpenSettings() }) }
                 statusItems(sections.isEmpty())
                 if (activeWorkspace != null) {
                     item(key = "home-workspace-filter-chip") {

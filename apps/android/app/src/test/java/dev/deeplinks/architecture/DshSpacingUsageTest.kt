@@ -7,7 +7,7 @@ import org.junit.Test
  * 间距门禁（docs/visual-rules.md §4）。
  *
  * padding / spacedBy / PaddingValues / Spacer 里的裸 dp，以及 DshSpace.sN，
- * 只允许 4 的倍数，范围 4–32（0 表示不留白）。还没改完的文件见 [V4MigrationAllowlist]。
+ * 只允许 4 的倍数，范围 4–32（0 表示不留白）。
  */
 class DshSpacingUsageTest {
 
@@ -19,12 +19,11 @@ class DshSpacingUsageTest {
 
     @Test
     fun spacingStaysOnTheV4Scale() {
-        val root = V4MigrationAllowlist.mainSourceRoot()
+        val root = ArchitectureSources.mainSourceRoot()
         val violations = mutableListOf<String>()
-        for (file in V4MigrationAllowlist.kotlinFiles(root)) {
-            val rel = V4MigrationAllowlist.relative(root, file)
-            if (V4MigrationAllowlist.allows(rel)) continue
-            val text = V4MigrationAllowlist.codeLines(file).joinToString("\n")
+        for (file in ArchitectureSources.kotlinFiles(root)) {
+            val rel = ArchitectureSources.relative(root, file)
+            val text = ArchitectureSources.codeLines(file).joinToString("\n")
             val raw = spacingCall.findAll(text)
                 .flatMap { call -> rawDp.findAll(call.value) }
                 .map { it.groupValues[1].toDouble() }

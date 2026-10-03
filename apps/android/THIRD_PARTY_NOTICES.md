@@ -13,7 +13,6 @@ and `app/build.gradle.kts`.
 | ZXing Android Embedded | Apache-2.0 | https://github.com/journeyapps/zxing-android-embedded |
 | Coil | Apache-2.0 | https://github.com/coil-kt/coil |
 | OkHttp | Apache-2.0 | https://square.github.io/okhttp/ |
-| Kyant0 Backdrop + Shapes (frosted-glass top bar / composer, API 31+) | Apache-2.0 | https://github.com/Kyant0/AndroidLiquidGlass |
 | KaTeX 0.18.4 (bundled in APK assets, rendered via WebView) | MIT | https://github.com/KaTeX/KaTeX |
 | KaTeX fonts (bundled woff2) | SIL Open Font License 1.1 | https://github.com/KaTeX/KaTeX/tree/master/fonts |
 | Mermaid 11.17.2 (bundled in APK assets, rendered via WebView) | MIT | https://github.com/mermaid-js/mermaid |
@@ -62,8 +61,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY.
 Parts of the Android client are adapted from DSH Mobile
 (https://github.com/Clarklevis1995/dsh-mobile): the lazy-layout Markdown
 splitter (`native/util/MarkdownLazySplit.kt`), the streaming-delta frame
-coalescing idea (`native/StreamCoalescing.kt`), the frosted-glass backdrop
-usage (`native/DshTranslucentBar.kt`), the queue / goal / scheduled-task
+coalescing idea (`native/StreamCoalescing.kt`), the queue / goal / scheduled-task
 interaction model and the privacy-safe diagnostics shape
 (`core/PrivacySafeDiagnostics.kt`). Licensed under the MIT License:
 

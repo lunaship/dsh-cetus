@@ -1,7 +1,6 @@
 package dev.deeplinks.screenshot
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Spacer
 import dev.deeplinks.native.ComposerSuggestionsRow
 import dev.deeplinks.native.SessionMenuContent
 import dev.deeplinks.native.sessionMenu
@@ -9,14 +8,8 @@ import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
 import dev.deeplinks.native.ui.v4.DlDiffStat
 import dev.deeplinks.native.EllipsisOutline16
 import dev.deeplinks.native.ArrowLeftOutline16
-import dev.deeplinks.native.FilterLinesOutline16
 import dev.deeplinks.native.SettingsOutline16
 import dev.deeplinks.native.PlusOutline16
-import dev.deeplinks.native.ui.DshGlassCapsule
-import dev.deeplinks.native.ui.DshGlassCapsuleIcon
-import dev.deeplinks.native.ui.DshGlassCapsuleLabel
-import dev.deeplinks.native.ui.DshGlassCircle
-import dev.deeplinks.native.ui.HostStatusDot
 import dev.deeplinks.native.SparkleOutline16
 import dev.deeplinks.native.ArchiveBoxOutline16
 import androidx.compose.material3.Icon
@@ -70,7 +63,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -121,20 +113,15 @@ import dev.deeplinks.native.SettingsHome
 import dev.deeplinks.native.SettingsPageCanvas
 import dev.deeplinks.native.ui.DshListRow
 import dev.deeplinks.native.BranchOutline16
-import dev.deeplinks.native.StopFill16
 import dev.deeplinks.native.CloudOffOutline16
 import dev.deeplinks.native.DocumentCheckOutline16
 import dev.deeplinks.native.ListOutline16
 import dev.deeplinks.native.LockOutline16
 import dev.deeplinks.native.UploadOutline16
-import dev.deeplinks.native.ui.DshCardDivider
 import dev.deeplinks.native.ui.DshChipTone
-import dev.deeplinks.native.ui.DshGroupCard
 import dev.deeplinks.native.ui.DshPillButton
 import dev.deeplinks.native.ui.DshPillTone
-import dev.deeplinks.native.ui.DshSectionLabel
 import dev.deeplinks.native.ui.DshStatusChip
-import dev.deeplinks.native.ui.DshStatusIcon
 import dev.deeplinks.native.ui.DshPageNavigation
 import dev.deeplinks.native.ui.DshPageScaffold
 import dev.deeplinks.native.ui.DshSection
@@ -270,50 +257,6 @@ private fun InboxWall(english: Boolean = false) {
         DshStatusChip(if (english) "Done" else "完成", DshChipTone.Done)
         DshStatusChip(if (english) "Stopped" else "已停止", DshChipTone.Remote)
     }
-    SectionTitle(if (english) "Status icons — done / running / offline / needs unlock"
-        else "Status icons — 完成 / 进行中 / 离线 / 需解锁")
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        DshStatusIcon(DocumentCheckOutline16)
-        DshStatusIcon(ClockOutline16, container = Dsh.bgSubtle, content = Dsh.labelSecondary)
-        DshStatusIcon(CloudOffOutline16, container = Dsh.bgSubtle, content = Dsh.labelTertiary)
-        DshStatusIcon(LockOutline16, container = Dsh.bgSubtle, content = Dsh.warnLabel)
-        DshStatusIcon(UploadOutline16, container = Dsh.brandTint, content = Dsh.brand500)
-    }
-    SectionTitle(if (english) "Group card — white card + 32dp status rows + divider"
-        else "Group card — 白色分组卡 + 32dp 状态圈行 + 分隔线")
-    DshGroupCard {
-        DshListRow(
-            title = if (english) "Approval status sync" else "完善审批状态同步",
-            subtitle = if (english) "Running go test ./... · step 12" else "正在运行 go test ./... · 第 12 步",
-            value = if (english) "3 min" else "3 分钟",
-            iconSlot = 32.dp,
-        )
-        DshCardDivider()
-        DshListRow(
-            title = "2026-09-27_DSH-L",
-            subtitle = if (english) "Done · changed 79 files, gate all green" else "完成 · 改了 79 个文件，门禁全绿",
-            value = if (english) "Yesterday" else "昨天",
-            leading = { DshStatusIcon(DocumentCheckOutline16) },
-            iconSlot = 32.dp,
-        )
-        DshCardDivider()
-        DshListRow(
-            title = if (english) "Fix mobile model switch" else "修复手机模型切换",
-            subtitle = if (english) "Stopped · you interrupted this turn" else "已停止 · 你中断了这一轮",
-            value = if (english) "Thu" else "周四",
-            leading = {
-                DshStatusIcon(
-                    StopFill16,
-                    container = Dsh.bgSubtle,
-                    content = Dsh.labelSecondary,
-                    iconSize = 16.dp,
-                )
-            },
-            iconSlot = 32.dp,
-        )
-    }
-    SectionTitle(if (english) "Section label" else "分组标签")
-    DshSectionLabel(if (english) "Waiting for you" else "等你处理")
     SectionTitle(if (english) "Icons — new this round (doc / cloud / list / lock / upload / branch)"
         else "Icons — 本次新增（文档/云/列表/锁/上传/分支）")
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1179,7 +1122,7 @@ internal fun DevicesDarkEn() {
     ShotFrame(dark = true, english = true) { DevicesWall() }
 }
 
-/** 2026-10-02 简化：悬浮玻璃控件 + 建议行（继续 / 复核 / 查看改动 (N)）+ 底部操作行。 */
+/** 建议行（继续 / 复核 / 查看改动 (N)）。 */
 @Composable
 private fun GlassControlsWall(english: Boolean = false) {
     Column(
@@ -1189,24 +1132,6 @@ private fun GlassControlsWall(english: Boolean = false) {
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SectionTitle(if (english) "Glass capsule / circle (fallback surface in baseline)" else "悬浮玻璃胶囊 / 圆钮（基线为回退实色面）")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            DshGlassCapsule(onClick = {}, backdrop = null) {
-                DshGlassCapsuleLabel("DeepLinks")
-                Spacer(Modifier.width(6.dp))
-                HostStatusDot(true)
-            }
-            DshGlassCapsule(onClick = {}, backdrop = null) {
-                DshGlassCapsuleIcon(FilterLinesOutline16, "filter", onClick = {}, enabled = false)
-                DshGlassCapsuleIcon(SettingsOutline16, DshS.settingsTitle, onClick = {})
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DshGlassCircle(icon = ArrowLeftOutline16, contentDescription = "back", onClick = {}, backdrop = null)
-            DshGlassCircle(icon = EllipsisOutline16, contentDescription = "more", onClick = {}, backdrop = null)
-            DshGlassCircle(icon = PlusOutline16, contentDescription = "add", onClick = {}, backdrop = null, iconTint = Dsh.accentIcon)
-            DshGlassCircle(icon = PlusOutline16, contentDescription = "disabled", onClick = {}, enabled = false, backdrop = null)
-        }
         SectionTitle(if (english) "Composer suggestions (continue / review / view changes)" else "建议行（继续 / 复核 / 查看改动）")
         ComposerSuggestionsRow(
             online = true,
