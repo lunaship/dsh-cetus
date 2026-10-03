@@ -9,9 +9,9 @@ import org.junit.Test
 class ApprovalActionTest {
 
     @Test
-    fun `default settings - only reject action`() {
+    fun `default settings - no actions, only open the app`() {
         val kinds = approvalActionKinds(quickApprove = false, sdkInt = 34)
-        assertEquals(listOf(false), kinds)
+        assertEquals(emptyList<Boolean>(), kinds)
     }
 
     @Test
@@ -21,9 +21,9 @@ class ApprovalActionTest {
     }
 
     @Test
-    fun `quick approve on API 30 - only reject`() {
+    fun `quick approve on API 30 - no actions`() {
         val kinds = approvalActionKinds(quickApprove = true, sdkInt = 30)
-        assertEquals(listOf(false), kinds)
+        assertEquals(emptyList<Boolean>(), kinds)
     }
 
     @Test
