@@ -1,0 +1,252 @@
+{
+  "ok": true,
+  "sessionId": "sess-demo-login",
+  "messages": [
+    {
+      "id": "msg-1",
+      "seq": 1,
+      "role": "user",
+      "text": "帮我排查登录接口超时的问题",
+      "time": 1767225601000,
+      "type": "text",
+      "kind": "user"
+    },
+    {
+      "id": "msg-2",
+      "seq": 2,
+      "role": "context_injection",
+      "text": "<system-reminder>\nCurrent runtime context: workspace=dsh-demo\nAGENTS.md 已加载\n</system-reminder>",
+      "time": 1767225602000,
+      "type": "text",
+      "kind": "injection",
+      "labels": [
+        "runtime",
+        "AGENTS.md"
+      ]
+    },
+    {
+      "id": "reason-4",
+      "seq": 4,
+      "role": "reasoning",
+      "text": "先复现一次请求，确认超时发生在网关还是应用层。",
+      "time": 1767225603000,
+      "type": "reasoning",
+      "kind": "reasoning"
+    },
+    {
+      "id": "msg-5",
+      "seq": 5,
+      "role": "assistant",
+      "text": "我先复现一下请求，再看网关日志。",
+      "time": 1767225605000,
+      "type": "text",
+      "kind": "assistant"
+    },
+    {
+      "id": "tool-6",
+      "seq": 6,
+      "role": "tool_call",
+      "name": "shell",
+      "args": "{\"command\":\"curl -sS -m 5 https://api.example.com/health\"}",
+      "callId": "call-1",
+      "turn": 1,
+      "step": 1,
+      "time": 1767225606000,
+      "type": "tool_call",
+      "kind": "tool_call"
+    },
+    {
+      "id": "tool-res-7",
+      "seq": 7,
+      "role": "tool_result",
+      "text": "HTTP/1.1 200 OK",
+      "callId": "call-1",
+      "turn": 1,
+      "durationMs": 1000,
+      "time": 1767225607000,
+      "type": "tool_result",
+      "kind": "tool_result"
+    },
+    {
+      "id": "approval-appr-write-config-1",
+      "seq": 8,
+      "role": "approval",
+      "text": "需要写入 config/timeouts.json",
+      "toolName": "write",
+      "approvalId": "appr-write-config-1",
+      "callId": "call-2",
+      "requestStatus": "resolved",
+      "outcome": "allowed-once",
+      "time": 1767225608000,
+      "type": "approval",
+      "kind": "approval"
+    },
+    {
+      "id": "tool-10",
+      "seq": 10,
+      "role": "tool_call",
+      "name": "write",
+      "args": "{\"file_path\":\"config/timeouts.json\",\"content\":\"{\\n  \\\"connectTimeoutMs\\\": 5000,\\n  \\\"retries\\\": 3\\n}\\n\"}",
+      "callId": "call-2",
+      "turn": 1,
+      "step": 2,
+      "time": 1767225610000,
+      "type": "tool_call",
+      "kind": "tool_call"
+    },
+    {
+      "id": "tool-res-11",
+      "seq": 11,
+      "role": "tool_result",
+      "text": "wrote config/timeouts.json",
+      "callId": "call-2",
+      "turn": 1,
+      "durationMs": 1000,
+      "time": 1767225611000,
+      "type": "tool_result",
+      "kind": "tool_result"
+    },
+    {
+      "id": "todo-12",
+      "seq": 12,
+      "role": "todo",
+      "todos": [
+        {
+          "text": "复现超时",
+          "done": true
+        },
+        {
+          "text": "调整超时配置",
+          "done": true
+        },
+        {
+          "text": "补回归测试",
+          "done": false
+        }
+      ],
+      "time": 1767225612000,
+      "type": "todo",
+      "kind": "todo"
+    },
+    {
+      "id": "changes-13",
+      "seq": 13,
+      "role": "workspace_changes",
+      "text": "",
+      "turn": 1,
+      "changes": {
+        "turn": 1,
+        "total": 2,
+        "added": 36,
+        "deleted": 4,
+        "files": [
+          {
+            "path": "config/timeouts.json",
+            "display": "config/timeouts.json",
+            "added": 12,
+            "deleted": 2
+          },
+          {
+            "path": "src/login.ts",
+            "display": "src/login.ts",
+            "added": 24,
+            "deleted": 2
+          }
+        ]
+      },
+      "time": 1767225613000,
+      "type": "workspace_changes",
+      "kind": "workspace_changes"
+    },
+    {
+      "id": "files-14",
+      "seq": 14,
+      "role": "produced_files",
+      "text": "",
+      "files": [
+        "config/timeouts.json"
+      ],
+      "time": 1767225614000,
+      "type": "produced_files",
+      "kind": "produced_files"
+    },
+    {
+      "id": "tool-15",
+      "seq": 15,
+      "role": "tool_call",
+      "name": "shell",
+      "args": "{\"command\":\"go test ./...\"}",
+      "callId": "call-3",
+      "turn": 2,
+      "step": 12,
+      "time": 1767225615000,
+      "type": "tool_call",
+      "kind": "tool_call"
+    }
+  ],
+  "hasMore": false,
+  "nextBeforeSeq": 1,
+  "maxSeq": 15,
+  "stoppedReason": null,
+  "stats": {
+    "tokenUsage": {
+      "uncachedInputTokens": 12500,
+      "cacheReadTokens": 98000,
+      "outputTokens": 3450
+    },
+    "sessionStats": {
+      "turns": 2,
+      "toolCalls": 3,
+      "durationMs": 118000
+    },
+    "contextPressure": {
+      "usedTokens": 113950,
+      "windowTokens": 1048576,
+      "fraction": 0.11
+    },
+    "contextBreakdown": {
+      "system": 4200,
+      "tools": 18600,
+      "history": 91150
+    },
+    "todos": {
+      "items": [
+        {
+          "text": "复现超时",
+          "done": true
+        },
+        {
+          "text": "调整超时配置",
+          "done": true
+        },
+        {
+          "text": "补回归测试",
+          "done": false
+        }
+      ],
+      "revision": 2
+    },
+    "estimatedCost": {
+      "amount": 0.017237,
+      "currency": "USD",
+      "priceDate": "2026-09-01",
+      "source": "host"
+    }
+  },
+  "queue": [
+    {
+      "id": "inbox-1",
+      "placement": "queued",
+      "text": "把重试次数改成 3 次，并在修复后跑一遍回归测试",
+      "images": 0
+    }
+  ],
+  "goal": {
+    "id": "goal-login-1",
+    "revision": 3,
+    "objective": "修复登录接口超时并补齐回归测试",
+    "round": 2,
+    "maxGoalRounds": 8,
+    "phase": "running"
+  }
+}

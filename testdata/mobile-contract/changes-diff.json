@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "seq": 13,
+  "index": 1,
+  "kind": "text",
+  "path": "src/login.ts",
+  "display": "src/login.ts",
+  "before": true,
+  "after": true,
+  "coarse": false,
+  "hunks": [
+    {
+      "oldStart": 1,
+      "oldLines": 2,
+      "newStart": 1,
+      "newLines": 3,
+      "lines": [
+        " export const LOGIN_TIMEOUT_MS = 5000",
+        "-export const LOGIN_RETRIES = 1",
+        "+export const LOGIN_RETRIES = 3",
+        "+export const LOGIN_BACKOFF_MS = 250"
+      ]
+    }
+  ]
+}

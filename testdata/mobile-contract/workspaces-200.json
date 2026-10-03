@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "workspace": {
+    "workspaceId": "ws-demo-analysis",
+    "path": "<fixtureRoot>/analysis",
+    "name": "analysis"
+  },
+  "created": true,
+  "directoryCreated": true,
+  "inputKind": "name",
+  "resolvedPath": "<fixtureRoot>/analysis"
+}

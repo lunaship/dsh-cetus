@@ -1,0 +1,9 @@
+{
+  "error": "已存在同名设备，请先吊销旧设备或更换名称",
+  "code": "SAME_NAME",
+  "existing": {
+    "deviceId": "<deviceId>",
+    "name": "iPhone 15 Pro",
+    "status": "active"
+  }
+}
