@@ -17,12 +17,12 @@ import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.WorkspaceActivity
 import java.util.concurrent.ConcurrentHashMap
 
-/** 纯函数：根据设置与 SDK 版本决定审批通知里要挂几个 action，以及每个 action 是不是「允许」。 */
+/**
+ * 纯函数：根据设置与 SDK 版本决定审批通知里要挂几个 action，以及每个 action 是不是「允许」。
+ * v4 8.2：默认不挂动作，只能点开 App；打开「允许在通知栏直接批准」且系统支持时才给「拒绝 / 允许一次」。
+ */
 internal fun approvalActionKinds(quickApprove: Boolean, sdkInt: Int): List<Boolean> =
-    buildList {
-        add(false)
-        if (quickApprove && sdkInt >= Build.VERSION_CODES.S) add(true)
-    }
+    if (quickApprove && sdkInt >= Build.VERSION_CODES.S) listOf(false, true) else emptyList()
 
 /**
  * DSH 会话事件系统通知：审批请求（会话在后台等你处理）与任务完成 / 已停止。
@@ -143,12 +143,14 @@ object DshNotifier {
         sessionId: String,
         toolName: String,
         approvalId: String? = null,
+        sessionTitle: String = "",
     ) {
         // 阶段 8 第 3 条：设置页的两个开关（存本机）决定发不发。关卡放在这里而不是调用点，
         // 是为了「一个地方管住所有通知」——调用点分散在 WorkspaceActivity 多处，漏一处就是 bug。
         if (!WorkspacePrefs(context).notifyOnApproval) return
         val builder = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
-            .setContentTitle(L.notifNeedApproval)
+            // v4 8.2：标题带会话名，正文是状态（哪个工具在等）
+            .setContentTitle(sessionTitle.takeIf { it.isNotBlank() }?.let { L.notifApprovalTitle.format(it) } ?: L.notifNeedApproval)
             .setContentText(L.notifNeedApprovalBody.format(toolName))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -208,7 +210,7 @@ object DshNotifier {
     const val EXTRA_ACTION_REQUEST_ID = "notificationActionRequestId"
 
     /** 完成通知的深链动作：带 sessionId + 一个意图 extra，不带令牌。 */
-    private fun deepLinkAction(
+    internal fun deepLinkAction(
         context: Context,
         host: Host,
         sessionId: String,
@@ -300,21 +302,18 @@ object DshNotifier {
     ) {
         if (!WorkspacePrefs(context).notifyOnDone) return
         val summary = resultText?.trim()?.takeIf { it.isNotEmpty() }
-        val sessionDone = L.notifTaskDoneBody.format(title)
-        // 有结果一句话：标题写「会话「x」已完成」、正文写那句话（方案 8 稿 06 的形态）。
-        // 没有（旧插件 / 还没产出结果）就沿用原来的「任务完成 / 会话「x」已完成」，
-        // 不能两处都写同一句——标题与正文重复等于浪费一行。
+        // v4 8.2：标题 =「会话名 · 已完成」，正文 = 结果一句话（没有就写「任务完成」）。
         post(
             context = context,
             host = host,
             sessionId = sessionId,
             kind = 2,
-            title = if (summary != null) sessionDone else L.notifTaskDone,
-            text = sessionDone,
+            title = if (title.isNotBlank()) L.notifTaskDoneTitle.format(title) else L.notifTaskDone,
+            text = summary?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim() ?: L.notifTaskDone,
             bigText = summary,
             actions = listOf(
                 dev.deeplinks.native.ChangesL.viewChanges to INTENT_ACTION_CHANGES,
-                L.sendMessage to INTENT_ACTION_REPLY,
+                L.notifReply to INTENT_ACTION_REPLY,
             ),
         )
     }
@@ -322,7 +321,8 @@ object DshNotifier {
     /** 会话停止（非正常结束，如 interrupted/error/maxTokens）。 */
     fun notifyTaskFailed(context: Context, host: Host, sessionId: String, title: String, reason: String) {
         if (!WorkspacePrefs(context).notifyOnDone) return
-        post(context, host, sessionId, 3, L.notifTaskStopped, L.notifTaskStoppedBody.format(title, reason))
+        val heading = if (title.isNotBlank()) L.notifTaskStoppedTitle.format(title) else L.notifTaskStopped
+        post(context, host, sessionId, 3, heading, reason)
     }
 
     /** 任务类通知的公共走法：默认频道 + 自动取消（审批那条自己带动作与频道）。 */

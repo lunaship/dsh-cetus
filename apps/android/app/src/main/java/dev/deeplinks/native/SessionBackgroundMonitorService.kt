@@ -407,7 +407,7 @@ class SessionBackgroundMonitorService : Service() {
 
     private fun postApproval(host: Host, sid: String, approvalId: String?, toolName: String) {
         if (approvalId.isNullOrBlank()) {
-            DshNotifier.notifyApproval(this, host, sid, toolName)
+            DshNotifier.notifyApproval(this, host, sid, toolName, sessionTitle = sessionTitle)
             return
         }
         serviceScope.launch(Dispatchers.IO) {
@@ -416,7 +416,7 @@ class SessionBackgroundMonitorService : Service() {
             }.getOrDefault(false)
             withContext(Dispatchers.Main) {
                 if (sessionId == sid && background) {
-                    DshNotifier.notifyApproval(this@SessionBackgroundMonitorService, host, sid, toolName, approvalId.takeIf { actionable })
+                    DshNotifier.notifyApproval(this@SessionBackgroundMonitorService, host, sid, toolName, approvalId.takeIf { actionable }, sessionTitle)
                 }
             }
         }
@@ -454,8 +454,8 @@ class SessionBackgroundMonitorService : Service() {
             withContext(Dispatchers.Main) {
                 if (sessionId != sid || !background) return@withContext
                 when {
-                    pending != null -> DshNotifier.notifyApproval(this@SessionBackgroundMonitorService, host, sid, pending.toolName ?: L.toolFallbackName, pending.id)
-                    waiting -> DshNotifier.notifyApproval(this@SessionBackgroundMonitorService, host, sid, L.toolFallbackName)
+                    pending != null -> DshNotifier.notifyApproval(this@SessionBackgroundMonitorService, host, sid, pending.toolName ?: L.toolFallbackName, pending.id, sessionTitle)
+                    waiting -> DshNotifier.notifyApproval(this@SessionBackgroundMonitorService, host, sid, L.toolFallbackName, sessionTitle = sessionTitle)
                 }
             }
         }
