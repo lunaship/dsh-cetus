@@ -26,7 +26,6 @@ func makeDecisionContent(
 
     let secondary = dlBarButton(title: secondaryTitle, prominent: false, enabled: enabled, action: onSecondary)
     let primary = dlBarButton(title: primaryTitle, prominent: true, enabled: enabled, action: onPrimary)
-    secondary.widthAnchor.constraint(equalTo: primary.widthAnchor).isActive = true
     let buttons = UIStackView(arrangedSubviews: [secondary, primary])
     buttons.axis = .horizontal
     buttons.spacing = 12
