@@ -789,6 +789,7 @@ RFC 必须写清以下内容：
 | I1.5a | #68 | 设计稿原样入库 `apps/ios/docs/design/`（PNG + README + src）。已知冲突：1.2/1.3 设计稿有「输入配对码」，以 PLAN 为准去掉。 |
 | I1.1 | #69 | 新增 `apps/ios/docs/visual-rules-ios.md`（72 行）。 |
 | I1.2 | #70 | 新增 `apps/ios/docs/page-mapping.md`；写明去掉 1.2/1.3「输入配对码」。 |
+| I1.3 | #71 | 新增 `docs/rfc/0002-push-gateway.md`（DLPUSH/1 草案，待安全审查）。 |
 
 ---
 
