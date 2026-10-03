@@ -1,0 +1,51 @@
+name: CI push gateway
+
+on:
+  pull_request:
+    branches: [ios/main, main]
+    paths:
+      - 'push/**'
+      - '.github/workflows/ci-push.yml'
+  push:
+    branches: [ios/main, main]
+    paths:
+      - 'push/**'
+      - '.github/workflows/ci-push.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    name: Push gateway gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: push
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: push/go.mod
+          cache-dependency-path: push/go.sum
+
+      - name: Verify formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Vet and race tests
+        run: |
+          go vet ./...
+          go test ./... -race -count=1 -timeout 120s
+
+      - name: Fuzz
+        run: |
+          set -eu
+          mapfile -t fuzzes < <(grep -R --include='*_test.go' -l 'func Fuzz' . || true)
+          if [ "${#fuzzes[@]}" -eq 0 ]; then
+            echo "no fuzz tests yet"
+            exit 0
+          fi
+          go test ./... -run '^$' -fuzz 'Fuzz' -fuzztime 10s

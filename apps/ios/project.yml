@@ -30,6 +30,9 @@ packages:
     path: Packages/DLRemote
   DLUI:
     path: Packages/DLUI
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    from: "1.18.0"
 targets:
   DeepLinks:
     type: application
@@ -99,6 +102,22 @@ targets:
         INFOPLIST_FILE: Extensions/Share/Info.plist
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+  DeepLinksTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: DeepLinks
+      - package: DLModels
+      - package: SnapshotTesting
+        product: SnapshotTesting
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DeepLinks.app/DeepLinks"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
   DeepLinks:
     build:
@@ -107,6 +126,9 @@ schemes:
         NotificationService: all
         LiveActivity: all
         Share: all
+    test:
+      targets:
+        - DeepLinksTests
     run:
       config: Debug
     archive:
