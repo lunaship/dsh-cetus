@@ -14,8 +14,11 @@ internal sealed interface PairQrOutcome {
     /** 电脑要求面板确认：配对已登记，等用户在电脑上点批准。 */
     data class Pending(val host: Host) : PairQrOutcome
 
-    /** 没能配对，[message] 可直接展示。 */
-    data class Failed(val message: String) : PairQrOutcome
+    /**
+     * 没能配对，[message] 可直接展示。[badQr] = 码本身不对（留在扫码页提示）；
+     * [network] = 码里的地址都连不上（失败页给排查建议，v4 1.6）。
+     */
+    data class Failed(val message: String, val network: Boolean = false, val badQr: Boolean = false) : PairQrOutcome
 }
 
 /**
@@ -29,8 +32,8 @@ internal fun pairFromQrText(
     deviceName: String,
     requestId: String = UUID.randomUUID().toString(),
 ): PairQrOutcome = when (val parsed = parsePairingQr(text)) {
-    PairingQrResult.NotDsh -> PairQrOutcome.Failed(L.notDshQr)
-    PairingQrResult.Invalid -> PairQrOutcome.Failed(L.qrIncomplete)
+    PairingQrResult.NotDsh -> PairQrOutcome.Failed(L.notDshQr, badQr = true)
+    PairingQrResult.Invalid -> PairQrOutcome.Failed(L.qrIncomplete, badQr = true)
     is PairingQrResult.Ok -> {
         val qr = parsed.qr
         try {
@@ -39,7 +42,14 @@ internal fun pairFromQrText(
             if (result.pending) PairQrOutcome.Pending(host) else PairQrOutcome.Paired(host)
         } catch (e: Exception) {
             val unwrapped = PinnedSsl.unwrap(e)
-            PairQrOutcome.Failed(unwrapped.message?.takeIf { it.isNotBlank() } ?: L.allAddressesFailed)
+            PairQrOutcome.Failed(
+                unwrapped.message?.takeIf { it.isNotBlank() } ?: L.allAddressesFailed,
+                network = isNetworkPairFailure(unwrapped),
+            )
         }
     }
 }
+
+/** 传输层失败（连不上、超时）才算「网络问题」；证书变更虽然也是 IOException，但属于认证失败。 */
+internal fun isNetworkPairFailure(error: Throwable): Boolean =
+    error is java.io.IOException && error !is PinnedSsl.CertChangedException
