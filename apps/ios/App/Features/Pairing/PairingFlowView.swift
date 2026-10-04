@@ -59,26 +59,9 @@ struct PairingFlowView: View {
             }
             .sheet(isPresented: renamePresented) {
                 NavigationStack {
-                    Form {
-                        Section {
-                            TextField(copy.text(.deviceName), text: $newName)
-                                .textInputAutocapitalization(.words)
-                        } footer: {
-                            Text(copy.text(.renameBody))
-                        }
-                    }
-                    .navigationTitle(copy.text(.renameTitle))
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button(copy.text(.cancel)) { model.returnToWelcome() }
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(copy.text(.retry)) { model.renameAndRetry(newName) }
-                                .disabled(
-                                    newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                        || newName.trimmingCharacters(in: .whitespacesAndNewlines) == model.deviceName)
-                        }
-                    }
+                    PairingRenameForm(
+                        newName: $newName, originalName: model.deviceName,
+                        cancel: { model.returnToWelcome() }, retry: { model.renameAndRetry(newName) })
                 }
                 .presentationDetents([.medium, .large])
                 .onAppear { newName = model.deviceName }

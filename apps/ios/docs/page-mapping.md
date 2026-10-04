@@ -21,6 +21,8 @@ I4.1 截图登记：`Tests/PairingSnapshotTests.swift`，由 `ci-ios.yml` 与 `i
 
 iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可写 trait，现有 DLUI 也没有能覆盖系统玻璃样式的注入点；移除五张降低透明度 fixture，保留实际系统设置验收。
 
+`1_2_sameName` 直接截图测试专用静态冲突内容（复用生产 alert 的本地化标题、说明、替换 / 改名 / 取消选项）；`1_2_rename` 在独立 `NavigationStack` 中截图与生产 sheet 共用的 `PairingRenameForm`（原名称、说明、取消与禁用的配对按钮）。两者都不在真实窗口里呈现系统 alert / sheet，scene 名与各两张中英基线的登记保持不变；生产弹窗行为不变。其他 scene 的渲染代码不变。
+
 | 页面 | scene | 张数 |
 |---|---|---|
 | 1.1 | 系统启动屏，无 App 截图 | — |
