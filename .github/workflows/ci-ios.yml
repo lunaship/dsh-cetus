@@ -103,6 +103,7 @@ jobs:
             -only-testing:DeepLinksTests/HostClientContractTests \
             -only-testing:DeepLinksTests/RequestStateContractTests \
             -only-testing:DeepLinksTests/RouteSelectorContractTests \
+            -only-testing:DeepLinksTests/PairingContractTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
