@@ -9,13 +9,36 @@
 
 | v4 | 页面 | iOS 页面 / 组件 / API | 与 Android 差异 | 截图测试 |
 |---|---|---|---|---|
-| 1.1 | 启动 | 系统 Launch Screen（纯背景 + 品牌标） | — | （系统屏，无 App 截图） |
-| 1.2 | 欢迎 / 未配对 | `Features/Pairing` 全屏；主按钮「扫码配对」`.glassProminent` + BrandFill；次按钮「从相册识别」`PhotosPicker`→Vision；文字「先看看演示」 | 多演示入口 | `Snapshot_1_2_welcome_*` |
-| 1.3 | 扫码 | `DataScannerViewController`（仅二维码）；玻璃关闭按钮；不支持时退回 `AVCaptureSession` | — | `Snapshot_1_3_scan_*` |
+| 1.1 | 启动 | 系统 Launch Screen；`Info.plist` 的 `UILaunchScreen` → `LaunchBackground` / `LaunchBrand`（浅 / 深色资源） | — | （系统屏，无 App 截图） |
+| 1.2 | 欢迎 / 未配对 | `Features/Pairing/PairingWelcomePage` 全屏；主按钮「扫码配对」`.glassProminent` + BrandFill；次按钮「从相册识别」`PhotosPicker`→Vision；文字「先看看演示」 | 多演示入口 | `Snapshot_1_2_welcome_*` |
+| 1.3 | 扫码 | `Features/Pairing/QRScanner` / `DataScannerViewController`（仅二维码）；玻璃关闭按钮；不支持时退回 `AVCaptureSession` | — | `Snapshot_1_3_scan_*` |
 | 1.4 | 输入配对码 | **不做** | 同 Android / #64 | — |
-| 1.5 | 等电脑批准 | push；显示本机名与连接方式；可取消（删本机记录）；轮询 `/mobile/sessions` | — | `Snapshot_1_5_pending_*` |
-| 1.6 | 配对失败 | push；标题 + 原因 + 三条建议 +「返回」 | — | `Snapshot_1_6_fail_*` |
-| — | 本地网络说明 | 首次连局域网前；一句话 +「继续」 | Android 无对应页 | `Snapshot_1_lan_explain_*` |
+| 1.5 | 等电脑批准 | `PairingPendingPage` push；显示本机名与连接方式；可取消（删本机记录）；轮询 `/mobile/sessions` | — | `Snapshot_1_5_pending_*` |
+| 1.6 | 配对失败 | `PairingFailurePage` push；标题 + 原因 + 三条建议 +「返回」 | — | `Snapshot_1_6_fail_*` |
+| — | 本地网络说明 | `LocalNetworkExplanationPage`；首次连局域网前；一句话 +「继续」 | Android 无对应页 | `Snapshot_1_lan_explain_*` |
+
+I4.1 截图登记：`Tests/PairingSnapshotTests.swift`，由 `ci-ios.yml` 与 `ios-regen-screenshots.yml` 的原有 `-skip-testing` 范围自动包含。文件名 `Snapshot_<pageId>_<scene>_<light|dark>_<zh|en>.<variant>.png`；variant 为 `default` 或 `large`（accessibility3）。五个主页面各为浅 / 深 × 中 / 英 × 默认 / 大字号（accessibility3）的 8 张。其他状态只保留浅色、中文、默认字号 1 张；sameName 与 rename 各补 1 张英文。`PairingSnapshotTests` 共 61 张，不含原有欢迎基线；iPad / 宽屏留到 I4.8。1.3 相机在两种外观下都使用深色系统色；只截图离线相机表面，不启动摄像头。
+
+iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可写 trait，现有 DLUI 也没有能覆盖系统玻璃样式的注入点；移除五张降低透明度 fixture，保留实际系统设置验收。
+
+`1_2_sameName` 直接截图测试专用静态冲突内容（复用生产 alert 的本地化标题、说明、替换 / 改名 / 取消选项）；`1_2_rename` 在独立 `NavigationStack` 中截图与生产 sheet 共用的 `PairingRenameForm`（原名称、说明、取消与禁用的配对按钮），并传入 `allowsFocus: false`，字段不会成为第一响应者，也不绘制光标。两者都不在真实窗口里呈现系统 alert / sheet，scene 名与各两张中英基线的登记保持不变；生产弹窗与可聚焦输入保持不变。其他 scene 的渲染代码不变。
+
+| 页面 | scene | 张数 |
+|---|---|---|
+| 1.1 | 系统启动屏，无 App 截图 | — |
+| 1.2 | `1_2_welcome` | 8 |
+| 1.2 状态 | `1_2_submitting`、`1_2_photoReading` | 各 1 |
+| 1.2 同名 / 改名 | `1_2_sameName`、`1_2_rename` | 各 2（中 / 英） |
+| 本地网络说明 | `1_lan_explain` | 8 |
+| 1.3 | `1_3_scan`（离线相机表面） | 8 |
+| 1.3 无效码 | `1_3_scan_invalid` | 1 |
+| 1.5 | `1_5_pending` | 8 |
+| 1.5 状态 | `1_5_pending_tailscale`、`1_5_pending_cleanupFailed` | 各 1 |
+| 1.6 代表原因 | `1_6_fail_network` | 8 |
+| 1.6 其他原因 | `1_6_fail_expired`、`1_6_fail_certificate`、`1_6_fail_missingPin`、`1_6_fail_rejected`、`1_6_fail_cameraDenied`、`1_6_fail_cameraUnavailable`、`1_6_fail_invalidQR`、`1_6_fail_noPhotoQR`、`1_6_fail_rateLimit`、`1_6_fail_unsupported`、`1_6_fail_hostHint`、`1_6_fail_storage` | 各 1，共 12 |
+| 原有 1.2 基线 | `WelcomeSnapshotTests/testWelcomeLight.light.png`。截图用 `WelcomeView(staticSnapshot:)`：不跑配对 `.task`、关闭动画、主按钮用 `.borderedProminent` 而不是玻璃；由 CI 重生成 | 1（不计入新增 61 张） |
+
+1.1 使用 `UILaunchScreen` 字典中的 `UIColorName = LaunchBackground` 与 `UIImageName = LaunchBrand`，Assets.xcassets 提供浅 / 深色背景和矢量品牌字标；不使用 storyboard。I4.1 配对成功仅交接已保存 hostId；首页目的地由 I4.2 接入。
 
 ## 2.x 首页收件箱
 

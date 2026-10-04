@@ -45,7 +45,7 @@ targets:
       - path: App
         excludes:
           - Info.plist
-          - Demo/fixtures/components.json
+          - Demo/fixtures
       - path: App/Demo/fixtures
         buildPhase: resources
     dependencies:
@@ -116,6 +116,10 @@ targets:
     platform: iOS
     sources:
       - path: Tests
+        excludes:
+          - Fixtures
+      - path: Tests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: DeepLinks
       - package: DLModels
