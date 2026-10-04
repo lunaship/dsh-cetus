@@ -59,7 +59,7 @@ struct MessageStreamView: UIViewControllerRepresentable {
     }
 }
 
-final class MessageStreamController: UIViewController {
+final class MessageStreamController: UIViewController, UICollectionViewDelegateFlowLayout {
     var chrome = MessageChrome(
         copy: ConversationCopy(locale: .current), reduceMotion: true, allowsWeb: false, images: [:],
         staticSnapshot: true,
@@ -83,6 +83,7 @@ final class MessageStreamController: UIViewController {
     private var displayLink: CADisplayLink?
     private var didPin = false
     private var layingOutSnapshot = false
+    private var snapshotHeights: [String: CGFloat] = [:]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -169,14 +170,11 @@ final class MessageStreamController: UIViewController {
             dataSource.apply(snapshot, animatingDifferences: animated && !changed.isEmpty && !chromeChanged)
         }
         collectionView.layoutIfNeeded()
-        guard pinsToTail, !didPin || structureChanged || !changed.isEmpty, let last = ids.last,
+        guard !chrome.staticSnapshot, pinsToTail, !didPin || structureChanged || !changed.isEmpty, let last = ids.last,
             let indexPath = dataSource.indexPath(for: last)
         else { return }
         collectionView.scrollToItem(at: indexPath, at: .bottom, animated: false)
         didPin = true
-        if chrome.staticSnapshot {
-            collectionView.layoutIfNeeded()
-        }
     }
 
     /// Screenshot path only. The snapshot strategy renders before SwiftUI has given this
@@ -194,15 +192,46 @@ final class MessageStreamController: UIViewController {
             }
             collectionView.frame = CGRect(origin: .zero, size: canvas)
             let overlap = snapshotTopOverlap()
-            if overlap > 0.5 {
-                collectionView.contentInsetAdjustmentBehavior = .never
-                var inset = collectionView.contentInset
-                inset.top = overlap
-                collectionView.contentInset = inset
-            }
-            collectionView.collectionViewLayout.invalidateLayout()
-            didPin = false
+            collectionView.contentInsetAdjustmentBehavior = .never
+            var inset = collectionView.contentInset
+            inset.top = overlap
+            collectionView.contentInset = inset
+
+            // Measure every row at the final width before scrolling. Offscreen estimated
+            // heights otherwise let a tail pin stop in the middle of the last row.
+            let measuringCell = MeasuredCell(frame: CGRect(origin: .zero, size: canvas))
+            snapshotHeights = Dictionary(
+                uniqueKeysWithValues: pendingRows.map { row in
+                    (
+                        row.id,
+                        measuringCell.configureSnapshot(
+                            MessageRowView(row: row, chrome: chrome), traits: traitCollection)
+                    )
+                })
+            let layout = UICollectionViewFlowLayout()
+            layout.estimatedItemSize = .zero
+            layout.minimumLineSpacing = 4
+            layout.minimumInteritemSpacing = 0
+            layout.sectionInset = UIEdgeInsets(top: 8, left: 0, bottom: 16, right: 0)
+            collectionView.delegate = self
+            collectionView.setCollectionViewLayout(layout, animated: false)
             apply(pendingRows, animated: false)
+            collectionView.layoutIfNeeded()
+
+            let top = -collectionView.adjustedContentInset.top
+            var offset = top
+            if pinsToTail,
+                collectionView.contentSize.height + collectionView.adjustedContentInset.top
+                    + collectionView.adjustedContentInset.bottom > collectionView.bounds.height,
+                let last = pendingRows.last,
+                let indexPath = dataSource.indexPath(for: last.id),
+                let attributes = collectionView.layoutAttributesForItem(at: indexPath)
+            {
+                offset = max(
+                    top,
+                    attributes.frame.maxY - collectionView.bounds.height + collectionView.adjustedContentInset.bottom)
+            }
+            collectionView.setContentOffset(CGPoint(x: 0, y: offset), animated: false)
             collectionView.layoutIfNeeded()
             for case let cell as MeasuredCell in collectionView.visibleCells {
                 cell.attachSnapshotHost(to: self)
@@ -210,6 +239,14 @@ final class MessageStreamController: UIViewController {
                 cell.layoutIfNeeded()
             }
         }
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout,
+        sizeForItemAt indexPath: IndexPath
+    ) -> CGSize {
+        let id = dataSource.itemIdentifier(for: indexPath)
+        return CGSize(width: collectionView.bounds.width, height: id.flatMap { snapshotHeights[$0] } ?? 44)
     }
 
     private func snapshotTopOverlap() -> CGFloat {
@@ -264,7 +301,8 @@ final class MeasuredCell: UICollectionViewCell {
     private var snapshotHost: UIHostingController<AnyView>?
     private var placingSnapshot = false
 
-    func configureSnapshot(_ row: MessageRowView, traits: UITraitCollection) {
+    @discardableResult
+    func configureSnapshot(_ row: MessageRowView, traits: UITraitCollection) -> CGFloat {
         snapshotRow = row
         contentConfiguration = nil
         contentView.backgroundColor = .clear
@@ -272,8 +310,9 @@ final class MeasuredCell: UICollectionViewCell {
         traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
         let width = bounds.width > 1 ? bounds.width : contentView.bounds.width
         if width > 1 {
-            _ = placeSnapshot(row, width: width)
+            return placeSnapshot(row, width: width)
         }
+        return 44
     }
 
     func attachSnapshotHost(to parent: UIViewController) {

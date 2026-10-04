@@ -21,8 +21,9 @@ public struct DLCodeBlock: View {
             ScrollView(.horizontal) {
                 codeText
                     .font(DLFont.mono(DLFont.body))
-                    .frame(maxHeight: .infinity, alignment: .topLeading)
+                    .fixedSize(horizontal: true, vertical: true)
             }
+            .fixedSize(horizontal: false, vertical: true)
             Button(copyTitle, action: copy)
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
