@@ -1,0 +1,61 @@
+[
+  {
+    "event": "ready",
+    "id": null,
+    "data": {
+      "resumeSeq": 0,
+      "protocol": 2,
+      "capabilities": {
+        "protocol": 2,
+        "sync": {
+          "resync": true,
+          "catchupIntegrity": true
+        },
+        "questions": {
+          "multi": true,
+          "serverValidation": true
+        },
+        "requests": {
+          "snapshot": true,
+          "reconnectGraceMs": 30000
+        },
+        "control": {
+          "queue": true,
+          "goals": true,
+          "schedules": true
+        },
+        "files": {
+          "workspace": true,
+          "maxBytes": 8388608,
+          "tree": true,
+          "treeMaxEntries": 2000,
+          "sha256": true,
+          "changes": true,
+          "diff": true,
+          "diffMaxLines": 5000
+        },
+        "diagnostics": {
+          "v": 1
+        },
+        "events": {
+          "host": true
+        },
+        "preview": {
+          "v": 1,
+          "detect": 1
+        }
+      }
+    }
+  },
+  {
+    "event": "resync-required",
+    "id": null,
+    "data": {
+      "sessionId": "sess-demo-stopped",
+      "reason": "discontiguous",
+      "afterSeq": 0,
+      "oldestAvailableSeq": 1,
+      "nextCursor": 0
+    }
+  }
+]

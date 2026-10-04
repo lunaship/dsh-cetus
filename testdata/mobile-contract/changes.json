@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "seq": 13,
+  "turn": 1,
+  "total": 2,
+  "added": 36,
+  "deleted": 4,
+  "files": [
+    {
+      "path": "config/timeouts.json",
+      "display": "config/timeouts.json",
+      "added": 12,
+      "deleted": 2
+    },
+    {
+      "path": "src/login.ts",
+      "display": "src/login.ts",
+      "added": 24,
+      "deleted": 2
+    }
+  ]
+}

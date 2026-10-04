@@ -1,0 +1,385 @@
+[
+  {
+    "event": "ready",
+    "id": null,
+    "data": {
+      "resumeSeq": 0,
+      "protocol": 2,
+      "capabilities": {
+        "protocol": 2,
+        "sync": {
+          "resync": true,
+          "catchupIntegrity": true
+        },
+        "questions": {
+          "multi": true,
+          "serverValidation": true
+        },
+        "requests": {
+          "snapshot": true,
+          "reconnectGraceMs": 30000
+        },
+        "control": {
+          "queue": true,
+          "goals": true,
+          "schedules": true
+        },
+        "files": {
+          "workspace": true,
+          "maxBytes": 8388608,
+          "tree": true,
+          "treeMaxEntries": 2000,
+          "sha256": true,
+          "changes": true,
+          "diff": true,
+          "diffMaxLines": 5000
+        },
+        "diagnostics": {
+          "v": 1
+        },
+        "events": {
+          "host": true
+        },
+        "preview": {
+          "v": 1,
+          "detect": 1
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 1,
+      "type": "user/message",
+      "time": 1767225601000,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "帮我排查登录接口超时的问题"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 2,
+      "type": "user/message",
+      "time": 1767225602000,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<system-reminder>\nCurrent runtime context: workspace=dsh-demo\nAGENTS.md 已加载\n</system-reminder>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 3,
+      "type": "assistant/chunk",
+      "time": 1767225603000,
+      "data": {
+        "chunk": {
+          "type": "reasoning-delta",
+          "text": "先复现一次请求，确认超时发生在网关还是应用层。"
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 4,
+      "type": "assistant/chunk",
+      "time": 1767225604000,
+      "data": {
+        "chunk": {
+          "type": "block-end",
+          "block": {
+            "type": "reasoning",
+            "text": "先复现一次请求，确认超时发生在网关还是应用层。"
+          }
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 5,
+      "type": "assistant/chunk",
+      "time": 1767225605000,
+      "data": {
+        "chunk": {
+          "type": "block-end",
+          "block": {
+            "type": "text",
+            "text": "我先复现一下请求，再看网关日志。"
+          }
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 6,
+      "type": "tool/call",
+      "time": 1767225606000,
+      "data": {
+        "callId": "call-1",
+        "name": "shell",
+        "arguments": {
+          "command": "curl -sS -m 5 https://api.example.com/health"
+        },
+        "step": 1,
+        "turn": 1
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 7,
+      "type": "tool/result",
+      "time": 1767225607000,
+      "data": {
+        "turn": 1,
+        "message": {
+          "toolCallId": "call-1",
+          "role": "tool",
+          "content": [
+            {
+              "type": "text",
+              "text": "HTTP/1.1 200 OK"
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 8,
+      "type": "approval/asked",
+      "time": 1767225608000,
+      "data": {
+        "id": "appr-write-config-1",
+        "toolName": "write",
+        "callId": "call-2",
+        "reason": "需要写入 config/timeouts.json"
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 9,
+      "type": "approval/decided",
+      "time": 1767225609000,
+      "data": {
+        "id": "appr-write-config-1",
+        "outcome": "allowed-once"
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 10,
+      "type": "tool/call",
+      "time": 1767225610000,
+      "data": {
+        "callId": "call-2",
+        "name": "write",
+        "arguments": {
+          "file_path": "config/timeouts.json",
+          "content": "{\n  \"connectTimeoutMs\": 5000,\n  \"retries\": 3\n}\n"
+        },
+        "step": 2,
+        "turn": 1
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 11,
+      "type": "tool/result",
+      "time": 1767225611000,
+      "data": {
+        "turn": 1,
+        "message": {
+          "toolCallId": "call-2",
+          "role": "tool",
+          "content": [
+            {
+              "type": "text",
+              "text": "wrote config/timeouts.json"
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 12,
+      "type": "todo/write",
+      "time": 1767225612000,
+      "data": {
+        "todos": [
+          {
+            "content": "复现超时",
+            "status": "completed"
+          },
+          {
+            "content": "调整超时配置",
+            "status": "completed"
+          },
+          {
+            "content": "补回归测试",
+            "status": "in_progress"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 13,
+      "type": "workspace/changes",
+      "time": 1767225613000,
+      "data": {
+        "turn": 1
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 14,
+      "type": "turn/end",
+      "time": 1767225614000,
+      "data": {
+        "turn": 1,
+        "reason": {
+          "kind": "completed"
+        }
+      }
+    }
+  },
+  {
+    "event": "message",
+    "id": null,
+    "data": {
+      "seq": 15,
+      "type": "tool/call",
+      "time": 1767225615000,
+      "data": {
+        "callId": "call-3",
+        "name": "shell",
+        "arguments": {
+          "command": "go test ./..."
+        },
+        "step": 12,
+        "turn": 2
+      }
+    }
+  },
+  {
+    "event": "stats",
+    "id": null,
+    "data": {
+      "title": "修复登录超时",
+      "tokenUsage": {
+        "uncachedInputTokens": 12500,
+        "cacheReadTokens": 98000,
+        "outputTokens": 3450
+      },
+      "sessionStats": {
+        "turns": 2,
+        "steps": 7,
+        "llmMs": 61000,
+        "toolMs": 42000,
+        "ttftMs": 1800,
+        "ttftSteps": 7,
+        "decodeMs": 52000,
+        "decodeTokens": 3450
+      },
+      "contextPressure": {
+        "projectedTokens": 113950,
+        "contextWindow": 1048576
+      },
+      "contextBreakdown": {
+        "systemTokens": 4200,
+        "toolsTokens": 18600,
+        "messageTokens": 91150
+      },
+      "todos": [
+        {
+          "content": "复现超时",
+          "status": "completed"
+        },
+        {
+          "content": "调整超时配置",
+          "status": "completed"
+        },
+        {
+          "content": "补回归测试",
+          "status": "in_progress"
+        }
+      ],
+      "inbox": {
+        "next-turn": [
+          {
+            "id": "inbox-1",
+            "content": [
+              {
+                "type": "text",
+                "text": "把重试次数改成 3 次，并在修复后跑一遍回归测试"
+              }
+            ],
+            "source": {
+              "kind": "user"
+            }
+          }
+        ]
+      },
+      "goal": {
+        "goal": {
+          "id": "goal-login-1",
+          "revision": 3,
+          "objective": "修复登录接口超时并补齐回归测试",
+          "phase": "active",
+          "maxGoalRounds": 8
+        },
+        "roundsStarted": 2
+      }
+    }
+  }
+]

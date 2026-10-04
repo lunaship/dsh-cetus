@@ -1,0 +1,8 @@
+{
+  "detections": [
+    {
+      "port": 5199,
+      "sessionId": "sess-demo-report"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "generatedAt": 1767225600,
+  "checks": [
+    {
+      "id": "host.rpc",
+      "status": "ok",
+      "code": "HOST_RPC_OK",
+      "detail": {
+        "ms": 0
+      }
+    },
+    {
+      "id": "host.services",
+      "status": "ok",
+      "code": "HOST_SERVICES_OK",
+      "detail": {
+        "workspaceChanges": true,
+        "typertGateway": true,
+        "sessions": true
+      }
+    },
+    {
+      "id": "plugin.version",
+      "status": "ok",
+      "code": "PLUGIN_VERSION_OK",
+      "detail": {
+        "protocol": 2,
+        "version": "<pluginVersion>",
+        "capSync": true,
+        "capQuestions": true,
+        "capRequests": true,
+        "capControl": true,
+        "capFiles": true,
+        "capDiagnostics": true
+      }
+    },
+    {
+      "id": "tls.cert",
+      "status": "ok",
+      "code": "TLS_CERT_OK",
+      "detail": {
+        "fingerprintPrefix": "<fingerprintPrefix>",
+        "daysRemaining": 3650
+      }
+    },
+    {
+      "id": "pairing.devices",
+      "status": "ok",
+      "code": "PAIRING_SELF_OK",
+      "detail": {
+        "valid": true
+      }
+    },
+    {
+      "id": "remote.relay",
+      "status": "fail",
+      "code": "REMOTE_DISABLED",
+      "detail": {
+        "enabled": false,
+        "state": "off",
+        "replaced": false
+      }
+    },
+    {
+      "id": "clock",
+      "status": "ok",
+      "code": "CLOCK_OK",
+      "detail": {
+        "unixSec": 1767225600
+      }
+    }
+  ]
+}

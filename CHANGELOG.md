@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**审批瀑布**
+
+- DSH `0.1.7-alpha.1` 上复验通过：隔离 host + 临时探针证实 `approval/request` 与 `user-questions/request` 都会触发；手机 API 可提交「允许一次」与澄清答案，写文件在批准后完成。默认 `workspace-write` 下工作区写入未出审批；`read-only` 下 `write` 会出审批。详见 `docs/COMPATIBILITY.md`。
+
 **重设计 v4**
 
 - 设计稿、页面截图和执行方案放在 `docs/redesign-v4/`。proposal 002 的「自行合并到 main」自 v4 起作废，见该目录 `PLAN.md` 第 1 节。
@@ -48,6 +52,10 @@
 
 - 退出预览只清本次预览本机源的 Cookie 和存储，不再清掉 App 里所有 WebView 的数据。
 - 预览路径里的 key 改为恒定时间比较。
+
+**手机合同 fixtures（I3.2）**
+
+- 新增 `scripts/export-contract-fixtures.mjs`：用测试同款假 Host 跑真实插件，对附录 C 的每个手机接口采集真实响应样本，写入 `testdata/mobile-contract/*.json`（含配对、bootstrap、列表 / 历史 / 请求、改动 / 文件 / 预览、工作区、模型与余额、诊断、设备、主机事件与会话 SSE 帧）。输出完全确定（冻结时钟，随机值与机器相关值统一换占位串），`--check` 可比对。插件改了手机响应结构而未重新导出时，`test/contract-fixtures.test.mjs` 会失败；iOS `Tests/Contract` 将解码同一批文件。
 
 ## dsh-links 0.5.0-beta.27 — 2026-10-02
 

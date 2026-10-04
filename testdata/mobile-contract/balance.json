@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "status": "ready",
+  "wallets": [
+    {
+      "currency": "CNY",
+      "balance": "128.50"
+    }
+  ],
+  "bonusWallets": [
+    {
+      "currency": "CNY",
+      "balance": "6.00"
+    }
+  ]
+}
