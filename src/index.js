@@ -688,7 +688,10 @@ async function handlePair(req, res, config, state, stateFile, rt, logger, origin
   const requestId = suppliedRequestId
   const cached = cachedPairRequest(rt, requestId, requestFingerprint)
   if (cached?.conflict) return json(res, 409, { error: "requestId 已用于另一配对请求" })
-  if (cached) return json(res, 200, cached)
+  if (cached) {
+    // 刷新响应时钟，但不延长原批准期限或改动缓存的设备凭据。
+    return json(res, 200, { ...cached, serverNow: Date.now() })
+  }
   // 局域网按对端 IP 隔离限流；远程首配没有真实 IP，按 bootstrapId 分桶（RFC §6.1 第 4 条），
   // 再叠加 per-challenge / global 预算兜底。
   const clientKey = bootstrapOrigin
@@ -772,6 +775,7 @@ async function handlePair(req, res, config, state, stateFile, rt, logger, origin
     )
   }
   const remote = rt.remote?.deviceRemote(device) ?? null
+  const serverNow = Date.now()
   const result = {
     ok: true,
     token,
@@ -780,6 +784,7 @@ async function handlePair(req, res, config, state, stateFile, rt, logger, origin
     urls: lanUrls(config).urls,
     pending: requireConfirm,
     pendingExpiresAt: requireConfirm ? device.pendingExpiresAt : undefined,
+    serverNow,
     ...(replacedIds.length ? { replacedDeviceIds: replacedIds } : {}),
     ...(device.replaces ? { replacing: true } : {}),
     ...(remote ? { remote } : {}),

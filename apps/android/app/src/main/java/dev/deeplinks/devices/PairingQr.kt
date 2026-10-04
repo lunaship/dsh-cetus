@@ -13,7 +13,15 @@ data class PairingQr(
     val certFingerprint: String,
     /** 远程首配路由（码里的 `remote`，已派生 bootstrap id/key）；电脑没开远程时为 null。 */
     val remote: RemoteRoute? = null,
+    /** 二维码签发时间（Unix 毫秒），可选。 */
+    val issuedAt: Long? = null,
+    /** 二维码过期时间（Unix 毫秒），可选；null 表示旧码或未设置。 */
+    val expiresAt: Long? = null,
+    /** 保留错误原因；坏 remote 仍允许合法 LAN 配对。 */
+    val remoteCapability: QrRemoteCapability = if (remote == null) QrRemoteCapability.ABSENT else QrRemoteCapability.VALID,
 )
+
+enum class QrRemoteCapability { ABSENT, VALID, INVALID, LEGACY }
 
 sealed class PairingQrResult {
     data class Ok(val qr: PairingQr) : PairingQrResult()
@@ -30,13 +38,30 @@ fun parsePairingQr(text: String): PairingQrResult {
     if (payload.optString("type") != "dsh-link") return PairingQrResult.NotDsh
     val code = payload.optString("pairingCode", payload.optString("code")).trim()
     val urls = stringList(payload.optJSONArray("urls")) ?: emptyList()
-    val remote = runCatching { RemoteRoute.fromQr(payload) }.getOrNull()
     val fp = payload.optString("certFingerprint").trim()
-    // 远程首配的内层 TLS 仍钉扎插件证书：没有指纹，远程这条路就走不了
-    val usableRemote = remote?.takeIf { fp.isNotEmpty() }
-    if (code.isEmpty() || (urls.isEmpty() && usableRemote == null)) return PairingQrResult.Invalid
+    val remote = runCatching { RemoteRoute.fromQr(payload) }.getOrNull()?.takeIf { fp.isNotEmpty() }
+    val capability = when {
+        payload.has("remote") -> if (remote == null) QrRemoteCapability.INVALID else QrRemoteCapability.VALID
+        payload.has("relay") -> QrRemoteCapability.LEGACY
+        else -> QrRemoteCapability.ABSENT
+    }
+    // 可选字段缺失兼容旧码；出现时只接受整数和正确顺序，不依赖手机 wall clock 拒码。
+    fun timestamp(key: String): Long? {
+        val value = payload.opt(key)
+        return when (value) {
+            is Long -> value.takeIf { it > 0 }
+            is Int -> value.toLong().takeIf { it > 0 }
+            else -> null
+        }
+    }
+    val issuedAt = timestamp("issuedAt")
+    val expiresAt = timestamp("expiresAt")
+    if ((payload.has("issuedAt") && issuedAt == null) || (payload.has("expiresAt") && expiresAt == null) ||
+        (issuedAt != null && expiresAt != null && issuedAt >= expiresAt)) return PairingQrResult.Invalid
+    if (code.isEmpty() || (urls.isEmpty() && remote == null)) return PairingQrResult.Invalid
+
     val name = payload.optString("name", "dsh").ifBlank { "dsh" }
-    return PairingQrResult.Ok(PairingQr(code, urls, name, fp, usableRemote))
+    return PairingQrResult.Ok(PairingQr(code, urls, name, fp, remote, issuedAt, expiresAt, capability))
 }
 
 /** 配对成功后的本机记录：远程是同一台电脑的另一条路，不另起「· 云」设备（RFC §10.4 第 4 条）。 */

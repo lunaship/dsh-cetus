@@ -2,6 +2,7 @@ package dev.deeplinks.devices
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PairingQrTest {
@@ -60,11 +61,48 @@ class PairingQrTest {
     }
 
     @Test
-    fun `legacy DLR relay key is ignored`() {
-        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"certFingerprint":"ab","relay":{"v":2,"client":"relay.example:8443","routeId":"rid","routeSecret":"sec"}}"""
-        val qr = (parsePairingQr(text) as PairingQrResult.Ok).qr
-        assertEquals(null, qr.remote)
-        // 只有旧 relay、没有局域网地址的码：旧中继已下线，这张码用不了
-        assertTrue(parsePairingQr("""{"type":"dsh-link","pairingCode":"1","certFingerprint":"ab","relay":{"client":"x","routeId":"r","routeSecret":"s"}}""") is PairingQrResult.Invalid)
+    fun `past QR does not reject based on untrusted phone clock`() {
+        val past = System.currentTimeMillis() - 1000
+        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"certFingerprint":"ab","issuedAt":1735743600000,"expiresAt":""" + past + """}"""
+        val result = parsePairingQr(text)
+        assertTrue(result is PairingQrResult.Ok)
+    }
+
+    @Test
+    fun `qr with future expiresAt is ok`() {
+        val future = System.currentTimeMillis() + 60_000
+        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"certFingerprint":"ab","issuedAt":1735743600000,"expiresAt":""" + future + """}"""
+        val result = parsePairingQr(text)
+        assertTrue(result is PairingQrResult.Ok)
+        val qr = (result as PairingQrResult.Ok).qr
+        assertEquals(1735743600000L, qr.issuedAt)
+        assertEquals(future, qr.expiresAt)
+    }
+
+    @Test
+    fun `legacy qr without expiry is ok`() {
+        val text = """{"type":"dsh-link","pairingCode":"123456","urls":["https://10.0.0.2:18640"],"certFingerprint":"ab"}"""
+        val result = parsePairingQr(text)
+        assertTrue(result is PairingQrResult.Ok)
+        val qr = (result as PairingQrResult.Ok).qr
+        assertNull(qr.issuedAt)
+        assertNull(qr.expiresAt)
+    }
+
+    @Test
+    fun `timestamp fields require positive integers and ordered lifetime`() {
+        val base = """{"type":"dsh-link","code":"1","urls":["https://10.0.0.2:18640"]"""
+        for (fields in listOf("\"expiresAt\":\"123\"", "\"issuedAt\":1.5", "\"issuedAt\":200,\"expiresAt\":100")) {
+            assertTrue(parsePairingQr("$base,$fields}") is PairingQrResult.Invalid)
+        }
+    }
+
+    @Test
+    fun `missing malformed and legacy remote stay distinguishable`() {
+        val base = """{"type":"dsh-link","code":"1","urls":["https://10.0.0.2:18640"]"""
+        fun capability(extra: String) = (parsePairingQr("$base$extra}") as PairingQrResult.Ok).qr.remoteCapability
+        assertEquals(QrRemoteCapability.ABSENT, capability(""))
+        assertEquals(QrRemoteCapability.INVALID, capability(",\"remote\":{}"))
+        assertEquals(QrRemoteCapability.LEGACY, capability(",\"relay\":{}"))
     }
 }

@@ -12,6 +12,7 @@ import dev.deeplinks.core.EXTRA_AUTH_NOTICE
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
+import dev.deeplinks.core.PendingPairStore
 import dev.deeplinks.core.pickStartupHost
 import dev.deeplinks.devices.DevicesActivity
 import dev.deeplinks.native.util.EXTRA_SHARE_IMAGE
@@ -70,7 +71,7 @@ class ShareCatcherActivity : ComponentActivity() {
             return
         }
         val host = defaultHost()
-        if (host == null) {
+        if (host == null && PendingPairStore.loadAny(this) == null) {
             startActivity(
                 Intent(this, DevicesActivity::class.java)
                     .putExtra(EXTRA_AUTH_NOTICE, L.shareNeedsPairing),
@@ -170,8 +171,14 @@ class ShareCatcherActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun launchWorkspace(host: Host, text: String?, imageUris: List<Uri>, notice: String? = null) {
-        val next = host.putInto(Intent(this, WorkspaceActivity::class.java)).apply {
+    private fun launchWorkspace(host: Host?, text: String?, imageUris: List<Uri>, notice: String? = null) {
+        // 首次配对尚待批准时不使用候选凭据打开工作区：只把分享交给根导航。
+        // MainActivity 会先恢复 waiting/paused，批准晋升后继续消费这些 extras。
+        val destination = if (host == null) {
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_START_ROUTE, AppRoute.WORKSPACE)
+        } else host.putInto(Intent(this, WorkspaceActivity::class.java))
+        val next = destination.apply {
             addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             putExtra(EXTRA_SHARE_SEQ, System.currentTimeMillis())
             text?.let { putExtra(EXTRA_SHARE_TEXT, it) }

@@ -11,6 +11,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
+import dev.deeplinks.core.Host
+import dev.deeplinks.core.PairFailure
+import dev.deeplinks.core.PairFailureCode
+import dev.deeplinks.core.PairRecovery
+import dev.deeplinks.core.PairingSession
+import dev.deeplinks.core.remote.HostRoute
 import dev.deeplinks.core.sharePickTitle
 import dev.deeplinks.devices.PairFailedScreen
 import dev.deeplinks.devices.PairWaitingScreen
@@ -22,33 +28,82 @@ import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
 
 private const val NOW = 1_760_000_000_000L
 
+private fun pairSession(computerName: String, route: HostRoute) = PairingSession(
+    requestId = "request",
+    attemptId = "attempt",
+    host = Host(name = computerName, baseUrl = "https://fixture.invalid", token = "fixture", deviceId = "fixture"),
+    pairRoute = route,
+    pendingExpiresAt = null,
+    serverNow = null,
+    receivedAtMs = NOW,
+)
+
 @PreviewTest
 @Preview(name = "pair waiting light zh", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun PairWaitingLightZh() = ShotFrame(dark = false, english = false) {
-    PairWaitingScreen(computerName = "Helios 的 MacBook Pro", deviceName = "Pixel 9 Pro", viaRemote = false, onCancel = {})
+    PairWaitingScreen(session = pairSession("Helios 的 MacBook Pro", HostRoute.LAN), deviceName = "Pixel 9 Pro", onCancel = {})
 }
 
 @PreviewTest
 @Preview(name = "pair waiting dark en", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun PairWaitingDarkEn() = ShotFrame(dark = true, english = true) {
-    PairWaitingScreen(computerName = "Helios's MacBook Pro", deviceName = "Pixel 9 Pro", viaRemote = true, onCancel = {})
+    PairWaitingScreen(session = pairSession("Helios's MacBook Pro", HostRoute.REMOTE), deviceName = "Pixel 9 Pro", onCancel = {})
 }
 
 @PreviewTest
 @Preview(name = "pair failed network light zh", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun PairFailedNetworkLightZh() = ShotFrame(dark = false, english = false) {
-    PairFailedScreen(message = "", network = true, onRescan = {}, onBack = {})
+    PairFailedScreen(
+        failure = PairFailure(PairFailureCode.NETWORK_FAILURE, PairRecovery.RESCAN, "暂时无法连接电脑，请检查连接后重新扫码。"),
+        onRescan = {}, onRetry = {}, onBack = {},
+    )
 }
 
 @PreviewTest
 @Preview(name = "pair failed dark en", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun PairFailedDarkEn() = ShotFrame(dark = true, english = true) {
-    PairFailedScreen(message = "This pairing code has expired. Refresh it on the computer and scan again.", network = false, onRescan = {}, onBack = {})
+    PairFailedScreen(
+        failure = PairFailure(PairFailureCode.PAIR_CODE_INVALID, PairRecovery.RESCAN, "This pairing code has expired. Refresh it on the computer and scan again."),
+        onRescan = {}, onRetry = {}, onBack = {},
+    )
 }
+
+@Composable
+private fun PairPaused(dark: Boolean, english: Boolean) = ShotFrame(dark = dark, english = english) {
+    PairFailedScreen(
+        failure = PairFailure(
+            PairFailureCode.NETWORK_FAILURE,
+            PairRecovery.RETRY,
+            if (english) "Unable to confirm approval. Check the connection and retry."
+            else "暂时无法确认批准状态，请检查连接后重试。",
+        ),
+        onRescan = {}, onRetry = {}, onBack = {},
+    )
+}
+
+@PreviewTest
+@Preview(name = "pair paused light zh", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun PairPausedLightZh() = PairPaused(dark = false, english = false)
+
+@PreviewTest
+@Preview(name = "pair paused dark zh", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun PairPausedDarkZh() = PairPaused(dark = true, english = false)
+
+@PreviewTest
+@Preview(name = "pair paused light en", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun PairPausedLightEn() = PairPaused(dark = false, english = true)
+
+@PreviewTest
+@Preview(name = "pair paused dark en", showBackground = true, widthDp = 412, heightDp = 760)
+@Composable
+internal fun PairPausedDarkEn() = PairPaused(dark = true, english = true)
 
 private fun shareSessions(en: Boolean) = listOf(
     MobileSession("a", if (en) "Polish approval state sync" else "完善审批状态同步", NOW - 60_000, running = true, blank = false, cwd = "/Users/helios/dsh-links", agentPreset = null),

@@ -123,9 +123,18 @@ Host 挂载了该服务时 bootstrap / SSE `ready` 下发：
 二维码 / `pair-info` 载荷新增两个时效戳（Unix 毫秒，主机时钟）：
 
 - `issuedAt`：本次渲染时刻；`expiresAt`：当前配对码过期时刻。
-- App 扫码后应先比较本机时间：超过 `expiresAt`（或 `issuedAt` 过旧）直接提示
-  「请刷新电脑面板上的二维码」，不要提交注定 401 的码，避免撞限流冷却。
+- App 只在已确认本机与主机时钟偏差可接受时使用这两个字段预判过期；未校准时仍提交
+  配对请求，由内层主机验码，避免手机时钟偏快误拒有效二维码。
 - 旧插件不下发这两个字段；缺失时 App 回退为直接尝试配对。
+
+成功的 `POST /dsh-link/pair` 响应新增可选 `serverNow`（Unix 毫秒，当前主机时钟），
+pending 响应另带 `pendingExpiresAt`（本次设备批准截止时间，独立于二维码的 `expiresAt`）。
+
+- 新 App 用 `pendingExpiresAt - serverNow` 估算批准剩余时间，并在本进程中用单调时钟倒计时；
+  没有 `serverNow` 的旧插件仍可配对，App 采用有限的本地等待预算，不声称主机已判定过期。
+- 同一 `requestId` 的幂等成功响应每次刷新 `serverNow`；原 token、deviceId、remote 凭据和
+  `pendingExpiresAt` 保持不变，重试不能延长批准期限。旧 App 忽略新增字段。
+- 本地等待预算到期或外层中继拒绝只能停止自动等待；不能据此删除配对凭据或当作主机拒绝。
 
 ## 远程能力（DLP/1）
 

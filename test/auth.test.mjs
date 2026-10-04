@@ -249,15 +249,22 @@ test("配对成功返回 deviceId + token，重复 requestId 只复用原设备"
   const body = await r.json()
   assert.ok(body.token && body.token.length >= 32)
   assert.ok(body.deviceId && body.deviceId.startsWith("dev-"))
+  assert.ok(Number.isSafeInteger(body.serverNow))
+  assert.equal(body.pendingExpiresAt, undefined, "已批准设备不带等待期限")
   globalThis.__testDevice = { token: body.token, deviceId: body.deviceId }
 
+  await new Promise((resolve) => setTimeout(resolve, 15))
+  const replayStartedAt = Date.now()
   const replaySame = await proxyFetch(`/dsh-link/pair`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ code, deviceName: "测试机", via: "relay", requestId: "pair-test-replay-1" }),
   })
   assert.equal(replaySame.status, 200)
-  assert.deepEqual(await replaySame.json(), body)
+  const replayBody = await replaySame.json()
+  assert.ok(replayBody.serverNow >= replayStartedAt)
+  assert.ok(replayBody.serverNow > body.serverNow, "幂等响应使用当前时钟")
+  assert.deepEqual(replayBody, { ...body, serverNow: replayBody.serverNow })
 
   const replay = await proxyFetch(`/dsh-link/pair`, {
     method: "POST",
@@ -265,6 +272,39 @@ test("配对成功返回 deviceId + token，重复 requestId 只复用原设备"
     body: JSON.stringify({ code, deviceName: "测试机2" }),
   })
   assert.equal(replay.status, 401)
+})
+
+test("pending 幂等响应刷新时钟而不延长批准期限或换发凭据", async () => {
+  await callRoute(pairSettingsRoute(), { body: { requireConfirm: true } })
+  try {
+    const info = await callRoute(pairInfoRoute())
+    const request = { code: info.body.pairingCode, deviceName: "等待期限测试", requestId: "pair-pending-clock-1" }
+    const first = await proxyFetch("/dsh-link/pair", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request),
+    })
+    assert.equal(first.status, 200)
+    const body = await first.json()
+    assert.equal(body.pending, true)
+    assert.ok(Number.isSafeInteger(body.serverNow))
+    const remaining = body.pendingExpiresAt - body.serverNow
+    assert.ok(remaining > 299000 && remaining <= 300000, "批准期限来自 pairingTtlSeconds")
+    await new Promise((resolve) => setTimeout(resolve, 15))
+    const replayStartedAt = Date.now()
+    const replay = await proxyFetch("/dsh-link/pair", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request),
+    })
+    assert.equal(replay.status, 200)
+    const replayBody = await replay.json()
+    assert.ok(replayBody.serverNow >= replayStartedAt)
+    assert.ok(replayBody.serverNow > body.serverNow)
+    assert.deepEqual(replayBody, { ...body, serverNow: replayBody.serverNow })
+    const rows = (await callRoute(devicesRoute())).body.devices.filter((row) => row.name === request.deviceName)
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].pendingExpiresAt, body.pendingExpiresAt)
+    await callRoute(revokeRoute(), { body: { deviceId: body.deviceId } })
+  } finally {
+    await callRoute(pairSettingsRoute(), { body: { requireConfirm: false } })
+  }
 })
 
 test("没有 requestId 的旧客户端重放仍被一次性配对码拒绝", async () => {

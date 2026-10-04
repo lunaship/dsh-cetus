@@ -20,6 +20,7 @@ import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostLoadResult
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
+import dev.deeplinks.core.PendingPairStore
 import dev.deeplinks.core.applyDshSecureWindow
 import dev.deeplinks.core.enableDshEdgeToEdge
 import dev.deeplinks.core.pickStartupHost
@@ -50,8 +51,16 @@ class MainActivity : ComponentActivity() {
          * 首页只负责恢复本地上下文，远端数据由 Workspace 的 bootstrap 异步加载。
          */
         internal fun resolveLaunchRoute(context: Context, intent: Intent): String {
-            intent.getStringExtra(EXTRA_START_ROUTE)?.takeIf { it.isNotBlank() }?.let { return it }
+            val requested = intent.getStringExtra(EXTRA_START_ROUTE)?.takeIf { it.isNotBlank() }
+            if (requested != null && requested != AppRoute.WORKSPACE) return requested
             if (HostStore.isLocked(context)) return AppRoute.DEVICES
+            // 有待批准配对记录时，直接进等待页（不先进入 Devices 或 Workspace）
+            val pending = PendingPairStore.reconcile(context, HostStore.current(context))
+            if (pending != null) {
+                return if (pending.paused) AppRoute.PAIR_FAILED else AppRoute.PAIR_WAITING
+            }
+            if (PendingPairStore.isUnreadable(context)) return AppRoute.PAIR_FAILED
+            if (requested != null) return requested
             val result = HostStore.loadResult(context)
             val hosts = (result as? HostLoadResult.Ok)?.hosts.orEmpty()
             val host = pickStartupHost(

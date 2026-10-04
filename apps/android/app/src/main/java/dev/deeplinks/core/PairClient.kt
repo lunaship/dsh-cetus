@@ -2,6 +2,7 @@ package dev.deeplinks.core
 
 import dev.deeplinks.core.remote.HostRoute
 import dev.deeplinks.core.remote.RemoteRoute
+import dev.deeplinks.core.remote.RouteRejectedException
 import dev.deeplinks.devices.PairingQr
 import org.json.JSONObject
 import java.io.IOException
@@ -51,6 +52,12 @@ object PairClient {
         val remote: RemoteRoute? = null,
         /** 二维码里与主地址不同的 Tailscale 地址。主地址本身已是 tailnet 时为空。 */
         val tailnetUrl: String = "",
+        /** 本次配对实际使用的路由（由成功的 pairOn 指定）。 */
+        val pairRoute: HostRoute = HostRoute.LAN,
+        /** 服务器返回的 pending 过期时间（Unix 毫秒）；非 pending 时为 null。 */
+        val pendingExpiresAt: Long? = null,
+        /** 服务器当前时间（Unix 毫秒），可选；null 表示旧插件未返回。 */
+        val serverNow: Long? = null,
     )
 
     fun normalize(baseUrl: String): String = PinnedSsl.normalizeUrl(baseUrl)
@@ -72,31 +79,42 @@ object PairClient {
      *    沿用同一个 requestId（插件按它去重，请求可能已经送达过也不会配出两台）；
      * 3. 配对码错误、过期、证书不符是认证失败，不换路径重试。
      */
-    fun pairWithQr(qr: PairingQr, deviceName: String, requestId: String = UUID.randomUUID().toString()): Result {
+    internal fun pairWithQr(
+        qr: PairingQr,
+        deviceName: String,
+        requestId: String = UUID.randomUUID().toString(),
+        lanCapable: Boolean? = NetworkTransport.lanCapable,
+        probe: (String, String) -> Boolean = HostHttp::probeLanUrl,
+        send: (String, String?, String, String, String, HostRoute, RemoteRoute?) -> Result = ::pairOn,
+    ): Result {
         val pin = qr.certFingerprint.takeIf { it.isNotBlank() }
         val remote = qr.remote
         if (remote == null || pin == null) {
-            var last: Exception? = null
             for (url in qr.urls) {
                 try {
-                    return withTailnetSpare(pairOn(normalize(url), pin, qr.code, deviceName, requestId, HostRoute.LAN, null), qr.urls)
+                    return withTailnetSpare(send(normalize(url), pin, qr.code, deviceName, requestId, HostRoute.LAN, null), qr.urls)
                 } catch (e: Exception) {
-                    last = e
+                    if (!canFallBackToRemote(e)) throw e
                 }
             }
-            throw last ?: IOException("no address in QR")
+            val failure = when (qr.remoteCapability) {
+                dev.deeplinks.devices.QrRemoteCapability.INVALID, dev.deeplinks.devices.QrRemoteCapability.LEGACY ->
+                    PairFailure.badQr(L.pairRemoteInvalid)
+                else -> PairFailure(PairFailureCode.QR_NO_REMOTE, PairRecovery.RESCAN, L.pairNoRemote)
+            }
+            throw PairRequestException(failure)
         }
-        val reachable = firstReachable(qr.urls.map(::normalize), LAN_PROBE_WAIT_MS) { HostHttp.probeLanUrl(it, pin) }
+        val reachable = if (lanCapable == false) null else firstReachable(qr.urls.map(::normalize), LAN_PROBE_WAIT_MS) { probe(it, pin) }
         if (reachable != null) {
             try {
-                return withTailnetSpare(pairOn(reachable, pin, qr.code, deviceName, requestId, HostRoute.LAN, null), qr.urls)
+                return withTailnetSpare(send(reachable, pin, qr.code, deviceName, requestId, HostRoute.LAN, null), qr.urls)
             } catch (e: Exception) {
                 if (!canFallBackToRemote(e)) throw e
             }
         }
         // 远程首配时 baseUrl 只用来拼请求路径，隧道不连它。主地址仍是码里的原地址。
         val base = qr.urls.firstOrNull()?.let(::normalize) ?: "https://127.0.0.1:18640"
-        return withTailnetSpare(pairOn(base, pin, qr.code, deviceName, requestId, HostRoute.REMOTE, remote), qr.urls)
+        return withTailnetSpare(send(base, pin, qr.code, deviceName, requestId, HostRoute.REMOTE, remote), qr.urls)
     }
 
     /** 主地址照旧。码里另有一条不同的 Tailscale 地址时，存成备用直连。 */
@@ -135,7 +153,7 @@ object PairClient {
         return winner.get()
     }
 
-    private fun pairOn(
+    internal fun pairOn(
         normalized: String,
         pin: String?,
         code: String,
@@ -161,12 +179,25 @@ object PairClient {
                 remoteOverride = remote,
             ).use { response ->
                 val respCode = response.code
-                val body = response.body?.byteStream()?.use { BoundedIo.readText(it) } ?: ""
-                if (respCode != 200) throw Exception(friendlyPairError(respCode, body))
-                return parsePairSuccess(normalized, body, deviceName, pin)
+                val body = response.body.byteStream().use { BoundedIo.readText(it) }
+                if (respCode != 200) {
+                    throw PairRequestException(pairFailureFromHttp(respCode, body))
+                }
+                return parsePairSuccess(normalized, body, deviceName, pin, route)
             }
+        } catch (e: RouteRejectedException) {
+            // F3：中继明确拒绝（UNKNOWN_KEY / BAD_MAC 等），不删凭据，让用户稍后重试。
+            throw PairRequestException(PairFailure.fromRelayCode(e.code, pending = false))
         } catch (t: Throwable) {
-            if (t is Exception) throw PinnedSsl.unwrap(t)
+            if (t is Exception) {
+                val unwrapped = PinnedSsl.unwrap(t)
+                // 远程最后一跳的 TLS/HTTP 中断也必须保留链路，不显示局域网地址全部失败。
+                if (route == HostRoute.REMOTE && unwrapped is IOException) {
+                    val failure = PairFailure.fromException(unwrapped)
+                    throw PairRequestException(if (failure.code == PairFailureCode.NETWORK_FAILURE) PairFailure.remoteInterrupted() else failure)
+                }
+                throw unwrapped
+            }
             throw IOException(t.message ?: t.javaClass.simpleName, t)
         }
     }
@@ -179,30 +210,36 @@ object PairClient {
             .put("via", via)
             .put("requestId", requestId)
 
-    /** 待批准配对的轮询结果（v4 1.5）。 */
-    enum class Approval { Approved, Pending, Rejected, Unknown }
-
-    /**
-     * 用配对拿到的 token 访问一个需要鉴权的接口：200 = 已批准；403 + `pending` = 还在等；
-     * 401 = 被拒绝或已超时（插件会删掉这台设备）；其余（网络抖动等）按未知继续等。
-     */
-    fun approvalState(host: Host): Approval = try {
-        HostHttp.execute(
-            host,
-            HostHttp.DshRequest("GET", "/dsh-link/mobile/sessions", connectTimeoutMs = 4_000, readTimeoutMs = 6_000),
-        ).use { response ->
-            val body = runCatching { response.body?.byteStream()?.use { BoundedIo.readText(it, BoundedIo.MAX_HEALTH_BODY_BYTES) } }.getOrNull()
-            approvalFromResponse(response.code, body)
+    /** 批准检查只用设备凭据；实际扫码路由用于展示，后续 GET 可安全重新选路。 */
+    fun approvalStateSealed(session: PairingSession): PairApproval = try {
+        HostHttp.execute(session.host, approvalRequest(session.host)).use { response ->
+            val body = response.body.byteStream().use { BoundedIo.readText(it, BoundedIo.MAX_HEALTH_BODY_BYTES) }
+            approvalFromResponseSealed(response.code, body)
         }
-    } catch (_: Exception) {
-        Approval.Unknown
+    } catch (t: Exception) {
+        approvalFromError(t)
     }
 
-    internal fun approvalFromResponse(code: Int, body: String?): Approval = when {
-        code in 200..299 -> Approval.Approved
-        code == 403 && runCatching { JSONObject(body.orEmpty()).optBoolean("pending") }.getOrDefault(false) -> Approval.Pending
-        code == 401 -> Approval.Rejected
-        else -> Approval.Unknown
+    internal fun approvalRequest(host: Host) = HostHttp.DshRequest(
+        "GET", "/dsh-link/mobile/sessions",
+        headers = listOf("x-dsh-link-token" to host.token),
+        connectTimeoutMs = 4_000, readTimeoutMs = 6_000,
+    )
+
+    internal fun approvalFromError(error: Exception): PairApproval = when (val unwrapped = PinnedSsl.unwrap(error)) {
+        is PinnedSsl.CertChangedException -> PairApproval.IdentityMismatch
+        is RouteRejectedException -> PairApproval.RelayReportedRejection(unwrapped.code)
+        is java.net.SocketTimeoutException -> PairApproval.Retryable(RetryProblem.HOST_OFFLINE)
+        is java.net.UnknownHostException -> PairApproval.Retryable(RetryProblem.NETWORK_FAILURE)
+        else -> PairApproval.Retryable(RetryProblem.UNKNOWN)
+    }
+
+    internal fun approvalFromResponseSealed(code: Int, body: String?): PairApproval = when {
+        code in 200..299 -> PairApproval.Approved
+        code == 403 && runCatching { JSONObject(body.orEmpty()).optBoolean("pending") }.getOrDefault(false) -> PairApproval.Pending
+        code == 401 -> PairApproval.RejectedByHost
+        code == 429 || code == 503 -> PairApproval.Retryable(RetryProblem.BUSY)
+        else -> PairApproval.Retryable(RetryProblem.UNKNOWN)
     }
 
     /** 探测主机：在线、暂时不可达，或证书已失效。 */
@@ -215,7 +252,7 @@ object PairClient {
             ).use { response ->
                 if (response.code == 200) {
                     runCatching {
-                        response.body?.byteStream()?.use { BoundedIo.readText(it, BoundedIo.MAX_HEALTH_BODY_BYTES) }
+                        response.body.byteStream().use { BoundedIo.readText(it, BoundedIo.MAX_HEALTH_BODY_BYTES) }
                     }
                     HostHealth.Ok(System.currentTimeMillis() - start)
                 } else HostHealth.Unreachable
@@ -237,7 +274,7 @@ object PairClient {
     }
 
     /** 解析成功配对 JSON。`pending=true` 表示主机开启了本机确认，token 已保存但尚未放行。 */
-    internal fun parsePairSuccess(normalized: String, body: String, deviceName: String, pin: String?): Result {
+    fun parsePairSuccess(normalized: String, body: String, deviceName: String, pin: String?, route: HostRoute = HostRoute.LAN): Result {
         val o = JSONObject(body)
         return Result(
             normalized,
@@ -247,21 +284,26 @@ object PairClient {
             pin.orEmpty(),
             o.optBoolean("pending"),
             runCatching { RemoteRoute.fromPairResponse(o) }.getOrNull(),
+            "",
+            route,
+            runCatching { o.getLong("pendingExpiresAt") }.getOrNull()?.takeIf { it > 0 },
+            runCatching { o.getLong("serverNow") }.getOrNull()?.takeIf { it > 0 },
         )
     }
 
     /** 将配对 HTTP 错误转为用户可读文案。 */
-    fun friendlyPairError(code: Int, body: String): String {
-        val hint = runCatching {
-            JSONObject(body).let { o -> if (o.isNull("error")) null else o.optString("error").takeIf { it.isNotBlank() } }
-        }.getOrNull()
+    /** 根据 HTTP 状态码直接构造结构化 PairFailure（不经过 fromException）。 */
+    internal fun pairFailureFromHttp(code: Int, body: String): PairFailure {
         return when (code) {
-            401 -> hint ?: LocaleManager.strings.pairCodeInvalid
-            409 -> hint ?: LocaleManager.strings.pairNameTaken
-            415 -> LocaleManager.strings.pairBadRequest
-            429 -> hint ?: LocaleManager.strings.pairTooManyAttempts
-            in 500..599 -> hint ?: LocaleManager.strings.pairHostUnavailable.format(code)
-            else -> hint ?: LocaleManager.strings.pairFailedHttp.format(code)
+            401 -> PairFailure(PairFailureCode.PAIR_CODE_INVALID, PairRecovery.RESCAN, LocaleManager.strings.pairCodeInvalid)
+            409 -> PairFailure(PairFailureCode.SAME_NAME, PairRecovery.RESCAN, LocaleManager.strings.pairNameTaken)
+            415 -> PairFailure(PairFailureCode.QR_REMOTE_INVALID, PairRecovery.RESCAN, LocaleManager.strings.remoteCredentialInvalid)
+            429 -> PairFailure(PairFailureCode.RATE_LIMITED, PairRecovery.RESCAN, LocaleManager.strings.pairTooManyAttempts)
+            in 500..599 -> PairFailure(PairFailureCode.RELAY_UNREACHABLE, PairRecovery.RESCAN, LocaleManager.strings.pairHostUnavailable.format(code))
+            else -> PairFailure(PairFailureCode.UNKNOWN, PairRecovery.BACK, LocaleManager.strings.pairFailedHttp.format(code))
         }
     }
+
+    /** 供人类阅读的兜底错误（仅用于旧调用点）。 */
+    fun friendlyPairError(code: Int, body: String): String = pairFailureFromHttp(code, body).message
 }

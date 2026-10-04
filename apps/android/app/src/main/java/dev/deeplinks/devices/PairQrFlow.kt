@@ -3,6 +3,11 @@ package dev.deeplinks.devices
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.L
 import dev.deeplinks.core.PairClient
+import dev.deeplinks.core.PairFailure
+import dev.deeplinks.core.PairRequestException
+import dev.deeplinks.core.PairingSession
+import dev.deeplinks.core.PairFailureCode
+import dev.deeplinks.core.PairRecovery
 import dev.deeplinks.core.PinnedSsl
 import java.util.UUID
 
@@ -12,13 +17,12 @@ internal sealed interface PairQrOutcome {
     data class Paired(val host: Host) : PairQrOutcome
 
     /** 电脑要求面板确认：配对已登记，等用户在电脑上点批准。 */
-    data class Pending(val host: Host) : PairQrOutcome
+    data class Pending(val session: PairingSession) : PairQrOutcome
 
     /**
-     * 没能配对，[message] 可直接展示。[badQr] = 码本身不对（留在扫码页提示）；
-     * [network] = 码里的地址都连不上（失败页给排查建议，v4 1.6）。
+     * 没能配对，[failure] 可直接展示。
      */
-    data class Failed(val message: String, val network: Boolean = false, val badQr: Boolean = false) : PairQrOutcome
+    data class Failed(val failure: PairFailure) : PairQrOutcome
 }
 
 /**
@@ -32,20 +36,29 @@ internal fun pairFromQrText(
     deviceName: String,
     requestId: String = UUID.randomUUID().toString(),
 ): PairQrOutcome = when (val parsed = parsePairingQr(text)) {
-    PairingQrResult.NotDsh -> PairQrOutcome.Failed(L.notDshQr, badQr = true)
-    PairingQrResult.Invalid -> PairQrOutcome.Failed(L.qrIncomplete, badQr = true)
+    PairingQrResult.NotDsh -> PairQrOutcome.Failed(PairFailure(PairFailureCode.PAIR_CODE_INVALID, PairRecovery.RESCAN, L.notDshQr))
+    PairingQrResult.Invalid -> PairQrOutcome.Failed(PairFailure(PairFailureCode.PAIR_CODE_INVALID, PairRecovery.RESCAN, L.qrIncomplete))
     is PairingQrResult.Ok -> {
         val qr = parsed.qr
         try {
             val result = PairClient.pairWithQr(qr, deviceName, requestId)
             val host = hostFromPair(qr.name, result)
-            if (result.pending) PairQrOutcome.Pending(host) else PairQrOutcome.Paired(host)
+            if (result.pending) {
+                val session = PairingSession(
+                    requestId = requestId,
+                    attemptId = requestId,
+                    host = host,
+                    pairRoute = result.pairRoute,
+                    pendingExpiresAt = result.pendingExpiresAt,
+                    serverNow = result.serverNow,
+                    receivedAtMs = System.currentTimeMillis(),
+                )
+                PairQrOutcome.Pending(session)
+            } else PairQrOutcome.Paired(host)
         } catch (e: Exception) {
             val unwrapped = PinnedSsl.unwrap(e)
-            PairQrOutcome.Failed(
-                unwrapped.message?.takeIf { it.isNotBlank() } ?: L.allAddressesFailed,
-                network = isNetworkPairFailure(unwrapped),
-            )
+            val failure = if (unwrapped is PairRequestException) unwrapped.failure else PairFailure.fromException(unwrapped)
+            PairQrOutcome.Failed(failure)
         }
     }
 }

@@ -3,6 +3,7 @@ package dev.deeplinks.native
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.slideInHorizontally
@@ -27,8 +28,11 @@ import androidx.navigation.compose.rememberNavController
 import dev.deeplinks.core.DeviceName
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostStore
-import dev.deeplinks.core.HostHttp
 import dev.deeplinks.core.L
+import dev.deeplinks.core.PendingPairStore
+import dev.deeplinks.core.PairFailure
+import dev.deeplinks.core.PairFailureCode
+import dev.deeplinks.core.PairRecovery
 import dev.deeplinks.core.pairRejected
 import dev.deeplinks.core.stableIdentity
 import dev.deeplinks.devices.DevicesScreen
@@ -64,7 +68,9 @@ object AppRoute {
 
     /** 扫码页把失败原因带回来（[PAIR_FAILED]）。 */
     const val EXTRA_PAIR_MESSAGE = "pairFailMessage"
-    const val EXTRA_PAIR_NETWORK = "pairFailNetwork"
+    const val EXTRA_PAIR_CODE = "pairFailCode"
+    const val EXTRA_PAIR_RECOVERY = "pairFailRecovery"
+    const val EXTRA_PAIR_SUGGESTION = "pairFailSuggestion"
 }
 
 /**
@@ -102,11 +108,16 @@ internal fun AppNavHost(
         currentHost = HostStore.current(context)
     }
     /** 1.6 失败页要展示的原因：站内配对直接写这里，扫码页经 Intent extras 带回。 */
-    var pairFailure by remember { mutableStateOf<PairQrOutcome.Failed?>(null) }
+    var pairFailure by remember { mutableStateOf<PairFailure?>(null) }
     LaunchedEffect(liveIntent) {
         reloadHost()
         liveIntent.getStringExtra(AppRoute.EXTRA_PAIR_MESSAGE)?.let { message ->
-            pairFailure = PairQrOutcome.Failed(message, network = liveIntent.getBooleanExtra(AppRoute.EXTRA_PAIR_NETWORK, false))
+            pairFailure = PairFailure(
+                runCatching { PairFailureCode.valueOf(liveIntent.getStringExtra(AppRoute.EXTRA_PAIR_CODE).orEmpty()) }.getOrDefault(PairFailureCode.UNKNOWN),
+                runCatching { PairRecovery.valueOf(liveIntent.getStringExtra(AppRoute.EXTRA_PAIR_RECOVERY).orEmpty()) }.getOrDefault(PairRecovery.RESCAN),
+                message,
+                liveIntent.getStringExtra(AppRoute.EXTRA_PAIR_SUGGESTION),
+            )
         }
     }
 
@@ -126,7 +137,11 @@ internal fun AppNavHost(
 
     LaunchedEffect(requestedRoute) {
         if (requestedRoute != null) {
-            navController.navigate(requestedRoute) { launchSingleTop = true }
+            val pending = PendingPairStore.loadAny(context)
+            val route = if (requestedRoute == AppRoute.WORKSPACE && pending != null) {
+                if (pending.paused) AppRoute.PAIR_FAILED else AppRoute.PAIR_WAITING
+            } else requestedRoute
+            navController.navigate(route) { launchSingleTop = true }
             onRouteHandled()
         }
     }
@@ -149,22 +164,10 @@ internal fun AppNavHost(
     // 站内转场时长：在可组合作用域捕获（enter/pop 各 lambda 非 @Composable，不能现调 motionDuration）
     val navMotionMs = motionDuration(DshDuration.slow)
 
-    /** 配对结果落库；锁定（旧记录不可读）时清锁重写。返回是否成功。 */
-    fun persistPairHost(host: Host, onError: (String) -> Unit): Boolean {
-        if (HostStore.upsert(context, host)) return true
-        if (HostStore.isLocked(context)) {
-            HostStore.clearLockAndReplace(context, host)
-            onHostNotice(L.credentialsResetToast)
-            return true
-        }
-        onError(L.credentialsSaveFailedToast)
-        return false
-    }
-
     /** 工作区内的「设备与配对」面板；没有已配对电脑时工作区自己会退回设备页。 */
     var deviceSheetOpen by remember { mutableStateOf(false) }
 
-    fun openPairFailed(failure: PairQrOutcome.Failed) {
+    fun openPairFailed(failure: PairFailure) {
         pairFailure = failure
         deviceSheetOpen = false
         navController.navigate(AppRoute.PAIR_FAILED) { launchSingleTop = true }
@@ -177,21 +180,32 @@ internal fun AppNavHost(
     val pairQrText: (String, (Host) -> Unit, (String) -> Unit) -> Unit =
         { text, onSuccess, onError ->
             scope.launch {
-                val outcome = withContext(Dispatchers.IO) { pairFromQrText(text, DeviceName.of(context)) }
+                val attempt = withContext(Dispatchers.IO) { PendingPairStore.begin(context) }
+                if (attempt == null) {
+                    onError(L.credentialsSaveFailedToast)
+                    return@launch
+                }
+                val outcome = withContext(Dispatchers.IO) { pairFromQrText(text, DeviceName.of(context), attempt) }
+                if (!PendingPairStore.isCurrent(context, attempt)) return@launch
                 when (outcome) {
-                    is PairQrOutcome.Failed -> if (outcome.badQr) {
-                        onError(outcome.message)
-                    } else {
-                        openPairFailed(outcome)
+                    is PairQrOutcome.Failed -> {
+                        PendingPairStore.abort(context, attempt)
+                        if (outcome.failure.code == PairFailureCode.PAIR_CODE_INVALID || outcome.failure.code == PairFailureCode.QR_REMOTE_INVALID) {
+                            onError(outcome.failure.message)
+                        } else openPairFailed(outcome.failure)
                     }
-                    is PairQrOutcome.Paired -> if (persistPairHost(outcome.host, onError)) {
-                        onSuccess(outcome.host)
-                        openWorkspace()
+                    is PairQrOutcome.Paired -> {
+                        val saved = withContext(Dispatchers.IO) { PendingPairStore.complete(context, attempt, outcome.host) }
+                        if (saved && PendingPairStore.isCurrent(context, attempt)) {
+                            onSuccess(outcome.host)
+                            openWorkspace()
+                        } else onError(L.credentialsSaveFailedToast)
                     }
-                    is PairQrOutcome.Pending -> if (persistPairHost(outcome.host, onError)) {
-                        onSuccess(outcome.host)
-                        reloadHost()
-                        navController.navigate(AppRoute.PAIR_WAITING) { launchSingleTop = true }
+                    is PairQrOutcome.Pending -> {
+                        val saved = withContext(Dispatchers.IO) { PendingPairStore.save(context, outcome.session) }
+                        if (saved && PendingPairStore.isCurrent(context, attempt)) {
+                            navController.navigate(AppRoute.PAIR_WAITING) { launchSingleTop = true }
+                        } else onError(L.credentialsSaveFailedToast)
                     }
                 }
             }
@@ -264,46 +278,84 @@ internal fun AppNavHost(
         }
 
         composable(AppRoute.PAIR_WAITING) {
-            val host = currentHost
-            if (host == null) {
-                LaunchedEffect(Unit) { navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } } }
+            val session = remember { PendingPairStore.loadAny(context) }
+            if (session == null || session.paused) {
+                LaunchedEffect(Unit) { openPairFailed(if (session == null) PairFailure.unreadable() else PairFailure.restored(session)) }
             } else {
+                fun cancelPair() {
+                    if (!PendingPairStore.isCurrent(context, session.attemptId)) return
+                    if (PendingPairStore.remove(context, session.attemptId, session.host.deviceId)) {
+                        reloadHost()
+                        navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } }
+                    } else openPairFailed(PairFailure.saveFailed())
+                }
+                BackHandler { cancelPair() }
                 PairApprovalPoller(
-                    host = host,
+                    session = session,
+                    isCurrent = { PendingPairStore.isCurrent(context, session.attemptId) },
                     onApproved = {
-                        navController.navigate(AppRoute.WORKSPACE) { popUpTo(0) { inclusive = true } }
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) { PendingPairStore.promote(context, session) }
+                            if (saved && PendingPairStore.isCurrent(context, session.attemptId)) {
+                                reloadHost()
+                                navController.navigate(AppRoute.WORKSPACE) { popUpTo(0) { inclusive = true } }
+                            } else if (PendingPairStore.isCurrent(context, session.attemptId)) {
+                                PendingPairStore.pause(context, session, PairFailure.saveFailed())
+                                openPairFailed(PairFailure.saveFailed())
+                            }
+                        }
                     },
                     onRejected = {
-                        HostStore.remove(context, host)
-                        reloadHost()
-                        openPairFailed(PairQrOutcome.Failed(L.pairRejected))
+                        if (PendingPairStore.isCurrent(context, session.attemptId)) {
+                            val removed = PendingPairStore.remove(context, session.attemptId, session.host.deviceId)
+                            openPairFailed(if (removed) PairFailure(PairFailureCode.PENDING_REJECTED, PairRecovery.RESCAN, L.pairRejected) else PairFailure.saveFailed())
+                        }
+                    },
+                    onPaused = { failure ->
+                        if (PendingPairStore.isCurrent(context, session.attemptId)) {
+                            val saved = PendingPairStore.pause(context, session, failure)
+                            openPairFailed(if (saved) failure else PairFailure.saveFailed())
+                        }
                     },
                 )
                 PairWaitingScreen(
-                    computerName = host.name,
+                    session = session,
                     deviceName = remember { DeviceName.of(context) },
-                    viaRemote = remember(host) { HostHttp.isViaRemote(host) },
-                    onCancel = {
-                        HostStore.remove(context, host)
-                        reloadHost()
-                        navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } }
-                    },
+                    onCancel = ::cancelPair,
                 )
             }
         }
 
         composable(AppRoute.PAIR_FAILED) {
-            val failure = pairFailure ?: PairQrOutcome.Failed(L.allAddressesFailed, network = true)
+            val pending = PendingPairStore.loadAny(context)
+            fun leavePairFailure() {
+                pairFailure = null
+                navController.navigate(if (currentHost == null) AppRoute.DEVICES else AppRoute.WORKSPACE) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+            BackHandler { leavePairFailure() }
+            val failure = pairFailure ?: if (PendingPairStore.isUnreadable(context)) {
+                PairFailure.unreadable()
+            } else if (pending != null) {
+                PairFailure.restored(pending)
+            } else PairFailure.network()
             PairFailedScreen(
-                message = failure.message,
-                network = failure.network,
+                failure = failure,
                 onRescan = onScan,
-                onBack = {
-                    pairFailure = null
-                    if (!navController.popBackStack()) {
-                        navController.navigate(AppRoute.DEVICES) { popUpTo(0) { inclusive = true } }
-                    }
+                onRetry = {
+                    val pending = PendingPairStore.loadAny(context)
+                    if (pending == null) {
+                        onScan()
+                    } else if (PendingPairStore.resume(context, pending)) {
+                        pairFailure = null
+                        navController.navigate(AppRoute.PAIR_WAITING) {
+                            popUpTo(AppRoute.PAIR_WAITING) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else pairFailure = PairFailure.saveFailed()
                 },
+                onBack = ::leavePairFailure,
             )
         }
 

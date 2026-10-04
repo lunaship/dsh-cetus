@@ -126,13 +126,36 @@ class PairClientTest {
     }
 
     @Test
+    fun `pair success carries route and expiry timestamps`() {
+        val r = PairClient.parsePairSuccess(
+            "https://10.0.0.2:18640",
+            """{"ok":true,"token":"tok","deviceId":"dev-1","pending":true,"pendingExpiresAt":1735747200000,"serverNow":1735743600000,"remote":{"e":"wss://relay.example/ws","r":"AAAAAAAAAAAAAAAAAAAAAA","h":"AQEBAQEBAQEBAQEBAQEBAQ","k":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}}""",
+            "手机",
+            "ab",
+            dev.deeplinks.core.remote.HostRoute.REMOTE,
+        )
+        assertTrue(r.pending)
+        assertEquals(dev.deeplinks.core.remote.HostRoute.REMOTE, r.pairRoute)
+        assertEquals(1735747200000L, r.pendingExpiresAt)
+        assertEquals(1735743600000L, r.serverNow)
+    }
+
+    @Test
+    fun `pair http errors preserve reason and recovery without server text`() {
+        assertEquals(PairFailureCode.PAIR_CODE_INVALID, PairClient.pairFailureFromHttp(401, "").code)
+        assertEquals(PairFailureCode.SAME_NAME, PairClient.pairFailureFromHttp(409, "").code)
+        assertEquals(PairRecovery.RESCAN, PairClient.pairFailureFromHttp(401, "").recovery)
+        assertEquals(DshStringsZh.pairCodeInvalid, PairClient.friendlyPairError(401, """{"error":"secret token"}"""))
+    }
+
+    @Test
     fun `pair http errors follow app language`() {
         assertEquals(DshStringsZh.pairCodeInvalid, PairClient.friendlyPairError(401, ""))
         assertEquals(DshStringsZh.pairNameTaken, PairClient.friendlyPairError(409, "{}"))
-        assertEquals(DshStringsZh.pairBadRequest, PairClient.friendlyPairError(415, """{"error":"ignored"}"""))
+        assertEquals(DshStringsZh.remoteCredentialInvalid, PairClient.friendlyPairError(415, """{"error":"ignored"}"""))
         assertEquals(DshStringsZh.pairTooManyAttempts, PairClient.friendlyPairError(429, ""))
         assertEquals(DshStringsZh.pairHostUnavailable.format(503), PairClient.friendlyPairError(503, ""))
         assertEquals(DshStringsZh.pairFailedHttp.format(418), PairClient.friendlyPairError(418, ""))
-        assertEquals("bad pin", PairClient.friendlyPairError(401, """{"error":"bad pin"}"""))
+        assertEquals(DshStringsZh.pairCodeInvalid, PairClient.friendlyPairError(401, """{"error":"bad pin"}"""))
     }
 }

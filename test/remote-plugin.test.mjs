@@ -313,7 +313,19 @@ test("远程首配（kind=bootstrap）：只放行 /pair；即使关闭本机确
   const r = await tunnelFetch(tunnel, "/dsh-link/pair", jsonPost({ code: qr.pairingCode, deviceName: "外面的手机", requestId: "remote-pair-0001" }))
   assert.equal(r.status, 200, JSON.stringify(r.body))
   assert.equal(r.body.pending, true)
+  assert.ok(Number.isSafeInteger(r.body.serverNow))
+  assert.ok(r.body.pendingExpiresAt > r.body.serverNow)
   assert.ok(r.body.remote?.h && r.body.remote?.k, "pending 设备也要拿到远程能力，才能等批准结果")
+
+  // 同一逻辑请求换路重试时，只刷新响应时钟；不得换 token/handle 或重置批准期。
+  await new Promise((resolve) => setTimeout(resolve, 15))
+  const replayStartedAt = Date.now()
+  const replay = await lanFetch("/dsh-link/pair", jsonPost({ code: qr.pairingCode, deviceName: "外面的手机", requestId: "remote-pair-0001" }))
+  assert.equal(replay.status, 200)
+  assert.ok(replay.body.serverNow >= replayStartedAt)
+  assert.ok(replay.body.serverNow > r.body.serverNow)
+  assert.deepEqual(replay.body, { ...r.body, serverNow: replay.body.serverNow })
+  assert.equal(state().devices.filter((device) => device.deviceId === r.body.deviceId).length, 1)
 
   const listed = (await panel("/dsh-link/devices")).body.devices.find((d) => d.deviceId === r.body.deviceId)
   assert.equal(listed.status, "pending")

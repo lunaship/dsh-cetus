@@ -148,6 +148,7 @@ class DshStrings(private val values: Map<String, String>) {
     val remoteClockSkew: String get() = t("remoteClockSkew")
     val remoteLocalUnavailable: String get() = t("remoteLocalUnavailable")
     val remoteQrExpired: String get() = t("remoteQrExpired")
+    val remoteRelayRejected: String get() = t("remoteRelayRejected")
     val notifChannelApprovals: String get() = t("notifChannelApprovals")
     val notifChannelApprovalsDesc: String get() = t("notifChannelApprovalsDesc")
     val notifChannelTasks: String get() = t("notifChannelTasks")

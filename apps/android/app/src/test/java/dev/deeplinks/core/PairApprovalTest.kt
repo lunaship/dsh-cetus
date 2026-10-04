@@ -1,6 +1,7 @@
 package dev.deeplinks.core
 
 import dev.deeplinks.devices.isNetworkPairFailure
+import dev.deeplinks.core.RetryProblem
 import java.io.IOException
 import java.net.SocketTimeoutException
 import org.junit.Assert.assertEquals
@@ -13,12 +14,12 @@ class PairApprovalTest {
 
     @Test
     fun `approval state follows plugin auth responses`() {
-        assertEquals(PairClient.Approval.Approved, PairClient.approvalFromResponse(200, """{"sessions":[]}"""))
-        assertEquals(PairClient.Approval.Pending, PairClient.approvalFromResponse(403, """{"error":"pending","pending":true}"""))
-        assertEquals(PairClient.Approval.Unknown, PairClient.approvalFromResponse(403, """{"error":"forbidden"}"""))
-        assertEquals(PairClient.Approval.Unknown, PairClient.approvalFromResponse(403, "not json"))
-        assertEquals(PairClient.Approval.Rejected, PairClient.approvalFromResponse(401, null))
-        assertEquals(PairClient.Approval.Unknown, PairClient.approvalFromResponse(502, ""))
+        assertEquals(PairApproval.Approved, PairClient.approvalFromResponseSealed(200, """{"sessions":[]}"""))
+        assertEquals(PairApproval.Pending, PairClient.approvalFromResponseSealed(403, """{"error":"pending","pending":true}"""))
+        assertEquals(PairApproval.Retryable(RetryProblem.UNKNOWN), PairClient.approvalFromResponseSealed(403, """{"error":"forbidden"}"""))
+        assertEquals(PairApproval.Retryable(RetryProblem.UNKNOWN), PairClient.approvalFromResponseSealed(403, "not json"))
+        assertEquals(PairApproval.RejectedByHost, PairClient.approvalFromResponseSealed(401, null))
+        assertEquals(PairApproval.Retryable(RetryProblem.UNKNOWN), PairClient.approvalFromResponseSealed(502, ""))
     }
 
     @Test

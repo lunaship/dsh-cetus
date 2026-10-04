@@ -2,8 +2,10 @@ package dev.deeplinks.devices
 import dev.deeplinks.R
 import dev.deeplinks.native.WorkspaceActivity
 import dev.deeplinks.core.DeviceName
-import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
+import dev.deeplinks.core.PendingPairStore
+import dev.deeplinks.core.PairingSession
+import dev.deeplinks.core.PairFailureCode
 import dev.deeplinks.native.AppRoute
 import dev.deeplinks.core.scanHint
 import dev.deeplinks.core.scanTitle
@@ -145,45 +147,62 @@ class ScanActivity : AppCompatActivity() {
     }
 
     /** 扫码与相册共用的落点：解析 + 配对 + 保存/导航。运行在 [executor] 线程上。 */
+    @Volatile private var activeAttempt: String? = null
+
     private fun pairAndFinish(text: String) {
-        when (val outcome = pairFromQrText(text, DeviceName.of(this))) {
-            is PairQrOutcome.Failed -> if (outcome.badQr) scanFailed(outcome.message) else openPairFailed(outcome)
-            is PairQrOutcome.Paired -> saveAndFinish(outcome.host)
-            is PairQrOutcome.Pending -> saveAndFinish(outcome.host, pending = true)
+        if (isFinishing || isDestroyed) return
+        val attempt = PendingPairStore.begin(this) ?: run { scanFailed(L.credentialsSaveFailedToast); return }
+        activeAttempt = attempt
+        if (isFinishing || isDestroyed) { PendingPairStore.abort(this, attempt); return }
+        val outcome = pairFromQrText(text, DeviceName.of(this), attempt)
+        if (isFinishing || isDestroyed || !PendingPairStore.isCurrent(this, attempt)) return
+        when (outcome) {
+            is PairQrOutcome.Failed -> {
+                PendingPairStore.abort(this, attempt)
+                activeAttempt = null
+                if (outcome.failure.code == PairFailureCode.PAIR_CODE_INVALID || outcome.failure.code == PairFailureCode.QR_REMOTE_INVALID) scanFailed(outcome.failure.message) else openPairFailed(outcome)
+            }
+            is PairQrOutcome.Paired -> saveAndFinish(outcome.host, attempt)
+            is PairQrOutcome.Pending -> savePendingAndFinish(outcome.session)
         }
     }
 
-    private fun saveAndFinish(host: dev.deeplinks.core.Host, pending: Boolean = false) {
+    private fun saveAndFinish(host: dev.deeplinks.core.Host, attempt: String) {
         runOnUiThread {
-            if (isFinishing) return@runOnUiThread
-            if (!HostStore.upsert(this, host)) {
-                if (HostStore.isLocked(this)) {
-                    HostStore.clearLockAndReplace(this, host)
-                } else {
-                    scanFailed(L.credentialsSaveFailedToast)
-                    return@runOnUiThread
-                }
-            }
-            if (pending) {
-                // v4 1.5：回到应用内的「等电脑批准」页，由它轮询批准结果。
-                startActivity(mainIntent(AppRoute.PAIR_WAITING))
-                finish()
+            if (isFinishing || isDestroyed || !PendingPairStore.isCurrent(this, attempt)) return@runOnUiThread
+            if (!PendingPairStore.complete(this, attempt, host)) {
+                scanFailed(L.credentialsSaveFailedToast)
                 return@runOnUiThread
             }
+            activeAttempt = null
             startActivity(host.putInto(android.content.Intent(this@ScanActivity, WorkspaceActivity::class.java)))
             finish()
         }
     }
 
+    private fun savePendingAndFinish(session: PairingSession) {
+        if (!PendingPairStore.save(this, session)) {
+            scanFailed(L.credentialsSaveFailedToast)
+            return
+        }
+        runOnUiThread {
+            if (isFinishing || isDestroyed || !PendingPairStore.isCurrent(this, session.attemptId)) return@runOnUiThread
+            activeAttempt = null
+            startActivity(mainIntent(AppRoute.PAIR_WAITING))
+            finish()
+        }
+    }
+
     /** v4 1.6：连不上 / 码过期等配对失败，回应用内失败页（码本身不对仍留在扫码页提示）。 */
-    private fun openPairFailed(failure: PairQrOutcome.Failed) {
+    private fun openPairFailed(outcome: PairQrOutcome.Failed) {
         runOnUiThread {
             if (isFinishing) return@runOnUiThread
-            startActivity(
-                mainIntent(AppRoute.PAIR_FAILED)
-                    .putExtra(AppRoute.EXTRA_PAIR_MESSAGE, failure.message)
-                    .putExtra(AppRoute.EXTRA_PAIR_NETWORK, failure.network),
-            )
+            val intent = mainIntent(AppRoute.PAIR_FAILED)
+                .putExtra(AppRoute.EXTRA_PAIR_MESSAGE, outcome.failure.message)
+                .putExtra(AppRoute.EXTRA_PAIR_CODE, outcome.failure.code.name)
+                .putExtra(AppRoute.EXTRA_PAIR_RECOVERY, outcome.failure.recovery.name)
+            outcome.failure.suggestion?.let { intent.putExtra(AppRoute.EXTRA_PAIR_SUGGESTION, it) }
+            startActivity(intent)
             finish()
         }
     }
@@ -233,6 +252,7 @@ class ScanActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        activeAttempt?.let { PendingPairStore.abort(this, it) }
         executor.shutdownNow()
         super.onDestroy()
     }

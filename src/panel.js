@@ -353,8 +353,9 @@ const createPanelModule = (require) => {
 
     const code = info.pairingCode || ''
     const remoteReady = remote?.state === 'ready'
-    // 远程状态变化时换图：同一张配对码，就绪前后编进去的内容不同
-    const stamp = `${code}:${info.expiresAt ?? ''}:${remoteReady ? 'r' : 'l'}`
+    // 就绪状态相同也可能换了中继地址/指纹；浏览器必须重新请求二维码。
+    const stamp = JSON.stringify([code, info.expiresAt ?? '', info.certFingerprint ?? '',
+      remoteReady ? 'r' : 'l', remoteReady ? remote.endpoint : '', remoteReady ? remote.outerPin ?? '' : ''])
     const src = `/dsh-link/qr.png?v=${encodeURIComponent(stamp)}`
     const copy = async () => {
       try {

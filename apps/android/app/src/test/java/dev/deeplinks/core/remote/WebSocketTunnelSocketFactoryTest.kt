@@ -2,6 +2,10 @@ package dev.deeplinks.core.remote
 
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostHttp
+import dev.deeplinks.core.PairFailure
+import dev.deeplinks.core.PairFailureCode
+import dev.deeplinks.core.L
+import dev.deeplinks.core.pairRelayUpgradeFailed
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.KeyStore
@@ -105,7 +109,24 @@ class WebSocketTunnelSocketFactoryTest {
                 activeSocket.connect(InetSocketAddress("relay.invalid", 443), 5_000)
             }
             assertTrue(error.message!!.contains("offline"))
+            assertEquals(PairFailureCode.ROUTE_OFFLINE, PairFailure.fromException(error).code)
         } finally { socket?.close(); quietlyClose(server) }
+    }
+
+    @Test
+    fun `failed websocket upgrade retains relay stage for pairing UI`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse.Builder().code(403).body("private-server-detail").build())
+        server.start()
+        val socket = factory(server).createSocket()
+        try {
+            val error = org.junit.Assert.assertThrows(RouteUnreachableException::class.java) {
+                socket.connect(InetSocketAddress("relay.invalid", 443), 5_000)
+            }
+            val failure = PairFailure.fromException(error)
+            assertEquals(PairFailureCode.RELAY_UNREACHABLE, failure.code)
+            assertEquals(L.pairRelayUpgradeFailed, failure.message)
+        } finally { socket.close(); quietlyClose(server) }
     }
 
     @Test
