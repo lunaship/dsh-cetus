@@ -18,6 +18,13 @@ struct PairingServices: Sendable {
     var readCheckpoint: @Sendable () throws -> PairingCheckpoint?
     var writeCheckpoint: @Sendable (PairingCheckpoint?) throws -> Void
 
+    /// App-hosted tests use no persisted hosts, credentials, or network requests.
+    static var offline: Self {
+        Self(
+            pair: { _, _ in .failed(.invalidResponse) }, wait: { _ in .unknown }, discard: { _ in }, hosts: { [] },
+            readCheckpoint: { nil }, writeCheckpoint: { _ in })
+    }
+
     static func live(store: HostStore) -> Self {
         let client = PairingClient(store: store)
         let poller = PairingApprovalPoller(store: store)

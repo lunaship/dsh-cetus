@@ -23,7 +23,7 @@ struct DeepLinksApp: App {
         let testing = environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil
         _pairing = State(
             initialValue: PairingFlowModel(
-                services: testing ? PairingFixtures.offlineServices : .live(store: HostStore()),
+                services: testing ? .offline : .live(store: HostStore()),
                 gate: LocalNetworkPermissionGate(), deviceName: UIDevice.current.name))
     }
 
