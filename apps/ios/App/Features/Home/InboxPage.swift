@@ -48,58 +48,78 @@ struct InboxFlowView: View {
 struct InboxPage: View {
     @Bindable var model: InboxModel
     @Environment(\.locale) private var locale
+    /// Inbox snapshots only. Production still calls `start()`.
+    var staticSnapshot = false
 
     var body: some View {
         let copy = InboxCopy(locale: locale)
-        NavigationStack(path: $model.path) {
-            inbox(copy)
-                .navigationTitle(copy.text(.brand))
-                .navigationSubtitle(copy.subtitle(name: model.displayName, link: model.link))
-                .navigationBarTitleDisplayMode(.large)
-                .toolbarTitleMenu { titleMenu(copy) }
-                .toolbar { toolbar(copy) }
-                .searchable(
-                    text: $model.query,
-                    tokens: $model.tokens,
-                    suggestedTokens: $model.workspaceSuggestions,
-                    prompt: Text(copy.text(.searchPrompt))
-                ) { token in
-                    Text(token.name)
-                }
-                .searchSuggestions { suggestions(copy) }
-                .onSubmit(of: .search) { model.submitSearch() }
-                .refreshable { await model.refresh() }
-                .navigationDestination(for: InboxDestination.self) { destination in
-                    InboxDestinationPage(destination: destination, model: model)
-                }
-        }
-        .tint(DLColor.accent)
-        .task { await model.start() }
-        .onDisappear { Task { await model.stop() } }
-        .onChange(of: model.query) { _, _ in Task { await model.applyQuery() } }
-        .onChange(of: model.tokens) { _, tokens in
-            if tokens.count > 1 {
-                model.tokens = Array(tokens.suffix(1))
-                return
+        if staticSnapshot {
+            // No `.task` / `start()`, no search controller, no refresh, no alert, no animation.
+            // Draw the presentation the fixture already installed.
+            // `.borderedProminent` in a toolbar snapshots as a fully transparent image.
+            NavigationStack(path: $model.path) {
+                screen(copy)
+                    .navigationDestination(for: InboxDestination.self) { destination in
+                        InboxDestinationPage(destination: destination, model: model)
+                    }
             }
-            model.persistWorkspace()
-            model.syncSuggestions()
-            Task { await model.applyQuery() }
+            .tint(DLColor.accent)
+            .transaction { $0.disablesAnimations = true }
+        } else {
+            NavigationStack(path: $model.path) {
+                screen(copy)
+                    .searchable(
+                        text: $model.query,
+                        tokens: $model.tokens,
+                        suggestedTokens: $model.workspaceSuggestions,
+                        prompt: Text(copy.text(.searchPrompt))
+                    ) { token in
+                        Text(token.name)
+                    }
+                    .searchSuggestions { suggestions(copy) }
+                    .onSubmit(of: .search) { model.submitSearch() }
+                    .refreshable { await model.refresh() }
+                    .navigationDestination(for: InboxDestination.self) { destination in
+                        InboxDestinationPage(destination: destination, model: model)
+                    }
+            }
+            .tint(DLColor.accent)
+            .task { await model.start() }
+            .onDisappear { Task { await model.stop() } }
+            .onChange(of: model.query) { _, _ in Task { await model.applyQuery() } }
+            .onChange(of: model.tokens) { _, tokens in
+                if tokens.count > 1 {
+                    model.tokens = Array(tokens.suffix(1))
+                    return
+                }
+                model.persistWorkspace()
+                model.syncSuggestions()
+                Task { await model.applyQuery() }
+            }
+            .alert(copy.text(.rename), isPresented: renamePresented) {
+                TextField(copy.text(.rename), text: $model.renameDraft)
+                Button(copy.text(.cancel), role: .cancel) { model.renameTarget = nil }
+                Button(copy.text(.rename)) { Task { await model.commitRename() } }
+            } message: {
+                Text(copy.text(.renameHint))
+            }
+            .confirmationDialog(copy.text(.deleteTitle), isPresented: deletePresented, titleVisibility: .visible) {
+                Button(copy.text(.delete), role: .destructive) { Task { await model.commitDelete() } }
+                Button(copy.text(.cancel), role: .cancel) { model.deleteTarget = nil }
+            } message: {
+                Text(copy.format(.deleteMessage, deleteName(copy)))
+            }
+            .sensoryFeedback(.success, trigger: model.approvalTick)
         }
-        .alert(copy.text(.rename), isPresented: renamePresented) {
-            TextField(copy.text(.rename), text: $model.renameDraft)
-            Button(copy.text(.cancel), role: .cancel) { model.renameTarget = nil }
-            Button(copy.text(.rename)) { Task { await model.commitRename() } }
-        } message: {
-            Text(copy.text(.renameHint))
-        }
-        .confirmationDialog(copy.text(.deleteTitle), isPresented: deletePresented, titleVisibility: .visible) {
-            Button(copy.text(.delete), role: .destructive) { Task { await model.commitDelete() } }
-            Button(copy.text(.cancel), role: .cancel) { model.deleteTarget = nil }
-        } message: {
-            Text(copy.format(.deleteMessage, deleteName(copy)))
-        }
-        .sensoryFeedback(.success, trigger: model.approvalTick)
+    }
+
+    private func screen(_ copy: InboxCopy) -> some View {
+        inbox(copy)
+            .navigationTitle(copy.text(.brand))
+            .navigationSubtitle(copy.subtitle(name: model.displayName, link: model.link))
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarTitleMenu { titleMenu(copy) }
+            .toolbar { toolbar(copy) }
     }
 
     private var renamePresented: Binding<Bool> {
@@ -401,14 +421,21 @@ struct InboxPage: View {
         }
         DefaultToolbarItem(kind: .search, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
-            Button {
-                model.openNewTask()
-            } label: {
-                Label(copy.text(.newTask), systemImage: "square.and.pencil")
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(DLColor.brandFill)
-            .disabled(!model.actionsEnabled)
+            newTask(copy)
+        }
+    }
+
+    @ViewBuilder private func newTask(_ copy: InboxCopy) -> some View {
+        let button = Button {
+            model.openNewTask()
+        } label: {
+            Label(copy.text(.newTask), systemImage: "square.and.pencil")
+        }
+        .disabled(!model.actionsEnabled)
+        if staticSnapshot {
+            button.buttonStyle(.plain).tint(DLColor.brandFill)
+        } else {
+            button.buttonStyle(.borderedProminent).tint(DLColor.brandFill)
         }
     }
 

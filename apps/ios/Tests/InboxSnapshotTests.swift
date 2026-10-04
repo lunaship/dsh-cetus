@@ -35,7 +35,7 @@ import XCTest
     func testFiltered() { oneScene("2_1_filtered") { page(.filtered, language: "zh-Hans") } }
 
     private func page(_ kind: InboxFixtureKind, language: String) -> some View {
-        InboxPage(model: fixture(kind, language: language))
+        InboxPage(model: fixture(kind, language: language), staticSnapshot: true)
     }
 
     private func context(_ language: String) -> some View {
