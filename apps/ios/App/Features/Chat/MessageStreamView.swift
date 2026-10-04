@@ -82,6 +82,7 @@ final class MessageStreamController: UIViewController {
     private var chromeStamp = ""
     private var displayLink: CADisplayLink?
     private var didPin = false
+    private var layingOutSnapshot = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -108,10 +109,16 @@ final class MessageStreamController: UIViewController {
             cell.measureRevision = transcriptMeasureRevision(row)
             cell.cache = self.cache
             cell.backgroundColor = .clear
-            cell.contentConfiguration = UIHostingConfiguration {
-                MessageRowView(row: row, chrome: chrome)
+            if chrome.staticSnapshot {
+                // UIHostingConfiguration stays blank until a later display pass. The screenshot
+                // path hosts the same row and lays it out before the image is taken.
+                cell.configureSnapshot(MessageRowView(row: row, chrome: chrome), traits: self.traitCollection)
+            } else {
+                cell.contentConfiguration = UIHostingConfiguration {
+                    MessageRowView(row: row, chrome: chrome)
+                }
+                .margins(.all, 0)
             }
-            .margins(.all, 0)
         }
         dataSource = UICollectionViewDiffableDataSource<Int, String>(collectionView: collectionView) {
             collectionView, indexPath, id in
@@ -145,20 +152,80 @@ final class MessageStreamController: UIViewController {
         let chromeChanged = stamp != chromeStamp
         chromeStamp = stamp
         let existing = ids.filter { previous[$0] != nil }
-        if chromeChanged, !existing.isEmpty {
-            snapshot.reconfigureItems(existing)
-        } else if !changed.isEmpty {
-            snapshot.reconfigureItems(changed)
+        if !chrome.staticSnapshot {
+            if chromeChanged, !existing.isEmpty {
+                snapshot.reconfigureItems(existing)
+            } else if !changed.isEmpty {
+                snapshot.reconfigureItems(changed)
+            }
         }
         previous = rowsByID
         previousIDs = ids
-        dataSource.apply(snapshot, animatingDifferences: animated && !changed.isEmpty && !chromeChanged)
+        if chrome.staticSnapshot {
+            // Reload is synchronous. A diff apply at the snapshot's first zero-size pass
+            // remembers the ids and then refuses to create cells once the canvas exists.
+            dataSource.applySnapshotUsingReloadData(snapshot)
+        } else {
+            dataSource.apply(snapshot, animatingDifferences: animated && !changed.isEmpty && !chromeChanged)
+        }
         collectionView.layoutIfNeeded()
         guard pinsToTail, !didPin || structureChanged || !changed.isEmpty, let last = ids.last,
             let indexPath = dataSource.indexPath(for: last)
         else { return }
         collectionView.scrollToItem(at: indexPath, at: .bottom, animated: false)
         didPin = true
+        if chrome.staticSnapshot {
+            collectionView.layoutIfNeeded()
+        }
+    }
+
+    /// Screenshot path only. The snapshot strategy renders before SwiftUI has given this
+    /// collection view a canvas, so self-sized hosting cells never materialize.
+    func layoutForStaticSnapshot(canvas: CGSize) {
+        guard chrome.staticSnapshot, isViewLoaded, let collectionView else { return }
+        guard canvas.width > 1, canvas.height > 1, !layingOutSnapshot else { return }
+        layingOutSnapshot = true
+        defer { layingOutSnapshot = false }
+        UIView.performWithoutAnimation {
+            collectionView.isPrefetchingEnabled = false
+            collectionView.autoresizingMask = []
+            if view.bounds.width < 1 || view.bounds.height < 1 {
+                view.frame.size = canvas
+            }
+            collectionView.frame = CGRect(origin: .zero, size: canvas)
+            let overlap = snapshotTopOverlap()
+            if overlap > 0.5 {
+                collectionView.contentInsetAdjustmentBehavior = .never
+                var inset = collectionView.contentInset
+                inset.top = overlap
+                collectionView.contentInset = inset
+            }
+            collectionView.collectionViewLayout.invalidateLayout()
+            didPin = false
+            apply(pendingRows, animated: false)
+            collectionView.layoutIfNeeded()
+            for case let cell as MeasuredCell in collectionView.visibleCells {
+                cell.attachSnapshotHost(to: self)
+                cell.contentView.setNeedsLayout()
+                cell.layoutIfNeeded()
+            }
+        }
+    }
+
+    private func snapshotTopOverlap() -> CGFloat {
+        guard let collectionView, let root = view.window else { return 0 }
+        guard let bar = Self.findNavigationBar(in: root), bar.bounds.height > 1 else { return 0 }
+        let barFrame = bar.convert(bar.bounds, to: nil)
+        let contentFrame = collectionView.convert(collectionView.bounds, to: nil)
+        return min(96, max(0, barFrame.maxY - contentFrame.minY))
+    }
+
+    private static func findNavigationBar(in view: UIView) -> UINavigationBar? {
+        if let bar = view as? UINavigationBar { return bar }
+        for subview in view.subviews {
+            if let bar = findNavigationBar(in: subview) { return bar }
+        }
+        return nil
     }
 
     private static func stamp(_ chrome: MessageChrome) -> String {
@@ -193,10 +260,52 @@ final class MeasuredCell: UICollectionViewCell {
     var measureID: String?
     var measureRevision = 0
     weak var cache: RowMeasureCache?
+    private var snapshotRow: MessageRowView?
+    private var snapshotHost: UIHostingController<AnyView>?
+    private var placingSnapshot = false
+
+    func configureSnapshot(_ row: MessageRowView, traits: UITraitCollection) {
+        snapshotRow = row
+        contentConfiguration = nil
+        contentView.backgroundColor = .clear
+        overrideUserInterfaceStyle = traits.userInterfaceStyle
+        traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
+        let width = bounds.width > 1 ? bounds.width : contentView.bounds.width
+        if width > 1 {
+            _ = placeSnapshot(row, width: width)
+        }
+    }
+
+    func attachSnapshotHost(to parent: UIViewController) {
+        if let snapshotRow, snapshotHost?.view.superview == nil {
+            let width = bounds.width > 1 ? bounds.width : 402
+            _ = placeSnapshot(snapshotRow, width: width)
+        }
+        guard let snapshotHost else { return }
+        if snapshotHost.parent == nil {
+            parent.addChild(snapshotHost)
+            snapshotHost.didMove(toParent: parent)
+        }
+        snapshotHost.view.layoutIfNeeded()
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        snapshotRow = nil
+    }
 
     override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes)
         -> UICollectionViewLayoutAttributes
     {
+        if let snapshotRow {
+            let width = layoutAttributes.size.width > 1 ? layoutAttributes.size.width : 402
+            let height = placeSnapshot(snapshotRow, width: width)
+            guard let attributes = layoutAttributes.copy() as? UICollectionViewLayoutAttributes else {
+                return layoutAttributes
+            }
+            attributes.size.height = height
+            return attributes
+        }
         let width = Int(layoutAttributes.size.width.rounded())
         if let measureID, let cached = cache?.height(id: measureID, width: width, revision: measureRevision),
             let attributes = layoutAttributes.copy() as? UICollectionViewLayoutAttributes
@@ -209,5 +318,53 @@ final class MeasuredCell: UICollectionViewCell {
             cache?.store(Double(fitted.size.height), id: measureID, width: width, revision: measureRevision)
         }
         return fitted
+    }
+
+    private func placeSnapshot(_ row: MessageRowView, width: CGFloat) -> CGFloat {
+        if placingSnapshot { return max(snapshotHost?.view.bounds.height ?? 44, 1) }
+        placingSnapshot = true
+        defer { placingSnapshot = false }
+        let content = AnyView(
+            row.tint(DLColor.accent)
+                .environment(\.colorScheme, traitCollection.userInterfaceStyle == .dark ? .dark : .light)
+                .environment(\.dynamicTypeSize, snapshotDynamicType(traitCollection.preferredContentSizeCategory))
+                .frame(width: width, alignment: .leading))
+        let host: UIHostingController<AnyView>
+        if let snapshotHost {
+            snapshotHost.rootView = content
+            host = snapshotHost
+        } else {
+            host = UIHostingController(rootView: content)
+            host.view.backgroundColor = .clear
+            host.safeAreaRegions = []
+            host.view.translatesAutoresizingMaskIntoConstraints = true
+            host.view.autoresizingMask = []
+            contentView.addSubview(host.view)
+            snapshotHost = host
+        }
+        host.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle
+        host.traitOverrides.preferredContentSizeCategory = traitCollection.preferredContentSizeCategory
+        let fitted = host.sizeThatFits(in: CGSize(width: width, height: 10_000))
+        let height = fitted.height.isFinite ? min(4_000, max(fitted.height, 1)) : 44
+        host.view.frame = CGRect(x: 0, y: 0, width: width, height: height)
+        return height
+    }
+}
+
+private func snapshotDynamicType(_ category: UIContentSizeCategory) -> DynamicTypeSize {
+    switch category {
+    case .extraSmall: .xSmall
+    case .small: .small
+    case .medium: .medium
+    case .large: .large
+    case .extraLarge: .xLarge
+    case .extraExtraLarge: .xxLarge
+    case .extraExtraExtraLarge: .xxxLarge
+    case .accessibilityMedium: .accessibility1
+    case .accessibilityLarge: .accessibility2
+    case .accessibilityExtraLarge: .accessibility3
+    case .accessibilityExtraExtraLarge: .accessibility4
+    case .accessibilityExtraExtraExtraLarge: .accessibility5
+    default: .large
     }
 }

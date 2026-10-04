@@ -97,6 +97,16 @@ struct ConversationPage: View {
     }
 
     @ToolbarContentBuilder private func toolbar(_ copy: ConversationCopy) -> some ToolbarContent {
+        // The trailing pair is one glass capsule in production. That capsule snapshots empty,
+        // so the screenshot path keeps the same items without the shared glass background.
+        if staticSnapshot {
+            toolbarItems(copy).sharedBackgroundVisibility(.hidden)
+        } else {
+            toolbarItems(copy)
+        }
+    }
+
+    private func toolbarItems(_ copy: ConversationCopy) -> some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button {
                 model.noteDiff()
