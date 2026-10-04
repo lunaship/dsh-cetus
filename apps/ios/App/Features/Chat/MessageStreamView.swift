@@ -113,7 +113,9 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
             if chrome.staticSnapshot {
                 // UIHostingConfiguration stays blank until a later display pass. The screenshot
                 // path hosts the same row and lays it out before the image is taken.
-                cell.configureSnapshot(MessageRowView(row: row, chrome: chrome), traits: self.traitCollection)
+                cell.configureSnapshot(
+                    MessageRowView(row: row, chrome: chrome), traits: self.traitCollection,
+                    contentSizeCategory: self.traitOverrides.preferredContentSizeCategory)
             } else {
                 cell.contentConfiguration = UIHostingConfiguration {
                     MessageRowView(row: row, chrome: chrome)
@@ -205,7 +207,8 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
                     (
                         row.id,
                         measuringCell.configureSnapshot(
-                            MessageRowView(row: row, chrome: chrome), traits: traitCollection)
+                            MessageRowView(row: row, chrome: chrome), traits: traitCollection,
+                            contentSizeCategory: traitOverrides.preferredContentSizeCategory)
                     )
                 })
             let layout = UICollectionViewFlowLayout()
@@ -299,15 +302,19 @@ final class MeasuredCell: UICollectionViewCell {
     weak var cache: RowMeasureCache?
     private var snapshotRow: MessageRowView?
     private var snapshotHost: UIHostingController<AnyView>?
+    private var snapshotContentSizeCategory: UIContentSizeCategory = .large
     private var placingSnapshot = false
 
     @discardableResult
-    func configureSnapshot(_ row: MessageRowView, traits: UITraitCollection) -> CGFloat {
+    func configureSnapshot(
+        _ row: MessageRowView, traits: UITraitCollection, contentSizeCategory: UIContentSizeCategory
+    ) -> CGFloat {
         snapshotRow = row
+        snapshotContentSizeCategory = contentSizeCategory
         contentConfiguration = nil
         contentView.backgroundColor = .clear
         overrideUserInterfaceStyle = traits.userInterfaceStyle
-        traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
+        traitOverrides.preferredContentSizeCategory = contentSizeCategory
         let width = bounds.width > 1 ? bounds.width : contentView.bounds.width
         if width > 1 {
             return placeSnapshot(row, width: width)
@@ -365,8 +372,8 @@ final class MeasuredCell: UICollectionViewCell {
         defer { placingSnapshot = false }
         let content = AnyView(
             row.tint(DLColor.accent)
-                .environment(\.colorScheme, traitCollection.userInterfaceStyle == .dark ? .dark : .light)
-                .environment(\.dynamicTypeSize, snapshotDynamicType(traitCollection.preferredContentSizeCategory))
+                .environment(\.colorScheme, overrideUserInterfaceStyle == .dark ? .dark : .light)
+                .environment(\.dynamicTypeSize, snapshotDynamicType(snapshotContentSizeCategory))
                 .frame(width: width, alignment: .leading))
         let host: UIHostingController<AnyView>
         if let snapshotHost {
@@ -381,8 +388,9 @@ final class MeasuredCell: UICollectionViewCell {
             contentView.addSubview(host.view)
             snapshotHost = host
         }
-        host.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle
-        host.traitOverrides.preferredContentSizeCategory = traitCollection.preferredContentSizeCategory
+        host.overrideUserInterfaceStyle = overrideUserInterfaceStyle
+        // An offscreen cell's trait collection may not reflect its overrides yet.
+        host.traitOverrides.preferredContentSizeCategory = snapshotContentSizeCategory
         let fitted = host.sizeThatFits(in: CGSize(width: width, height: 10_000))
         let height = fitted.height.isFinite ? min(4_000, max(fitted.height, 1)) : 44
         host.view.frame = CGRect(x: 0, y: 0, width: width, height: height)
