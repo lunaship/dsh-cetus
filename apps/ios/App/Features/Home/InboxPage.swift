@@ -472,8 +472,9 @@ struct InboxDestinationPage: View {
         switch destination {
         case .archived:
             InboxArchivedPage(model: model)
-        case .session:
-            later(copy.text(.brand), copy.text(.laterSession))
+        case .session(let id):
+            ConversationFlowView(
+                hostID: model.hostID, sessionID: id, seed: conversationSeed(sessionID: id, model: model))
         case .settings:
             later(copy.text(.settings), copy.text(.laterSettings))
         case .computer:
