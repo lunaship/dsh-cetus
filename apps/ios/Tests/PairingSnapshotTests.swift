@@ -70,12 +70,11 @@ final class PairingSnapshotTests: XCTestCase {
                 if rename { model.chooseNewName() }
                 let view = PairingFlowView(model: model)
                     .environment(\.locale, Locale(identifier: language))
-                    .environment(\.dynamicTypeSize, .large)
-                    .environment(\.accessibilityReduceTransparency, false)
+                    .environment(\.dynamicTypeSize, DynamicTypeSize.large)
                 let controller = UIHostingController(rootView: view)
                 let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
                 window.overrideUserInterfaceStyle = .light
-                controller.traitOverrides.preferredContentSizeCategory = .large
+                controller.traitOverrides.preferredContentSizeCategory = UIContentSizeCategory.large
                 window.rootViewController = controller
                 window.makeKeyAndVisible()
                 controller.view.layoutIfNeeded()
@@ -86,6 +85,7 @@ final class PairingSnapshotTests: XCTestCase {
                 let traits = UITraitCollection(traitsFrom: [
                     UITraitCollection(userInterfaceStyle: .light),
                     UITraitCollection(userInterfaceIdiom: .phone),
+                    UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory.large),
                 ])
                 assertSnapshot(
                     of: window,
@@ -115,46 +115,42 @@ final class PairingSnapshotTests: XCTestCase {
             for appearance in [UIUserInterfaceStyle.light, .dark] {
                 for large in [false, true] {
                     render(
-                        scene, appearance: appearance, language: language, large: large, reduced: false,
+                        scene, appearance: appearance, language: language, large: large,
                         navigation: navigation, make: make)
                 }
             }
         }
-        render(
-            scene, appearance: .light, language: "zh-Hans", large: false, reduced: true,
-            navigation: navigation, make: make)
+        // Reduce Transparency is read-only in SwiftUI; DLUI has no override for the system glass styles.
     }
 
     private func fixture<V: View>(_ scene: String, navigation: Bool = true, make: () -> V) {
         render(
-            scene, appearance: .light, language: "zh-Hans", large: false, reduced: false,
+            scene, appearance: .light, language: "zh-Hans", large: false,
             navigation: navigation, make: make)
     }
 
     private func render<V: View>(
-        _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool, reduced: Bool,
+        _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool,
         navigation: Bool, make: () -> V
     ) {
         let content = Group {
             if navigation { NavigationStack { make() } } else { make() }
         }
         .environment(\.locale, Locale(identifier: language))
-        .environment(\.dynamicTypeSize, large ? .accessibility3 : .large)
-        .environment(\.accessibilityReduceTransparency, reduced)
+        .environment(\.dynamicTypeSize, large ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
         .tint(DLColor.accent)
         let traits = UITraitCollection(traitsFrom: [
             UITraitCollection(userInterfaceStyle: appearance),
             UITraitCollection(userInterfaceIdiom: .phone),
+            UITraitCollection(
+                preferredContentSizeCategory: large
+                    ? UIContentSizeCategory.accessibilityExtraLarge : UIContentSizeCategory.large),
         ])
         assertSnapshot(
             of: content,
             as: .image(layout: .fixed(width: 402, height: 874), traits: traits),
-            named: variant(large: large, reduced: reduced),
+            named: large ? "large" : "default",
             testName: snapshotName(scene, appearance: appearance, language: language))
-    }
-
-    private func variant(large: Bool, reduced: Bool) -> String {
-        "\(large ? "large" : "default")\(reduced ? "_reducedTransparency" : "")"
     }
 
     private func snapshotName(_ scene: String, appearance: UIUserInterfaceStyle, language: String) -> String {
