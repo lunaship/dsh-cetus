@@ -46,8 +46,12 @@ targets:
         excludes:
           - Info.plist
           - Demo/fixtures
+          - Resources/Math
       - path: App/Demo/fixtures
         buildPhase: resources
+      - path: App/Resources/Math
+        buildPhase: resources
+        type: folder
     dependencies:
       - target: NotificationService
         embed: true
