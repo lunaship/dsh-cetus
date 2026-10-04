@@ -102,6 +102,7 @@ jobs:
             -only-testing:DeepLinksTests/SSEClientContractTests \
             -only-testing:DeepLinksTests/HostClientContractTests \
             -only-testing:DeepLinksTests/RequestStateContractTests \
+            -only-testing:DeepLinksTests/RouteSelectorContractTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
