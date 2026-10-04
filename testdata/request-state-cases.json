@@ -1,0 +1,860 @@
+{
+  "note": "I3.6 请求状态归并共享用例（语义来源：Android RequestStateTest / RequestState.kt）。op：approvalUiStatus（outcome→状态）、mergeStatus、mergeOutcome、coalesce（同 approvalId 审批 / 同 rpcId 提问归并为一条）、applySnapshot（快照刷新已有卡片）、mergeSnapshot（刷新+补回 history 没有的 pending 卡）、parseSnapshot（GET .../requests 快照解析，空白 id 丢弃）。消息字段名 = Android MobileMessage 属性名，只放用例用到的字段；快照一律是 GET .../requests 的线上真实形状（approvals[].approvalId/status/outcome/toolName/callId、questions[].rpcId/status/questions[]），两端用各自真实解析器（Android parseSessionRequestSnapshot、iOS RequestsSnapshotResponse）。期望消息只写要断言的字段；questionPayloadJsonContains 断言题目内容被保留（各端 JSON 序列化细节不同，不做全串比较）。终态（resolved/cancelled/expired）不得被 pending 回滚。",
+  "cases": [
+    {
+      "name": "approvalUiStatus：outcome 为 null 时是 pending",
+      "op": "approvalUiStatus",
+      "outcome": null,
+      "expectStatus": "pending"
+    },
+    {
+      "name": "approvalUiStatus：空串 outcome 也是 pending",
+      "op": "approvalUiStatus",
+      "outcome": "",
+      "expectStatus": "pending"
+    },
+    {
+      "name": "approvalUiStatus：allowed-once 映射 resolved",
+      "op": "approvalUiStatus",
+      "outcome": "allowed-once",
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "approvalUiStatus：rejected 映射 resolved",
+      "op": "approvalUiStatus",
+      "outcome": "rejected",
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "approvalUiStatus：cancelled 映射 cancelled",
+      "op": "approvalUiStatus",
+      "outcome": "cancelled",
+      "expectStatus": "cancelled"
+    },
+    {
+      "name": "approvalUiStatus：unavailable 映射 expired",
+      "op": "approvalUiStatus",
+      "outcome": "unavailable",
+      "expectStatus": "expired"
+    },
+    {
+      "name": "approvalUiStatus：其他值落 unknown",
+      "op": "approvalUiStatus",
+      "outcome": "weird-outcome",
+      "expectStatus": "unknown"
+    },
+    {
+      "name": "mergeStatus：双方为空时结果为空",
+      "op": "mergeStatus",
+      "current": null,
+      "incoming": null,
+      "expectStatus": null
+    },
+    {
+      "name": "mergeStatus：current 为空时采用 incoming",
+      "op": "mergeStatus",
+      "current": null,
+      "incoming": "pending",
+      "expectStatus": "pending"
+    },
+    {
+      "name": "mergeStatus：incoming 为空时保留 current",
+      "op": "mergeStatus",
+      "current": "pending",
+      "incoming": null,
+      "expectStatus": "pending"
+    },
+    {
+      "name": "mergeStatus：相同 pending 维持 pending",
+      "op": "mergeStatus",
+      "current": "pending",
+      "incoming": "pending",
+      "expectStatus": "pending"
+    },
+    {
+      "name": "mergeStatus：pending 可推进到 resolved",
+      "op": "mergeStatus",
+      "current": "pending",
+      "incoming": "resolved",
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "mergeStatus：终态优先且 pending 不能回滚（resolved）",
+      "op": "mergeStatus",
+      "current": "resolved",
+      "incoming": "pending",
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "mergeStatus：终态优先且 pending 不能回滚（cancelled）",
+      "op": "mergeStatus",
+      "current": "cancelled",
+      "incoming": "pending",
+      "expectStatus": "cancelled"
+    },
+    {
+      "name": "mergeStatus：终态优先且 pending 不能回滚（expired）",
+      "op": "mergeStatus",
+      "current": "expired",
+      "incoming": "pending",
+      "expectStatus": "expired"
+    },
+    {
+      "name": "mergeStatus：unknown 不会被 pending 回滚",
+      "op": "mergeStatus",
+      "current": "unknown",
+      "incoming": "pending",
+      "expectStatus": "unknown"
+    },
+    {
+      "name": "mergeStatus：unknown 可升级为终态",
+      "op": "mergeStatus",
+      "current": "unknown",
+      "incoming": "resolved",
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "mergeStatus：终态不被 unknown 降级",
+      "op": "mergeStatus",
+      "current": "resolved",
+      "incoming": "unknown",
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "mergeStatus：incoming 缺失时保留 resolved 终态",
+      "op": "mergeStatus",
+      "current": "resolved",
+      "incoming": null,
+      "expectStatus": "resolved"
+    },
+    {
+      "name": "mergeOutcome：终态且 incoming 为空时保留 current",
+      "op": "mergeOutcome",
+      "current": "allowed-once",
+      "incoming": null,
+      "status": "resolved",
+      "expectOutcome": "allowed-once"
+    },
+    {
+      "name": "mergeOutcome：终态且 current 为空时采用 incoming",
+      "op": "mergeOutcome",
+      "current": null,
+      "incoming": "allowed-once",
+      "status": "resolved",
+      "expectOutcome": "allowed-once"
+    },
+    {
+      "name": "mergeOutcome：终态时非空 incoming 覆盖 current",
+      "op": "mergeOutcome",
+      "current": "rejected",
+      "incoming": "allowed-once",
+      "status": "resolved",
+      "expectOutcome": "allowed-once"
+    },
+    {
+      "name": "mergeOutcome：pending 时采用非空 incoming",
+      "op": "mergeOutcome",
+      "current": null,
+      "incoming": "answered",
+      "status": "pending",
+      "expectOutcome": "answered"
+    },
+    {
+      "name": "mergeOutcome：pending 且 incoming 为空时保留 current",
+      "op": "mergeOutcome",
+      "current": "answered",
+      "incoming": null,
+      "status": "pending",
+      "expectOutcome": "answered"
+    },
+    {
+      "name": "mergeOutcome：pending 时非空 incoming 覆盖 current",
+      "op": "mergeOutcome",
+      "current": "answered",
+      "incoming": "rejected",
+      "status": "pending",
+      "expectOutcome": "rejected"
+    },
+    {
+      "name": "mergeOutcome：双方为空时结果为空",
+      "op": "mergeOutcome",
+      "current": null,
+      "incoming": null,
+      "status": "pending",
+      "expectOutcome": null
+    },
+    {
+      "name": "mergeOutcome：终态但双方皆空时结果为空",
+      "op": "mergeOutcome",
+      "current": null,
+      "incoming": null,
+      "status": "resolved",
+      "expectOutcome": null
+    },
+    {
+      "name": "mergeOutcome：status 缺失时按非终态处理",
+      "op": "mergeOutcome",
+      "current": "allowed-once",
+      "incoming": "rejected",
+      "status": null,
+      "expectOutcome": "rejected"
+    },
+    {
+      "name": "coalesce：同 approvalId 审批卡归并为一张且 pending 不能回滚终态",
+      "op": "coalesce",
+      "messages": [
+        {
+          "id": "approval-ap-1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "ap-1",
+          "requestStatus": "pending"
+        },
+        {
+          "id": "approval-20",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "ap-1",
+          "requestStatus": "resolved",
+          "outcome": "rejected"
+        }
+      ],
+      "expectMessages": [
+        {
+          "id": "approval-ap-1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "ap-1",
+          "requestStatus": "resolved",
+          "outcome": "rejected",
+          "takenOverByPhone": false
+        }
+      ]
+    },
+    {
+      "name": "coalesce：终态居中的三张审批卡归并为一张终态卡",
+      "op": "coalesce",
+      "messages": [
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "requestStatus": "pending"
+        },
+        {
+          "id": "approval-a1-decided",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "requestStatus": "resolved",
+          "outcome": "rejected"
+        },
+        {
+          "id": "approval-a1-again",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "requestStatus": "pending"
+        }
+      ],
+      "expectMessages": [
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "requestStatus": "resolved",
+          "outcome": "rejected",
+          "takenOverByPhone": false
+        }
+      ]
+    },
+    {
+      "name": "coalesce：同 rpcId 澄清卡归并为一张且 pending 不能回滚终态",
+      "op": "coalesce",
+      "messages": [
+        {
+          "id": "question-q-1",
+          "role": "question",
+          "text": "选一个",
+          "questionRpcId": "q-1",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"选一个\"}]",
+          "requestStatus": "pending"
+        },
+        {
+          "id": "question-later",
+          "role": "question",
+          "text": "选一个",
+          "questionRpcId": "q-1",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"选一个\"}]",
+          "requestStatus": "resolved",
+          "outcome": "answered"
+        }
+      ],
+      "expectMessages": [
+        {
+          "id": "question-q-1",
+          "role": "question",
+          "text": "选一个",
+          "questionRpcId": "q-1",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"选一个\"}]",
+          "requestStatus": "resolved",
+          "outcome": "answered",
+          "takenOverByPhone": false
+        }
+      ]
+    },
+    {
+      "name": "coalesce：不带 key 的消息原位保留，归并卡保持首次出现位置并补齐空字段",
+      "op": "coalesce",
+      "messages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        },
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "",
+          "approvalId": "a1",
+          "requestStatus": "pending"
+        },
+        {
+          "id": "msg-2",
+          "role": "assistant",
+          "text": "working"
+        },
+        {
+          "id": "approval-a1-decided",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "toolName": "bash",
+          "requestStatus": "resolved",
+          "outcome": "allowed-once"
+        }
+      ],
+      "expectMessages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        },
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "toolName": "bash",
+          "callId": null,
+          "requestStatus": "resolved",
+          "outcome": "allowed-once",
+          "takenOverByPhone": false
+        },
+        {
+          "id": "msg-2",
+          "role": "assistant",
+          "text": "working"
+        }
+      ]
+    },
+    {
+      "name": "coalesce：手机接管标记按 OR 归并，已有 callId 不被覆盖",
+      "op": "coalesce",
+      "messages": [
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "callId": "c-1",
+          "requestStatus": "pending",
+          "takenOverByPhone": true
+        },
+        {
+          "id": "approval-a1-late",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "requestStatus": "pending"
+        }
+      ],
+      "expectMessages": [
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "a1",
+          "callId": "c-1",
+          "requestStatus": "pending",
+          "outcome": null,
+          "takenOverByPhone": true
+        }
+      ]
+    },
+    {
+      "name": "coalesce：澄清卡归并补齐 options/header/payload，text 首现非空优先",
+      "op": "coalesce",
+      "messages": [
+        {
+          "id": "question-q1",
+          "role": "question",
+          "text": "选一个",
+          "questionRpcId": "q1",
+          "requestStatus": "pending"
+        },
+        {
+          "id": "question-q1-later",
+          "role": "question",
+          "text": "后来的",
+          "questionRpcId": "q1",
+          "questionOptions": ["A", "B"],
+          "questionHeader": "部署",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"选一个\"}]",
+          "requestStatus": "pending"
+        }
+      ],
+      "expectMessages": [
+        {
+          "id": "question-q1",
+          "role": "question",
+          "text": "选一个",
+          "questionRpcId": "q1",
+          "questionOptions": ["A", "B"],
+          "questionHeader": "部署",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"选一个\"}]",
+          "requestStatus": "pending",
+          "outcome": null,
+          "takenOverByPhone": false
+        }
+      ]
+    },
+    {
+      "name": "applySnapshot：快照终态覆盖 pending 审批卡",
+      "op": "applySnapshot",
+      "messages": [
+        {
+          "id": "approval-ap-3",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "ap-3",
+          "requestStatus": "pending"
+        }
+      ],
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "ap-3",
+            "status": "resolved",
+            "outcome": "rejected"
+          }
+        ],
+        "questions": []
+      },
+      "expectMessages": [
+        {
+          "id": "approval-ap-3",
+          "role": "approval",
+          "text": "run",
+          "approvalId": "ap-3",
+          "requestStatus": "resolved",
+          "outcome": "rejected",
+          "toolName": null,
+          "callId": null,
+          "takenOverByPhone": true
+        }
+      ]
+    },
+    {
+      "name": "applySnapshot：快照给空壳澄清卡补回题目内容",
+      "op": "applySnapshot",
+      "messages": [
+        {
+          "id": "question-q-2",
+          "role": "question",
+          "text": "q-2",
+          "type": "question",
+          "questionRpcId": "q-2",
+          "requestStatus": "pending"
+        }
+      ],
+      "snapshot": {
+        "approvals": [],
+        "questions": [
+          {
+            "rpcId": "q-2",
+            "status": "pending",
+            "questions": [
+              {
+                "id": "q1",
+                "question": "还在吗"
+              }
+            ]
+          }
+        ]
+      },
+      "expectMessages": [
+        {
+          "id": "question-q-2",
+          "role": "question",
+          "type": "question",
+          "text": "还在吗",
+          "questionRpcId": "q-2",
+          "questionOptions": [],
+          "questionHeader": null,
+          "requestStatus": "pending",
+          "outcome": null,
+          "takenOverByPhone": true,
+          "questionPayloadJsonContains": "还在吗"
+        }
+      ]
+    },
+    {
+      "name": "applySnapshot：澄清卡已有 payload 时只打接管标记，不覆盖已有内容",
+      "op": "applySnapshot",
+      "messages": [
+        {
+          "id": "question-q-3",
+          "role": "question",
+          "text": "已有内容",
+          "questionRpcId": "q-3",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"旧题\"}]",
+          "requestStatus": "pending"
+        }
+      ],
+      "snapshot": {
+        "approvals": [],
+        "questions": [
+          {
+            "rpcId": "q-3",
+            "status": "pending",
+            "questions": [
+              {
+                "id": "q9",
+                "question": "新题"
+              }
+            ]
+          }
+        ]
+      },
+      "expectMessages": [
+        {
+          "id": "question-q-3",
+          "role": "question",
+          "text": "已有内容",
+          "questionRpcId": "q-3",
+          "questionPayloadJson": "[{\"id\":\"q1\",\"question\":\"旧题\"}]",
+          "questionOptions": [],
+          "questionHeader": null,
+          "requestStatus": "pending",
+          "takenOverByPhone": true
+        }
+      ]
+    },
+    {
+      "name": "applySnapshot：不在快照里的历史审批卡原样保留、不打接管标记",
+      "op": "applySnapshot",
+      "messages": [
+        {
+          "id": "approval-a2",
+          "role": "approval",
+          "text": "escalate sandbox",
+          "type": "approval",
+          "approvalId": "a2",
+          "requestStatus": "pending"
+        }
+      ],
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "a1",
+            "status": "pending",
+            "toolName": "bash",
+            "callId": "c1"
+          }
+        ],
+        "questions": []
+      },
+      "expectMessages": [
+        {
+          "id": "approval-a2",
+          "role": "approval",
+          "text": "escalate sandbox",
+          "type": "approval",
+          "approvalId": "a2",
+          "requestStatus": "pending",
+          "takenOverByPhone": false
+        }
+      ]
+    },
+    {
+      "name": "applySnapshot：空快照原样返回",
+      "op": "applySnapshot",
+      "messages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        }
+      ],
+      "snapshot": {
+        "approvals": [],
+        "questions": []
+      },
+      "expectMessages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        }
+      ]
+    },
+    {
+      "name": "mergeSnapshot：快照补回 history 没有的 pending 澄清与审批卡（空白 id、终态不补）",
+      "op": "mergeSnapshot",
+      "messages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        }
+      ],
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "ap-9",
+            "status": "pending",
+            "toolName": "bash",
+            "callId": "c-9"
+          },
+          {
+            "approvalId": "",
+            "status": "pending",
+            "toolName": "drop"
+          },
+          {
+            "approvalId": "ap-old",
+            "status": "resolved",
+            "outcome": "rejected"
+          }
+        ],
+        "questions": [
+          {
+            "rpcId": "q-9",
+            "status": "pending",
+            "questions": [
+              {
+                "id": "q1",
+                "question": "选一个",
+                "options": [
+                  {
+                    "id": "a",
+                    "label": "A"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expectMessages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        },
+        {
+          "id": "approval-ap-9",
+          "role": "approval",
+          "type": "approval",
+          "text": "bash",
+          "toolName": "bash",
+          "callId": "c-9",
+          "approvalId": "ap-9",
+          "requestStatus": "pending",
+          "outcome": null,
+          "takenOverByPhone": true
+        },
+        {
+          "id": "question-q-9",
+          "role": "question",
+          "type": "question",
+          "text": "选一个",
+          "questionRpcId": "q-9",
+          "questionOptions": ["A"],
+          "questionHeader": null,
+          "requestStatus": "pending",
+          "takenOverByPhone": false,
+          "questionPayloadJsonContains": "选一个"
+        }
+      ]
+    },
+    {
+      "name": "mergeSnapshot：快照合并给快照里的审批卡打手机接管标记，历史卡不带标记",
+      "op": "mergeSnapshot",
+      "messages": [
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "text": "escalate sandbox",
+          "type": "approval",
+          "toolName": "bash",
+          "approvalId": "a1",
+          "requestStatus": "pending"
+        },
+        {
+          "id": "approval-a2",
+          "role": "approval",
+          "text": "escalate sandbox",
+          "type": "approval",
+          "approvalId": "a2",
+          "requestStatus": "pending"
+        }
+      ],
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "a1",
+            "status": "pending",
+            "outcome": null,
+            "toolName": "bash",
+            "callId": "c1"
+          }
+        ],
+        "questions": []
+      },
+      "expectMessages": [
+        {
+          "id": "approval-a1",
+          "role": "approval",
+          "type": "approval",
+          "text": "escalate sandbox",
+          "toolName": "bash",
+          "callId": "c1",
+          "approvalId": "a1",
+          "requestStatus": "pending",
+          "outcome": null,
+          "takenOverByPhone": true
+        },
+        {
+          "id": "approval-a2",
+          "role": "approval",
+          "type": "approval",
+          "text": "escalate sandbox",
+          "approvalId": "a2",
+          "requestStatus": "pending",
+          "takenOverByPhone": false
+        }
+      ]
+    },
+    {
+      "name": "mergeSnapshot：只有终态记录的快照不补卡",
+      "op": "mergeSnapshot",
+      "messages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        }
+      ],
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "ap-old",
+            "status": "resolved",
+            "outcome": "rejected"
+          }
+        ],
+        "questions": [
+          {
+            "rpcId": "q-old",
+            "status": "cancelled"
+          }
+        ]
+      },
+      "expectMessages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "hi"
+        }
+      ]
+    },
+    {
+      "name": "parseSnapshot：丢掉空白 id 的审批并保留 questions 数组",
+      "op": "parseSnapshot",
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "",
+            "status": "pending"
+          },
+          {
+            "approvalId": "ap-1",
+            "toolName": "bash",
+            "status": "pending"
+          }
+        ],
+        "questions": [
+          {
+            "rpcId": "q-1",
+            "status": "pending",
+            "questions": [
+              {
+                "id": "q1",
+                "question": "选一个"
+              }
+            ]
+          }
+        ]
+      },
+      "expectApprovals": [
+        {
+          "approvalId": "ap-1",
+          "status": "pending",
+          "outcome": null,
+          "toolName": "bash",
+          "callId": null
+        }
+      ],
+      "expectQuestions": [
+        {
+          "rpcId": "q-1",
+          "status": "pending",
+          "questionPayloadJsonContains": "选一个"
+        }
+      ]
+    },
+    {
+      "name": "parseSnapshot：缺 status 默认 pending",
+      "op": "parseSnapshot",
+      "snapshot": {
+        "approvals": [
+          {
+            "approvalId": "ap-2"
+          }
+        ],
+        "questions": []
+      },
+      "expectApprovals": [
+        {
+          "approvalId": "ap-2",
+          "status": "pending",
+          "outcome": null,
+          "toolName": null,
+          "callId": null
+        }
+      ],
+      "expectQuestions": []
+    },
+    {
+      "name": "parseSnapshot：空快照两端都为空",
+      "op": "parseSnapshot",
+      "snapshot": {},
+      "expectApprovals": [],
+      "expectQuestions": []
+    }
+  ]
+}
