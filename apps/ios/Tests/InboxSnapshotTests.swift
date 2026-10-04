@@ -21,18 +21,18 @@ import XCTest
     func testSearch() { matrix("2_4_search") { page(.search, language: $0) } }
     func testContext() { matrix("2_6_context") { context($0) } }
 
-    func testSuggestions() { fixture("2_4_suggestions") { InboxSuggestionSnapshot(items: ["审批", "发布"]) } }
-    func testSearchEmpty() { fixture("2_4_empty") { page(.searchEmpty, language: "zh-Hans") } }
-    func testSearchDegraded() { fixture("2_4_degraded") { page(.degraded, language: "zh-Hans") } }
-    func testWorkspaceEmpty() { fixture("2_2_workspace") { page(.workspace, language: "zh-Hans") } }
-    func testMenu() { fixture("2_5_menu") { InboxMenuSnapshot(model: populated("zh-Hans")) } }
+    func testSuggestions() { oneScene("2_4_suggestions") { InboxSuggestionSnapshot(items: ["审批", "发布"]) } }
+    func testSearchEmpty() { oneScene("2_4_empty") { page(.searchEmpty, language: "zh-Hans") } }
+    func testSearchDegraded() { oneScene("2_4_degraded") { page(.degraded, language: "zh-Hans") } }
+    func testWorkspaceEmpty() { oneScene("2_2_workspace") { page(.workspace, language: "zh-Hans") } }
+    func testMenu() { oneScene("2_5_menu") { InboxMenuSnapshot(model: populated("zh-Hans")) } }
     func testArchived() {
-        fixture("2_5_archived") { NavigationStack { InboxArchivedPage(model: archived("zh-Hans")) } }
+        oneScene("2_5_archived") { NavigationStack { InboxArchivedPage(model: archived("zh-Hans")) } }
     }
-    func testDelete() { fixture("2_6_delete") { InboxDeleteSnapshot(name: "等你审批发布") } }
-    func testRename() { fixture("2_6_rename") { InboxRenameSnapshot(name: "等你审批发布") } }
-    func testLoading() { fixture("2_1_loading") { page(.loading, language: "zh-Hans") } }
-    func testFiltered() { fixture("2_1_filtered") { page(.filtered, language: "zh-Hans") } }
+    func testDelete() { oneScene("2_6_delete") { InboxDeleteSnapshot(name: "等你审批发布") } }
+    func testRename() { oneScene("2_6_rename") { InboxRenameSnapshot(name: "等你审批发布") } }
+    func testLoading() { oneScene("2_1_loading") { page(.loading, language: "zh-Hans") } }
+    func testFiltered() { oneScene("2_1_filtered") { page(.filtered, language: "zh-Hans") } }
 
     private func page(_ kind: InboxFixtureKind, language: String) -> some View {
         InboxPage(model: fixture(kind, language: language))
@@ -54,7 +54,7 @@ import XCTest
         }
     }
 
-    private func fixture<V: View>(_ scene: String, make: () -> V) {
+    private func oneScene<V: View>(_ scene: String, make: () -> V) {
         render(scene, appearance: .light, language: "zh-Hans", large: false, navigation: false, make: make)
     }
 
