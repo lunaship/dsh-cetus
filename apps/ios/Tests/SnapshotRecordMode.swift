@@ -1,3 +1,4 @@
+import Foundation
 import SnapshotTesting
 
 /// `.all` only when the test host sees `RECORD_SNAPSHOTS` equal to `"1"`.
