@@ -29,6 +29,16 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    func requests(sessionID: String) async throws -> RequestsSnapshotResponse? {
+        let http = try await connect()
+        return try await http.get(RequestsSnapshotResponse.self, path: try sessionPath(sessionID, "/requests"))
+    }
+
+    func detections() async throws -> PreviewDetectionsResponse? {
+        let http = try await connect()
+        return try await http.get(PreviewDetectionsResponse.self, path: "/dsh-link/mobile/preview-detections")
+    }
+
     func open(sessionID: String, afterSeq: Int) async throws -> AsyncStream<ConversationSignal> {
         let http = try await connect()
         await stopStream()
@@ -88,24 +98,31 @@ actor ConversationLiveService: ConversationServing {
             switch output {
             case .event(let event):
                 emit(event)
+            case .connected:
+                continuation?.yield(.connection(.connected))
+            case .retryScheduled:
+                continuation?.yield(.connection(.reconnecting))
             case .resyncRequired:
                 continuation?.yield(.resync)
             case .terminated(let failure):
                 if case .stopped = failure { break }
                 continuation?.yield(.failed)
-            default:
-                break
             }
         }
     }
 
     private func emit(_ event: SSEEvent) {
         let data = Data(event.data.utf8)
+        let name = event.event ?? "message"
+        if ["ready", "stats", "question", "question-resolved"].contains(name),
+            let value = try? JSONDecoder().decode(JSONValue.self, from: data)
+        {
+            continuation?.yield(.statusEvent(name: name, data: value))
+        }
         if event.event == "stats", let stats = try? JSONDecoder().decode(HistoryStats.self, from: data) {
             continuation?.yield(.stats(stats))
             return
         }
-        let name = event.event ?? "message"
         guard name == "message", let envelope = try? JSONDecoder().decode(SessionEventEnvelope.self, from: data) else {
             return
         }

@@ -59,6 +59,8 @@
 
 4.x 消息流留在 App（`UICollectionView` + `UIHostingConfiguration`），不新增 DLUI 类型。复用 `DLProcessLine`、`DLCodeBlock`、`DLChip`。用户气泡用 `secondarySystemFill` + `ConcentricRectangle`，不用玻璃。助手全宽。`DLCodeBlock` 可传入语义色 `AttributedString`，不传时外观与阶段 2 相同。公式和 Mermaid 的锁死 `WKWebView` 只在 App。本屏没有品牌实心按钮。输入区和决策栏仍是 `DLComposerView` / `DLDecisionBar`，留给后续项。
 
+4.5 / 4.8 复用 `DLStatusSlot`，增加可选展开内容与 SF Symbol，不新增组件、不加玻璃。摘要默认一行；展开后标题换行，系统 `ProgressView` 表示已完成计划项比例，清单完成项用次要色且无删除线。最大辅助字号摘要允许换行；有计划时展开区用系统 `ScrollView` 限高，保留消息流空间；无计划只保留真实标题和阶段。待处理只读，不加入决策按钮。
+
 ## 8. 动效
 
 系统弹簧动画；决策栏 / 输入区用 `glassEffectID`（或 UIKit 对应）形变。尊重「减弱动态效果」。
@@ -74,6 +76,7 @@
 - I4.1 其余状态各 1 张（浅色、中文、默认字号）；同名 / 改名各加 1 张英文，完整登记见 page-mapping.md。
 - I4.2 主状态 5 × 8，其余 10 张浅色中文。2.5 / 2.6 的系统菜单和对话框截同文案的静态列表；生产路径仍是 `toolbarTitleMenu`、`searchSuggestions`、`alert` 和 `confirmationDialog`。
 - I4.3a 主状态 `4_1_running`、`4_2_tail`、`4_6_process` 各 8 张；`4_1_unconfirmed`、`4_1_image` 各 1 张浅色中文。截图不挂 `.task`、不连网、不打开 WebView。不生成降低透明度 fixture。
+- I4.3b 状态槽 5 个主状态各 8 张，另外 6 个状态各 1 张，共 46 张；scene 名见 page-mapping.md。沿用 `staticSnapshot`，I4.3a fixture 显式不显示状态槽。
 - 基线只允许由 `ios-regen-screenshots.yml` 生成；禁止提交本地基线。
 
 ## 11. 禁止清单

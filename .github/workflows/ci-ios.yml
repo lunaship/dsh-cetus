@@ -112,6 +112,8 @@ jobs:
             -only-testing:DeepLinksTests/TranscriptTests \
             -only-testing:DeepLinksTests/TranscriptSnapshotTests \
             -only-testing:DeepLinksTests/ConversationFlowTests \
+            -only-testing:DeepLinksTests/ConversationStatusTests \
+            -only-testing:DeepLinksTests/ConversationStatusFlowTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
