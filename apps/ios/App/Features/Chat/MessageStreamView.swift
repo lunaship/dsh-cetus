@@ -192,7 +192,9 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
             if view.bounds.width < 1 || view.bounds.height < 1 {
                 view.frame.size = canvas
             }
-            collectionView.frame = CGRect(origin: .zero, size: canvas)
+            // SwiftUI may already have placed this view below the navigation bar.
+            // The canvas is only a fallback; using it here would put the tail offscreen.
+            collectionView.frame = view.bounds
             let overlap = snapshotTopOverlap()
             collectionView.contentInsetAdjustmentBehavior = .never
             var inset = collectionView.contentInset
@@ -201,7 +203,7 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
 
             // Measure every row at the final width before scrolling. Offscreen estimated
             // heights otherwise let a tail pin stop in the middle of the last row.
-            let measuringCell = MeasuredCell(frame: CGRect(origin: .zero, size: canvas))
+            let measuringCell = MeasuredCell(frame: CGRect(origin: .zero, size: collectionView.bounds.size))
             snapshotHeights = Dictionary(
                 uniqueKeysWithValues: pendingRows.map { row in
                     (
@@ -343,14 +345,10 @@ final class MeasuredCell: UICollectionViewCell {
     override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes)
         -> UICollectionViewLayoutAttributes
     {
-        if let snapshotRow {
-            let width = layoutAttributes.size.width > 1 ? layoutAttributes.size.width : 402
-            let height = placeSnapshot(snapshotRow, width: width)
-            guard let attributes = layoutAttributes.copy() as? UICollectionViewLayoutAttributes else {
-                return layoutAttributes
-            }
-            attributes.size.height = height
-            return attributes
+        if snapshotRow != nil {
+            // The snapshot flow layout supplies the full row height, including chip
+            // minimum heights and padding. Reentrant hosting measurement can shrink it.
+            return layoutAttributes
         }
         let width = Int(layoutAttributes.size.width.rounded())
         if let measureID, let cached = cache?.height(id: measureID, width: width, revision: measureRevision),
