@@ -42,7 +42,8 @@ jobs:
           set -eu
           DEST=$(sh scripts/simulator-destination.sh)
           set +e
-          RECORD_SNAPSHOTS=1 xcodebuild \
+          # App-hosted tests only receive TEST_RUNNER_* (prefix stripped). Tests read RECORD_SNAPSHOTS.
+          RECORD_SNAPSHOTS=1 TEST_RUNNER_RECORD_SNAPSHOTS=1 xcodebuild \
             -scheme DeepLinks \
             -destination "$DEST" \
             -skip-testing:DeepLinksTests/ModelsLoadTests \

@@ -6,9 +6,11 @@ import XCTest
 @testable import DeepLinks
 
 final class WelcomeSnapshotTests: XCTestCase {
-    override func setUp() {
-        super.setUp()
-        isRecording = ProcessInfo.processInfo.environment["RECORD_SNAPSHOTS"] == "1"
+    /// Task-local. `setUp` returns before the test method, so it cannot hold record mode.
+    override func invokeTest() {
+        withSnapshotTesting(record: snapshotRecordMode()) {
+            super.invokeTest()
+        }
     }
 
     func testWelcomeLight() {
