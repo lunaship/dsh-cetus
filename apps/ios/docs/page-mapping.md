@@ -19,6 +19,8 @@
 
 I4.1 截图登记：`Tests/PairingSnapshotTests.swift`，由 `ci-ios.yml` 与 `ios-regen-screenshots.yml` 的原有 `-skip-testing` 范围自动包含。文件名 `Snapshot_<pageId>_<scene>_<light|dark>_<zh|en>.<variant>.png`；variant 为 `default` 或 `large`（accessibility3）。五个主页面各为浅 / 深 × 中 / 英 × 默认 / 大字号（accessibility3）的 8 张。其他状态只保留浅色、中文、默认字号 1 张；sameName 与 rename 各补 1 张英文。`PairingSnapshotTests` 共 61 张，不含原有欢迎基线；iPad / 宽屏留到 I4.8。1.3 相机在两种外观下都使用深色系统色；只截图离线相机表面，不启动摄像头。
 
+I4.2 截图登记：`Tests/InboxSnapshotTests.swift`，同样由原有 `-skip-testing` 范围自动包含，不在本地生成基线。五个主状态 `2_1_inbox`、`2_2_empty`、`2_3_offline`、`2_4_search`、`2_6_context` 各 8 张（浅 / 深 × 中 / 英 × 默认 / accessibility3）。其余各 1 张浅色中文默认字号：`2_4_suggestions`、`2_4_empty`、`2_4_degraded`、`2_2_workspace`、`2_5_menu`、`2_5_archived`、`2_6_delete`、`2_6_rename`、`2_1_loading`、`2_1_filtered`。合计 50 张。2.5 菜单、2.4 最近搜索、2.6 长按 / 删除确认 / 重命名用同文案的静态列表；生产路径仍是 `toolbarTitleMenu`、`searchSuggestions`、`contextMenu`、`confirmationDialog` 和 `alert`。不生成降低透明度 fixture（与 I4.1 同一 SDK 限制）。左滑无法在静态截图里展开。
+
 iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可写 trait，现有 DLUI 也没有能覆盖系统玻璃样式的注入点；移除五张降低透明度 fixture，保留实际系统设置验收。
 
 `1_2_sameName` 直接截图测试专用静态冲突内容（复用生产 alert 的本地化标题、说明、替换 / 改名 / 取消选项）；`1_2_rename` 在独立 `NavigationStack` 中截图与生产 sheet 共用的 `PairingRenameForm`（原名称、说明、取消与禁用的配对按钮），并传入 `allowsFocus: false`，字段不会成为第一响应者，也不绘制光标。两者都不在真实窗口里呈现系统 alert / sheet，scene 名与各两张中英基线的登记保持不变；生产弹窗与可聚焦输入保持不变。其他 scene 的渲染代码不变。
@@ -38,18 +40,18 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 1.6 其他原因 | `1_6_fail_expired`、`1_6_fail_certificate`、`1_6_fail_missingPin`、`1_6_fail_rejected`、`1_6_fail_cameraDenied`、`1_6_fail_cameraUnavailable`、`1_6_fail_invalidQR`、`1_6_fail_noPhotoQR`、`1_6_fail_rateLimit`、`1_6_fail_unsupported`、`1_6_fail_hostHint`、`1_6_fail_storage` | 各 1，共 12 |
 | 原有 1.2 基线 | `WelcomeSnapshotTests/testWelcomeLight.light.png`。截图用 `WelcomeView(staticSnapshot:)`：不跑配对 `.task`、关闭动画、主按钮用 `.borderedProminent` 而不是玻璃；由 CI 重生成 | 1（不计入新增 61 张） |
 
-1.1 使用 `UILaunchScreen` 字典中的 `UIColorName = LaunchBackground` 与 `UIImageName = LaunchBrand`，Assets.xcassets 提供浅 / 深色背景和矢量品牌字标；不使用 storyboard。I4.1 配对成功仅交接已保存 hostId；首页目的地由 I4.2 接入。
+1.1 使用 `UILaunchScreen` 字典中的 `UIColorName = LaunchBackground` 与 `UIImageName = LaunchBrand`，Assets.xcassets 提供浅 / 深色背景和矢量品牌字标；不使用 storyboard。I4.1 配对成功交接 hostId。I4.2 起 Root 持有 hostId 时进入首页；缺凭据时回到欢迎页。
 
 ## 2.x 首页收件箱
 
 | v4 | 页面 | iOS 页面 / 组件 / API | 与 Android 差异 | 截图测试 |
 |---|---|---|---|---|
-| 2.1 | 首页 | `NavigationStack` + 大标题；`.navigationSubtitle` 电脑状态；`toolbarTitleMenu`（2.5）；plain `List` 三组；`DLInboxRow`；底栏筛选 / 搜索 /「新任务」（唯一 BrandFill）；`.refreshable` | 无 FAB；搜索在底栏；「允许一次」为 `.bordered`+tint | `Snapshot_2_1_inbox_*` |
-| 2.2 | 空态 | `DLEmptyState` +「从一件事开始」三行 | — | `Snapshot_2_2_empty_*` |
+| 2.1 | 首页 | `NavigationStack` + 大标题；`.navigationSubtitle` 电脑状态；`toolbarTitleMenu`（2.5）；plain `List` 三组；`DLInboxRow`；底栏筛选 / 搜索 /「新任务」（唯一 BrandFill）；`.refreshable` | 无 FAB；搜索在底栏；「允许一次」为 `.bordered`+tint | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading`、`Snapshot_2_1_filtered` |
+| 2.2 | 空态 | `DLEmptyState` +「从一件事开始」三行 | — | `Snapshot_2_2_empty_*`、`Snapshot_2_2_workspace` |
 | 2.3 | 离线 | 顶 `DLBanner` + 重试 / 诊断；批准按钮禁用 | — | `Snapshot_2_3_offline_*` |
-| 2.4 | 搜索 | `.searchable(text:tokens:)`；工作区 token；`.searchSuggestions` | 工作区用 token | `Snapshot_2_4_search_*` |
-| 2.5 | 电脑与工作区 | `toolbarTitleMenu` 两组 | 菜单代替弹层 | （含在 2.1） |
-| 2.6 | 长按 / 左滑 | `contextMenu`；`swipeActions` 归档 / 删除；**审批不滑动** | 多左滑 | `Snapshot_2_6_context_*` |
+| 2.4 | 搜索 | `.searchable(text:tokens:)`；工作区 token；`.searchSuggestions` | 工作区用 token | `Snapshot_2_4_search_*`、`Snapshot_2_4_suggestions`、`Snapshot_2_4_empty`、`Snapshot_2_4_degraded` |
+| 2.5 | 电脑与工作区 | `toolbarTitleMenu` 两组 | 菜单代替弹层 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived`（静态列表） |
+| 2.6 | 长按 / 左滑 | `contextMenu`；`swipeActions` 归档 / 删除；**审批不滑动** | 多左滑 | `Snapshot_2_6_context_*`、`Snapshot_2_6_delete`、`Snapshot_2_6_rename` |
 
 ## 3.x 新任务
 

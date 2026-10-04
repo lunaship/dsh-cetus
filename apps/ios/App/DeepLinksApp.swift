@@ -9,7 +9,16 @@ struct RootView: View {
     @State private var selectedHostId: String?
 
     var body: some View {
-        PairingFlowView(model: pairing, onPaired: { selectedHostId = $0 })
+        if let selectedHostId {
+            InboxFlowView(
+                hostID: selectedHostId,
+                onMissing: { self.selectedHostId = nil },
+                onSwitch: { self.selectedHostId = $0 }
+            )
+            .id(selectedHostId)
+        } else {
+            PairingFlowView(model: pairing, onPaired: { selectedHostId = $0 })
+        }
     }
 }
 

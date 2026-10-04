@@ -107,6 +107,8 @@ jobs:
             -only-testing:DeepLinksTests/PairingFlowTests \
             -only-testing:DeepLinksTests/PairingFailureTests \
             -only-testing:DeepLinksTests/PairingPhotoDecoderTests \
+            -only-testing:DeepLinksTests/InboxCatalogTests \
+            -only-testing:DeepLinksTests/InboxFlowTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

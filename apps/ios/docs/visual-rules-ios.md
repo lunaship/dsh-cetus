@@ -55,6 +55,8 @@
 
 系统组件直接用：`NavigationStack` `List` `Form` `.sheet` `confirmationDialog` `alert` `Menu` `Picker` `Toggle` `contextMenu` `swipeActions` `searchable`。新增封装组件先改本文件。
 
+2.x 不新增封装。`DLInboxRow` 增加可选的收件箱布局（状态点、脚注、等宽命令、搜索命中），`DLBanner` 增加可选图标；两者的原有调用外观不变。筛选、搜索、分组、左滑和长按用系统组件。底栏在系统玻璃里，「新任务」用 `.borderedProminent` + BrandFill，列表里的「允许一次」仍是 `.bordered` + accent tint。
+
 ## 8. 动效
 
 系统弹簧动画；决策栏 / 输入区用 `glassEffectID`（或 UIKit 对应）形变。尊重「减弱动态效果」。
@@ -68,6 +70,7 @@
 - 设备：iPhone 17 Pro（iOS 26.x）基线；iPad / 宽屏在 I4.8 验收。型号与系统版本改动需维护者批准。
 - 主页面：浅 / 深 × 中 / 英 × 默认 / 大字号共 8 张。I4.1 暂不生成降低透明度 fixture：iOS 26.5 SDK 对应环境值只读，DLUI 无系统玻璃样式注入点；保留实际系统设置验收。
 - I4.1 其余状态各 1 张（浅色、中文、默认字号）；同名 / 改名各加 1 张英文，完整登记见 page-mapping.md。
+- I4.2 主状态 5 × 8，其余 10 张浅色中文。2.5 / 2.6 的系统菜单和对话框截同文案的静态列表；生产路径仍是 `toolbarTitleMenu`、`searchSuggestions`、`alert` 和 `confirmationDialog`。
 - 基线只允许由 `ios-regen-screenshots.yml` 生成；禁止提交本地基线。
 
 ## 11. 禁止清单
