@@ -74,7 +74,8 @@ final class PairingSnapshotTests: XCTestCase {
                 "1_2_rename", appearance: .light, language: language, large: false, navigation: true
             ) {
                 PairingRenameForm(
-                    newName: .constant(PairingFixtures.deviceName), originalName: PairingFixtures.deviceName)
+                    newName: .constant(PairingFixtures.deviceName), originalName: PairingFixtures.deviceName,
+                    allowsFocus: false)
             }
         }
     }

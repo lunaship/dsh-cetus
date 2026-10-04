@@ -8,6 +8,8 @@ struct PairingWelcomePage: View {
     var scan: () -> Void = {}
     var photo: () -> Void = {}
     var demo: () -> Void = {}
+    /// Welcome snapshots only. Pairing matrix scenes keep `.glassProminent`.
+    var staticSnapshot = false
 
     var body: some View {
         let copy = PairingCopy(locale: locale)
@@ -32,12 +34,7 @@ struct PairingWelcomePage: View {
                 if let busy {
                     ProgressView(copy.text(busy))
                 }
-                Button(action: scan) {
-                    Label(copy.text(.scan), systemImage: "qrcode.viewfinder")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.glassProminent)
-                .tint(DLColor.brandFill)
+                scanButton(copy.text(.scan))
                 Button(copy.text(.photo), action: photo).frame(minHeight: 44)
                 Button(copy.text(.demo), action: demo).frame(minHeight: 44)
                     .foregroundStyle(DLColor.secondaryLabel)
@@ -62,6 +59,20 @@ struct PairingWelcomePage: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func scanButton(_ title: String) -> some View {
+        let button = Button(action: scan) {
+            Label(title, systemImage: "qrcode.viewfinder")
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        // Glass shaders sample the background and do not settle to one image. Snapshots use the
+        // system filled style instead; production and the pairing matrix stay on glass.
+        if staticSnapshot {
+            button.buttonStyle(.borderedProminent).tint(DLColor.brandFill)
+        } else {
+            button.buttonStyle(.glassProminent).tint(DLColor.brandFill)
+        }
     }
 }
 
