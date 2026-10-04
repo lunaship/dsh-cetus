@@ -99,6 +99,8 @@ jobs:
             -only-testing:DeepLinksTests/MobileContractFixturesTests \
             -only-testing:DeepLinksTests/HostStoreContractTests \
             -only-testing:DeepLinksTests/TLSFingerprintContractTests \
+            -only-testing:DeepLinksTests/SSEClientContractTests \
+            -only-testing:DeepLinksTests/HostClientContractTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

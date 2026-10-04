@@ -21,11 +21,12 @@ public enum HostConnectionError: Error, Equatable, Sendable {
 ///
 /// 红线：证书变更只取消连接、只提示，不自动删除凭据。本委托只应用于已通过
 /// `PinEvaluation.requirePin` 的钉扎连接（公网无指纹走系统 PKI 的场景不要用它）。
-/// `@unchecked Sendable` 是安全的：除上锁保护的 `lastError` 外没有可变状态。
+/// `@unchecked Sendable` 是安全的：除上锁保护的 `lastError` / `failures` 外没有可变状态。
 public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, @unchecked Sendable {
     /// 已规范化的期望指纹；空串表示没有指纹（缺指纹同样 fail-closed）。
     private let expectedFingerprint: String
     private let lastError = OSAllocatedUnfairLock<HostConnectionError?>(initialState: nil)
+    private let failures = OSAllocatedUnfairLock<Int>(initialState: 0)
 
     /// - Parameter expectedFingerprint: 配对时记录的叶证书指纹，原始写法即可，内部规范化。
     public init(expectedFingerprint: String?) {
@@ -35,6 +36,12 @@ public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, @uncheck
     /// 最近一次记录的错误（线程安全）。请求失败后读取，把取消类错误映射成提示。
     public var lastRecordedError: HostConnectionError? {
         lastError.withLock { $0 }
+    }
+
+    /// 钉扎失败累计次数（线程安全，只增不减）。上层在请求前后各读一次，
+    /// 增加了就说明这次请求是被钉扎取消的（`lastRecordedError` 第一次失败后就不再变化，不能拿来比）。
+    public var pinFailureCount: Int {
+        failures.withLock { $0 }
     }
 
     public func urlSession(
@@ -68,5 +75,6 @@ public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, @uncheck
 
     private func recordCertificateChanged() {
         lastError.withLock { $0 = HostConnectionError.certificateChanged }
+        failures.withLock { $0 += 1 }
     }
 }

@@ -8,13 +8,15 @@ let package = Package(
         .library(name: "DLNet", targets: ["DLNet"])
     ],
     dependencies: [
-        .package(path: "../DLSecurity")
+        .package(path: "../DLCore"),
+        .package(path: "../DLSecurity"),
     ],
     targets: [
         .target(
             name: "DLNet",
             dependencies: [
-                .product(name: "DLSecurity", package: "DLSecurity")
+                .product(name: "DLCore", package: "DLCore"),
+                .product(name: "DLSecurity", package: "DLSecurity"),
             ]
         )
     ]
