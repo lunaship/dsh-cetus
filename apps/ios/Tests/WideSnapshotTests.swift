@@ -37,6 +37,19 @@ import XCTest
     }
 
     private func shot(_ scene: String, size: CGSize, regular: Bool, changes: Bool) {
+        render(scene, size: size, regular: regular, changes: changes, named: "default")
+        render(
+            scene, size: size, regular: regular, changes: changes, named: "reduce-transparency",
+            reduceTransparency: true)
+        render(
+            scene, size: size, regular: regular, changes: changes, named: "increase-contrast",
+            increaseContrast: true)
+    }
+
+    private func render(
+        _ scene: String, size: CGSize, regular: Bool, changes: Bool, named: String,
+        reduceTransparency: Bool = false, increaseContrast: Bool = false
+    ) {
         let model = inbox()
         if regular { model.selectedSessionID = "approve" }
         let page = InboxPage(
@@ -49,20 +62,27 @@ import XCTest
         .environment(\.colorScheme, .light)
         .environment(\.dynamicTypeSize, DynamicTypeSize.large)
         .environment(\.horizontalSizeClass, regular ? .regular : .compact)
+        .environment(\._accessibilityReduceTransparency, reduceTransparency)
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
-        let image = wideImage(page, size: size, regular: regular)
+        let image = wideImage(page, size: size, regular: regular, increaseContrast: increaseContrast)
         // 横屏里的玻璃导航栏同样有 1–2 个色阶的抗锯齿抖动。
         assertSnapshot(
-            of: image, as: .image(precision: 0.995), named: "default", testName: "Snapshot_\(scene)_light_zh")
+            of: image, as: .image(precision: 0.995), named: named,
+            testName: "Snapshot_\(scene)_light_zh")
     }
 
-    private func wideImage<V: View>(_ view: V, size: CGSize, regular: Bool) -> UIImage {
+    private func wideImage<V: View>(
+        _ view: V, size: CGSize, regular: Bool, increaseContrast: Bool = false
+    ) -> UIImage {
         let host = UIHostingController(rootView: view)
         host.view.backgroundColor = .systemBackground
         host.overrideUserInterfaceStyle = .light
         host.traitOverrides.userInterfaceStyle = .light
         host.traitOverrides.preferredContentSizeCategory = .large
+        if increaseContrast {
+            host.traitOverrides.accessibilityContrast = .high
+        }
         host.traitOverrides.userInterfaceIdiom = .pad
         host.traitOverrides.horizontalSizeClass = regular ? .regular : .compact
         host.safeAreaRegions = []
