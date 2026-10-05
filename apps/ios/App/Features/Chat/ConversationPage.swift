@@ -90,7 +90,8 @@ struct ConversationPage: View {
                         },
                         onSend: { Task { await send(copy) } },
                         onSecondary: { Task { await decide(allow: false) } },
-                        onPrimary: { Task { await decide(allow: true) } }
+                        onPrimary: { Task { await decide(allow: true) } },
+                        solidSnapshot: staticSnapshot
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)

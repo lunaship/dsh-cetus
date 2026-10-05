@@ -7,6 +7,10 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var onDecisionPrimary: (() -> Void)?
     /// SwiftUI 自己排位置时关掉。组件截图仍贴键盘。
     public var pinsToKeyboard = true
+    /// 页面截图关掉实时玻璃。
+    public var usesSolidSnapshotBackground = false {
+        didSet { glass.useSolidSnapshotBackground(usesSolidSnapshotBackground) }
+    }
 
     public var text: String = "" {
         didSet {

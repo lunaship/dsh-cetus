@@ -10,10 +10,12 @@ struct ConversationBar: UIViewRepresentable {
     var onSend: () -> Void
     var onSecondary: () -> Void
     var onPrimary: () -> Void
+    var solidSnapshot = false
 
     func makeUIView(context: Context) -> DLComposerView {
         let view = DLComposerView(sendTitle: copy.text(.send))
         view.pinsToKeyboard = false
+        view.usesSolidSnapshotBackground = solidSnapshot
         return view
     }
 
@@ -26,6 +28,7 @@ struct ConversationBar: UIViewRepresentable {
 
     func updateUIView(_ view: DLComposerView, context: Context) {
         view.pinsToKeyboard = false
+        view.usesSolidSnapshotBackground = solidSnapshot
         view.onDraft = onDraft
         view.onSubmit = onSend
         view.onDecisionSecondary = onSecondary
