@@ -371,7 +371,7 @@ struct PreviewWebView: UIViewRepresentable {
     static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
         web.configuration.websiteDataStore.removeData(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast
-        ) { }
+        ) {}
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {

@@ -37,8 +37,8 @@ import Testing
     @Test func previewPathRequiresTheKeyAndAPreviewID() {
         let key = String(repeating: "ab", count: 16)
         let id = String(repeating: "cd", count: 12)
-        #expect(mapPreviewPath(key: key, pathAndQuery: "/\(key)/\(id)/assets/app.js?x=1")
-            == "/dsh-link/mobile/preview/\(id)/assets/app.js?x=1")
+        let mapped = mapPreviewPath(key: key, pathAndQuery: "/\(key)/\(id)/assets/app.js?x=1")
+        #expect(mapped == "/dsh-link/mobile/preview/\(id)/assets/app.js?x=1")
         #expect(mapPreviewPath(key: key, pathAndQuery: "/other/\(id)/") == nil)
         #expect(mapPreviewPath(key: key, pathAndQuery: "/\(key)/not-an-id/") == nil)
         #expect(mapPreviewPath(key: key, pathAndQuery: "http://127.0.0.1/\(key)/\(id)/") == nil)

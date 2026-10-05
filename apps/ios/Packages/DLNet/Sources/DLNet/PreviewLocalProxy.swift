@@ -15,6 +15,24 @@ public struct PreviewHTTPResult: Sendable {
 }
 
 /// 只监听 127.0.0.1。路径密钥不对就 404，不把请求交给电脑。
+private final class Once: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+    private let continuation: CheckedContinuation<Void, Error>
+
+    init(_ continuation: CheckedContinuation<Void, Error>) {
+        self.continuation = continuation
+    }
+
+    func finish(_ result: Result<Void, Error>) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !resumed else { return }
+        resumed = true
+        continuation.resume(with: result)
+    }
+}
+
 public actor PreviewLocalProxy {
     public let key: String
     public private(set) var port: UInt16 = 0
@@ -41,33 +59,25 @@ public actor PreviewLocalProxy {
         let listener = try NWListener(using: parameters)
         self.listener = listener
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let lock = NSLock()
-            var resumed = false
-            func finish(_ result: Result<Void, Error>) {
-                lock.lock()
-                defer { lock.unlock() }
-                guard !resumed else { return }
-                resumed = true
-                continuation.resume(with: result)
-            }
+            let once = Once(continuation)
             listener.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    finish(.success(()))
+                    once.finish(.success(()))
                 case .failed(let error):
-                    finish(.failure(error))
+                    once.finish(.failure(error))
                 default:
                     break
                 }
             }
-            queue.asyncAfter(deadline: .now() + 5) {
-                finish(.failure(URLError(.timedOut)))
+            self.queue.asyncAfter(deadline: .now() + 5) {
+                once.finish(.failure(URLError(.timedOut)))
             }
             listener.newConnectionHandler = { connection in
-                connection.start(queue: queue)
+                connection.start(queue: self.queue)
                 Task { await self.serve(connection) }
             }
-            listener.start(queue: queue)
+            listener.start(queue: self.queue)
         }
         port = listener.port?.rawValue ?? 0
     }
@@ -147,7 +157,8 @@ public actor PreviewLocalProxy {
         } else if status == 400 {
             header = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         } else {
-            header = "HTTP/1.1 \(status) OK\r\nContent-Type: \(type)\r\n"
+            header =
+                "HTTP/1.1 \(status) OK\r\nContent-Type: \(type)\r\n"
                 + "Content-Length: \(body.count)\r\nConnection: close\r\n\r\n"
         }
         var bytes = Data(header.utf8)
@@ -157,9 +168,12 @@ public actor PreviewLocalProxy {
 
     private func transmit(_ connection: NWConnection, _ data: Data) async {
         await withCheckedContinuation { continuation in
-            connection.send(content: data, completion: .contentProcessed { _ in
-                continuation.resume()
-            })
+            connection.send(
+                content: data,
+                completion: .contentProcessed { _ in
+                    continuation.resume()
+                }
+            )
         }
     }
 }
