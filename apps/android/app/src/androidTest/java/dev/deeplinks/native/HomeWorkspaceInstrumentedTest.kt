@@ -21,7 +21,6 @@ import android.graphics.Bitmap
 import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -96,14 +95,14 @@ class HomeWorkspaceInstrumentedTest {
         screenshot.recycle()
     }
 
-    @Test fun pendingApprovalIsPinned_andCollapsedFolderKeepsItsBadge() {
+    @Test fun pendingApprovalIsPinned_evenWhenItsFolderIsCollapsed() {
         show(pending = MobileMessage(id = "approval", role = "approval", text = "", approvalId = "approve-b", toolName = "bash"))
         rule.onNodeWithText(L.allowOnce).performClick()
         assertEquals(1, approvals)
         rule.onNodeWithText("b").performClick()
         // 等你处理置顶：收起所在文件夹后仍然可见，且只出现一次。
         rule.onAllNodesWithText("Waiting conversation").assertCountEquals(1)
-        assertTrue(rule.onAllNodesWithText(L.homeAwaiting, substring = true).fetchSemanticsNodes().size >= 2)
+        rule.onNodeWithText(L.homeAwaiting).assertExists()
     }
 
     @Test fun longPressFolderOffersNewTaskAndDelete() {

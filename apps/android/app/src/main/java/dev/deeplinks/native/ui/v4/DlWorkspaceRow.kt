@@ -2,8 +2,6 @@ package dev.deeplinks.native.ui.v4
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,9 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
-import dev.deeplinks.core.homeTaskCount
-import dev.deeplinks.native.ChevronDownOutline16
-import dev.deeplinks.native.ChevronRightOutline16
 import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
@@ -33,46 +28,36 @@ import dev.deeplinks.native.EditOutline16
 import dev.deeplinks.native.FolderClose16
 import dev.deeplinks.native.FolderOpenOutline16
 
-/** v4 2.1：文件夹行；展开和新建分别拥有独立的触控区域。[onLongClick] 出 2.5 工作区菜单。 */
+/**
+ * v4 2.1：文件夹行，只有 图标 + 名字 + 一个浅色「新建」。点名字展开 / 收起，长按出 2.5 工作区菜单。
+ * 不显示任务数和箭头：等你处理已经置顶，展开状态由文件夹图标开合表达。
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DlWorkspaceRow(
     title: String,
-    count: Int,
     expanded: Boolean,
-    awaitingCount: Int,
-    runningCount: Int,
     online: Boolean,
     onToggle: () -> Unit,
     onCreate: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val summary = listOfNotNull(
-        L.homeTaskCount.format(count),
-        L.homeAwaiting.takeIf { awaitingCount > 0 }?.let { "$it $awaitingCount" },
-        L.homeRunning.takeIf { runningCount > 0 }?.let { "$it $runningCount" },
-    ).joinToString(" · ")
     val expandedLabel = if (expanded) L.collapse else L.expand
     Row(
-        Modifier.fillMaxWidth().padding(start = DshSpace.s20, end = DshSpace.s12),
+        Modifier.fillMaxWidth().padding(start = DshSpace.s20, end = DshSpace.s8, top = DshSpace.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             Modifier.weight(1f)
                 .semantics { stateDescription = expandedLabel }
                 .combinedClickable(role = Role.Button, onClickLabel = expandedLabel, onLongClick = onLongClick, onClick = onToggle)
-                .heightIn(min = DshTouch.min)
-                .padding(vertical = DshSpace.s8),
+                .heightIn(min = DshTouch.min),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(if (expanded) FolderOpenOutline16 else FolderClose16, null, tint = Dsh.labelPrimary, modifier = Modifier.size(DshIconSize.md))
             Spacer(Modifier.width(DshSpace.s12))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
-                Text(title, style = DshType.bodyStrong, color = Dsh.labelPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(summary, style = DshType.caption, color = if (awaitingCount > 0) Dsh.wait else Dsh.labelSecondary)
-            }
-            Icon(if (expanded) ChevronDownOutline16 else ChevronRightOutline16, null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
+            Text(title, style = DshType.bodyStrong, color = Dsh.labelPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        DlIconButton(EditOutline16, "${L.homeNewTask} · $title", onCreate, enabled = online)
+        DlIconButton(EditOutline16, "${L.homeNewTask} · $title", onCreate, enabled = online, tint = Dsh.tertiaryText)
     }
 }

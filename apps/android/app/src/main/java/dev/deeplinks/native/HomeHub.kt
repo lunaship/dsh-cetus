@@ -50,6 +50,13 @@ import dev.deeplinks.native.ui.v4.DlRowTrailing
 import dev.deeplinks.native.ui.v4.DlSectionHeader
 import dev.deeplinks.native.util.homeTimeLabel
 import dev.deeplinks.native.util.workspaceDisplayName
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import dev.deeplinks.native.ui.v4.DlPill
+import dev.deeplinks.native.ui.v4.DlSize
 
 /*
  * v4 首页收件箱（2.1–2.6）的积木。布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
@@ -249,22 +256,40 @@ internal fun HomeEmptyStarters(onPick: (String) -> Unit) {
     }
 }
 
-/** 2.1 固定底部：搜索打开 2.4，新建打开 3.1。 */
+/** 2.1 底部：左边「搜索会话」胶囊（入口，点开 2.4），右边同色圆钮新建。没有分隔线，浮在列表上。 */
 @Composable
 internal fun HomeBottomBar(online: Boolean, onSearch: () -> Unit, onCreate: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Dsh.bgBase)) {
-        HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
+    Row(
+        Modifier.fillMaxWidth().background(Dsh.bgBase).padding(horizontal = DshSpace.s16, vertical = DshSpace.s8),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(
-            Modifier.fillMaxWidth().padding(end = DshSpace.s12, top = DshSpace.s4, bottom = DshSpace.s4),
+            Modifier.weight(1f)
+                .height(DlSize.button)
+                .clip(DlPill)
+                .background(Dsh.surface1)
+                .clickable(role = Role.Button, onClick = onSearch)
+                .padding(horizontal = DshSpace.s16),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DlListRow(
-                title = DshS.searchSessions,
-                leading = SearchOutline16,
-                modifier = Modifier.weight(1f),
-                onClick = onSearch,
+            Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.md))
+            Spacer(Modifier.width(DshSpace.s12))
+            Text(DshS.searchSessions, style = DshType.body, color = Dsh.labelSecondary, maxLines = 1)
+        }
+        Box(
+            Modifier.size(DlSize.button)
+                .clip(DlPill)
+                .background(Dsh.surface1)
+                .clickable(enabled = online, role = Role.Button, onClickLabel = DshS.homeNewTask, onClick = onCreate),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                EditOutline16,
+                contentDescription = DshS.homeNewTask,
+                tint = if (online) Dsh.labelPrimary else Dsh.tertiaryText,
+                modifier = Modifier.size(DshIconSize.md),
             )
-            DlIconButton(EditOutline16, DshS.homeNewTask, onCreate, enabled = online)
         }
     }
 }

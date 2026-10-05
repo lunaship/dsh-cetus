@@ -27,7 +27,6 @@ import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.core.homeWorkspaceSection
 import dev.deeplinks.core.homeShowAllCount
 import dev.deeplinks.core.homeShowFewer
-import dev.deeplinks.native.ui.v4.DlTone
 import dev.deeplinks.native.util.sessionMillis
 
 /** 每个文件夹默认显示的会话条数；超出的折进「显示全部 N 个」。 */
@@ -68,7 +67,7 @@ internal fun HomeWorkspacePage(
     var sheetPath by remember { mutableStateOf<String?>(null) }
     val awaiting = groups.flatMap { it.sessions }.filter { it.awaitingInput }
         .distinctBy { it.sessionId }.sortedByDescending { sessionMillis(it.updatedAt) }
-    val inboxRow: @Composable (MobileSession, Boolean) -> Unit = { session, compact ->
+    val inboxRow: @Composable (MobileSession) -> Unit = { session ->
         val rowPending = pending?.takeIf { session.sessionId == currentSessionId }
         HomeInboxRow(
             session = session.copy(subagentCount = runningSubagentCount(allSessions, session.sessionId).takeIf { it > 0 }),
@@ -79,7 +78,6 @@ internal fun HomeWorkspacePage(
             onLongClick = { onLongPress(session) },
             onReject = { rowPending?.approvalId?.let { onAnswerApproval(it, "rejected") {} } },
             onApprove = { rowPending?.approvalId?.let { onAnswerApproval(it, "allowed-once") {} } },
-            compact = compact,
         )
     }
     Box(Modifier.fillMaxSize()) {
@@ -112,11 +110,11 @@ internal fun HomeWorkspacePage(
                 if (awaiting.isNotEmpty()) {
                     item(key = "home-awaiting-heading") { DlSectionHeader(L.homeAwaiting, trailing = awaiting.size.toString()) }
                     awaiting.forEach { session ->
-                        item(key = "home-awaiting-${session.sessionId}") { inboxRow(session, false) }
+                        item(key = "home-awaiting-${session.sessionId}") { inboxRow(session) }
                     }
                 }
                 item(key = "home-workspaces-heading") {
-                    DlSectionHeader(L.homeWorkspaceSection)
+                    HomeWorkspacesTitle(L.homeWorkspaceSection)
                 }
                 if (groups.isEmpty()) {
                     item(key = "home-empty") { HomeEmptyStarters(onPick = onPickStarter) }
@@ -126,10 +124,7 @@ internal fun HomeWorkspacePage(
                     item(key = "folder-${group.key}") {
                         DlWorkspaceRow(
                             title = group.path?.let { labelByPath.getValue(it) } ?: L.ungrouped,
-                            count = group.sessions.size,
                             expanded = expanded,
-                            awaitingCount = group.awaitingCount,
-                            runningCount = group.runningCount,
                             online = online,
                             onToggle = {
                                 collapsedPaths = if (expanded) collapsedPaths + group.key else collapsedPaths - group.key
@@ -154,14 +149,20 @@ internal fun HomeWorkspacePage(
                         val all = group.key in showAll
                         val shown = if (all) rest else rest.take(HOME_FOLDER_PREVIEW_ROWS)
                         shown.forEach { session ->
-                            item(key = "home-row-${session.sessionId}") { inboxRow(session, true) }
+                            item(key = "home-row-${session.sessionId}") {
+                                HomeFolderSessionRow(
+                                    session = session,
+                                    online = online,
+                                    goalSummary = goalSummaries[session.sessionId],
+                                    onClick = { actions.onSelectSession(session.sessionId) },
+                                    onLongClick = { onLongPress(session) },
+                                )
+                            }
                         }
                         if (rest.size > HOME_FOLDER_PREVIEW_ROWS) {
                             item(key = "more-${group.key}") {
-                                DlListRow(
-                                    title = if (all) L.homeShowFewer else L.homeShowAllCount.format(rest.size),
-                                    titleTone = DlTone.Brand,
-                                    modifier = Modifier.padding(start = DshSpace.s32),
+                                HomeFolderMoreRow(
+                                    label = if (all) L.homeShowFewer else L.homeShowAllCount.format(rest.size),
                                     onClick = { showAll = if (all) showAll - group.key else showAll + group.key },
                                 )
                             }

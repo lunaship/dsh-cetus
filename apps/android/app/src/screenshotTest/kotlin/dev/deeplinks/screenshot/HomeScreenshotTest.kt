@@ -13,14 +13,15 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.native.HomeEmptyStarters
+import dev.deeplinks.native.HomeFolderMoreRow
+import dev.deeplinks.native.HomeFolderSessionRow
 import dev.deeplinks.native.HomeMoreSheetContent
+import dev.deeplinks.native.HomeWorkspacesTitle
 import dev.deeplinks.native.HomeTopBar
 import dev.deeplinks.native.HomeWorkspaceSheetContent
 import dev.deeplinks.native.HomeInboxRow
 import dev.deeplinks.native.HomeBottomBar
-import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.native.ui.v4.DlSectionHeader
-import dev.deeplinks.native.ui.v4.DlTone
 import dev.deeplinks.native.ui.v4.DlWorkspaceRow
 import dev.deeplinks.native.HomeOfflineBanner
 import dev.deeplinks.native.HomeSearchPage
@@ -112,12 +113,11 @@ private fun InboxRows(english: Boolean, online: Boolean) {
         HomeInboxRow(s, if (s.sessionId == "s1") APPROVAL else null, online, null, {}, {}, {}, {})
     }
     val rest = running + recent
-    DlWorkspaceRow("dsh-links", rest.size + 1, true, 1, running.size, online, {}, {})
-    rest.take(3).forEach { s ->
-        HomeInboxRow(s, null, online, null, {}, {}, {}, {}, compact = true)
-    }
-    DlListRow(title = if (english) "Show all ${rest.size}" else "显示全部 ${rest.size} 个", titleTone = DlTone.Brand, modifier = Modifier.padding(start = 32.dp), onClick = {})
-    DlWorkspaceRow("relay", 1, false, 1, 0, online, {}, {})
+    HomeWorkspacesTitle(if (english) "Workspaces" else "工作区")
+    DlWorkspaceRow("dsh-links", true, online, {}, {})
+    rest.take(3).forEach { s -> HomeFolderSessionRow(s, online, null, {}, {}) }
+    HomeFolderMoreRow(label = if (english) "Show all ${rest.size}" else "显示全部 ${rest.size} 个", onClick = {})
+    DlWorkspaceRow("relay", false, online, {}, {})
 }
 
 @PreviewTest
