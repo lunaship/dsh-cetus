@@ -477,7 +477,10 @@ struct InboxDestinationPage: View {
                 hostID: model.hostID, sessionID: id, seed: conversationSeed(sessionID: id, model: model),
                 sessions: model.sessions)
         case .settings:
-            later(copy.text(.settings), copy.text(.laterSettings))
+            SettingsHomePage(
+                computerName: model.computerName.isEmpty ? model.hostID : model.computerName,
+                computerAddress: model.hostID,
+                online: model.link.isOnline)
         case .computer:
             later(copy.text(.computers), copy.text(.laterComputer))
         case .diagnostics:

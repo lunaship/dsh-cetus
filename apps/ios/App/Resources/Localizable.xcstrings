@@ -5715,6 +5715,251 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "−%d" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "−%d" } }
       }
+    },
+    "settings.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } }
+      }
+    },
+    "settings.online" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Online" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在线" } }
+      }
+    },
+    "settings.offline" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Offline" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "离线" } }
+      }
+    },
+    "settings.general" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "General" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通用" } }
+      }
+    },
+    "settings.language" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语言" } }
+      }
+    },
+    "settings.languageValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follows the system" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟随系统" } }
+      }
+    },
+    "settings.notifications" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通知" } }
+      }
+    },
+    "settings.appearance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "外观" } }
+      }
+    },
+    "settings.agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Agent" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "智能体" } }
+      }
+    },
+    "settings.defaults" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Conversation defaults" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "对话默认" } }
+      }
+    },
+    "settings.models" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Models and balance" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型与余额" } }
+      }
+    },
+    "settings.other" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Other" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "其他" } }
+      }
+    },
+    "settings.history" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Session history" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "会话记录" } }
+      }
+    },
+    "settings.about" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关于" } }
+      }
+    },
+    "settings.notifyApproval" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When approval is needed" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要审批时" } }
+      }
+    },
+    "settings.notifyDone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When a task finishes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任务完成时" } }
+      }
+    },
+    "settings.liveActivity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Live Activity" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "实时活动" } }
+      }
+    },
+    "settings.pushNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delivery through the official gateway arrives in a later update." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通过官方网关推送会在后面的更新里接上。" } }
+      }
+    },
+    "settings.themeSystem" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟随系统" } }
+      }
+    },
+    "settings.themeLight" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "浅色" } }
+      }
+    },
+    "settings.themeDark" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "深色" } }
+      }
+    },
+    "settings.typeSizeNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Text size follows the system setting." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "字号跟随系统设置。" } }
+      }
+    },
+    "settings.preset" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Agent preset" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "智能体预设" } }
+      }
+    },
+    "settings.presetValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Default" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认" } }
+      }
+    },
+    "settings.permission" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Permission" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "权限" } }
+      }
+    },
+    "settings.permissionValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Workspace write" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "工作区写入" } }
+      }
+    },
+    "settings.model" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型" } }
+      }
+    },
+    "settings.modelValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not chosen" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未选择" } }
+      }
+    },
+    "settings.busySend" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send while running" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "运行中再次发送" } }
+      }
+    },
+    "settings.busyQueue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Queue" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "排队发送" } }
+      }
+    },
+    "settings.modelsEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Models and balance are read from this computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型和余额从这台电脑读取。" } }
+      }
+    },
+    "settings.historyEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No archived sessions on this phone." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台手机上没有已归档的会话。" } }
+      }
+    },
+    "settings.version" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "版本" } }
+      }
+    },
+    "settings.versionValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1.0" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "1.0" } }
+      }
+    },
+    "settings.licenses" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open source licenses" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开源许可" } }
+      }
     }
   },
 
