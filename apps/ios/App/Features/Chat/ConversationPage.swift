@@ -112,8 +112,9 @@ struct ConversationPage: View {
                 }
                 .navigationDestination(isPresented: $showChanges) {
                     ChangesPage(
-                        files: [], turn: 1, canPrevious: false, canNext: false, copy: ReviewCopy(locale: locale))
-                        .navigationTransition(.zoom(sourceID: 0, in: changesZoom))
+                        files: [], turn: 1, canPrevious: false, canNext: false, copy: ReviewCopy(locale: locale)
+                    )
+                    .navigationTransition(.zoom(sourceID: 0, in: changesZoom))
                 }
                 .navigationDestination(isPresented: $showFiles) {
                     FilesPage(path: "", entries: [], copy: ReviewCopy(locale: locale))
