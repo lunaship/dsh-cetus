@@ -1,5 +1,9 @@
 ## 未发布（main）
 
+**Android 修复**
+
+- 正式包的预览页可以打开本机 `127.0.0.1` 页面，其它地址仍然禁止明文。
+
 **审批瀑布**
 
 - DSH `0.1.7-alpha.1` 上复验通过：隔离 host + 临时探针证实 `approval/request` 与 `user-questions/request` 都会触发；手机 API 可提交「允许一次」与澄清答案，写文件在批准后完成。默认 `workspace-write` 下工作区写入未出审批；`read-only` 下 `write` 会出审批。详见 `docs/COMPATIBILITY.md`。
