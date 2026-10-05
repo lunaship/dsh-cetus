@@ -482,7 +482,18 @@ struct InboxDestinationPage: View {
         case .diagnostics:
             later(copy.text(.diagnostics), copy.text(.laterDiagnostics))
         case .newTask(let starter):
-            later(copy.text(.newTask), starter.isEmpty ? copy.text(.laterNewTask) : starter)
+            NewTaskPage(
+                hostID: model.hostID,
+                starter: starter,
+                workspaces: model.workspaces,
+                presets: [],
+                onOpenSession: { model.open(SessionSummary(sessionId: $0)) },
+                loadPresets: { await model.loadAgentPresets() },
+                createSession: { preset, workspaceID, cwd in
+                    try await model.createNewTaskSession(preset: preset, workspaceID: workspaceID, cwd: cwd)
+                },
+                sendPrompt: { id, text in try await model.sendNewTask(text, sessionID: id) },
+                createWorkspace: { try await model.submitWorkspace($0) })
         case .addWorkspace:
             later(copy.text(.addWorkspace), copy.text(.laterAddWorkspace))
         }

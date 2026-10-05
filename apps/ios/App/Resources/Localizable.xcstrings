@@ -4847,6 +4847,90 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "You" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你" } }
       }
+    },
+    "newTask.addWorkspace" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add workspace" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加工作区" } }
+      }
+    },
+    "newTask.chooseWorkspace" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Workspace" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "工作区" } }
+      }
+    },
+    "newTask.continueLast" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue the last task" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续上次的任务" } }
+      }
+    },
+    "newTask.more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更多" } }
+      }
+    },
+    "newTask.path" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Path" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "路径" } }
+      }
+    },
+    "newTask.pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Submitted %@. Waiting for the computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已提交 %@，等电脑批准" } }
+      }
+    },
+    "newTask.presets" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Agents" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "智能体" } }
+      }
+    },
+    "newTask.recent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "最近目录" } }
+      }
+    },
+    "newTask.send" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "发送" } }
+      }
+    },
+    "newTask.submit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Submit" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提交" } }
+      }
+    },
+    "newTask.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "New task" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "新任务" } }
+      }
+    },
+    "newTask.usePath" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "使用 %@" } }
+      }
     }
   },
 
