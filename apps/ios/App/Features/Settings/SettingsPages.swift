@@ -1,6 +1,9 @@
+import DLModels
 import SwiftUI
 
 enum SettingsPage: Hashable {
+    case computer
+    case diagnostics
     case language
     case notifications
     case appearance
@@ -8,6 +11,8 @@ enum SettingsPage: Hashable {
     case models
     case history
     case about
+    case legal
+    case crash
 }
 
 struct SettingsHomePage: View {
@@ -20,17 +25,19 @@ struct SettingsHomePage: View {
         let copy = SettingsCopy(locale: locale)
         Form {
             Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(computerName).font(.headline)
-                    Text(computerAddress)
-                        .font(.footnote.monospaced())
-                        .foregroundStyle(.secondary)
-                    Text(online ? copy.text(.online) : copy.text(.offline))
-                        .font(.footnote)
-                        .foregroundStyle(online ? .green : .secondary)
+                NavigationLink(value: SettingsPage.computer) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(computerName).font(.headline)
+                        Text(computerAddress)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(.secondary)
+                        Text(online ? copy.text(.online) : copy.text(.offline))
+                            .font(.footnote)
+                            .foregroundStyle(online ? .green : .secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 44)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: 44)
             }
             Section(copy.text(.general)) {
                 NavigationLink(copy.text(.language), value: SettingsPage.language)
@@ -44,6 +51,7 @@ struct SettingsHomePage: View {
             Section(copy.text(.other)) {
                 NavigationLink(copy.text(.history), value: SettingsPage.history)
                 NavigationLink(copy.text(.about), value: SettingsPage.about)
+                NavigationLink(copy.text(.crash), value: SettingsPage.crash)
             }
         }
         .navigationTitle(copy.text(.title))
@@ -55,19 +63,46 @@ struct SettingsHomePage: View {
 
 struct SettingsDetailPage: View {
     var page: SettingsPage
+    var checks: [DiagnosticCheck] = SettingsDetailPage.sampleChecks
     @AppStorage("settings.theme") private var theme = "system"
+    @AppStorage("settings.notifyMaster") private var notifyMaster = false
     @AppStorage("settings.notifyApproval") private var notifyApproval = false
     @AppStorage("settings.notifyDone") private var notifyDone = false
     @AppStorage("settings.liveActivity") private var liveActivity = false
+    @AppStorage("settings.balanceAlert") private var balanceAlert = false
+    @State private var apiKey = ""
     @Environment(\.locale) private var locale
 
     var body: some View {
         let copy = SettingsCopy(locale: locale)
         Form {
             switch page {
+            case .computer:
+                LabeledContent(copy.text(.lan), value: copy.text(.online))
+                LabeledContent(copy.text(.tailscale), value: copy.text(.notPaired))
+                LabeledContent(copy.text(.relay), value: copy.text(.notPaired))
+                NavigationLink(copy.text(.diagnostics), value: SettingsPage.diagnostics)
+                Button(copy.text(.renameComputer)) {}
+                Button(copy.text(.replaceComputer)) {}
+                Button(copy.text(.unpair), role: .destructive) {}
+            case .diagnostics:
+                ForEach(checks, id: \.id) { check in
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(check.id ?? "")
+                            Text(check.code ?? "")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: diagnosticSymbol(check.status))
+                    }
+                    .frame(minHeight: 44)
+                }
             case .language:
                 LabeledContent(copy.text(.language), value: copy.text(.languageValue))
             case .notifications:
+                Toggle(copy.text(.notifyMaster), isOn: $notifyMaster)
                 Toggle(copy.text(.notifyApproval), isOn: $notifyApproval)
                 Toggle(copy.text(.notifyDone), isOn: $notifyDone)
                 Toggle(copy.text(.liveActivity), isOn: $liveActivity)
@@ -90,23 +125,50 @@ struct SettingsDetailPage: View {
                 LabeledContent(copy.text(.model), value: copy.text(.modelValue))
                 LabeledContent(copy.text(.busySend), value: copy.text(.busyQueue))
             case .models:
-                Text(copy.text(.modelsEmpty))
-                    .foregroundStyle(.secondary)
+                LabeledContent(copy.text(.balance), value: copy.text(.balanceValue))
+                LabeledContent(copy.text(.providers), value: copy.text(.providersValue))
+                SecureField(copy.text(.apiKey), text: $apiKey)
+                    .textContentType(.password)
+                Button(copy.text(.discoverModels)) {}
+                Toggle(copy.text(.balanceAlert), isOn: $balanceAlert)
             case .history:
                 Text(copy.text(.historyEmpty))
                     .foregroundStyle(.secondary)
             case .about:
                 LabeledContent(copy.text(.version), value: copy.text(.versionValue))
+                NavigationLink(copy.text(.legal), value: SettingsPage.legal)
                 Text(copy.text(.licenses))
                     .foregroundStyle(.secondary)
+            case .legal:
+                Text(copy.text(.legalBody))
+                    .font(.body)
+            case .crash:
+                Text(copy.text(.crashBody))
+                    .font(.footnote)
+                Button(copy.text(.exportCrash)) {}
             }
         }
         .navigationTitle(title(copy))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if page == .diagnostics {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(copy.text(.copyResult)) {}
+                }
+            }
+        }
     }
+
+    static let sampleChecks = [
+        DiagnosticCheck(id: "host.rpc", status: .ok, code: "HOST_RPC_OK"),
+        DiagnosticCheck(id: "tls.cert", status: .warn, code: "TLS_CERT_EXPIRING"),
+        DiagnosticCheck(id: "remote.relay", status: .skip, code: "REMOTE_DISABLED"),
+    ]
 
     private func title(_ copy: SettingsCopy) -> String {
         switch page {
+        case .computer: copy.text(.computer)
+        case .diagnostics: copy.text(.diagnostics)
         case .language: copy.text(.language)
         case .notifications: copy.text(.notifications)
         case .appearance: copy.text(.appearance)
@@ -114,7 +176,39 @@ struct SettingsDetailPage: View {
         case .models: copy.text(.models)
         case .history: copy.text(.history)
         case .about: copy.text(.about)
+        case .legal: copy.text(.legal)
+        case .crash: copy.text(.crash)
         }
+    }
+}
+
+func diagnosticSymbol(_ status: DiagnosticsStatus?) -> String {
+    switch status {
+    case .ok: "checkmark.circle"
+    case .warn: "exclamationmark.triangle"
+    case .fail: "xmark.circle"
+    case .skip: "minus.circle"
+    default: "questionmark.circle"
+    }
+}
+
+func diagnosticsClipboard(_ checks: [DiagnosticCheck]) -> String {
+    checks.map { check in
+        let detail = (check.detail ?? [:])
+            .sorted { $0.key < $1.key }
+            .map { key, value in "\(key)=\(diagnosticDetailText(value))" }
+            .joined(separator: ",")
+        let tail = detail.isEmpty ? "" : " \(detail)"
+        return "\(check.id ?? "") \(check.status?.encodedValue ?? "") \(check.code ?? "")\(tail)"
+    }
+    .joined(separator: "\n")
+}
+
+private func diagnosticDetailText(_ value: DiagnosticDetailValue) -> String {
+    switch value {
+    case .number(let number): String(number)
+    case .flag(let flag): flag ? "true" : "false"
+    case .text(let text): text
     }
 }
 
@@ -154,6 +248,29 @@ enum SettingsText: String {
     case version
     case versionValue
     case licenses
+    case computer
+    case lan
+    case tailscale
+    case relay
+    case notPaired
+    case diagnostics
+    case renameComputer
+    case replaceComputer
+    case unpair
+    case copyResult
+    case notifyMaster
+    case balance
+    case balanceValue
+    case providers
+    case providersValue
+    case apiKey
+    case discoverModels
+    case balanceAlert
+    case legal
+    case legalBody
+    case crash
+    case crashBody
+    case exportCrash
 
     var fallback: String {
         switch self {
@@ -192,6 +309,29 @@ enum SettingsText: String {
         case .version: "Version"
         case .versionValue: "1.0"
         case .licenses: "Open source licenses"
+        case .computer: "This computer"
+        case .lan: "Local network"
+        case .tailscale: "Tailscale"
+        case .relay: "Relay"
+        case .notPaired: "Not connected"
+        case .diagnostics: "Connection diagnostics"
+        case .renameComputer: "Rename"
+        case .replaceComputer: "Replace computer"
+        case .unpair: "Unpair"
+        case .copyResult: "Copy result"
+        case .notifyMaster: "Notifications"
+        case .balance: "Balance"
+        case .balanceValue: "Unavailable"
+        case .providers: "Providers"
+        case .providersValue: "None yet"
+        case .apiKey: "API key"
+        case .discoverModels: "Fetch models"
+        case .balanceAlert: "Balance reminder"
+        case .legal: "Legal"
+        case .legalBody: "Privacy and terms stay on this phone until you export them."
+        case .crash: "Last crash"
+        case .crashBody: "MetricKit keeps the last diagnostic on this phone. Nothing is uploaded."
+        case .exportCrash: "Export"
         }
     }
 }

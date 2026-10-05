@@ -13,6 +13,18 @@ import XCTest
     }
 
     func testHome() { shot("7_1_settings") { home } }
+    func testComputer() { shot("7_2_computer") { detail(.computer) } }
+    func testDiagnostics() { shot("7_3_diagnostics") { detail(.diagnostics) } }
+    func testNotifications() { shot("7_4_notifications") { detail(.notifications) } }
+    func testAppearance() { shot("7_5_appearance") { detail(.appearance) } }
+    func testAbout() { shot("7_13_about") { detail(.about) } }
+    func testCrash() { shot("7_15_crash") { detail(.crash) } }
+
+    private func detail(_ page: SettingsPage) -> some View {
+        NavigationStack { SettingsDetailPage(page: page) }
+            .environment(\.locale, Locale(identifier: "zh-Hans"))
+            .transaction { $0.disablesAnimations = true }
+    }
 
     private var home: some View {
         NavigationStack {
