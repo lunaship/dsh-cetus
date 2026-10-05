@@ -498,7 +498,7 @@ val DshStringsZh = DshStrings(
         put("homeEmptyHint", "在电脑上开的任务也会出现在这里。")
         put("homeArchivedSessions", "已归档")
         put("homeWorkspaceEmptyTitle", "这个工作区还没有任务")
-        put("homeWorkspaceEmptyHint", "在这里新建一个，或切回全部工作区")
+        put("homeWorkspaceEmptyHint", "点击工作区右侧的按钮，新建一个会话。")
         put("homeShowAll", "查看全部")
         put("homeDeleteWorkspaceNamed", "删除「%s」")
         put("homeChipWaitingApproval", "等你批准")

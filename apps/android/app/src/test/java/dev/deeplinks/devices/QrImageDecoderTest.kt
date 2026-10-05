@@ -39,6 +39,23 @@ class QrImageDecoderTest {
     }
 
     @Test
+    fun `相机亮度平面能解码，行填充不影响`() {
+        val text = "dsh-link-camera"
+        val size = 300
+        val pixels = qrPixels(text, size)
+        val pad = 16
+        val rowStride = size + pad
+        val bytes = ByteArray(rowStride * size)
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                val lum = if (pixels[y * size + x] == 0xFF000000.toInt()) 0 else 255
+                bytes[y * rowStride + x] = lum.toByte()
+            }
+        }
+        assertEquals(text, QrImageDecoder.decodeLuminance(bytes, rowStride, 1, size, size))
+    }
+
+    @Test
     fun `下采样倍数让最长边不超过上限`() {
         assertEquals(1, QrImageDecoder.sampleSize(1600, 1200, 1600))
         assertEquals(2, QrImageDecoder.sampleSize(3200, 2400, 1600))

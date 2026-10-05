@@ -269,6 +269,14 @@ class WorkspacePrefs(context: Context) {
         prefs.edit().remove(key).apply()
     }
 
+    /** 每台主机独立记住首页文件夹收起状态；空集代表默认全部展开。 */
+    fun homeCollapsedGroups(hostIdentity: String): Set<String> =
+        prefs.getStringSet("workspace_home_collapsed:$hostIdentity", emptySet())?.toSet().orEmpty()
+
+    fun saveHomeCollapsedGroups(hostIdentity: String, paths: Set<String>) {
+        prefs.edit().putStringSet("workspace_home_collapsed:$hostIdentity", paths).apply()
+    }
+
     companion object {
         const val PREFS_NAME = "dsh_workspace"
 

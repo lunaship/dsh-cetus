@@ -8,6 +8,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
+import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.GlobalHistogramBinarizer
 import com.google.zxing.common.HybridBinarizer
@@ -58,6 +59,33 @@ object QrImageDecoder {
             luminance[i] = (0.299 * r + 0.587 * g + 0.114 * b).toInt().coerceIn(0, 255).toByte()
         }
         val source = RGBLuminanceSource(width, height, toIntLuminance(luminance))
+        return tryDecode(HybridBinarizer(source)) ?: tryDecode(GlobalHistogramBinarizer(source))
+    }
+
+    /**
+     * 相机预览的 Y 平面。rowStride 可以大于 width（相机缓冲常带行填充）。
+     * 走 Camera2 / CameraX，不经过小米会拦截的旧 Camera API。
+     */
+    internal fun decodeLuminance(
+        bytes: ByteArray,
+        rowStride: Int,
+        pixelStride: Int,
+        width: Int,
+        height: Int,
+    ): String? {
+        if (width <= 0 || height <= 0 || pixelStride <= 0 || rowStride < width) return null
+        val last = rowStride * (height - 1) + pixelStride * (width - 1)
+        if (last < 0 || bytes.size <= last) return null
+        val packed = ByteArray(width * height)
+        var out = 0
+        for (row in 0 until height) {
+            var i = row * rowStride
+            for (col in 0 until width) {
+                packed[out++] = bytes[i]
+                i += pixelStride
+            }
+        }
+        val source = PlanarYUVLuminanceSource(packed, width, height, 0, 0, width, height, false)
         return tryDecode(HybridBinarizer(source)) ?: tryDecode(GlobalHistogramBinarizer(source))
     }
 
