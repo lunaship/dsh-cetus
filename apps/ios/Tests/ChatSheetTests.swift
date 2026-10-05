@@ -6,10 +6,8 @@ import Testing
     @Test func slashQueryKeepsShortListsAndFilters() {
         let entries = paletteEntries(title: { $0 }, detail: { $0 })
         #expect(filterPalette(entries, query: "/").count == 3)
-        let filtered = filterPalette(entries, query: "/pa")
-        let triggers = filtered.flatMap(\.items).map(\.command.trigger)
-        #expect(triggers.contains("/pause"))
-        #expect(!triggers.contains("/goal"))
+        let triggers = filterPalette(entries, query: "/pause").flatMap(\.items).map(\.command.trigger)
+        #expect(triggers == ["/pause"])
     }
 
     @Test func dangerCommandOpensPermissionInsteadOfSending() {

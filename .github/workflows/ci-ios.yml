@@ -117,6 +117,7 @@ jobs:
             -only-testing:DeepLinksTests/PhoneDecisionTests \
             -only-testing:DeepLinksTests/TrajectoryTests \
             -only-testing:DeepLinksTests/NewTaskTests \
+            -only-testing:DeepLinksTests/ChatSheetTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
