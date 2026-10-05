@@ -43,31 +43,52 @@ import XCTest
                 }
             }
         }
+        renderAccessibility(scene) { make("zh-Hans") }
     }
 
     private func oneScene<V: View>(_ scene: String, make: () -> V) {
         render(scene, appearance: .light, language: "zh-Hans", large: false, make: make)
+        renderAccessibility(scene, make: make)
+    }
+
+    private func renderAccessibility<V: View>(_ scene: String, make: () -> V) {
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false, reduceTransparency: true, make: make)
+        render(scene, appearance: .light, language: "zh-Hans", large: false, increaseContrast: true, make: make)
     }
 
     private func render<V: View>(
-        _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool, make: () -> V
+        _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool,
+        reduceTransparency: Bool = false, increaseContrast: Bool = false, make: () -> V
     ) {
         let content = make()
             .environment(\.locale, Locale(identifier: language))
             .environment(\.colorScheme, appearance == .dark ? .dark : .light)
             .environment(\.dynamicTypeSize, large ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
+            .environment(\._accessibilityReduceTransparency, reduceTransparency)
             .tint(DLColor.accent)
             .transaction { $0.disablesAnimations = true }
-        let image = chatImage(content, appearance: appearance, large: large)
+        let image = chatImage(
+            content, appearance: appearance, large: large, increaseContrast: increaseContrast)
         assertSnapshot(
-            of: image, as: .image, named: large ? "large" : "default",
+            of: image, as: .image,
+            named: variantName(
+                large: large, reduceTransparency: reduceTransparency, increaseContrast: increaseContrast),
             testName: snapshotName(scene, appearance: appearance, language: language))
+    }
+
+    private func variantName(large: Bool, reduceTransparency: Bool, increaseContrast: Bool) -> String {
+        if reduceTransparency { return "reduce-transparency" }
+        if increaseContrast { return "increase-contrast" }
+        return large ? "large" : "default"
     }
 
     /// The library's SwiftUI image strategy calls `layer.render` before the collection view has a
     /// canvas, so hosting cells and the light-mode bar never paint. Lay the stream out at the
     /// snapshot size, then draw the hierarchy.
-    private func chatImage<V: View>(_ view: V, appearance: UIUserInterfaceStyle, large: Bool) -> UIImage {
+    private func chatImage<V: View>(
+        _ view: V, appearance: UIUserInterfaceStyle, large: Bool, increaseContrast: Bool = false
+    ) -> UIImage {
         let size = CGSize(width: 402, height: 874)
         let host = UIHostingController(rootView: view)
         host.view.backgroundColor = .systemBackground
@@ -75,6 +96,9 @@ import XCTest
         host.traitOverrides.userInterfaceStyle = appearance
         host.traitOverrides.preferredContentSizeCategory =
             large ? .accessibilityExtraLarge : .large
+        if increaseContrast {
+            host.traitOverrides.accessibilityContrast = .high
+        }
         host.traitOverrides.userInterfaceIdiom = .phone
         host.safeAreaRegions = []
         host.view.frame = CGRect(origin: .zero, size: size)
