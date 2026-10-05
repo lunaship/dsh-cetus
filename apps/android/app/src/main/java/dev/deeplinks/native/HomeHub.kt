@@ -36,16 +36,9 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.homeAnswer
-import dev.deeplinks.core.homeComputerSection
-import dev.deeplinks.core.homeComputerSheetTitle
-import dev.deeplinks.core.homeComputerViaLan
-import dev.deeplinks.core.homeComputerViaRelay
 import dev.deeplinks.core.homeDiagnose
 import dev.deeplinks.core.homeForkAsNew
 import dev.deeplinks.core.homeShareSession
-import dev.deeplinks.core.homeStatusLine
-import dev.deeplinks.core.homeTaskCount
-import dev.deeplinks.core.homeWorkspaceSection
 import dev.deeplinks.native.ui.v4.DlAction
 import dev.deeplinks.native.ui.v4.DlBottomSheet
 import dev.deeplinks.native.ui.v4.DlButton
@@ -55,46 +48,20 @@ import dev.deeplinks.native.ui.v4.DlInboxItem
 import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.native.ui.v4.DlRowTrailing
 import dev.deeplinks.native.ui.v4.DlSectionHeader
-import dev.deeplinks.native.ui.v4.DlStatusDot
-import dev.deeplinks.native.ui.v4.DlTone
-import dev.deeplinks.native.ui.v4.DlTopBar
-import dev.deeplinks.native.ui.v4.DlTopBarAction
-import dev.deeplinks.native.ui.v4.DlTopBarNav
 import dev.deeplinks.native.util.homeTimeLabel
 import dev.deeplinks.native.util.workspaceDisplayName
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import dev.deeplinks.native.ui.v4.DlPill
+import dev.deeplinks.native.ui.v4.DlSize
 
 /*
  * v4 首页收件箱（2.1–2.6）的积木。布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
  * 首页以文件夹分组，底部固定搜索与新任务。
  */
-
-/** 2.1 顶栏：大标题「DeepLinks」，下面一行电脑状态（点开 2.5），右上设置。 */
-@Composable
-internal fun HomeHeader(
-    hostName: String,
-    online: Boolean,
-    onOpenComputer: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    val s = DshS
-    val status = s.homeStatusLine.format(hostName.ifBlank { s.deviceAndPairing }, if (online) s.statusOnline else s.statusOffline)
-    DlTopBar(
-        title = "DeepLinks",
-        large = true,
-        nav = DlTopBarNav.None,
-        actions = listOf(
-            DlTopBarAction(SettingsOutline16, s.settingsTitle, onOpenSettings),
-        ),
-        onSubtitleClick = onOpenComputer,
-        subtitleContent = {
-            DlStatusDot(if (online) DlTone.Ok else DlTone.Off)
-            Spacer(Modifier.width(DshSpace.s4))
-            Text(status, style = DshType.supporting, color = Dsh.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.width(DshSpace.s4))
-            Icon(ChevronDownOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
-        },
-    )
-}
 
 /** 条目之间的细分隔线，左边与文字对齐。 */
 @Composable
@@ -179,81 +146,6 @@ internal fun HomeWorkspaceChips(workspaces: List<String>, selected: String?, onS
         workspaces.forEach { cwd ->
             DlChip(workspaceDisplayName(cwd), onClick = { onSelect(cwd) }, selected = selected == cwd)
         }
-    }
-}
-
-/** 2.5 管理列表：显示已注册的工作区及会话数量。 */
-internal data class HomeWorkspaceOption(val path: String?, val label: String, val count: Int)
-
-/** 2.5 电脑与工作区弹层。每个动作先关弹层再执行，确认框不叠在弹层上。 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun HomeComputerSheet(
-    hostName: String,
-    online: Boolean,
-    viaRemote: Boolean,
-    offlineSinceLabel: String?,
-    workspaces: List<HomeWorkspaceOption>,
-    onDismiss: () -> Unit,
-    onOpenDevice: () -> Unit,
-    onAddWorkspace: () -> Unit,
-    onOpenArchived: () -> Unit,
-    onDeleteWorkspace: (String) -> Unit,
-) {
-    DlBottomSheet(onDismissRequest = onDismiss, title = DshS.homeComputerSheetTitle) {
-        HomeComputerSheetContent(
-            hostName = hostName,
-            online = online,
-            viaRemote = viaRemote,
-            offlineSinceLabel = offlineSinceLabel,
-            workspaces = workspaces,
-            onOpenDevice = { onDismiss(); onOpenDevice() },
-            onAddWorkspace = { onDismiss(); onAddWorkspace() },
-            onOpenArchived = { onDismiss(); onOpenArchived() },
-            onDeleteWorkspace = { onDismiss(); onDeleteWorkspace(it) },
-        )
-    }
-}
-
-@Composable
-internal fun HomeComputerSheetContent(
-    hostName: String,
-    online: Boolean,
-    viaRemote: Boolean,
-    offlineSinceLabel: String?,
-    workspaces: List<HomeWorkspaceOption>,
-    onOpenDevice: () -> Unit,
-    onAddWorkspace: () -> Unit,
-    onOpenArchived: () -> Unit,
-    onDeleteWorkspace: (String) -> Unit,
-) {
-    val s = DshS
-    val connection = when {
-        !online -> offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
-        viaRemote -> s.homeComputerViaRelay
-        else -> s.homeComputerViaLan
-    }
-    Column(Modifier.fillMaxWidth()) {
-        DlSectionHeader(s.homeComputerSection)
-        DlListRow(
-            title = hostName.ifBlank { s.deviceAndPairing },
-            subtitle = connection,
-            leading = LaptopOutline16,
-            trailing = DlRowTrailing.Chevron,
-            onClick = onOpenDevice,
-        )
-        DlSectionHeader(s.homeWorkspaceSection)
-        workspaces.forEach { option ->
-            DlListRow(
-                title = option.label,
-                subtitle = s.homeTaskCount.format(option.count),
-                leading = FolderClose16,
-                trailing = DlRowTrailing.DeleteAction(s.deleteWorkspace) { option.path?.let(onDeleteWorkspace) },
-            )
-        }
-        HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
-        DlListRow(title = s.addWorkspace, leading = PlusOutline16, leadingTint = DlTone.Brand, onClick = onAddWorkspace)
-        DlListRow(title = s.homeArchivedSessions, leading = ArchiveBoxOutline16, trailing = DlRowTrailing.Chevron, onClick = onOpenArchived)
     }
 }
 
@@ -364,22 +256,40 @@ internal fun HomeEmptyStarters(onPick: (String) -> Unit) {
     }
 }
 
-/** 2.1 固定底部：搜索打开 2.4，新建打开 3.1。 */
+/** 2.1 底部：左边「搜索会话」胶囊（入口，点开 2.4），右边同色圆钮新建。没有分隔线，浮在列表上。 */
 @Composable
 internal fun HomeBottomBar(online: Boolean, onSearch: () -> Unit, onCreate: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Dsh.bgBase)) {
-        HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
+    Row(
+        Modifier.fillMaxWidth().background(Dsh.bgBase).padding(horizontal = DshSpace.s16, vertical = DshSpace.s8),
+        horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(
-            Modifier.fillMaxWidth().padding(end = DshSpace.s12, top = DshSpace.s4, bottom = DshSpace.s4),
+            Modifier.weight(1f)
+                .height(DlSize.button)
+                .clip(DlPill)
+                .background(Dsh.surface1)
+                .clickable(role = Role.Button, onClick = onSearch)
+                .padding(horizontal = DshSpace.s16),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DlListRow(
-                title = DshS.searchSessions,
-                leading = SearchOutline16,
-                modifier = Modifier.weight(1f),
-                onClick = onSearch,
+            Icon(SearchOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.md))
+            Spacer(Modifier.width(DshSpace.s12))
+            Text(DshS.searchSessions, style = DshType.body, color = Dsh.labelSecondary, maxLines = 1)
+        }
+        Box(
+            Modifier.size(DlSize.button)
+                .clip(DlPill)
+                .background(Dsh.surface1)
+                .clickable(enabled = online, role = Role.Button, onClickLabel = DshS.homeNewTask, onClick = onCreate),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                EditOutline16,
+                contentDescription = DshS.homeNewTask,
+                tint = if (online) Dsh.labelPrimary else Dsh.tertiaryText,
+                modifier = Modifier.size(DshIconSize.md),
             )
-            DlIconButton(EditOutline16, DshS.homeNewTask, onCreate, enabled = online)
         }
     }
 }

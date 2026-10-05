@@ -153,8 +153,9 @@ async function checkHostRpc(rt) {
     if (ms >= slowMs) return row("host.rpc", "warn", "HOST_RPC_SLOW", { ms })
     return row("host.rpc", "ok", "HOST_RPC_OK", { ms })
   } catch (error) {
-    const ms = Date.now() - started
     const timedOut = error?.code === "TIMEOUT"
+    // Date.now() 是毫秒取整，定时器到点时可能只量出 timeoutMs - 1；超时至少就是 timeoutMs。
+    const ms = timedOut ? Math.max(Date.now() - started, timeoutMs) : Date.now() - started
     return row("host.rpc", "fail", timedOut ? "HOST_RPC_TIMEOUT" : "HOST_RPC_FAILED", { ms })
   } finally {
     if (timer) clearTimeout(timer)

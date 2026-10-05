@@ -1,11 +1,16 @@
 package dev.deeplinks.native
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.deeplinks.core.homeNewTaskIn
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.deeplinks.core.DshTheme
@@ -90,13 +95,21 @@ class HomeWorkspaceInstrumentedTest {
         screenshot.recycle()
     }
 
-    @Test fun pendingApprovalStaysActionable_andCollapsedFolderKeepsItsBadge() {
+    @Test fun pendingApprovalIsPinned_evenWhenItsFolderIsCollapsed() {
         show(pending = MobileMessage(id = "approval", role = "approval", text = "", approvalId = "approve-b", toolName = "bash"))
         rule.onNodeWithText(L.allowOnce).performClick()
         assertEquals(1, approvals)
         rule.onNodeWithText("b").performClick()
-        rule.onNodeWithText("Waiting conversation").assertDoesNotExist()
-        rule.onNodeWithText(L.homeAwaiting, substring = true).assertExists()
+        // 等你处理置顶：收起所在文件夹后仍然可见，且只出现一次。
+        rule.onAllNodesWithText("Waiting conversation").assertCountEquals(1)
+        rule.onNodeWithText(L.homeAwaiting).assertExists()
+    }
+
+    @Test fun longPressFolderOffersNewTaskAndDelete() {
+        show()
+        rule.onNodeWithText("a").performTouchInput { longClick() }
+        rule.onNodeWithText(L.homeNewTaskIn.format("a")).performClick()
+        assertEquals("/projects/a", created)
     }
 
     @Test fun offlineDisablesCreateAndApprove_butSearchAndHistoryRemainAccessible() {
