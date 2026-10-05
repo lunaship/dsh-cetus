@@ -39,6 +39,9 @@ struct ConversationPage: View {
     /// Screenshot path: no `.task`, no stream, no display link, no web view, no share sheet.
     var staticSnapshot = false
     var pinsToTail = false
+    /// Legacy I4.3a fixtures explicitly opt out to preserve their baseline content.
+    var showsStatusSlot = true
+    @State var statusExpanded = false
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -60,7 +63,10 @@ struct ConversationPage: View {
 
     private func screen(_ copy: ConversationCopy) -> some View {
         VStack(spacing: 0) {
-            if model.loadFailed {
+            if showsStatusSlot {
+                ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
+            }
+            if model.loadFailed && (!showsStatusSlot || model.status.kind != .disconnected) {
                 DLBanner(copy.text(.loadFailed), systemImage: "wifi.exclamationmark", iconIsError: true)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -84,11 +90,15 @@ struct ConversationPage: View {
                         onLoadImage: { url in Task { await model.loadImage(url) } }),
                     pinsToTail: staticSnapshot ? pinsToTail : true,
                     pumpsFrames: !staticSnapshot,
-                    onFrame: { model.drainFrame() })
+                    onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot
+                )
+                .scrollEdgeEffectStyle(showsStatusSlot ? .soft : nil, for: .top)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DLColor.background)
+        .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
+        .onChange(of: model.status.goal?.ref?.id) { _, _ in statusExpanded = false }
     }
 
     private func displayTitle(_ copy: ConversationCopy) -> String {
@@ -140,5 +150,6 @@ struct ConversationPage: View {
         step: session?.activity?.step,
         added: session?.lastResult?.added,
         deleted: session?.lastResult?.deleted,
-        stoppedReason: session?.stoppedReason)
+        stoppedReason: session?.stoppedReason,
+        awaitingInput: session?.awaitingInput == true)
 }

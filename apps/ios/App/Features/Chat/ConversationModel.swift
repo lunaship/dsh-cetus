@@ -17,6 +17,8 @@ enum ConversationServiceError: Error, Equatable {
 enum ConversationSignal: Equatable, Sendable {
     case frame(StreamFrame)
     case stats(HistoryStats)
+    case statusEvent(name: String, data: JSONValue)
+    case connection(ConversationConnection)
     case resync
     case failed
 }
@@ -24,6 +26,8 @@ enum ConversationSignal: Equatable, Sendable {
 protocol ConversationServing: Sendable {
     func history(sessionID: String) async throws -> HistoryResponse
     func open(sessionID: String, afterSeq: Int) async throws -> AsyncStream<ConversationSignal>
+    func requests(sessionID: String) async throws -> RequestsSnapshotResponse?
+    func detections() async throws -> PreviewDetectionsResponse?
     func commit(_ seq: Int) async
     func resume(after seq: Int) async
     func setPhase(_ phase: AppPhase) async
@@ -41,6 +45,8 @@ extension ConversationServing {
         return AsyncStream { $0.finish() }
     }
 
+    func requests(sessionID: String) async throws -> RequestsSnapshotResponse? { nil }
+    func detections() async throws -> PreviewDetectionsResponse? { nil }
     func commit(_ seq: Int) async { _ = seq }
     func resume(after seq: Int) async { _ = seq }
     func setPhase(_ phase: AppPhase) async { _ = phase }
@@ -55,6 +61,7 @@ struct ConversationSeed: Equatable, Sendable {
     var added: Int?
     var deleted: Int?
     var stoppedReason: String?
+    var awaitingInput = false
 }
 
 struct PreparedTranscript: Equatable, Sendable {
@@ -64,6 +71,7 @@ struct PreparedTranscript: Equatable, Sendable {
     var expanded: Set<String> = []
     var confirmingSnapshot = false
     var stoppedReason: String?
+    var status: ConversationStatusState?
 }
 
 enum ChatImageState: Equatable {
@@ -89,10 +97,17 @@ final class ConversationModel {
     private var buffer = FrameBuffer()
     private var seenAssistant: [String: String] = [:]
     private var streamTask: Task<Void, Never>?
+    private var statusRefreshTask: Task<Void, Never>?
+    private var previewRefreshTask: Task<Void, Never>?
+    private var previewDetectionAvailable = false
+    private var requestsAvailable = false
     private var persistTask: Task<Void, Never>?
     private var started = false
+    private var loadedHistory = false
     private var draining = false
 
+    /// Read-only SSE status. Sending remains an independent HostClient HTTP operation in I4.3c.
+    private(set) var status = ConversationStatusState()
     private(set) var title: String
     private(set) var workspacePath: String
     private(set) var messages: [HistoryMessage] = []
@@ -142,9 +157,11 @@ final class ConversationModel {
             expanded = prepared.expanded
             confirmingSnapshot = prepared.confirmingSnapshot
             stoppedReason = prepared.stoppedReason ?? seed.stoppedReason
+            status = prepared.status ?? ConversationStatusState()
             rebuild(fade: false)
         } else {
             self.autostart = autostart
+            status.awaitingHostInput = seed.awaitingInput
         }
     }
 
@@ -174,6 +191,7 @@ final class ConversationModel {
     func start() async {
         guard !started else { return }
         started = true
+        status.connection = .connecting
         showSnapshotIfPresent()
         do {
             let history = try await service.history(sessionID: sessionID)
@@ -188,6 +206,7 @@ final class ConversationModel {
             }
         } catch {
             loadFailed = true
+            status.connection = .failed
         }
     }
 
@@ -212,6 +231,8 @@ final class ConversationModel {
     }
 
     func stop() async {
+        statusRefreshTask?.cancel()
+        previewRefreshTask?.cancel()
         persistTask?.cancel()
         persistNow()
         streamTask?.cancel()
@@ -294,6 +315,9 @@ final class ConversationModel {
         messages = history.messages ?? []
         if let next = history.stats { stats = next }
         if let seq = history.maxSeq { maxSeq = seq }
+        status.replace(history: history)
+        if !loadedHistory, seed.awaitingInput { status.awaitingHostInput = true }
+        loadedHistory = true
         stoppedReason = history.stoppedReason ?? seed.stoppedReason
         confirmingSnapshot = false
         loadFailed = false
@@ -309,18 +333,82 @@ final class ConversationModel {
     private func ingest(_ signal: ConversationSignal) async {
         switch signal {
         case .frame(let frame):
+            status.absorb(frame)
             buffer.append([frame])
+            if frame.type == "tool/result" { refreshPreviews(debounce: true) }
         case .stats(let next):
             stats = next
             rebuild(fade: false)
+        case .connection(let connection):
+            status.connection = connection
+            if connection == .connected { loadFailed = false }
+        case .statusEvent(let name, let data):
+            absorbStatusEvent(name, data: data)
         case .resync:
+            status.connection = .reconnecting
             buffer.discard()
             if let history = try? await service.history(sessionID: sessionID) {
                 replace(history)
                 await service.resume(after: maxSeq)
+            } else {
+                status.connection = .failed
             }
         case .failed:
+            status.connection = .failed
             loadFailed = true
+        }
+    }
+
+    private func absorbStatusEvent(_ name: String, data: JSONValue) {
+        guard let bytes = try? JSONEncoder().encode(data) else { return }
+        let decoder = JSONDecoder()
+        switch name {
+        case "ready":
+            guard let ready = try? decoder.decode(StreamReadyEvent.self, from: bytes) else { return }
+            requestsAvailable = ready.capabilities?.requests?.snapshot == true
+            previewDetectionAvailable = ready.capabilities?.preview?.detect == 1
+            previewRefreshTask?.cancel()
+            if !previewDetectionAvailable {
+                status.apply(detections: PreviewDetectionsResponse(detections: []), sessionID: sessionID)
+            }
+            statusRefreshTask?.cancel()
+            if requestsAvailable {
+                statusRefreshTask = Task { [weak self] in
+                    guard let self else { return }
+                    if let snapshot = try? await service.requests(sessionID: sessionID), !Task.isCancelled {
+                        status.merge(requests: snapshot)
+                    }
+                }
+            }
+            refreshPreviews(debounce: false)
+        case "stats":
+            status.apply(projections: data)
+        case "question":
+            if let event = try? decoder.decode(QuestionRequestEvent.self, from: bytes),
+                event.sessionId == nil || event.sessionId == sessionID
+            {
+                status.question(event)
+            }
+        case "question-resolved":
+            if let event = try? decoder.decode(QuestionResolvedEvent.self, from: bytes),
+                event.sessionId == nil || event.sessionId == sessionID
+            {
+                status.resolveQuestion(event)
+            }
+        default: break
+        }
+    }
+
+    private func refreshPreviews(debounce: Bool) {
+        guard previewDetectionAvailable else { return }
+        previewRefreshTask?.cancel()
+        previewRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            if debounce { try? await Task.sleep(for: .milliseconds(500)) }
+            guard !Task.isCancelled else { return }
+            if let detections = try? await service.detections(), !Task.isCancelled {
+                status.apply(detections: detections, sessionID: sessionID)
+            }
         }
     }
 

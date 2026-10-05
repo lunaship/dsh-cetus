@@ -26,7 +26,9 @@ import XCTest
 
     private func page(_ kind: ChatFixture, language: String, pinsToTail: Bool) -> some View {
         NavigationStack {
-            ConversationPage(model: model(kind, language: language), staticSnapshot: true, pinsToTail: pinsToTail)
+            ConversationPage(
+                model: model(kind, language: language), staticSnapshot: true, pinsToTail: pinsToTail,
+                showsStatusSlot: false)
         }
     }
 

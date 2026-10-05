@@ -1,4 +1,5 @@
 import DLCore
+import DLModels
 import Foundation
 
 enum ChatText: String {
@@ -57,6 +58,33 @@ enum ChatText: String {
     case collapse
     case diffBadge
 
+    case statusConnecting
+    case statusReconnecting
+    case statusFailed
+    case statusPending
+    case statusGoal
+    case statusRounds
+    case statusRound
+    case statusPlan
+    case statusPreview
+    case statusExpand
+    case statusCollapse
+    case statusDone
+    case statusNotDone
+    case statusActive
+    case statusPaused
+    case statusBlocked
+    case statusUnknown
+
+    case statusDemoObjective
+    case statusDemoFind
+    case statusDemoBroadcast
+    case statusDemoExpiry
+    case statusDemoVerify
+    case statusDemoTitle
+    case statusDemoUser
+    case statusDemoAssistant
+
     var fallback: String {
         switch self {
         case .running: "Running"
@@ -113,6 +141,31 @@ enum ChatText: String {
         case .expand: "Show steps"
         case .collapse: "Hide steps"
         case .diffBadge: "%d added, %d removed"
+        case .statusConnecting: "Connecting…"
+        case .statusReconnecting: "Connection lost · Reconnecting…"
+        case .statusFailed: "Connection unavailable"
+        case .statusPending: "%d pending requests"
+        case .statusGoal: "Goal"
+        case .statusRounds: "Round %d/%d"
+        case .statusRound: "Round %d"
+        case .statusPlan: "Plan %d/%d"
+        case .statusPreview: "Preview detected · %@"
+        case .statusExpand: "Show goal and plan"
+        case .statusCollapse: "Hide goal and plan"
+        case .statusDone: "Completed"
+        case .statusNotDone: "Not completed"
+        case .statusActive: "In progress"
+        case .statusPaused: "Paused"
+        case .statusBlocked: "Blocked"
+        case .statusUnknown: "Status unknown"
+        case .statusDemoObjective: "Keep approval status in sync"
+        case .statusDemoFind: "Find the event subscribers"
+        case .statusDemoBroadcast: "Broadcast the decision"
+        case .statusDemoExpiry: "Add expiry regression tests"
+        case .statusDemoVerify: "Verify both clients"
+        case .statusDemoTitle: "Approval sync"
+        case .statusDemoUser: "Keep approval status in sync."
+        case .statusDemoAssistant: "I'll check the event subscribers first."
         }
     }
 }
@@ -144,6 +197,16 @@ struct ConversationCopy {
             return "\(place) · \(text(.stopped))"
         case .awaiting:
             return "\(place) · \(text(.awaiting))"
+        }
+    }
+
+    func goalPhase(_ phase: GoalPhase) -> String {
+        switch phase {
+        case .active: text(.statusActive)
+        case .paused: text(.statusPaused)
+        case .blocked: text(.statusBlocked)
+        case .complete: text(.statusDone)
+        case .unknown: text(.statusUnknown)
         }
     }
 

@@ -23,6 +23,8 @@ I4.2 截图登记：`Tests/InboxSnapshotTests.swift`，同样由原有 `-skip-te
 
 I4.3a 截图登记：`Tests/ChatSnapshotTests.swift`，由原有 `-skip-testing` 范围自动包含，不在本地生成基线。三个主状态 `4_1_running`、`4_2_tail`、`4_6_process` 各 8 张（浅 / 深 × 中 / 英 × 默认 / accessibility3）。其余各 1 张浅色中文默认字号：`4_1_unconfirmed`、`4_1_image`。合计 26 张。截图走 `staticSnapshot`：不挂 `.task`、不调用 `start()`、不连网、不创建 `WKWebView`、不弹系统 alert / confirmationDialog / sheet。公式和 Mermaid 在截图里显示源码，生产路径才加载锁死 WebView。4.3 / 4.4 / 4.5 / 4.7 / 4.9 不属于本项。不生成降低透明度 fixture。
 
+I4.3b 截图登记：`Tests/StatusSlotSnapshotTests.swift`，由 `ci-ios.yml` 与 `ios-regen-screenshots.yml` 的现有 `-skip-testing` 范围自动包含。五个主状态 `4_5_status_collapsed`、`4_5_status_expanded`、`4_8_status_disconnected`、`4_5_status_pending`、`4_5_status_preview` 各 8 张（浅 / 深 × 中 / 英 × 默认 / accessibility3）。其余 `4_8_status_connecting`、`4_8_status_failed`、`4_5_status_planOnly`、`4_5_status_noPlan`、`4_5_status_completed`、`4_5_status_empty` 各 1 张浅色中文默认字号，合计 46 张。均使用 `App/Demo/StatusSlotScenes` 与 `ConversationPage(staticSnapshot: true)`，不 `.task`、不连网、不创建 WebView、不弹系统 alert / sheet。展开完成项灰字无删除线；没有计划时删去进度与清单。I4.3a 的 `ChatSnapshotTests` 显式 `showsStatusSlot: false`，保持 4.1 / 4.2 / 4.6 原有 fixture 内容与滚动边缘设置。不生成降低透明度 fixture；新基线仍只由 CI 生成。
+
 iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可写 trait，现有 DLUI 也没有能覆盖系统玻璃样式的注入点；移除五张降低透明度 fixture，保留实际系统设置验收。
 
 `1_2_sameName` 直接截图测试专用静态冲突内容（复用生产 alert 的本地化标题、说明、替换 / 改名 / 取消选项）；`1_2_rename` 在独立 `NavigationStack` 中截图与生产 sheet 共用的 `PairingRenameForm`（原名称、说明、取消与禁用的配对按钮），并传入 `allowsFocus: false`，字段不会成为第一响应者，也不绘制光标。两者都不在真实窗口里呈现系统 alert / sheet，scene 名与各两张中英基线的登记保持不变；生产弹窗与可聚焦输入保持不变。其他 scene 的渲染代码不变。
@@ -72,7 +74,7 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 4.2 | 轮尾 | 改动卡（最多 3 行 + 查看全部）→ 元信息 → 复制 / 重新生成 / 分享 → chip | 查看全部不进入改动页 | `Snapshot_4_2_tail_*` |
 | 4.3 | 待审批 | `DLDecisionBar`（玻璃容器；内「拒绝」`.bordered`，「允许一次」`.borderedProminent`+BrandFill）；内容 dim ~42% | 决策栏内按钮实色，不叠玻璃 | `Snapshot_4_3_approval_*` |
 | 4.4 | 回答问题 | 同容器；单选 / 多选 / 自写；上一题 / 跳过 / 下一题 | — | `Snapshot_4_4_question_*` |
-| 4.5 / 4.8 | 状态槽 | `DLStatusSlot`；优先级断线 > 待处理 > 目标 > 预览；`scrollEdgeEffectStyle(.soft, for: .top)` | 状态槽无玻璃 | `Snapshot_4_5_status_*` |
+| 4.5 / 4.8 | 状态槽 | `DLStatusSlot`；优先级断线 > 待处理 > 目标 > 预览；`scrollEdgeEffectStyle(.soft, for: .top)` | 状态槽无玻璃 | `Snapshot_4_5_status_*`、`Snapshot_4_8_status_*` |
 | 4.6 | 工具过程 | `DLProcessLine` 展开细线步骤 | — | `Snapshot_4_6_process_*` |
 | 4.7 | 轨迹 | push；搜索 + 筛选 chip + 按轮分组 | I4.3d | `Snapshot_4_7_trace_*` |
 | 4.9 | ⋯ 菜单 | 完整两组（查看 / 操作）留给 I4.3d。I4.3a 只放禁用占位项，不导航 | 菜单代替弹层 | （按钮含在 4.1，不单开基线） |

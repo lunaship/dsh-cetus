@@ -23,9 +23,11 @@ struct MessageStreamView: UIViewControllerRepresentable {
     var pinsToTail: Bool
     var pumpsFrames: Bool
     var onFrame: () -> Void
+    var usesSoftTopEdge = true
 
     func makeUIViewController(context: Context) -> MessageStreamController {
         let controller = MessageStreamController()
+        controller.usesSoftTopEdge = usesSoftTopEdge
         controller.cache = RowMeasureCache()
         return controller
     }
@@ -65,6 +67,7 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         staticSnapshot: true,
         onToggle: { _ in }, onCopy: { _ in }, onRegenerate: { _ in }, onSuggest: { _ in }, onViewChanges: { _ in },
         onLoadImage: { _ in })
+    var usesSoftTopEdge = true
     var pinsToTail = false
     var pumpsFrames = false {
         didSet { updatePump() }
@@ -102,6 +105,8 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         collectionView.backgroundColor = .systemBackground
         collectionView.keyboardDismissMode = .interactive
+        // UIKit-backed message flow uses the same iOS 26 system soft edge as SwiftUI.
+        if usesSoftTopEdge { collectionView.topEdgeEffect.style = .soft }
         view.addSubview(collectionView)
         let registration = UICollectionView.CellRegistration<MeasuredCell, String> { [weak self] cell, _, id in
             guard let self, let row = self.rowsByID[id] else { return }
