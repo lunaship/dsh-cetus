@@ -5561,8 +5561,161 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Select text" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择文字" } }
       }
+    },
+    "review.changesTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Changes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "改动" } }
+      }
+    },
+    "review.previousTurn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Previous" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "上一轮" } }
+      }
+    },
+    "review.nextTurn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下一轮" } }
+      }
+    },
+    "review.turn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn %d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "第 %d 轮" } }
+      }
+    },
+    "review.askChanges" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ask about these changes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "就这些改动提问" } }
+      }
+    },
+    "review.diffTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Diff" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "对比" } }
+      }
+    },
+    "review.previousHunk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Previous" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "上一个" } }
+      }
+    },
+    "review.nextHunk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下一个" } }
+      }
+    },
+    "review.askFile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ask about this file" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "就这个文件提问" } }
+      }
+    },
+    "review.filesTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Files" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文件" } }
+      }
+    },
+    "review.root" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Workspace" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "工作区" } }
+      }
+    },
+    "review.copyPath" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy path" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制路径" } }
+      }
+    },
+    "review.shareFile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享" } }
+      }
+    },
+    "review.quote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quote in chat" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "引用到对话" } }
+      }
+    },
+    "review.binaryFile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Binary file" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "二进制文件" } }
+      }
+    },
+    "review.discarded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Check failed. The download was discarded." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "校验不一致，已丢弃" } }
+      }
+    },
+    "review.previewTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preview" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "预览" } }
+      }
+    },
+    "review.previewEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No preview" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "还没有预览" } }
+      }
+    },
+    "review.previewEmptyDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Approved ports from the computer show up here." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电脑批准端口之后，会出现在这里。" } }
+      }
+    },
+    "review.previewLocal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Opens only on this phone" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "只在这台手机上打开" } }
+      }
+    },
+    "review.added" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "+%d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "+%d" } }
+      }
+    },
+    "review.deleted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "−%d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "−%d" } }
+      }
     }
-
   },
 
 

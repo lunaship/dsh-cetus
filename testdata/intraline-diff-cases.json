@@ -1,0 +1,75 @@
+{
+  "tokens": [
+    {
+      "name": "words whitespace punctuation and ideographs",
+      "text": "val x_1 = 改动(a)",
+      "pieces": ["val", " ", "x_1", " ", "=", " ", "改", "动", "(", "a", ")"]
+    }
+  ],
+  "emphasis": [
+    {
+      "name": "renamed argument",
+      "old": "    val progress = Animatable(0f)",
+      "new": "    val progress = Animatable(initialProgress)",
+      "oldPieces": ["0f"],
+      "newPieces": ["initialProgress"]
+    },
+    {
+      "name": "merge across blanks",
+      "old": "if (visible) show(panel, fast)",
+      "new": "if (visible) show(panel, very slow)",
+      "oldPieces": ["fast"],
+      "newPieces": ["very slow"]
+    },
+    {
+      "name": "pure insertion",
+      "old": "val visible: Boolean get() = progress.value > 0f",
+      "new": "val visible: Boolean get() = progress.value > 0f || pending",
+      "oldPieces": [],
+      "newPieces": [" || pending"]
+    },
+    {
+      "name": "whole line rewrite",
+      "old": "return cachedValue",
+      "new": "throw IllegalStateException()",
+      "oldPieces": [],
+      "newPieces": []
+    },
+    {
+      "name": "chinese characters",
+      "old": "草稿不跨进程持久化",
+      "new": "草稿按主机持久化",
+      "oldPieces": ["不跨进程"],
+      "newPieces": ["按主机"]
+    },
+    {
+      "name": "exhausted budget",
+      "old": "call(a, b)",
+      "new": "call(a, c)",
+      "budget": 0,
+      "oldPieces": [],
+      "newPieces": []
+    }
+  ],
+  "pairs": [
+    {
+      "name": "pair deletes with following adds",
+      "rows": [
+        {"kind": "delete", "text": "foo(1)", "pieces": ["1"]},
+        {"kind": "delete", "text": "bar(2)", "pieces": ["2"]},
+        {"kind": "delete", "text": "extra line", "pieces": []},
+        {"kind": "add", "text": "foo(10)", "pieces": ["10"]},
+        {"kind": "add", "text": "bar(20)", "pieces": ["20"]},
+        {"kind": "context", "text": " tail", "pieces": []}
+      ]
+    },
+    {
+      "name": "comment does not steal pairing",
+      "rows": [
+        {"kind": "delete", "text": "    val progress = Animatable(0f)", "pieces": ["0f"]},
+        {"kind": "add", "text": "    /** doc */", "pieces": []},
+        {"kind": "add", "text": "    val progress = Animatable(initialProgress)", "pieces": ["initialProgress"]}
+      ]
+    }
+  ]
+}

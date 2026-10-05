@@ -16,6 +16,7 @@ struct MessageChrome {
     var onViewChanges: (Int?) -> Void
     var onLoadImage: (String) -> Void
     var onSelectText: ((String) -> Void)? = nil
+    var changesNamespace: Namespace.ID? = nil
 }
 
 struct MessageStreamView: UIViewControllerRepresentable {
