@@ -27,7 +27,7 @@ struct TrajectoryPage: View {
                 Section {
                     ForEach(turn.lines) { line in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(line.title).font(DLFont.headline)
+                            Text(displayTitle(line.title, copy)).font(DLFont.headline)
                             if !line.detail.isEmpty {
                                 Text(line.detail)
                                     .font(DLFont.footnote)
@@ -62,6 +62,14 @@ struct TrajectoryPage: View {
                         .frame(minHeight: 44)
                 }
             }
+        }
+    }
+
+    private func displayTitle(_ title: String, _ copy: ConversationCopy) -> String {
+        switch title {
+        case "user": copy.text(.trajectoryUser)
+        case "assistant": copy.text(.trajectoryAssistant)
+        default: title
         }
     }
 
