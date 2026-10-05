@@ -72,12 +72,22 @@ final class PairingSnapshotTests: XCTestCase {
             ) {
                 PairingConflictSnapshotContent()
             }
+            if language == "zh-Hans" {
+                accessibility("1_2_sameName", navigation: false) { PairingConflictSnapshotContent() }
+            }
             render(
                 "1_2_rename", appearance: .light, language: language, large: false, navigation: true
             ) {
                 PairingRenameForm(
                     newName: .constant(PairingFixtures.deviceName), originalName: PairingFixtures.deviceName,
                     allowsFocus: false)
+            }
+            if language == "zh-Hans" {
+                accessibility("1_2_rename", navigation: true) {
+                    PairingRenameForm(
+                        newName: .constant(PairingFixtures.deviceName), originalName: PairingFixtures.deviceName,
+                        allowsFocus: false)
+                }
             }
         }
     }
@@ -104,37 +114,60 @@ final class PairingSnapshotTests: XCTestCase {
                 }
             }
         }
-        // Reduce Transparency is read-only in SwiftUI; DLUI has no override for the system glass styles.
+        // The public accessibilityReduceTransparency key path is get-only; these variants use the private environment value.
+        accessibility(scene, navigation: navigation, make: make)
     }
 
     private func fixture<V: View>(_ scene: String, navigation: Bool = true, make: () -> V) {
         render(
             scene, appearance: .light, language: "zh-Hans", large: false,
             navigation: navigation, make: make)
+        accessibility(scene, navigation: navigation, make: make)
+    }
+
+    private func accessibility<V: View>(_ scene: String, navigation: Bool, make: () -> V) {
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false, navigation: navigation,
+            reduceTransparency: true, make: make)
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false, navigation: navigation,
+            increaseContrast: true, make: make)
     }
 
     private func render<V: View>(
         _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool,
-        navigation: Bool, make: () -> V
+        navigation: Bool, reduceTransparency: Bool = false, increaseContrast: Bool = false, make: () -> V
     ) {
         let content = Group {
             if navigation { NavigationStack { make() } } else { make() }
         }
         .environment(\.locale, Locale(identifier: language))
+        .environment(\.colorScheme, appearance == .dark ? .dark : .light)
         .environment(\.dynamicTypeSize, large ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
+        .environment(\._accessibilityReduceTransparency, reduceTransparency)
         .tint(DLColor.accent)
-        let traits = UITraitCollection(traitsFrom: [
+        var traits = [
             UITraitCollection(userInterfaceStyle: appearance),
             UITraitCollection(userInterfaceIdiom: .phone),
             UITraitCollection(
                 preferredContentSizeCategory: large
                     ? UIContentSizeCategory.accessibilityExtraLarge : UIContentSizeCategory.large),
-        ])
+        ]
+        if increaseContrast {
+            traits.append(UITraitCollection(accessibilityContrast: .high))
+        }
         assertSnapshot(
             of: content,
-            as: .image(layout: .fixed(width: 402, height: 874), traits: traits),
-            named: large ? "large" : "default",
+            as: .image(layout: .fixed(width: 402, height: 874), traits: UITraitCollection(traitsFrom: traits)),
+            named: variantName(
+                large: large, reduceTransparency: reduceTransparency, increaseContrast: increaseContrast),
             testName: snapshotName(scene, appearance: appearance, language: language))
+    }
+
+    private func variantName(large: Bool, reduceTransparency: Bool, increaseContrast: Bool) -> String {
+        if reduceTransparency { return "reduce-transparency" }
+        if increaseContrast { return "increase-contrast" }
+        return large ? "large" : "default"
     }
 
     private func snapshotName(_ scene: String, appearance: UIUserInterfaceStyle, language: String) -> String {
