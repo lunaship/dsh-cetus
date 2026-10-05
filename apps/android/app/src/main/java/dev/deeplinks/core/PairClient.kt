@@ -189,7 +189,11 @@ object PairClient {
     fun approvalState(host: Host): Approval = try {
         HostHttp.execute(
             host,
-            HostHttp.DshRequest("GET", "/dsh-link/mobile/sessions", connectTimeoutMs = 4_000, readTimeoutMs = 6_000),
+            HostHttp.DshRequest(
+                "GET", "/dsh-link/mobile/sessions",
+                headers = listOf("x-dsh-link-token" to host.token),
+                connectTimeoutMs = 4_000, readTimeoutMs = 6_000,
+            ),
         ).use { response ->
             val body = runCatching { response.body?.byteStream()?.use { BoundedIo.readText(it, BoundedIo.MAX_HEALTH_BODY_BYTES) } }.getOrNull()
             approvalFromResponse(response.code, body)

@@ -32,13 +32,6 @@ class HomeHubSourceTest {
         assertTrue(header.contains("large = true"))
     }
 
-    /** v4 2.1：右下「新任务」FAB 回来了，底部搜索胶囊去掉（搜索在右上）。 */
-    @Test
-    fun `new task fab replaces bottom search bar`() {
-        assertTrue(file("WorkspaceSidebar.kt").readText().contains("HomeNewTaskFab("))
-        assertFalse(file("HomeHub.kt").readText().contains("HomeBottomBar"))
-    }
-
     /** v4 2.6：长按菜单删除排最后且是危险色。 */
     @Test
     fun `long press sheet ends with danger delete`() {

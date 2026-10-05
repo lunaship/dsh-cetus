@@ -7,21 +7,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.native.HomeComputerSheetContent
-import dev.deeplinks.native.HomeDivider
 import dev.deeplinks.native.HomeEmptyStarters
 import dev.deeplinks.native.HomeHeader
 import dev.deeplinks.native.HomeInboxRow
-import dev.deeplinks.native.HomeNewTaskFab
+import dev.deeplinks.native.HomeBottomBar
+import dev.deeplinks.native.ui.v4.DlWorkspaceRow
 import dev.deeplinks.native.HomeOfflineBanner
 import dev.deeplinks.native.HomeSearchPage
-import dev.deeplinks.native.HomeSectionHeader
 import dev.deeplinks.native.HomeSessionSheetContent
 import dev.deeplinks.native.HomeWorkspaceOption
 import dev.deeplinks.native.MobileMessage
@@ -31,7 +29,6 @@ import dev.deeplinks.native.MobileSessionActivity
 import dev.deeplinks.native.MobileSessionResult
 import dev.deeplinks.native.WorkspaceSidebarActions
 import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
-import dev.deeplinks.native.util.HomeSection
 
 private const val MINUTE = 60_000L
 
@@ -81,15 +78,15 @@ private fun HomeCanvas(dark: Boolean, english: Boolean, online: Boolean = true, 
     ShotFrame(dark = dark, english = english) {
         Box(Modifier.fillMaxSize().background(Dsh.bgBase)) {
             Column(Modifier.fillMaxSize()) {
-                HomeHeader(hostName = "MacBook Pro", online = online, onOpenComputer = {}, onOpenSearch = {}, onOpenSettings = {})
-                content()
+                HomeHeader(hostName = "MacBook Pro", online = online, onOpenComputer = {}, onOpenSettings = {})
+                Column(Modifier.weight(1f)) { content() }
+                HomeBottomBar(online = online, onSearch = {}, onCreate = {})
             }
-            HomeNewTaskFab(enabled = online, onClick = {}, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
         }
     }
 }
 
-/** 2.1 / 2.3：等你处理（审批 + 一条等你批准）、进行中、最近。 */
+/** 2.1 / 2.3：文件夹分组、紧凑会话和折叠后的待处理提示。 */
 @Composable
 private fun InboxRows(english: Boolean, online: Boolean) {
     val awaiting = listOf(
@@ -107,21 +104,12 @@ private fun InboxRows(english: Boolean, online: Boolean) {
         homeSession("s5", if (english) "Fix goal round crash" else "修复 goal round 崩溃", minutesAgo = 40, lastResult = MobileSessionResult(text = if (english) "Gate run all green" else "门禁全绿")),
         homeSession("s6", if (english) "Interrupted during gate run" else "跑门禁时被中断", minutesAgo = 50, stoppedReason = "interrupted"),
     )
-    HomeSectionHeader(HomeSection.AWAITING, awaiting.size)
-    awaiting.forEachIndexed { index, s ->
-        if (index > 0) HomeDivider()
-        HomeInboxRow(s, if (index == 0) APPROVAL else null, online, null, {}, {}, {}, {})
+    val first = listOf(awaiting[0]) + running + recent
+    DlWorkspaceRow("dsh-links", first.size, true, 1, running.size, online, {}, {})
+    first.forEach { s ->
+        HomeInboxRow(s, if (s.sessionId == "s1") APPROVAL else null, online, null, {}, {}, {}, {}, compact = true)
     }
-    HomeSectionHeader(HomeSection.RUNNING, running.size)
-    running.forEachIndexed { index, s ->
-        if (index > 0) HomeDivider()
-        HomeInboxRow(s, null, online, null, {}, {}, {}, {})
-    }
-    HomeSectionHeader(HomeSection.RECENT, recent.size)
-    recent.forEachIndexed { index, s ->
-        if (index > 0) HomeDivider()
-        HomeInboxRow(s, null, online, null, {}, {}, {}, {})
-    }
+    DlWorkspaceRow("relay", 1, false, 1, 0, online, {}, {})
 }
 
 @PreviewTest
@@ -224,14 +212,11 @@ private fun SheetsWall(english: Boolean) {
                 viaRemote = false,
                 offlineSinceLabel = null,
                 workspaces = listOf(
-                    HomeWorkspaceOption(null, if (english) "All workspaces" else "全部工作区", 6),
                     HomeWorkspaceOption("/Users/me/dsh-links", "dsh-links", 4),
                     HomeWorkspaceOption("/Users/me/relay", "relay", 1),
                     HomeWorkspaceOption("/Users/me/notion-sync", "notion-sync", 1),
                 ),
-                selected = null,
                 onOpenDevice = {},
-                onSelectWorkspace = {},
                 onAddWorkspace = {},
                 onOpenArchived = {},
                 onDeleteWorkspace = {},

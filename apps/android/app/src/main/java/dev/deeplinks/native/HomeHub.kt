@@ -11,14 +11,12 @@ import dev.deeplinks.core.homeSearchContentMatches
 import dev.deeplinks.core.homeSearchTitleMatches
 import dev.deeplinks.native.ui.v4.DlIconButton
 import dev.deeplinks.native.util.homeSearchGroups
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,8 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,22 +60,20 @@ import dev.deeplinks.native.ui.v4.DlTone
 import dev.deeplinks.native.ui.v4.DlTopBar
 import dev.deeplinks.native.ui.v4.DlTopBarAction
 import dev.deeplinks.native.ui.v4.DlTopBarNav
-import dev.deeplinks.native.util.HomeSection
 import dev.deeplinks.native.util.homeTimeLabel
 import dev.deeplinks.native.util.workspaceDisplayName
 
 /*
  * v4 首页收件箱（2.1–2.6）的积木。布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
- * 顶栏和列表都平铺在画布上：大标题 + 电脑状态行、平铺分组（组头带计数）、右下「新任务」。
+ * 首页以文件夹分组，底部固定搜索与新任务。
  */
 
-/** 2.1 顶栏：大标题「DeepLinks」，下面一行电脑状态（点开 2.5），右上 搜索 / 设置。 */
+/** 2.1 顶栏：大标题「DeepLinks」，下面一行电脑状态（点开 2.5），右上设置。 */
 @Composable
 internal fun HomeHeader(
     hostName: String,
     online: Boolean,
     onOpenComputer: () -> Unit,
-    onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val s = DshS
@@ -89,7 +83,6 @@ internal fun HomeHeader(
         large = true,
         nav = DlTopBarNav.None,
         actions = listOf(
-            DlTopBarAction(SearchOutline16, s.searchSessions, onOpenSearch),
             DlTopBarAction(SettingsOutline16, s.settingsTitle, onOpenSettings),
         ),
         onSubtitleClick = onOpenComputer,
@@ -101,18 +94,6 @@ internal fun HomeHeader(
             Icon(ChevronDownOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
         },
     )
-}
-
-/** 分组标题（等你处理 / 进行中 / 最近），右侧品牌色计数。 */
-@Composable
-internal fun HomeSectionHeader(section: HomeSection, count: Int) {
-    val s = DshS
-    val title = when (section) {
-        HomeSection.AWAITING -> s.homeAwaiting
-        HomeSection.RUNNING -> s.homeRunning
-        HomeSection.RECENT -> s.homeRecent
-    }
-    DlSectionHeader(title = title, trailing = count.toString())
 }
 
 /** 条目之间的细分隔线，左边与文字对齐。 */
@@ -135,6 +116,7 @@ internal fun HomeInboxRow(
     onLongClick: () -> Unit,
     onReject: () -> Unit,
     onApprove: () -> Unit,
+    compact: Boolean = false,
 ) {
     val s = DshS
     val texts = homeInboxTexts(session, pending, goalSummary, offline = !online)
@@ -147,12 +129,21 @@ internal fun HomeInboxRow(
         HomePendingKind.None -> emptyList()
     }
     DlInboxItem(
-        workspace = texts.workspace,
+        modifier = if (compact) Modifier.padding(start = DshSpace.s32) else Modifier,
+        compact = compact,
+        workspace = if (compact) "" else texts.workspace,
         time = if (session.updatedAt > 0) homeTimeLabel(session.updatedAt) else "",
         title = displaySessionTitle(session.title),
-        status = texts.status,
+        status = if (compact) {
+            when {
+                texts.pending != HomePendingKind.None || session.awaitingInput -> texts.status
+                session.running -> s.homeRunning
+                session.stoppedReason != null -> texts.status
+                else -> null
+            }
+        } else texts.status,
         tone = texts.tone,
-        preview = texts.preview,
+        preview = if (compact && texts.pending == HomePendingKind.None) null else texts.preview,
         command = texts.command,
         running = texts.running,
         actions = actions,
@@ -191,7 +182,7 @@ internal fun HomeWorkspaceChips(workspaces: List<String>, selected: String?, onS
     }
 }
 
-/** 2.5 里的一行工作区：路径为 null 表示「全部工作区」。 */
+/** 2.5 管理列表：显示已注册的工作区及会话数量。 */
 internal data class HomeWorkspaceOption(val path: String?, val label: String, val count: Int)
 
 /** 2.5 电脑与工作区弹层。每个动作先关弹层再执行，确认框不叠在弹层上。 */
@@ -203,10 +194,8 @@ internal fun HomeComputerSheet(
     viaRemote: Boolean,
     offlineSinceLabel: String?,
     workspaces: List<HomeWorkspaceOption>,
-    selected: String?,
     onDismiss: () -> Unit,
     onOpenDevice: () -> Unit,
-    onSelectWorkspace: (String?) -> Unit,
     onAddWorkspace: () -> Unit,
     onOpenArchived: () -> Unit,
     onDeleteWorkspace: (String) -> Unit,
@@ -218,9 +207,7 @@ internal fun HomeComputerSheet(
             viaRemote = viaRemote,
             offlineSinceLabel = offlineSinceLabel,
             workspaces = workspaces,
-            selected = selected,
             onOpenDevice = { onDismiss(); onOpenDevice() },
-            onSelectWorkspace = { onDismiss(); onSelectWorkspace(it) },
             onAddWorkspace = { onDismiss(); onAddWorkspace() },
             onOpenArchived = { onDismiss(); onOpenArchived() },
             onDeleteWorkspace = { onDismiss(); onDeleteWorkspace(it) },
@@ -235,9 +222,7 @@ internal fun HomeComputerSheetContent(
     viaRemote: Boolean,
     offlineSinceLabel: String?,
     workspaces: List<HomeWorkspaceOption>,
-    selected: String?,
     onOpenDevice: () -> Unit,
-    onSelectWorkspace: (String?) -> Unit,
     onAddWorkspace: () -> Unit,
     onOpenArchived: () -> Unit,
     onDeleteWorkspace: (String) -> Unit,
@@ -263,21 +248,12 @@ internal fun HomeComputerSheetContent(
                 title = option.label,
                 subtitle = s.homeTaskCount.format(option.count),
                 leading = FolderClose16,
-                trailing = DlRowTrailing.Radio(option.path == selected),
-                onClick = { onSelectWorkspace(option.path) },
+                trailing = DlRowTrailing.DeleteAction(s.deleteWorkspace) { option.path?.let(onDeleteWorkspace) },
             )
         }
         HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
         DlListRow(title = s.addWorkspace, leading = PlusOutline16, leadingTint = DlTone.Brand, onClick = onAddWorkspace)
         DlListRow(title = s.homeArchivedSessions, leading = ArchiveBoxOutline16, trailing = DlRowTrailing.Chevron, onClick = onOpenArchived)
-        if (selected != null) {
-            DlListRow(
-                title = s.homeDeleteWorkspaceNamed.format(workspaceDisplayName(selected)),
-                leading = TrashOutline16,
-                danger = true,
-                onClick = { onDeleteWorkspace(selected) },
-            )
-        }
     }
 }
 
@@ -388,50 +364,23 @@ internal fun HomeEmptyStarters(onPick: (String) -> Unit) {
     }
 }
 
-/** 筛选到某个工作区但那里还没有任务：给「在这里新建」和「查看全部」两条路。 */
+/** 2.1 固定底部：搜索打开 2.4，新建打开 3.1。 */
 @Composable
-internal fun HomeWorkspaceEmpty(onCreate: () -> Unit, onShowAll: () -> Unit) {
-    val s = DshS
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DshSpace.s24, vertical = DshSpace.s32),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
-    ) {
-        Text(s.homeWorkspaceEmptyTitle, style = DshType.bodyStrong, color = Dsh.labelPrimary, textAlign = TextAlign.Center)
-        Text(s.homeWorkspaceEmptyHint, style = DshType.supporting, color = Dsh.labelSecondary, textAlign = TextAlign.Center)
-        Row(Modifier.padding(top = DshSpace.s8), horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
-            DlButton(DlAction(s.homeShowAll, onShowAll))
-            DlButton(DlAction(s.createSession, onCreate, DlButtonStyle.Filled))
+internal fun HomeBottomBar(online: Boolean, onSearch: () -> Unit, onCreate: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(Dsh.bgBase)) {
+        HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
+        Row(
+            Modifier.fillMaxWidth().padding(end = DshSpace.s12, top = DshSpace.s4, bottom = DshSpace.s4),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DlListRow(
+                title = DshS.searchSessions,
+                leading = SearchOutline16,
+                modifier = Modifier.weight(1f),
+                onClick = onSearch,
+            )
+            DlIconButton(EditOutline16, DshS.homeNewTask, onCreate, enabled = online)
         }
-    }
-}
-
-/** 已筛选工作区提示：列表顶部一个选中的 chip，点一下清除筛选。 */
-@Composable
-internal fun HomeWorkspaceFilterChip(label: String, onClear: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = DshSpace.s20, vertical = DshSpace.s4)) {
-        DlChip(label = label, onClick = onClear, selected = true, icon = CloseOutline16)
-    }
-}
-
-/** 2.1 右下「＋ 新任务」：品牌实心；电脑离线时置灰。 */
-@Composable
-internal fun HomeNewTaskFab(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val content = if (enabled) Dsh.onBrand else Dsh.tertiaryText
-    Row(
-        modifier = modifier
-            .heightIn(min = DshTouch.min + DshSpace.s8)
-            .clip(RoundedCornerShape(DshRadius.block))
-            .background(if (enabled) Dsh.brand500 else Dsh.surface2)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = DshSpace.s20),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
-    ) {
-        Icon(PlusOutline16, contentDescription = null, tint = content, modifier = Modifier.size(DshIconSize.md))
-        Text(DshS.homeNewTask, style = DshType.bodyStrong, color = content)
     }
 }
 

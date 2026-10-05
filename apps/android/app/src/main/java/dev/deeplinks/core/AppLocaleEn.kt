@@ -499,7 +499,7 @@ val DshStringsEn = DshStrings(
         put("homeEmptyHint", "Tasks you start on the computer show up here too.")
         put("homeArchivedSessions", "Archived")
         put("homeWorkspaceEmptyTitle", "No tasks in this workspace yet")
-        put("homeWorkspaceEmptyHint", "Start one here, or switch back to all workspaces")
+        put("homeWorkspaceEmptyHint", "Create a conversation with the button beside this workspace.")
         put("homeShowAll", "View all")
         put("homeDeleteWorkspaceNamed", "Delete \"%s\"")
         put("homeChipWaitingApproval", "Waiting for approval")

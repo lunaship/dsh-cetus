@@ -46,9 +46,11 @@
 - 列表行高：单行 52、双行 64；触控区域 ≥ 48dp。
 - 不用阴影（elevation = 0）。弹层与对话框用 scrim 区分层级。
 
-## 5. 组件（只用这 10 个，位于 `native/ui/v4/`）
+## 5. 组件（基础组件，位于 `native/ui/v4/`）
 
-`DlTopBar` · `DlListRow` · `DlSectionHeader` · `DlStatusSlot` · `DlInboxItem` · `DlComposer` · `DlDecisionBar` · `DlBottomSheet` · `DlDialog` · `DlChip` / `DlSegmented`
+`DlTopBar` · `DlListRow` · `DlSectionHeader` · `DlStatusSlot` · `DlInboxItem` · `DlComposer` · `DlDecisionBar` · `DlBottomSheet` · `DlDialog` · `DlChip` / `DlSegmented` · `DlWorkspaceRow`
+
+首页 2.1–2.3 按工作区文件夹分组，`DlWorkspaceRow` 提供展开和独立新建入口；`DlInboxItem` 的紧凑模式用于缩进会话，底部搜索与新建组合已有列表行和图标按钮。折叠行保留待处理 / 运行计数，展开状态按主机保存。
 
 页面文件不得直接用 M3 的 `Card` / `ElevatedCard` / 带 tonalElevation 的 `Surface`，也不得自己画顶栏或输入区。需要新组件时，先改本文件和设计稿，再写代码。
 

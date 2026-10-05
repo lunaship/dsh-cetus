@@ -302,3 +302,17 @@
 | R3.8 | #59 | 8.2 审批通知标题改成「需要审批 · 会话名」，正文是哪个工具在等；默认不挂任何动作（只能点开 App），打开「允许在通知栏直接批准」且 Android 12+ 才给「拒绝 / 允许一次」。完成通知标题「会话名 · 已完成」、正文为结果首行，长任务完成通知也补上「查看改动 / 回复」两个动作；停止通知标题「会话名 · 已停止」、正文为原因。通知渠道名改成与 7.4 开关同名（「需要审批时」「任务完成时」）。8.1 锁屏公开版本沿用现状（只显示状态）。偏差：8.3 分享进来不弹会话选择，仍落在新任务草稿里预填（换会话需在首页再选）；通知小图标沿用已有单色 `ic_stat_dsh` |
 | R4 | #60 | `V4MigrationAllowlist` 清空并删除，共用的源码遍历工具改名 `ArchitectureSources`。剩余 13 个文件按 v4 修正：间距 s2/s6/10dp/13dp/3dp 归到 4 的倍数；`DshTileShape`、`DshRadius.card` 删除。删除 `DshGlass`、`DshEdgeFade`、`DshFloatingControls`、`DshCardSurface`、`DshTranslucentBar`、`DshPageChrome`、`DswPalette`，以及 `DshInbox` 里没人用的 `DshStatusIcon` / `DshGroupCard` / `DshCardDivider` / `DshSectionLabel`、`DshEmptyState`；`OverlayChrome` 仍在用（实底顶 / 底栏的高度回填），只去掉了毛玻璃采样层；移除 Kyant0 Backdrop 依赖及第三方说明。`HomeBalanceBanner` 改名 `HomeBalanceNotice`。偏差：`DshSyntaxPalette`（代码高亮配色）作为 token 文件允许写死色值；`ShareCatcherActivity` 的系统 `Theme.Translucent` 保留（无界面的跳板）；没有附 63 页对照表，README 截图未换 |
 | R5 | #62 | 补 R3.7 / R3.8 的偏差。1.5 等待批准页：配对返回 pending 后进入新路由 `pairWaiting`，用配对拿到的 token 每 2 秒请求 `/dsh-link/mobile/sessions`（200 = 已批准，403 + `pending` = 继续等，401 = 被拒或超时），显示本机名称与连接方式（局域网 / 远程）；取消会删掉本机这条记录。1.6 失败页（路由 `pairFailed`）：传输层失败按「没连上这台电脑」+ 三条建议，其余写原因；扫码页的失败也带回这一页，码不对（非 DSH 码 / 内容不全）仍在扫码页提示。8.3 分享选会话：`SharePickerSheet`（新任务 + 最近 6 个会话），选会话先切过去再预填。偏差：1.6 不列出逐个尝试过的地址（`pairWithQr` 只返回最后一个错误），「查看连接诊断」换成「返回」（失败时还没有可诊断的电脑）；8.3 只预填不发送，只有提示没有内容的分享不弹选择；1.4 输入配对码决定暂不做（见「1.4 决定」） |
+
+## 2026-10-05 用户确认：首页工作区分组调整
+
+用户确认参考文件夹列表：首页直接显示工作区和缩进会话，每个工作区有新建入口，底部固定搜索。覆盖 2.1–2.3 首页、2.5 电脑与工作区管理；2.4 搜索页保留。采用 v4 现有颜色、字体与触控尺寸，不采用参考图的玻璃材质。
+
+- 分组以电脑注册表的 `sessionIds` 为准，注册表未就绪才按 cwd 回退；同名文件夹显示必要的父路径，空工作区可直接开任务。
+- 同一会话只显示一次，归档 / 删除 / 子会话过滤沿用现有逻辑。没有归属的会话进入「未分组」。
+- 收起状态按主机保存，收起后的工作区仍显示待处理 / 运行计数；离线可搜索和查看历史，新建及批准禁用。
+- 更新 HomeScreenshotTest 的场景源码；截图基线仍需通过 Linux `regen-screenshots.yml` 生成，本地不生成或提交基线。
+- 本次先交付本地可安装预览，保留 beta.31 版本号，不打 tag、不建 Release；随后按用户要求通过 PR #107 同步到 GitHub main。
+
+验证结果：Debug / 签名 Release 构建、864 项 JVM 单元测试、lintDebug（0 errors）及截图场景源码编译通过。隔离 Android 35 模拟器的 3 项交互测试通过：展开状态跨页面保存、会话选择与工作区新建 / 搜索入口、审批及折叠提示、离线禁用。签名预览覆盖安装至小米 15（12:26:20），保留 beta.31 / versionCode 39；桌面 APK 与构建输出一致。未进行真机视觉验收或 Linux 截图基线更新。
+
+GitHub 截图基线：由 [Linux 工作流 37264115652](https://github.com/lunaship/dsh-links/actions/runs/37264115652) 在 `6728501` 生成，共 143 张；更新 15 张。首页 8 张对应 2.1 / 2.2 / 2.3 / 2.5–2.6，已检查浅色 / 深色布局、审批及离线状态；设置 7 张只有版本号 beta.27 → beta.31 的像素变化。同步 PR：[107](https://github.com/lunaship/dsh-links/pull/107)。

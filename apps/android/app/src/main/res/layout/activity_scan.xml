@@ -5,10 +5,12 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <com.journeyapps.barcodescanner.DecoratedBarcodeView
+    <androidx.camera.view.PreviewView
         android:id="@+id/barcode_scanner"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        app:implementationMode="compatible"
+        app:scaleType="fillCenter" />
 
     <!-- 1.3：取景框下方的说明。半透明黑底保证在亮画面上对比度 ≥ 4.5:1 -->
     <LinearLayout

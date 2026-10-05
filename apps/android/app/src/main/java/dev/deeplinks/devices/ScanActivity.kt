@@ -13,6 +13,7 @@ import dev.deeplinks.core.applyDshSecureWindow
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Size
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ProgressBar
@@ -20,27 +21,30 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.WindowInsetsControllerCompat
 import dev.deeplinks.core.enableDshEdgeToEdge
-import com.google.zxing.Result
-import com.google.zxing.ResultPoint
-import com.journeyapps.barcodescanner.BarcodeCallback
-import com.journeyapps.barcodescanner.BarcodeResult
-import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ScanActivity : AppCompatActivity() {
 
     private val executor = Executors.newSingleThreadExecutor()
-    private lateinit var barcodeView: DecoratedBarcodeView
+    private lateinit var previewView: PreviewView
+    private var cameraProvider: ProcessCameraProvider? = null
     private lateinit var pairingOverlay: View
     private lateinit var pairingStatus: TextView
     private lateinit var pairingProgress: ProgressBar
-    private var handled = false
+    private val handled = AtomicBoolean(false)
 
     private val cameraPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -56,9 +60,8 @@ class ScanActivity : AppCompatActivity() {
     /** 从相册识别（M1）：Photo Picker 选图，无需存储权限。 */
     private val albumPicker = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri == null) return@registerForActivityResult
-        if (handled) return@registerForActivityResult
-        handled = true
-        barcodeView.pause()
+        if (!handled.compareAndSet(false, true)) return@registerForActivityResult
+        stopScanner()
         pairAlbum(uri)
     }
 
@@ -73,8 +76,7 @@ class ScanActivity : AppCompatActivity() {
             isAppearanceLightNavigationBars = false
         }
         setContentView(R.layout.activity_scan)
-        barcodeView = findViewById(R.id.barcode_scanner)
-        barcodeView.setStatusText("")
+        previewView = findViewById(R.id.barcode_scanner)
         pairingOverlay = findViewById(R.id.pairing_overlay)
         pairingStatus = findViewById(R.id.pairing_status)
         pairingProgress = findViewById(R.id.pairing_progress)
@@ -102,27 +104,66 @@ class ScanActivity : AppCompatActivity() {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             cameraPermission.launch(Manifest.permission.CAMERA)
-        } else {
-            startScanner()
         }
     }
 
+    /** CameraX 走 Camera2。小米会拦截旧 Camera API 的 startPreview，预览起不来就解不出码。 */
     private fun startScanner() {
-        barcodeView.decodeContinuous(object : BarcodeCallback {
-            override fun barcodeResult(result: BarcodeResult) {
-                onScanned(result.result)
+        if (handled.get() || isFinishing) return
+        val future = ProcessCameraProvider.getInstance(this)
+        future.addListener({
+            if (handled.get() || isFinishing || isDestroyed) return@addListener
+            val provider = try {
+                future.get()
+            } catch (_: Exception) {
+                return@addListener
             }
-
-            override fun possibleResultPoints(result: List<ResultPoint>) {}
-        })
-        barcodeView.resume()
+            cameraProvider = provider
+            val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
+            val analysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setTargetResolution(Size(1280, 720))
+                .build()
+            analysis.setAnalyzer(executor, ::analyzeFrame)
+            try {
+                provider.unbindAll()
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            } catch (_: Exception) {
+                // 没有后置相机或被系统占用时保持页面，用户还能从相册识别。
+            }
+        }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun onScanned(result: Result) {
-        if (handled) return
-        handled = true
-        barcodeView.pause()
-        pairScanned(result.text ?: "")
+    private fun stopScanner() {
+        cameraProvider?.unbindAll()
+    }
+
+    private fun analyzeFrame(image: ImageProxy) {
+        val text = try {
+            if (handled.get()) null else decodeFrame(image)
+        } finally {
+            image.close()
+        }
+        if (text.isNullOrBlank() || !handled.compareAndSet(false, true)) return
+        runOnUiThread {
+            stopScanner()
+            pairScanned(text)
+        }
+    }
+
+    private fun decodeFrame(image: ImageProxy): String? {
+        val plane = image.planes.firstOrNull() ?: return null
+        val buffer = plane.buffer.duplicate()
+        buffer.rewind()
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        return QrImageDecoder.decodeLuminance(
+            bytes,
+            rowStride = plane.rowStride,
+            pixelStride = plane.pixelStride,
+            width = image.width,
+            height = image.height,
+        )
     }
 
     /** 扫码配对：识别到的文本走共用配对流程（M1）。 */
@@ -210,25 +251,29 @@ class ScanActivity : AppCompatActivity() {
 
     private fun scanFailed(message: String) {
         runOnUiThread {
-            handled = false
+            handled.set(false)
             pairingProgress.visibility = View.GONE
             pairingStatus.text = L.pairFailedTapToRetry.format(message)
             pairingOverlay.contentDescription = L.pairFailedTapToRetry.format(message)
             pairingOverlay.visibility = View.VISIBLE
             pairingOverlay.setOnClickListener {
                 hidePairingProgress()
-                barcodeView.resume()
+                startScanner()
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        if (this::barcodeView.isInitialized && !handled) barcodeView.resume()
+        if (!handled.get() &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startScanner()
+        }
     }
 
     override fun onPause() {
-        if (this::barcodeView.isInitialized) barcodeView.pause()
+        stopScanner()
         super.onPause()
     }
 

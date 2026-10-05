@@ -10,7 +10,8 @@ and `app/build.gradle.kts`.
 | AndroidX Core, AppCompat, Activity Compose, Compose UI, Material3 | Apache-2.0 | https://developer.android.com/jetpack |
 | Kotlin | Apache-2.0 | https://kotlinlang.org/ |
 | Material Components for Android | Apache-2.0 | https://github.com/material-components/material-components-android |
-| ZXing Android Embedded | Apache-2.0 | https://github.com/journeyapps/zxing-android-embedded |
+| ZXing | Apache-2.0 | https://github.com/zxing/zxing |
+| CameraX | Apache-2.0 | https://developer.android.com/media/camera/camerax |
 | Coil | Apache-2.0 | https://github.com/coil-kt/coil |
 | OkHttp | Apache-2.0 | https://square.github.io/okhttp/ |
 | KaTeX 0.18.4 (bundled in APK assets, rendered via WebView) | MIT | https://github.com/KaTeX/KaTeX |

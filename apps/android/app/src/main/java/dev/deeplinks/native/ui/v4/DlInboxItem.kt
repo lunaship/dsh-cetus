@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -24,6 +25,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.native.DshRadius
 import dev.deeplinks.native.DshSpace
+import dev.deeplinks.native.DshTouch
 
 /**
  * v4 收件箱条目（2.1）：状态点 + 状态 · 工作区 + 时间；标题；命令或问题预览；
@@ -47,47 +49,64 @@ fun DlInboxItem(
     onLongClick: (() -> Unit)? = null,
     /** 2.4 搜索：标题和预览里命中的词用品牌色。 */
     highlight: String? = null,
+    /** 2.1 工作区内的紧凑会话：标题优先，不重复显示工作区。 */
+    compact: Boolean = false,
 ) {
     val hit = Dsh.brand400
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = DshTouch.min)
             .then(
                 if (onClick != null || onLongClick != null) {
                     Modifier.combinedClickable(onLongClick = onLongClick, onClick = { onClick?.invoke() })
                 } else {
-                    Modifier
-                },
-            )
-            .padding(horizontal = DshSpace.s20, vertical = DshSpace.s12),
-        verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
-            verticalAlignment = Alignment.CenterVertically,
+                        Modifier
+                    },
+                )
+                .padding(horizontal = DshSpace.s20, vertical = DshSpace.s12),
+            verticalArrangement = Arrangement.spacedBy(DshSpace.s4),
         ) {
+            if (compact) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
+                    Text(dlHighlighted(title, highlight, hit), style = DshType.body, color = Dsh.labelPrimary,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    if (time.isNotBlank()) Text(time, style = DshType.caption, color = Dsh.tertiaryText, maxLines = 1)
+                }
+                if (status != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DshSpace.s8)) {
+                        if (running) DlSpinner() else DlStatusDot(tone)
+                        Text(status, style = DshType.caption, color = if (running) Dsh.labelSecondary else tone.color)
+                    }
+                }
+            } else {
             Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+                horizontalArrangement = Arrangement.spacedBy(DshSpace.s12),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (status != null) {
-                    DlStatusDot(tone)
-                    Text(status, style = DlLabelStrong, color = tone.color, maxLines = 1)
-                    Text("·", style = DshType.supporting, color = Dsh.labelSecondary)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (status != null) {
+                        DlStatusDot(tone)
+                        Text(status, style = DlLabelStrong, color = tone.color, maxLines = 1)
+                        Text("·", style = DshType.supporting, color = Dsh.labelSecondary)
+                    }
+                    Text(
+                        workspace,
+                        style = DshType.supporting,
+                        color = Dsh.labelSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                 }
-                Text(
-                    workspace,
-                    style = DshType.supporting,
-                    color = Dsh.labelSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
+                Text(time, style = DshType.caption, color = Dsh.tertiaryText, maxLines = 1)
             }
-            Text(time, style = DshType.caption, color = Dsh.tertiaryText, maxLines = 1)
+            Text(dlHighlighted(title, highlight, hit), style = DshType.bodyStrong, color = Dsh.labelPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Text(dlHighlighted(title, highlight, hit), style = DshType.bodyStrong, color = Dsh.labelPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (preview != null) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
