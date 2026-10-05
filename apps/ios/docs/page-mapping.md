@@ -76,8 +76,8 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 4.4 | 回答问题 | 同一玻璃容器切到提问。多题翻页和跳过还没接 | 只显示最新一条未终态提问 | `Snapshot_4_4_question_light_zh` |
 | 4.5 / 4.8 | 状态槽 | `DLStatusSlot`；优先级断线 > 待处理 > 目标 > 预览；`scrollEdgeEffectStyle(.soft, for: .top)` | 状态槽无玻璃 | `Snapshot_4_5_status_*`、`Snapshot_4_8_status_*` |
 | 4.6 | 工具过程 | `DLProcessLine` 展开细线步骤 | — | `Snapshot_4_6_process_*` |
-| 4.7 | 轨迹 | push；搜索 + 筛选 chip + 按轮分组 | I4.3d | `Snapshot_4_7_trace_*` |
-| 4.9 | ⋯ 菜单 | 完整两组（查看 / 操作）留给 I4.3d。I4.3a 只放禁用占位项，不导航 | 菜单代替弹层 | （按钮含在 4.1，不单开基线） |
+| 4.7 | 轨迹 | push `TrajectoryPage`：搜索、筛选 chip、按轮分组，组头右侧时间次要色 | 改动 / 文件 / 子代理 / 用量 / 预览等菜单项目标页留给后续项 | `Snapshot_4_7_trace_light_zh` |
+| 4.9 | ⋯ 菜单 | `Menu` 两组：查看（改动、文件、轨迹、子代理、用量、预览）/ 操作（目标、定时任务、重命名、分叉、分享）。只有轨迹会 push | 归档 / 删除只在首页。其余目标页留给后续项 | （按钮含在 4.1，不单开基线） |
 
 ## 5.x 弹层与对话框
 

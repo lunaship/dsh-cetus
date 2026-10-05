@@ -48,6 +48,7 @@ struct ConversationPage: View {
     @State var statusExpanded = false
     @State private var draft = ""
     @State private var decisionPulse = 0
+    @State private var showTrajectory = false
     var draftDirectory: URL?
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -63,6 +64,9 @@ struct ConversationPage: View {
             page.transaction { $0.disablesAnimations = true }
         } else {
             page
+                .navigationDestination(isPresented: $showTrajectory) {
+                    TrajectoryPage(messages: model.messages)
+                }
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
         }
@@ -205,8 +209,21 @@ struct ConversationPage: View {
             }
             .accessibilityLabel(copy.format(.diffBadge, model.added ?? 0, model.deleted ?? 0))
             Menu {
-                Button(copy.text(.menuLater)) {}
-                    .disabled(true)
+                Section(copy.text(.menuView)) {
+                    Button(copy.text(.menuChanges)) {}
+                    Button(copy.text(.menuFiles)) {}
+                    Button(copy.text(.menuTrajectory)) { showTrajectory = true }
+                    Button(copy.text(.menuAgents)) {}
+                    Button(copy.text(.menuUsage)) {}
+                    Button(copy.text(.menuPreview)) {}
+                }
+                Section(copy.text(.menuActions)) {
+                    Button(copy.text(.menuGoal)) {}
+                    Button(copy.text(.menuSchedule)) {}
+                    Button(copy.text(.menuRename)) {}
+                    Button(copy.text(.menuFork)) {}
+                    Button(copy.text(.menuShare)) {}
+                }
             } label: {
                 Image(systemName: "ellipsis")
             }

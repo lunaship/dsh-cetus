@@ -4700,6 +4700,153 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting for approval" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "等你批准" } }
       }
+    },
+    "chat.menuActions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Actions" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "操作" } }
+      }
+    },
+    "chat.menuAgents" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sub-agents" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "子代理" } }
+      }
+    },
+    "chat.menuChanges" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Changes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "改动" } }
+      }
+    },
+    "chat.menuFiles" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Files" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文件" } }
+      }
+    },
+    "chat.menuFork" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fork" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分叉" } }
+      }
+    },
+    "chat.menuGoal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Goal" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "目标" } }
+      }
+    },
+    "chat.menuPreview" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preview" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "预览" } }
+      }
+    },
+    "chat.menuRename" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rename" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重命名" } }
+      }
+    },
+    "chat.menuSchedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Schedules" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "定时任务" } }
+      }
+    },
+    "chat.menuShare" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享" } }
+      }
+    },
+    "chat.menuTrajectory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Trajectory" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "轨迹" } }
+      }
+    },
+    "chat.menuUsage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Usage" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "用量" } }
+      }
+    },
+    "chat.menuView" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看" } }
+      }
+    },
+    "chat.trajectoryAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全部" } }
+      }
+    },
+    "chat.trajectoryAssistant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Assistant" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "助手" } }
+      }
+    },
+    "chat.trajectoryEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing matches" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有匹配" } }
+      }
+    },
+    "chat.trajectorySearch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索" } }
+      }
+    },
+    "chat.trajectoryTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Trajectory" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "轨迹" } }
+      }
+    },
+    "chat.trajectoryTool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tools" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "工具" } }
+      }
+    },
+    "chat.trajectoryTurn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn %d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "第 %d 轮" } }
+      }
+    },
+    "chat.trajectoryUser" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你" } }
+      }
     }
   },
 

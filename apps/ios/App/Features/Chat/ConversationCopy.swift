@@ -90,6 +90,27 @@ enum ChatText: String {
     case waitApproval
     case waitAnswer
     case question
+    case menuView
+    case menuActions
+    case menuChanges
+    case menuFiles
+    case menuTrajectory
+    case menuAgents
+    case menuUsage
+    case menuPreview
+    case menuGoal
+    case menuSchedule
+    case menuRename
+    case menuFork
+    case menuShare
+    case trajectoryTitle
+    case trajectorySearch
+    case trajectoryAll
+    case trajectoryUser
+    case trajectoryAssistant
+    case trajectoryTool
+    case trajectoryEmpty
+    case trajectoryTurn
 
     var fallback: String {
         switch self {
@@ -178,6 +199,27 @@ enum ChatText: String {
         case .waitApproval: "Waiting for approval"
         case .waitAnswer: "Waiting for an answer"
         case .question: "Question"
+        case .menuView: "View"
+        case .menuActions: "Actions"
+        case .menuChanges: "Changes"
+        case .menuFiles: "Files"
+        case .menuTrajectory: "Trajectory"
+        case .menuAgents: "Sub-agents"
+        case .menuUsage: "Usage"
+        case .menuPreview: "Preview"
+        case .menuGoal: "Goal"
+        case .menuSchedule: "Schedules"
+        case .menuRename: "Rename"
+        case .menuFork: "Fork"
+        case .menuShare: "Share"
+        case .trajectoryTitle: "Trajectory"
+        case .trajectorySearch: "Search"
+        case .trajectoryAll: "All"
+        case .trajectoryUser: "You"
+        case .trajectoryAssistant: "Assistant"
+        case .trajectoryTool: "Tools"
+        case .trajectoryEmpty: "Nothing matches"
+        case .trajectoryTurn: "Turn %d"
         }
     }
 }
