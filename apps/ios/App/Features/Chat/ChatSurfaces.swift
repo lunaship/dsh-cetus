@@ -98,7 +98,7 @@ struct ChatSurfaceScreen: View {
     ]
 
     static let sampleSchedules = [
-        ScheduleTask(id: "daily", sessionId: "s1", title: "早报", prompt: "汇总失败", kind: "daily", time: "09:00"),
+        ScheduleTask(id: "daily", sessionId: "s1", title: "早报", prompt: "汇总失败", kind: "daily", time: "09:00")
     ]
 }
 
@@ -113,10 +113,11 @@ struct SlashPaletteScreen: View {
             ConversationBar(
                 decision: nil, draft: draft, copy: copy, onDraft: { _ in }, onSend: {}, onSecondary: {},
                 onPrimary: {}, solidSnapshot: solid, suggestions: slashSuggestions(draft: draft, copy: copy),
-                onSuggestion: { _ in })
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
-                .fixedSize(horizontal: false, vertical: true)
+                onSuggestion: { _ in }
+            )
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DLColor.background)
@@ -212,7 +213,7 @@ struct ModelSheet: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: effort) { _, new in
-                        if let current { onSelect(current, new) }
+                        onSelect(current, new)
                     }
                 }
             }
@@ -486,7 +487,8 @@ struct SchedulePage: View {
         .navigationTitle(copy.text(.scheduleTitle))
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
-            copy.text(.deleteTitle), isPresented: Binding(
+            copy.text(.deleteTitle),
+            isPresented: Binding(
                 get: { pendingDelete != nil },
                 set: { if !$0 { pendingDelete = nil } }
             ),
