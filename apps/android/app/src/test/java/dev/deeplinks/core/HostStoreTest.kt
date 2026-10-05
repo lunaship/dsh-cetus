@@ -2,6 +2,7 @@ package dev.deeplinks.core
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -147,6 +148,10 @@ class HostStoreTest {
         assertEquals(mini, hosts.resolveHost("客厅", null))
         assertEquals(mini, hosts.resolveHost(null, mini.baseUrl))
         assertEquals(mac, hosts.resolveHost(null, null))
+        assertNull(hosts.resolveHostStrict("没有这台", "https://203.0.113.9:18640"))
+        assertNull(hosts.resolveHostStrict(null, null))
+        assertEquals(mini, hosts.resolveHostStrict("客厅", "https://203.0.113.9:18640"))
+        assertEquals(mini, hosts.resolveHostStrict(null, mini.baseUrl))
     }
 
     @Test
