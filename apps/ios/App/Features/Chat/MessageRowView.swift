@@ -53,6 +53,11 @@ struct MessageRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
+        .contextMenu {
+            if let onSelectText = chrome.onSelectText {
+                Button(chrome.copy.text(.selectText)) { onSelectText(block.markdown) }
+            }
+        }
     }
 
     @ViewBuilder private func markdown(_ block: MarkdownBlock) -> some View {

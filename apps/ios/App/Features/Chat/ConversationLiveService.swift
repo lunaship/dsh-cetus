@@ -105,6 +105,106 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    func models(sessionID: String) async throws -> SessionModelsResponse {
+        let http = try await connect()
+        do {
+            return try await http.get(
+                SessionModelsResponse.self, path: "/dsh-link/mobile/models", query: ["sessionId": sessionID])
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func selectModel(sessionID: String, provider: String, model: String, effort: String?) async throws {
+        let http = try await connect()
+        do {
+            _ = try await http.postJSON(
+                path: try sessionPath(sessionID, "/model"),
+                json: ModelBody(provider: provider, model: model, reasoningEffort: effort))
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func setPermission(sessionID: String, preset: String) async throws {
+        let http = try await connect()
+        do {
+            _ = try await http.postJSON(
+                path: try sessionPath(sessionID, "/permission"), json: PresetBody(preset: preset))
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func renameSession(sessionID: String, title: String) async throws {
+        let http = try await connect()
+        do {
+            _ = try await http.postJSON(path: try sessionPath(sessionID, "/rename"), json: TitleBody(title: title))
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func forkSession(sessionID: String) async throws -> String? {
+        let http = try await connect()
+        do {
+            let response = try await http.post(
+                ForkBodyResponse.self, path: try sessionPath(sessionID, "/fork"), json: EmptyJSON())
+            return response.sessionId
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func schedules(sessionID: String, all: Bool) async throws -> [ScheduleTask] {
+        let http = try await connect()
+        do {
+            let response =
+                if all {
+                    try await http.get(ScheduleListResponse.self, path: "/dsh-link/mobile/schedules")
+                } else {
+                    try await http.get(ScheduleListResponse.self, path: try sessionPath(sessionID, "/schedules"))
+                }
+            return response.items ?? []
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func editGoal(sessionID: String, refID: String, revision: Int, objective: String, rounds: Int) async throws {
+        let http = try await connect()
+        let body = GoalEditBody(
+            ref: GoalRefBody(id: refID, revision: revision), objective: objective, maxGoalRounds: rounds)
+        do {
+            _ = try await http.postJSON(path: try sessionPath(sessionID, "/goal/edit"), json: body)
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func clearGoal(sessionID: String, refID: String, revision: Int) async throws {
+        let http = try await connect()
+        do {
+            _ = try await http.postJSON(
+                path: try sessionPath(sessionID, "/goal/clear"),
+                json: GoalClearBody(ref: GoalRefBody(id: refID, revision: revision)))
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func deleteSchedule(sessionID: String, scheduleID: String) async throws {
+        let http = try await connect()
+        guard !scheduleID.isEmpty, scheduleID.rangeOfCharacter(from: CharacterSet(charactersIn: "/?#")) == nil else {
+            throw ConversationServiceError.failed
+        }
+        do {
+            _ = try await http.delete(path: try sessionPath(sessionID, "/schedules/\(scheduleID)"))
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
     private func connect() async throws -> HostClient {
         if let client { return client }
         guard let host = await store.get(hostId: hostID) else { throw ConversationServiceError.missingHost }
@@ -243,4 +343,39 @@ private struct QuestionBody: Encodable {
 
 private struct QuestionAnswer: Encodable {
     var text: String
+}
+
+private struct EmptyJSON: Encodable {}
+
+private struct TitleBody: Encodable {
+    var title: String
+}
+
+private struct PresetBody: Encodable {
+    var preset: String
+}
+
+private struct ModelBody: Encodable {
+    var provider: String
+    var model: String
+    var reasoningEffort: String?
+}
+
+private struct ForkBodyResponse: Decodable {
+    var sessionId: String?
+}
+
+private struct GoalRefBody: Encodable {
+    var id: String
+    var revision: Int
+}
+
+private struct GoalEditBody: Encodable {
+    var ref: GoalRefBody
+    var objective: String
+    var maxGoalRounds: Int
+}
+
+private struct GoalClearBody: Encodable {
+    var ref: GoalRefBody
 }

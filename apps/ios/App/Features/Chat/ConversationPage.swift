@@ -3,13 +3,20 @@ import DLModels
 import DLNet
 import DLSecurity
 import DLUI
+import PhotosUI
 import SwiftUI
+import UIKit
 
 struct ConversationFlowView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: ConversationModel
+    var sessions: [SessionSummary] = []
 
-    init(hostID: String, sessionID: String, seed: ConversationSeed, model: ConversationModel? = nil) {
+    init(
+        hostID: String, sessionID: String, seed: ConversationSeed, sessions: [SessionSummary] = [],
+        model: ConversationModel? = nil
+    ) {
+        self.sessions = sessions
         if let model {
             _model = State(initialValue: model)
         } else {
@@ -21,7 +28,7 @@ struct ConversationFlowView: View {
     }
 
     var body: some View {
-        ConversationPage(model: model)
+        ConversationPage(model: model, sessions: sessions)
             .onChange(of: scenePhase) { _, phase in
                 let mapped: AppPhase =
                     switch phase {
@@ -36,6 +43,7 @@ struct ConversationFlowView: View {
 
 struct ConversationPage: View {
     @Bindable var model: ConversationModel
+    var sessions: [SessionSummary] = []
     /// Screenshot path: no `.task`, no stream, no display link, no web view, no share sheet.
     var staticSnapshot = false
     var pinsToTail = false
@@ -49,7 +57,26 @@ struct ConversationPage: View {
     @State private var draft = ""
     @State private var decisionPulse = 0
     @State private var showTrajectory = false
+    @State private var showAgents = false
+    @State private var showSchedule = false
+    @State private var showSelectText = false
+    @State private var sheet: ChatSurface?
+    @State private var renamePresented = false
+    @State private var renameText = ""
+    @State private var confirmFull = false
+    @State private var showCamera = false
+    @State private var showPhotos = false
+    @State private var photo: PhotosPickerItem?
+    @State private var selectedText = ""
+    @State private var permission = PermissionPreset.workspaceWrite
+    @State private var modelRowsLive: [ModelRow] = []
+    @State private var selectedModelID = ""
+    @State private var effort = ""
+    @State private var contextPercent: Int?
+    @State private var schedules: [ScheduleTask] = []
+    @State private var scope = ScheduleScope.session
     var draftDirectory: URL?
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -67,8 +94,45 @@ struct ConversationPage: View {
                 .navigationDestination(isPresented: $showTrajectory) {
                     TrajectoryPage(messages: model.messages)
                 }
+                .navigationDestination(isPresented: $showAgents) {
+                    SubagentPage(nodes: flattenSubagents(sessions: sessions, rootID: model.sessionID), copy: copy)
+                }
+                .navigationDestination(isPresented: $showSchedule) {
+                    SchedulePage(items: schedules, scope: scope, sessionID: model.sessionID, copy: copy) { task in
+                        Task { await model.serviceDeleteSchedule(task.id) }
+                        schedules.removeAll { $0.id == task.id }
+                    }
+                }
+                .navigationDestination(isPresented: $showSelectText) {
+                    SelectTextPage(text: selectedText, copy: copy)
+                }
+                .sheet(item: $sheet) { item in
+                    NavigationStack { sheetPage(item, copy: copy) }
+                }
+                .alert(copy.text(.renameTitle), isPresented: $renamePresented) {
+                    TextField(copy.text(.renameField), text: $renameText)
+                    Button(copy.text(.cancel), role: .cancel) {}
+                    Button(copy.text(.save)) { Task { try? await model.serviceRename(renameText) } }
+                }
+                .confirmationDialog(
+                    copy.text(.permConfirmTitle), isPresented: $confirmFull, titleVisibility: .visible
+                ) {
+                    Button(copy.text(.permEnable), role: .destructive) {
+                        permission = .fullAccess
+                        Task { await model.servicePermission(PermissionPreset.fullAccess.rawValue) }
+                    }
+                    Button(copy.text(.cancel), role: .cancel) {}
+                } message: {
+                    Text(copy.text(.permConfirmBody))
+                }
+                .photosPicker(isPresented: $showPhotos, selection: $photo, matching: .images)
+                .sheet(isPresented: $showCamera) { CameraCapture() }
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
+                .onChange(of: sheet) { _, item in
+                    guard let item else { return }
+                    Task { await loadSheet(item) }
+                }
         }
     }
 
@@ -95,7 +159,12 @@ struct ConversationPage: View {
                         onSend: { Task { await send(copy) } },
                         onSecondary: { Task { await decide(allow: false) } },
                         onPrimary: { Task { await decide(allow: true) } },
-                        solidSnapshot: staticSnapshot
+                        solidSnapshot: staticSnapshot,
+                        suggestions: decision == nil ? slashSuggestions(draft: draft, copy: copy) : [],
+                        onSuggestion: { pickSlash($0, copy: copy) },
+                        showsAttach: !staticSnapshot && decision == nil,
+                        attachTitle: copy.text(.attachTitle),
+                        onAttach: { sheet = .attach }
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
@@ -137,7 +206,13 @@ struct ConversationPage: View {
                         onRegenerate: { model.regenerate($0) },
                         onSuggest: { model.suggest($0) },
                         onViewChanges: { model.viewChanges(seq: $0) },
-                        onLoadImage: { url in Task { await model.loadImage(url) } }),
+                        onLoadImage: { url in Task { await model.loadImage(url) } },
+                        onSelectText: staticSnapshot
+                            ? nil
+                            : { text in
+                                selectedText = text
+                                showSelectText = true
+                            }),
                     pinsToTail: staticSnapshot ? pinsToTail : true,
                     pumpsFrames: !staticSnapshot,
                     onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot
@@ -154,6 +229,10 @@ struct ConversationPage: View {
         _ = copy
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !staticSnapshot else { return }
+        if isDangerPermissionCommand(text) {
+            confirmFull = true
+            return
+        }
         do {
             try await model.serviceSend(text)
             draft = ""
@@ -178,6 +257,102 @@ struct ConversationPage: View {
             }
             decisionPulse += 1
         } catch {}
+    }
+
+    @ViewBuilder private func sheetPage(_ item: ChatSurface, copy: ConversationCopy) -> some View {
+        switch item {
+        case .model:
+            ModelSheet(
+                rows: modelRowsLive, selectedID: selectedModelID, effort: effort, contextPercent: contextPercent,
+                copy: copy
+            ) { row, next in
+                selectedModelID = row.id
+                if let next { effort = next }
+                Task { await model.serviceSelectModel(provider: row.provider, model: row.id, effort: next) }
+            }
+        case .permission:
+            PermissionSheet(selected: permission, copy: copy) { preset in
+                if preset.needsConfirmation {
+                    confirmFull = true
+                } else {
+                    permission = preset
+                    Task { await model.servicePermission(preset.rawValue) }
+                }
+            }
+        case .attach:
+            AttachSheet(
+                copy: copy,
+                cameraAvailable: UIImagePickerController.isSourceTypeAvailable(.camera),
+                onCamera: {
+                    sheet = nil
+                    showCamera = true
+                },
+                onPhotos: {
+                    sheet = nil
+                    showPhotos = true
+                })
+        case .usage:
+            UsageSheet(
+                figures: usageFigures(
+                    usage: model.stats?.tokenUsage, stats: model.stats?.sessionStats,
+                    pressure: model.stats?.contextPressure, breakdown: model.stats?.contextBreakdown),
+                copy: copy)
+        case .share:
+            ShareSheet(title: displayTitle(copy), transcript: transcript(copy), copy: copy)
+        case .goal:
+            GoalEditSheet(
+                text: model.status.goal?.objective ?? "", rounds: model.status.goal?.maxGoalRounds ?? 8, copy: copy,
+                onSave: { text, rounds in Task { await model.serviceEditGoal(objective: text, rounds: rounds) } },
+                onClear: { Task { await model.serviceClearGoal() } })
+        default:
+            EmptyView()
+        }
+    }
+
+    private func loadSheet(_ item: ChatSurface) async {
+        switch item {
+        case .model:
+            let rows = await model.serviceModels()
+            modelRowsLive = rows
+            if selectedModelID.isEmpty { selectedModelID = rows.first?.id ?? "" }
+            if effort.isEmpty { effort = rows.first?.defaultEffort ?? rows.first?.efforts.first ?? "" }
+            if let pressure = model.stats?.contextPressure {
+                contextPercent = contextUsedPercent(
+                    used: pressure.projectedTokens ?? pressure.pressureTokens ?? 0, window: pressure.contextWindow ?? 0)
+            }
+        default:
+            break
+        }
+    }
+
+    private func pickSlash(_ trigger: String, copy: ConversationCopy) {
+        let entries = paletteEntries(
+            title: { paletteCopy($0, copy: copy) }, detail: { paletteCopy($0, copy: copy) })
+        guard let command = entries.first(where: { $0.command.trigger == trigger })?.command else { return }
+        switch resolvedPick(command) {
+        case .insert(let text):
+            draft = text
+        case .submit(let text):
+            draft = text
+            Task { await send(copy) }
+        case .local(let kind):
+            switch kind {
+            case .model: sheet = .model
+            case .permission: sheet = .permission
+            case .trace: showTrajectory = true
+            case .newSession, .search: dismiss()
+            case .chat, .settings: break
+            }
+        }
+    }
+
+    private func transcript(_ copy: ConversationCopy) -> String {
+        var lines: [(speaker: String, text: String)] = []
+        for message in model.messages {
+            guard let text = message.text, !text.isEmpty else { continue }
+            lines.append((speaker: message.role ?? "", text: text))
+        }
+        return shareTranscript(title: displayTitle(copy), lines: lines)
     }
 
     private func displayTitle(_ copy: ConversationCopy) -> String {
@@ -213,16 +388,24 @@ struct ConversationPage: View {
                     Button(copy.text(.menuChanges)) {}
                     Button(copy.text(.menuFiles)) {}
                     Button(copy.text(.menuTrajectory)) { showTrajectory = true }
-                    Button(copy.text(.menuAgents)) {}
-                    Button(copy.text(.menuUsage)) {}
+                    Button(copy.text(.menuAgents)) { showAgents = true }
+                    Button(copy.text(.menuUsage)) { sheet = .usage }
                     Button(copy.text(.menuPreview)) {}
                 }
                 Section(copy.text(.menuActions)) {
-                    Button(copy.text(.menuGoal)) {}
-                    Button(copy.text(.menuSchedule)) {}
-                    Button(copy.text(.menuRename)) {}
-                    Button(copy.text(.menuFork)) {}
-                    Button(copy.text(.menuShare)) {}
+                    Button(copy.text(.menuGoal)) { sheet = .goal }
+                    Button(copy.text(.menuSchedule)) {
+                        Task {
+                            schedules = await model.serviceSchedules(all: false)
+                            showSchedule = true
+                        }
+                    }
+                    Button(copy.text(.menuRename)) {
+                        renameText = displayTitle(copy)
+                        renamePresented = true
+                    }
+                    Button(copy.text(.menuFork)) { Task { _ = try? await model.serviceFork() } }
+                    Button(copy.text(.menuShare)) { sheet = .share }
                 }
             } label: {
                 Image(systemName: "ellipsis")
