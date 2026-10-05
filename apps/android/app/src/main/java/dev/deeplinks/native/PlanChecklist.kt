@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
@@ -122,6 +123,7 @@ private fun PlanChecklistRow(item: MobileTodoItem) {
             color = if (kind == PlanItemKind.Done) Dsh.labelSecondary else Dsh.labelPrimary,
             style = DshType.supporting,
             fontWeight = if (kind == PlanItemKind.Active) FontWeight.SemiBold else null,
+            textDecoration = if (kind == PlanItemKind.Done) TextDecoration.LineThrough else null,
             modifier = Modifier.weight(1f),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

@@ -2124,6 +2124,7 @@ fun WorkspaceScreen(
             val contentUnderTop by remember { derivedStateOf { listState.canScrollBackward } }
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
+            var goalDockExpanded by remember(currentSessionId) { mutableStateOf(false) }
             var showSchedules by remember { mutableStateOf(false) }
             var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
@@ -2181,6 +2182,11 @@ fun WorkspaceScreen(
                 onFork = { currentSessionId?.let { forkNow(it) } },
                 onShare = { showShareSheet = true },
             )
+            val planItems = remember(messages) { latestPlanItems(messages) }
+            // 目标 + 计划：对话页停靠在输入框上沿；顶部状态槽只留断线 / 预览
+            val dockGoal = goalStatus(workspaceViewModel.sessionControl.goal.value, workspaceViewModel.currentGoalSummary.value, planItems, running)
+                .takeIf { viewMode == "chat" && currentSessionId != null }
+            if (dockGoal == null && goalDockExpanded) goalDockExpanded = false
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
             Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -2229,18 +2235,11 @@ fun WorkspaceScreen(
                 everConnected = streamEverConnected,
                 quietElapsed = streamQuietElapsed,
             )
-            val inChat = viewMode == "chat" && currentSessionId != null
-            val previewPorts = rememberPreviewDetections(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
-            val planItems = remember(messages) { latestPlanItems(messages) }
             SessionStatusSlot(
                 status = sessionStatus(
                     stream = streamBanner,
                     unreachableHost = hostLabel.takeIf { !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty() },
-                    goal = workspaceViewModel.sessionControl.goal.value.takeIf { inChat },
-                    goalSummary = workspaceViewModel.currentGoalSummary.value.takeIf { inChat },
-                    plan = if (inChat) planItems else emptyList(),
-                    running = running,
-                    previewPorts = previewPorts,
+                    previewPorts = rememberPreviewDetections(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat"),
                     onRetryStream = { streamClient?.reconnect() },
                     onRetryHost = { refreshSessions(reportFailure = true) },
                     onOpenDevice = { onOpenDevice(null) },
@@ -2466,6 +2465,7 @@ fun WorkspaceScreen(
             }
             } // Box 结束（消息流 + 悬浮层）
 
+            GoalDockScrim(goalDockExpanded) { goalDockExpanded = false }
             // ===== 底部 chrome 叠层：命令候选 + 输入区（命令候选最多长到顶部 chrome 下沿） =====
             Column(Modifier.align(Alignment.BottomCenter).padding(top = topChromeDp).overlayBottomChrome(chrome)) {
             // 命令候选（输入以 / 开头时，DSH 命令/技能/子智能体/快捷操作）—— 悬浮在输入区上方
@@ -2549,6 +2549,7 @@ fun WorkspaceScreen(
                 } else {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
+                    ChatGoalDock(dockGoal, workspaceViewModel.sessionControl, goalDockExpanded, { goalDockExpanded = it }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
                     QueuedPromptsStrip(workspaceViewModel.sessionControl, { restored -> inputText = if (inputText.isBlank()) restored else inputText + "\n" + restored }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
                     // 建议行（4.3）：继续 / 复核 / 查看改动 (N)；离线时此处显示「电脑离线」灰字。
                     // 快捷胶囊只预填、不发送（L8）。
