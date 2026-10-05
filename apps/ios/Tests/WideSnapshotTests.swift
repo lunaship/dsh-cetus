@@ -37,6 +37,19 @@ import XCTest
     }
 
     private func shot(_ scene: String, size: CGSize, regular: Bool, changes: Bool) {
+        render(scene, size: size, regular: regular, changes: changes, named: "default")
+        render(
+            scene, size: size, regular: regular, changes: changes, named: "reduce-transparency",
+            reduceTransparency: true)
+        render(
+            scene, size: size, regular: regular, changes: changes, named: "increase-contrast",
+            increaseContrast: true)
+    }
+
+    private func render(
+        _ scene: String, size: CGSize, regular: Bool, changes: Bool, named: String,
+        reduceTransparency: Bool = false, increaseContrast: Bool = false
+    ) {
         let model = inbox()
         if regular { model.selectedSessionID = "approve" }
         let page = InboxPage(
@@ -49,25 +62,31 @@ import XCTest
         .environment(\.colorScheme, .light)
         .environment(\.dynamicTypeSize, DynamicTypeSize.large)
         .environment(\.horizontalSizeClass, regular ? .regular : .compact)
+        .environment(\._accessibilityReduceTransparency, reduceTransparency)
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
-        let image = wideImage(page, size: size, regular: regular)
+        let image = wideImage(page, size: size, regular: regular, increaseContrast: increaseContrast)
         // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
         // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
         assertSnapshot(
             of: image,
             as: .image(precision: 0.995, perceptualPrecision: 0.99),
-            named: "default",
+            named: named,
             testName: "Snapshot_\(scene)_light_zh"
         )
     }
 
-    private func wideImage<V: View>(_ view: V, size: CGSize, regular: Bool) -> UIImage {
+    private func wideImage<V: View>(
+        _ view: V, size: CGSize, regular: Bool, increaseContrast: Bool = false
+    ) -> UIImage {
         let host = UIHostingController(rootView: view)
         host.view.backgroundColor = .systemBackground
         host.overrideUserInterfaceStyle = .light
         host.traitOverrides.userInterfaceStyle = .light
         host.traitOverrides.preferredContentSizeCategory = .large
+        if increaseContrast {
+            host.traitOverrides.accessibilityContrast = .high
+        }
         host.traitOverrides.userInterfaceIdiom = .pad
         host.traitOverrides.horizontalSizeClass = regular ? .regular : .compact
         host.safeAreaRegions = []
@@ -85,7 +104,7 @@ import XCTest
         window.frame = CGRect(origin: .zero, size: size)
         window.overrideUserInterfaceStyle = .light
         window.traitOverrides.userInterfaceStyle = .light
-        window.traitOverrides.accessibilityContrast = .unspecified
+        window.traitOverrides.accessibilityContrast = increaseContrast ? .high : .unspecified
         window.traitOverrides.preferredContentSizeCategory = .large
         window.rootViewController = host
         window.isHidden = false
