@@ -33,6 +33,7 @@ import dev.deeplinks.native.ui.v4.DlTopBarAction
 import dev.deeplinks.native.ui.v4.DlTopBarNav
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ import dev.deeplinks.core.previewCopied
 import dev.deeplinks.core.previewLimit
 import dev.deeplinks.core.previewRefresh
 import dev.deeplinks.core.previewTitle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
@@ -69,13 +71,15 @@ internal fun PreviewEntrySheet(client: MobileApiClient, host: Host, onDismiss: (
         try {
             items = withContext(Dispatchers.IO) { client.listPreviews() }
             error = null
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             error = e.message
         }
     }
     val current = open
     if (current != null) {
-        PreviewScreen(current.title, current.url) {
+        PreviewScreen(current.title, current.url, current.proxy) {
             current.proxy.close()
             open = null
             onDismiss()
@@ -102,7 +106,13 @@ internal fun PreviewEntrySheet(client: MobileApiClient, host: Host, onDismiss: (
                                 exchange = { hostPreviewExchange(host, it) },
                                 webSocket = { forward, socket, accept -> hostPreviewWebSocket(host, forward, socket, accept) },
                             )
-                            proxy.start()
+                            try {
+                                proxy.start()
+                            } catch (e: Exception) {
+                                proxy.close()
+                                error = e.message?.takeIf { it.isNotBlank() } ?: L.previewEmptyTitle
+                                return@DlListRow
+                            }
                             open = OpenPreview("localhost:${item.port}", proxy, proxy.localUrl(item.previewId))
                         },
                     )
@@ -135,7 +145,10 @@ internal fun PreviewEmptyState(modifier: Modifier = Modifier) {
 private data class OpenPreview(val title: String, val proxy: PreviewLocalProxy, val url: String)
 
 @Composable
-private fun PreviewScreen(title: String, url: String, onClose: () -> Unit) {
+private fun PreviewScreen(title: String, url: String, proxy: PreviewLocalProxy, onClose: () -> Unit) {
+    DisposableEffect(proxy) {
+        onDispose { proxy.close() }
+    }
     val context = LocalContext.current
     val port = remember(url) { Uri.parse(url).port }
     var webView by remember { mutableStateOf<WebView?>(null) }
