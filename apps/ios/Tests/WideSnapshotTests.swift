@@ -90,9 +90,18 @@ import XCTest
 
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
-        CATransaction.flush()
-        wideStream(in: host)?.layoutForStaticSnapshot(canvas: size)
-        wideStream(in: host.view)?.layoutForStaticSnapshot(canvas: size)
+        // Split columns get their frames on a later turn. Measuring the message
+        // stream before that stretches it to the whole window and covers the sidebar.
+        for _ in 0..<4 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+            host.view.layoutIfNeeded()
+            CATransaction.flush()
+        }
+        if let stream = wideStream(in: host) ?? wideStream(in: host.view) {
+            let bounds = stream.view.bounds.size
+            let canvas = bounds.width > 1 && bounds.height > 1 ? bounds : size
+            stream.layoutForStaticSnapshot(canvas: canvas)
+        }
         CATransaction.flush()
 
         let format = UIGraphicsImageRendererFormat()

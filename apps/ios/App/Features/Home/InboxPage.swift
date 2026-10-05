@@ -124,7 +124,7 @@ struct InboxPage: View {
     private func wide(_ copy: InboxCopy) -> some View {
         let split = NavigationSplitView(columnVisibility: $columnVisibility) {
             wideSidebar(copy)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 320, max: 420)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 260, max: 360)
         } detail: {
             NavigationStack(path: $model.path) {
                 wideDetail(copy)
