@@ -84,7 +84,7 @@
 - 可设置的透明度键是 `\._accessibilityReduceTransparency`。两张辅助功能变体都只在浅色中文默认字号，`named` 分别为 `reduce-transparency` 与 `increase-contrast`，`testName` 仍是 `Snapshot_<scene>_light_zh`。颜色同时设 `environment(\.colorScheme)` 与 trait `userInterfaceStyle`；大字号用 `environment(\.dynamicTypeSize, .accessibility3)` 与 `preferredContentSizeCategory: .accessibilityExtraLarge`。
 - `apps/ios/scripts/check-snapshot-matrix.mjs` 检查 Swift 声明，不检查 PNG。缺声明时非零退出并列清单。缺的 CI 基线不是这个本地脚本的失败，不要靠创建 PNG 修。
 - 基线只由 `ios-regen-screenshots.yml` 生成，只在 CI；禁止提交本地基线。
-- Review、Settings、Wide 保持 precision `0.995`：玻璃导航栏会差 1–2 个色阶。
+- Review 与 Wide 使用 `precision: 0.995, perceptualPrecision: 0.99`：玻璃层每次有大量像素差 1–2 个色阶，单靠字节比例会失败；感知比较放过这种色差，缺一行或一列内容仍会失败。
 
 ## 11. 禁止清单
 
