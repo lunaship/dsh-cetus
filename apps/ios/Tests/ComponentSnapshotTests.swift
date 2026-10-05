@@ -178,7 +178,7 @@ final class ComponentSnapshotTests: XCTestCase {
             UITraitCollection(userInterfaceStyle: appearance),
             UITraitCollection(
                 preferredContentSizeCategory: large ? .accessibilityExtraLarge : .large),
-            UITraitCollection(typesettingLanguage: language == "en" ? "en" : "zh-Hans"),
+            UITraitCollection(typesettingLanguage: Locale.Language(identifier: language == "en" ? "en" : "zh-Hans")),
         ]
         if increaseContrast {
             traits.append(UITraitCollection(accessibilityContrast: .high))
@@ -202,7 +202,7 @@ final class ComponentSnapshotTests: XCTestCase {
             if #available(iOS 17.0, *) {
                 view.traitOverrides.userInterfaceStyle = traits.userInterfaceStyle
                 view.traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
-                view.traitOverrides.typesettingLanguage = language == "en" ? "en" : "zh-Hans"
+                view.traitOverrides.typesettingLanguage = Locale.Language(identifier: language == "en" ? "en" : "zh-Hans")
                 view.traitOverrides.accessibilityContrast = traits.accessibilityContrast
             }
         }
