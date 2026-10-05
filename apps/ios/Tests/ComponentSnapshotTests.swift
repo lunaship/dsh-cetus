@@ -202,7 +202,8 @@ final class ComponentSnapshotTests: XCTestCase {
             if #available(iOS 17.0, *) {
                 view.traitOverrides.userInterfaceStyle = traits.userInterfaceStyle
                 view.traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
-                view.traitOverrides.typesettingLanguage = Locale.Language(identifier: language == "en" ? "en" : "zh-Hans")
+                view.traitOverrides.typesettingLanguage = Locale.Language(
+                    identifier: language == "en" ? "en" : "zh-Hans")
                 view.traitOverrides.accessibilityContrast = traits.accessibilityContrast
             }
         }
