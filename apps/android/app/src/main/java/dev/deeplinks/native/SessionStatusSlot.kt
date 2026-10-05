@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.deeplinks.core.L
@@ -56,10 +60,10 @@ internal sealed interface SessionStatus {
 internal fun sessionStatus(
     stream: StreamBannerKind,
     unreachableHost: String?,
-    goal: SessionGoal?,
-    goalSummary: String?,
-    plan: List<MobileTodoItem>,
-    running: Boolean,
+    goal: SessionGoal? = null,
+    goalSummary: String? = null,
+    plan: List<MobileTodoItem> = emptyList(),
+    running: Boolean = false,
     previewPorts: List<Int>,
     onRetryStream: () -> Unit = {},
     onRetryHost: () -> Unit = {},
@@ -94,12 +98,25 @@ internal fun sessionStatus(
                 ),
             )
         }
-        // 没有结构化目标时，推断出的目标只在运行中显示，避免历史会话常驻一条旧目标
-        val summary = goalSummary?.takeIf { goal == null && running && it.isNotBlank() }
-        if (goal != null || plan.isNotEmpty() || summary != null) add(SessionStatus.Goal(goal, summary, plan))
+        goalStatus(goal, goalSummary, plan, running)?.let(::add)
         if (previewPorts.isNotEmpty()) add(SessionStatus.Preview(previewPorts))
     }
     return candidates.topStatus { it.kind }
+}
+
+/**
+ * 目标 + 计划合成一条；都没有时为空。对话页把它停靠在输入框上沿（[GoalStatusSlot]），
+ * 顶部状态槽只剩断线和预览。
+ */
+internal fun goalStatus(
+    goal: SessionGoal?,
+    goalSummary: String?,
+    plan: List<MobileTodoItem>,
+    running: Boolean,
+): SessionStatus.Goal? {
+    // 没有结构化目标时，推断出的目标只在运行中显示，避免历史会话常驻一条旧目标
+    val summary = goalSummary?.takeIf { goal == null && running && it.isNotBlank() }
+    return if (goal != null || plan.isNotEmpty() || summary != null) SessionStatus.Goal(goal, summary, plan) else null
 }
 
 /** 顶栏下方的状态槽。[status] 为空时不占位。 */
@@ -112,7 +129,10 @@ internal fun SessionStatusSlot(
     when (status) {
         null -> Unit
         is SessionStatus.Offline -> OfflineStatusSlot(status, modifier)
-        is SessionStatus.Goal -> SessionGoalStatus(status.goal, status.summary, status.plan, control, modifier)
+        is SessionStatus.Goal -> {
+            var expanded by remember(status.goal?.ref?.id) { mutableStateOf(false) }
+            SessionGoalStatus(status.goal, status.summary, status.plan, control, expanded, { expanded = it }, modifier)
+        }
         is SessionStatus.Preview -> PreviewStatusSlot(status, modifier)
     }
 }
