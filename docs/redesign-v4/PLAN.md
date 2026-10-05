@@ -311,6 +311,8 @@
 - 同一会话只显示一次，归档 / 删除 / 子会话过滤沿用现有逻辑。没有归属的会话进入「未分组」。
 - 收起状态按主机保存，收起后的工作区仍显示待处理 / 运行计数；离线可搜索和查看历史，新建及批准禁用。
 - 更新 HomeScreenshotTest 的场景源码；截图基线仍需通过 Linux `regen-screenshots.yml` 生成，本地不生成或提交基线。
-- 本次为本地可安装预览，保留 beta.31 版本号，不打 tag、不建 Release、不推送。
+- 本次先交付本地可安装预览，保留 beta.31 版本号，不打 tag、不建 Release；随后按用户要求通过 PR #107 同步到 GitHub main。
 
 验证结果：Debug / 签名 Release 构建、864 项 JVM 单元测试、lintDebug（0 errors）及截图场景源码编译通过。隔离 Android 35 模拟器的 3 项交互测试通过：展开状态跨页面保存、会话选择与工作区新建 / 搜索入口、审批及折叠提示、离线禁用。签名预览覆盖安装至小米 15（12:26:20），保留 beta.31 / versionCode 39；桌面 APK 与构建输出一致。未进行真机视觉验收或 Linux 截图基线更新。
+
+GitHub 截图基线：由 [Linux 工作流 37264115652](https://github.com/lunaship/dsh-links/actions/runs/37264115652) 在 `6728501` 生成，共 143 张；更新 15 张。首页 8 张对应 2.1 / 2.2 / 2.3 / 2.5–2.6，已检查浅色 / 深色布局、审批及离线状态；设置 7 张只有版本号 beta.27 → beta.31 的像素变化。同步 PR：[107](https://github.com/lunaship/dsh-links/pull/107)。
