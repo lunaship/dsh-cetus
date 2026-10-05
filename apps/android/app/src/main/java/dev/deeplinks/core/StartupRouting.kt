@@ -63,5 +63,13 @@ fun Intent.hasHostTarget(): Boolean =
  */
 fun List<Host>.resolveFromIntentStrict(intent: Intent): Host? {
     if (!intent.hasHostTarget()) return null
-    return resolveFromIntent(intent)
+    return resolveHostStrict(intent.getStringExtra(EXTRA_HOST_NAME), intent.getStringExtra(EXTRA_HOST_BASE_URL))
+}
+
+/** 名字和 URL 都对不上时返回 null，不落到列表第一台。 */
+internal fun List<Host>.resolveHostStrict(name: String?, baseUrl: String?): Host? {
+    val matched = resolveHost(name, baseUrl) ?: return null
+    val nameHit = !name.isNullOrBlank() && matched.name == name
+    val urlHit = !baseUrl.isNullOrBlank() && matched.baseUrl == baseUrl
+    return matched.takeIf { nameHit || urlHit }
 }

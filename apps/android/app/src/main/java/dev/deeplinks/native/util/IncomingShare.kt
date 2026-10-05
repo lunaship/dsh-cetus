@@ -57,6 +57,14 @@ fun acceptsShareImages(mimeType: String?): Boolean {
 /** 分享图片只接受 content:// EXTRA_STREAM；file:// / http(s):// 等一律拒绝。 */
 fun isContentUri(uri: String): Boolean = uri.trim().startsWith("content://", ignoreCase = true)
 
+/** 本 App 的 FileProvider 不是外部分享，拒绝再导回自己。非 content URI 返回 false。 */
+fun isForeignContentUri(uri: String, ownAuthority: String): Boolean {
+    val trimmed = uri.trim()
+    if (!isContentUri(trimmed)) return false
+    val authority = trimmed.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
+    return authority != ownAuthority
+}
+
 /**
  * 系统 Sharesheet → 会话草稿（对照 OpenClaw Android share-into-chat）。
  * 认 SEND / SEND_MULTIPLE；不认 VIEW / 任意 URI。

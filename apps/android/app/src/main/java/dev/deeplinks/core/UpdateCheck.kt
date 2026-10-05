@@ -72,9 +72,26 @@ fun shouldCheck(lastCheckedAt: Long, now: Long): Boolean {
     return now - lastCheckedAt >= DAY_MS
 }
 
+/**
+ * 更新链接只接受 github.com 上这个仓库的 https 地址。
+ * 用 [java.net.URI] 取 host / path：JVM 单测里的 android.net.Uri 是空实现。
+ */
+fun isGithubReleaseUrl(url: String): Boolean {
+    if (!url.startsWith("https://", ignoreCase = true)) return false
+    val uri = try {
+        java.net.URI(url)
+    } catch (_: Exception) {
+        return false
+    }
+    val host = uri.host ?: return false
+    if (!host.equals("github.com", ignoreCase = true)) return false
+    val path = uri.path ?: return false
+    return path.startsWith("/lunaship/dsh-links/")
+}
+
 fun newerRelease(currentVersionName: String, releases: List<AppRelease>): AppRelease? {
     return releases
-        .filter { it.htmlUrl.startsWith("https://") }
+        .filter { isGithubReleaseUrl(it.htmlUrl) }
         .filter { compareVersions(it.tagName, currentVersionName) > 0 }
         .maxWithOrNull { a, b -> compareVersions(a.tagName, b.tagName) }
 }
@@ -101,7 +118,7 @@ object UpdateCheckPrefs {
     fun cachedNewer(context: Context): AppRelease? {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val tag = prefs.getString(KEY_TAG, null)?.takeIf { it.isNotBlank() } ?: return null
-        val url = prefs.getString(KEY_URL, null)?.takeIf { it.startsWith("https://") } ?: return null
+        val url = prefs.getString(KEY_URL, null)?.takeIf { isGithubReleaseUrl(it) } ?: return null
         return AppRelease(tag, url, "")
     }
 

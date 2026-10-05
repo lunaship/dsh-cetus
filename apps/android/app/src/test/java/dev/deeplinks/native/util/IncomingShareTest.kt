@@ -256,6 +256,11 @@ class IncomingShareTest {
         assertFalse(isContentUri("https://example.com/x.jpg"))
         assertFalse(isContentUri("data:image/png;base64,AAAA"))
         assertFalse(isContentUri(""))
+        val own = "dev.deeplinks.fileprovider"
+        assertFalse(isForeignContentUri("content://$own/share/inbox.jpg", own))
+        assertTrue(isForeignContentUri("content://media/external/images/1", own))
+        assertFalse(isForeignContentUri("file:///sdcard/a.jpg", own))
+        assertFalse(isForeignContentUri("content://$own", own))
     }
 
     // ===== cache/share 累计配额（安全审查 P3-1） =====
