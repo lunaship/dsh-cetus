@@ -12,42 +12,84 @@ import XCTest
         }
     }
 
-    func testHome() { shot("7_1_settings") { home } }
-    func testComputer() { shot("7_2_computer") { detail(.computer) } }
-    func testDiagnostics() { shot("7_3_diagnostics") { detail(.diagnostics) } }
-    func testNotifications() { shot("7_4_notifications") { detail(.notifications) } }
-    func testAppearance() { shot("7_5_appearance") { detail(.appearance) } }
-    func testAbout() { shot("7_13_about") { detail(.about) } }
-    func testCrash() { shot("7_15_crash") { detail(.crash) } }
+    func testHome() { matrix("7_1_settings") { language in home(language) } }
+    func testComputer() { matrix("7_2_computer") { language in detail(.computer, language: language) } }
+    func testDiagnostics() { matrix("7_3_diagnostics") { language in detail(.diagnostics, language: language) } }
+    func testNotifications() { matrix("7_4_notifications") { language in detail(.notifications, language: language) } }
+    func testAppearance() { matrix("7_5_appearance") { language in detail(.appearance, language: language) } }
+    func testAbout() { matrix("7_13_about") { language in detail(.about, language: language) } }
+    func testCrash() { matrix("7_15_crash") { language in detail(.crash, language: language) } }
 
-    private func detail(_ page: SettingsPage) -> some View {
+    private func detail(_ page: SettingsPage, language: String) -> some View {
         NavigationStack { SettingsDetailPage(page: page) }
-            .environment(\.locale, Locale(identifier: "zh-Hans"))
+            .environment(\.locale, Locale(identifier: language))
             .transaction { $0.disablesAnimations = true }
     }
 
-    private var home: some View {
+    private func home(_ language: String) -> some View {
         NavigationStack {
             SettingsHomePage(computerName: "MacBook Pro", computerAddress: "192.0.2.10:18640", online: true)
         }
-        .environment(\.locale, Locale(identifier: "zh-Hans"))
+        .environment(\.locale, Locale(identifier: language))
         .transaction { $0.disablesAnimations = true }
     }
 
-    private func shot<V: View>(_ name: String, make: () -> V) {
-        let image = render(make())
-        assertSnapshot(of: image, as: .image, named: "default", testName: "Snapshot_\(name)_light_zh")
+    private func matrix<V: View>(_ scene: String, make: (String) -> V) {
+        for language in ["zh-Hans", "en"] {
+            for appearance in [UIUserInterfaceStyle.light, .dark] {
+                for large in [false, true] {
+                    shot(scene, appearance: appearance, language: language, large: large, make: { make(language) })
+                }
+            }
+        }
+        shot(
+            scene, appearance: .light, language: "zh-Hans", large: false, accessibility: .reduceTransparency,
+            make: { make("zh-Hans") })
+        shot(
+            scene, appearance: .light, language: "zh-Hans", large: false, accessibility: .increaseContrast,
+            make: { make("zh-Hans") })
     }
 
-    private func render<V: View>(_ view: V) -> UIImage {
+    private func shot<V: View>(
+        _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool,
+        accessibility: SettingsSnapshotAccessibility = .standard, make: () -> V
+    ) {
+        let image = render(
+            make(), appearance: appearance, language: language, large: large, accessibility: accessibility)
+        assertSnapshot(
+            of: image, as: .image(precision: 0.995), named: snapshotNamed(large: large, accessibility: accessibility),
+            testName: snapshotName(scene, appearance: appearance, language: language))
+    }
+
+    private func render<V: View>(
+        _ view: V, appearance: UIUserInterfaceStyle, language: String, large: Bool,
+        accessibility: SettingsSnapshotAccessibility
+    ) -> UIImage {
+        let styled =
+            view
+            .environment(\.colorScheme, appearance == .dark ? .dark : .light)
+            .environment(
+                \.dynamicTypeSize,
+                large ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large
+            )
+            .environment(
+                \._accessibilityReduceTransparency, accessibility == .reduceTransparency)
         let size = CGSize(width: 402, height: 874)
-        let host = UIHostingController(rootView: view)
+        let host = UIHostingController(rootView: styled)
+        host.overrideUserInterfaceStyle = appearance
+        host.traitOverrides.userInterfaceStyle = appearance
+        host.traitOverrides.preferredContentSizeCategory =
+            large ? .accessibilityExtraLarge : .large
+        if accessibility == .increaseContrast {
+            host.traitOverrides.accessibilityContrast = .high
+        }
         host.view.frame = CGRect(origin: .zero, size: size)
         host.view.backgroundColor = .systemBackground
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         guard let scene else { fatalError("settings snapshots need a window scene") }
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(origin: .zero, size: size)
+        window.overrideUserInterfaceStyle = appearance
         window.rootViewController = host
         window.isHidden = false
         window.makeKeyAndVisible()
@@ -63,4 +105,22 @@ import XCTest
             host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
     }
+
+    private func snapshotName(_ scene: String, appearance: UIUserInterfaceStyle, language: String) -> String {
+        "Snapshot_\(scene)_\(appearance == .dark ? "dark" : "light")_\(language == "en" ? "en" : "zh")"
+    }
+
+    private func snapshotNamed(large: Bool, accessibility: SettingsSnapshotAccessibility) -> String {
+        switch accessibility {
+        case .standard: large ? "large" : "default"
+        case .reduceTransparency: "reduce-transparency"
+        case .increaseContrast: "increase-contrast"
+        }
+    }
+}
+
+private enum SettingsSnapshotAccessibility {
+    case standard
+    case reduceTransparency
+    case increaseContrast
 }
