@@ -164,18 +164,17 @@ import XCTest
         window.isHidden = false
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
-        defer {
-            window.isHidden = true
-            window.rootViewController = nil
-            window.windowScene = nil
-            previousKey?.makeKey()
-        }
         let format = UIGraphicsImageRendererFormat()
         format.scale = 3
         format.opaque = true
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
             host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        window.isHidden = true
+        window.rootViewController = nil
+        window.windowScene = nil
+        previousKey?.makeKey()
+        return image
     }
 
     private func variantName(large: Bool, reduceTransparency: Bool, increaseContrast: Bool) -> String {
