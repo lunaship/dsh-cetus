@@ -449,6 +449,7 @@ struct SchedulePage: View {
         self.copy = copy
         self.onDelete = onDelete
         _scope = State(initialValue: scope)
+        _pendingDelete = State(initialValue: nil)
     }
 
     var body: some View {
