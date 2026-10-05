@@ -44,6 +44,7 @@ protocol ConversationServing: Sendable {
     func editGoal(sessionID: String, refID: String, revision: Int, objective: String, rounds: Int) async throws
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws
     func deleteSchedule(sessionID: String, scheduleID: String) async throws
+    func previewExchange(path: String) async -> PreviewHTTPResult
 }
 
 extension ConversationServing {
@@ -110,6 +111,10 @@ extension ConversationServing {
     func deleteSchedule(sessionID: String, scheduleID: String) async throws {
         _ = (sessionID, scheduleID)
         throw ConversationServiceError.offline
+    }
+    func previewExchange(path: String) async -> PreviewHTTPResult {
+        _ = path
+        return PreviewHTTPResult(status: 502, body: Data())
     }
 }
 
@@ -522,6 +527,13 @@ final class ConversationModel {
         guard let id = status.goal?.ref?.id, let revision = status.goal?.ref?.revision else { return }
         try? await service.clearGoal(sessionID: sessionID, refID: id, revision: revision)
         status.goal = nil
+    }
+
+    func previewForwarder() -> @Sendable (String) async -> PreviewHTTPResult {
+        let service = service
+        return { path in
+            await service.previewExchange(path: path)
+        }
     }
 
     func serviceDeleteSchedule(_ id: String) async {
