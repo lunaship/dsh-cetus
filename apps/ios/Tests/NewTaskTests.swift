@@ -5,9 +5,10 @@ import Testing
 @Suite struct NewTaskTests {
     @Test func absolutePathAddsUseRow() {
         let rooms = [WorkspaceInfo(path: "/src/app", title: "app")]
-        let rows = workspacePickRows(workspaces: rooms, query: "/tmp/new")
+        let rows = workspacePickRows(workspaces: rooms, query: "/src")
         #expect(rows.count == 2)
-        #expect(rows.last == .usePath("/tmp/new"))
+        #expect(rows.last == .usePath("/src"))
+        #expect(workspacePickRows(workspaces: rooms, query: "/tmp/new") == [.usePath("/tmp/new")])
         #expect(workspaceSubmitKind("/tmp/new") == .pendingApproval)
     }
 
