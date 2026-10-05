@@ -1,4 +1,5 @@
 import DLModels
+import QuartzCore
 import SnapshotTesting
 import SwiftUI
 import UIKit
@@ -163,7 +164,9 @@ import XCTest
         window.rootViewController = host
         window.isHidden = false
         window.makeKeyAndVisible()
+        host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
+        CATransaction.flush()
         let format = UIGraphicsImageRendererFormat()
         format.scale = 3
         format.opaque = true
