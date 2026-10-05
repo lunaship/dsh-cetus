@@ -99,10 +99,12 @@ struct ConversationPage: View {
             // The snapshot pins the same list beside the conversation. Production still uses `.inspector`.
             HStack(spacing: 0) {
                 page
-                ChangesPage(
-                    files: ReviewScreen.sampleFiles, turn: 3, canPrevious: true, canNext: false,
-                    copy: ReviewCopy(locale: locale)
-                )
+                NavigationStack {
+                    ChangesPage(
+                        files: ReviewScreen.sampleFiles, turn: 3, canPrevious: true, canNext: false,
+                        copy: ReviewCopy(locale: locale)
+                    )
+                }
                 .frame(width: 320)
             }
             .transaction { $0.disablesAnimations = true }
