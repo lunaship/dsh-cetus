@@ -88,6 +88,18 @@ class SessionStatusSlotTest {
     }
 
     @Test
+    fun completedGoalAndFinishedPlanAreHidden() {
+        val done = goal.copy(phase = "complete")
+        assertNull(goalStatus(done, null, emptyList(), running = false))
+        val finished = plan.map { it.copy(status = "completed") }
+        assertNull(goalStatus(done, null, finished, running = false))
+        // 计划还没做完时继续显示计划，但不再显示已完成的目标
+        val s = goalStatus(done, null, plan, running = false)
+        assertNull(s?.goal)
+        assertEquals(plan, s?.plan)
+    }
+
+    @Test
     fun goalStatusIsSeparateFromTopSlot() {
         assertNull(goalStatus(null, null, emptyList(), running = false))
         assertEquals(plan, goalStatus(null, null, plan, running = false)?.plan)

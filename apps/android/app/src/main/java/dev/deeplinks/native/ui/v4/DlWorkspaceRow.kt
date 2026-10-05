@@ -24,7 +24,7 @@ import dev.deeplinks.core.L
 import dev.deeplinks.native.DshIconSize
 import dev.deeplinks.native.DshSpace
 import dev.deeplinks.native.DshTouch
-import dev.deeplinks.native.EditOutline16
+import dev.deeplinks.native.ComposeOutline16
 import dev.deeplinks.native.FolderClose16
 import dev.deeplinks.native.FolderOpenOutline16
 
@@ -58,6 +58,6 @@ fun DlWorkspaceRow(
             Spacer(Modifier.width(DshSpace.s12))
             Text(title, style = DshType.bodyStrong, color = Dsh.labelPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        DlIconButton(EditOutline16, "${L.homeNewTask} · $title", onCreate, enabled = online, tint = Dsh.tertiaryText)
+        DlIconButton(ComposeOutline16, "${L.homeNewTask} · $title", onCreate, enabled = online, tint = Dsh.tertiaryText)
     }
 }

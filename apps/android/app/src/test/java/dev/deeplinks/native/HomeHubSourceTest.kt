@@ -28,9 +28,9 @@ class HomeHubSourceTest {
             }
         }
         val chrome = file("HomeWorkspaceChrome.kt").readText()
-        val header = chrome.substring(chrome.indexOf("internal fun HomeTopBar("), chrome.indexOf("internal fun HomeMoreSheet("))
+        val header = chrome.substring(chrome.indexOf("internal fun HomeTopBar("), chrome.indexOf("internal fun HomeWorkspaceSheet("))
         assertFalse(header.contains("large = true"))
-        assertTrue(header.contains("onOpenMore"))
+        assertTrue(header.contains("onOpenSettings"))
         assertTrue(file("HomeWorkspacePage.kt").readText().contains("HomeTopBar("))
     }
 
@@ -53,7 +53,8 @@ class HomeHubSourceTest {
         val text = file("HomeHub.kt").readText()
         val body = text.substring(text.indexOf("internal fun HomeSessionSheetContent("))
         val rows = Regex("""DlListRow\(title = s\.(\w+)""").findAll(body).map { it.groupValues[1] }.toList()
-        assertEquals(listOf("rename", "homeForkAsNew", "homeShareSession", "archiveSession", "deleteSession"), rows.take(5))
+        // 手机端不做归档和分叉：只剩重命名 / 分享 / 删除
+        assertEquals(listOf("rename", "homeShareSession", "deleteSession"), rows.take(3))
         assertTrue(body.contains("title = s.deleteSession, leading = TrashOutline16, danger = true"))
     }
 }
