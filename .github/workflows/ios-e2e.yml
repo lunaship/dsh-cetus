@@ -1,0 +1,146 @@
+name: CI iOS e2e
+
+on:
+  pull_request:
+    branches: [ios/main, main]
+    paths:
+      - 'apps/ios/**'
+      - 'src/**'
+      - 'scripts/ios-e2e-host.mjs'
+      - 'scripts/ios-e2e-fixture.mjs'
+      - 'test/ios-e2e-host.test.mjs'
+      - '.github/workflows/ios-e2e.yml'
+  push:
+    branches: [ios/main, main]
+    paths:
+      - 'apps/ios/**'
+      - 'src/**'
+      - 'scripts/ios-e2e-host.mjs'
+      - 'scripts/ios-e2e-fixture.mjs'
+      - 'test/ios-e2e-host.test.mjs'
+      - '.github/workflows/ios-e2e.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsh-links-ci-ios-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: iOS e2e
+    runs-on: macos-26
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        working-directory: apps/ios
+        run: xcodegen generate
+
+      - name: Start e2e host
+        run: |
+          set -eu
+          # Own process group + nohup so the host survives this step exiting.
+          set -m
+          nohup node scripts/ios-e2e-host.mjs \
+            --qr "$RUNNER_TEMP/e2e-qr.json" \
+            --log "$RUNNER_TEMP/e2e-plugin.log" \
+            > "$RUNNER_TEMP/e2e-host.stdout" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/e2e-host.pid"
+          disown || true
+          for _ in {1..30}; do
+            if [ -f "$RUNNER_TEMP/e2e-qr.json" ] && grep -qE 'control=http://127\.0\.0\.1:[0-9]+' "$RUNNER_TEMP/e2e-host.stdout"; then
+              break
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/e2e-host.pid")" 2>/dev/null; then
+              echo "e2e host exited before it was ready"
+              cat "$RUNNER_TEMP/e2e-host.stdout" || true
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ ! -f "$RUNNER_TEMP/e2e-qr.json" ]; then
+            echo "timed out waiting for $RUNNER_TEMP/e2e-qr.json"
+            cat "$RUNNER_TEMP/e2e-host.stdout" || true
+            exit 1
+          fi
+          CONTROL=$(grep -m 1 -oE 'control=http://127\.0\.0\.1:[0-9]+' "$RUNNER_TEMP/e2e-host.stdout" | cut -d= -f2- || true)
+          if [ -z "$CONTROL" ]; then
+            echo "control URL missing from host stdout"
+            cat "$RUNNER_TEMP/e2e-host.stdout" || true
+            exit 1
+          fi
+          {
+            echo "E2E_QR_PATH=$RUNNER_TEMP/e2e-qr.json"
+            echo "E2E_CONTROL_URL=$CONTROL"
+          } >> "$GITHUB_ENV"
+
+      - name: Run UI tests
+        working-directory: apps/ios
+        run: |
+          set -eu
+          export E2E_QR_PATH
+          export E2E_CONTROL_URL
+          DEST=$(sh scripts/simulator-destination.sh)
+          xcodebuild \
+            -scheme DeepLinks \
+            -destination "$DEST" \
+            -only-testing:DeepLinksUITests \
+            -resultBundlePath "$RUNNER_TEMP/e2e.xcresult" \
+            test \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Upload e2e diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-e2e-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/e2e.xcresult
+            ${{ runner.temp }}/e2e-plugin.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop e2e host
+        if: always()
+        run: |
+          set +e
+          if [ -n "${E2E_CONTROL_URL:-}" ]; then
+            curl -fsS -m 10 -X POST "$E2E_CONTROL_URL/control/shutdown" || true
+          fi
+          if [ -f "$RUNNER_TEMP/e2e-host.pid" ]; then
+            PID=$(cat "$RUNNER_TEMP/e2e-host.pid")
+            if kill -0 "$PID" 2>/dev/null; then
+              kill "$PID" 2>/dev/null || true
+              for _ in 1 2 3 4 5; do
+                kill -0 "$PID" 2>/dev/null || break
+                sleep 1
+              done
+              if kill -0 "$PID" 2>/dev/null; then
+                kill -9 "$PID" 2>/dev/null || true
+              fi
+            fi
+          fi
