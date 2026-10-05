@@ -311,7 +311,7 @@ struct PreviewPage: View {
         }
     }
 
-    private func row(_ item: PreviewInfo) -> some View {
+    @ViewBuilder private func row(_ item: PreviewInfo) -> some View {
         let label = VStack(alignment: .leading, spacing: 4) {
             Text(item.label ?? copy.text(.previewTitle)).font(DLFont.headline)
             Text("\(previewBindHost):\(item.port ?? 0)")
