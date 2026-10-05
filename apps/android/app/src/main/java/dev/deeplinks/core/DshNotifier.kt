@@ -80,6 +80,21 @@ object DshNotifier {
             .build()
     }
 
+    /**
+     * 前台服务必须先 startForeground 才能停。没有可展示的会话时用现有的「已停止」文案，
+     * 调用方会马上 [androidx.core.app.ServiceCompat.stopForeground] 收掉。
+     */
+    internal fun foregroundExitNotification(context: Context): Notification {
+        ensureChannel(context)
+        return NotificationCompat.Builder(context, CHANNEL_ID_MONITOR)
+            .setSmallIcon(R.drawable.ic_stat_dsh)
+            .setContentTitle(L.stopped)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
     private fun taskProgressLabels(): TaskProgressLabels = TaskProgressLabels(
         running = L.taskProgressRunning,
         awaitingApproval = L.taskProgressAwaitingApproval,
