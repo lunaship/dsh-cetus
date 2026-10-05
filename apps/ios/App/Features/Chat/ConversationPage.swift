@@ -53,6 +53,8 @@ struct ConversationPage: View {
     var showsComposer: Bool? = nil
     /// 截图直接给决策，生产路径从请求归并里取最新一条。
     var decisionPreview: PhoneDecision? = nil
+    /// Wide snapshots open the changes inspector with sample files.
+    var presentChanges = false
     @State var statusExpanded = false
     @State private var draft = ""
     @State private var decisionPulse = 0
@@ -82,6 +84,7 @@ struct ConversationPage: View {
     var draftDirectory: URL?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -92,7 +95,20 @@ struct ConversationPage: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar(copy) }
         if staticSnapshot {
-            page.transaction { $0.disablesAnimations = true }
+            Group {
+                if presentChanges {
+                    page.inspector(isPresented: .constant(true)) {
+                        ChangesPage(
+                            files: ReviewScreen.sampleFiles, turn: 3, canPrevious: true, canNext: false,
+                            copy: ReviewCopy(locale: locale)
+                        )
+                        .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
+                    }
+                } else {
+                    page
+                }
+            }
+            .transaction { $0.disablesAnimations = true }
         } else {
             page
                 .navigationDestination(isPresented: $showTrajectory) {
@@ -110,12 +126,11 @@ struct ConversationPage: View {
                 .navigationDestination(isPresented: $showSelectText) {
                     SelectTextPage(text: selectedText, copy: copy)
                 }
-                .navigationDestination(isPresented: $showChanges) {
-                    ChangesPage(
-                        files: [], turn: 1, canPrevious: false, canNext: false, copy: ReviewCopy(locale: locale)
-                    )
-                    .navigationTransition(.zoom(sourceID: 0, in: changesZoom))
-                }
+                .modifier(
+                    ChangesPresentation(
+                        regular: sizeClass == .regular, presented: $showChanges, copy: ReviewCopy(locale: locale),
+                        zoom: changesZoom)
+                )
                 .navigationDestination(isPresented: $showFiles) {
                     FilesPage(path: "", entries: [], copy: ReviewCopy(locale: locale))
                 }
@@ -126,7 +141,12 @@ struct ConversationPage: View {
                 }
                 .sheet(item: $sheet) { item in
                     NavigationStack { sheetPage(item, copy: copy) }
+                        .onKeyPress(.escape) {
+                            sheet = nil
+                            return .handled
+                        }
                 }
+                .onKeyPress(.escape) { dismissPresented() }
                 .alert(copy.text(.renameTitle), isPresented: $renamePresented) {
                     TextField(copy.text(.renameField), text: $renameText)
                     Button(copy.text(.cancel), role: .cancel) {}
@@ -175,6 +195,7 @@ struct ConversationPage: View {
                             }
                         },
                         onSend: { Task { await send(copy) } },
+                        onEscape: { _ = dismissPresented() },
                         onSecondary: { Task { await decide(allow: false) } },
                         onPrimary: { Task { await decide(allow: true) } },
                         solidSnapshot: staticSnapshot,
@@ -245,6 +266,58 @@ struct ConversationPage: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DLColor.background)
+    }
+
+    private func dismissPresented() -> KeyPress.Result {
+        if sheet != nil {
+            sheet = nil
+            return .handled
+        }
+        if showCamera {
+            showCamera = false
+            return .handled
+        }
+        if showPhotos {
+            showPhotos = false
+            return .handled
+        }
+        if showChanges {
+            showChanges = false
+            return .handled
+        }
+        if showFiles {
+            showFiles = false
+            return .handled
+        }
+        if showPreview {
+            showPreview = false
+            return .handled
+        }
+        if showTrajectory {
+            showTrajectory = false
+            return .handled
+        }
+        if showAgents {
+            showAgents = false
+            return .handled
+        }
+        if showSchedule {
+            showSchedule = false
+            return .handled
+        }
+        if showSelectText {
+            showSelectText = false
+            return .handled
+        }
+        if renamePresented {
+            renamePresented = false
+            return .handled
+        }
+        if confirmFull {
+            confirmFull = false
+            return .handled
+        }
+        return .ignored
     }
 
     private func send(_ copy: ConversationCopy) async {
@@ -433,6 +506,27 @@ struct ConversationPage: View {
                 Image(systemName: "ellipsis")
             }
             .accessibilityLabel(copy.text(.more))
+        }
+    }
+}
+
+private struct ChangesPresentation: ViewModifier {
+    var regular: Bool
+    @Binding var presented: Bool
+    var copy: ReviewCopy
+    var zoom: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if regular {
+            content.inspector(isPresented: $presented) {
+                ChangesPage(files: [], turn: 1, canPrevious: false, canNext: false, copy: copy)
+                    .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
+            }
+        } else {
+            content.navigationDestination(isPresented: $presented) {
+                ChangesPage(files: [], turn: 1, canPrevious: false, canNext: false, copy: copy)
+                    .navigationTransition(.zoom(sourceID: 0, in: zoom))
+            }
         }
     }
 }

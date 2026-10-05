@@ -54,6 +54,7 @@ enum InboxText: String, Equatable, Sendable {
     case approveBlocked
     case emptyTitle
     case emptyHint
+    case pickSession
     case startFrom
     case starterOrganize
     case starterTest
@@ -154,6 +155,7 @@ enum InboxText: String, Equatable, Sendable {
         case .approveBlocked: "You can approve once the computer is back online"
         case .emptyTitle: "Nothing needs you right now"
         case .emptyHint: "Tasks you start on the computer show up here too."
+        case .pickSession: "Choose a conversation"
         case .startFrom: "Start with one thing"
         case .starterOrganize: "See how this project is organised"
         case .starterTest: "Run the tests and fix what fails"

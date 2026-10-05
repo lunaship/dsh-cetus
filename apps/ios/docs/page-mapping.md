@@ -120,6 +120,10 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 7.7–7.11 | 模型与余额等 | 与 Android 同接口 | — | `Snapshot_7_7_models_*` |
 | 7.12–7.15 | 会话记录 / 关于 / 法律 / 崩溃 | MetricKit 本机导出 | — | `Snapshot_7_12_misc_*` |
 
+## I4.8 宽屏
+
+常规宽度用 `NavigationSplitView`：侧栏是首页，详情是对话，设置和新任务仍压在详情栈上。改动审查在常规宽度用 `.inspector`，紧凑宽度仍推进页面。快捷键：⌘N 新任务、⌘F 搜索、Esc 关掉当前弹层或详情栈顶；⌘↩ 在输入区发送。截图 `Tests/WideSnapshotTests.swift`，各 1 张浅色中文：`wide_portrait`、`wide_landscape`（审查面打开）、`wide_split_two_thirds`、`wide_split_half`、`wide_split_third`（紧凑，只留首页）。
+
 ## 8.x 系统
 
 | v4 | 页面 | iOS 做法 | 与 Android 差异 | 截图测试 |

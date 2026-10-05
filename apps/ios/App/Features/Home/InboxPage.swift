@@ -48,12 +48,20 @@ struct InboxFlowView: View {
 struct InboxPage: View {
     @Bindable var model: InboxModel
     @Environment(\.locale) private var locale
+    @Environment(\.horizontalSizeClass) private var sizeClass
     /// Inbox snapshots only. Production still calls `start()`.
     var staticSnapshot = false
+    /// Wide snapshots only. Production builds a live conversation for `selectedSessionID`.
+    var wideSnapshotConversation: ConversationModel? = nil
+    var wideSnapshotChanges = false
+    @State private var columnVisibility = NavigationSplitViewVisibility.doubleColumn
+    @State private var searchPresented = false
 
     var body: some View {
         let copy = InboxCopy(locale: locale)
-        if staticSnapshot {
+        if sizeClass == .regular {
+            wide(copy)
+        } else if staticSnapshot {
             // No `.task` / `start()`, no search controller, no refresh, no alert, no animation.
             // Draw the presentation the fixture already installed.
             // `.borderedProminent` in a toolbar snapshots as a fully transparent image.
@@ -113,6 +121,134 @@ struct InboxPage: View {
         }
     }
 
+    private func wide(_ copy: InboxCopy) -> some View {
+        let split = NavigationSplitView(columnVisibility: $columnVisibility) {
+            wideSidebar(copy)
+                .navigationSplitViewColumnWidth(min: 240, ideal: 320, max: 420)
+        } detail: {
+            NavigationStack(path: $model.path) {
+                wideDetail(copy)
+                    .navigationDestination(for: InboxDestination.self) { destination in
+                        InboxDestinationPage(destination: destination, model: model)
+                    }
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+        .tint(DLColor.accent)
+        return Group {
+            if staticSnapshot {
+                split
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+                    .transaction { $0.disablesAnimations = true }
+            } else {
+                split
+                    .task { await model.start() }
+                    .onDisappear { Task { await model.stop() } }
+                    .onChange(of: model.query) { _, _ in Task { await model.applyQuery() } }
+                    .onChange(of: model.tokens) { _, tokens in
+                        if tokens.count > 1 {
+                            model.tokens = Array(tokens.suffix(1))
+                            return
+                        }
+                        model.persistWorkspace()
+                        model.syncSuggestions()
+                        Task { await model.applyQuery() }
+                    }
+                    .alert(copy.text(.rename), isPresented: renamePresented) {
+                        TextField(copy.text(.rename), text: $model.renameDraft)
+                        Button(copy.text(.cancel), role: .cancel) { model.renameTarget = nil }
+                        Button(copy.text(.rename)) { Task { await model.commitRename() } }
+                    } message: {
+                        Text(copy.text(.renameHint))
+                    }
+                    .confirmationDialog(
+                        copy.text(.deleteTitle), isPresented: deletePresented, titleVisibility: .visible
+                    ) {
+                        Button(copy.text(.delete), role: .destructive) { Task { await model.commitDelete() } }
+                        Button(copy.text(.cancel), role: .cancel) { model.deleteTarget = nil }
+                    } message: {
+                        Text(copy.format(.deleteMessage, deleteName(copy)))
+                    }
+                    .sensoryFeedback(.success, trigger: model.approvalTick)
+                    .background { wideShortcuts(copy) }
+                    .onKeyPress(.escape) { wideEscape() }
+            }
+        }
+    }
+
+    @ViewBuilder private func wideSidebar(_ copy: InboxCopy) -> some View {
+        if staticSnapshot {
+            screen(copy)
+        } else {
+            screen(copy)
+                .searchable(
+                    text: $model.query,
+                    tokens: $model.tokens,
+                    suggestedTokens: $model.workspaceSuggestions,
+                    isPresented: $searchPresented,
+                    prompt: Text(copy.text(.searchPrompt))
+                ) { token in
+                    Text(token.name)
+                }
+                .searchSuggestions { suggestions(copy) }
+                .onSubmit(of: .search) { model.submitSearch() }
+                .refreshable { await model.refresh() }
+        }
+    }
+
+    @ViewBuilder private func wideDetail(_ copy: InboxCopy) -> some View {
+        if let id = model.selectedSessionID {
+            if let conversation = wideSnapshotConversation {
+                ConversationPage(
+                    model: conversation, staticSnapshot: true, showsStatusSlot: false, showsComposer: false,
+                    presentChanges: wideSnapshotChanges
+                )
+                .id(id)
+            } else {
+                ConversationFlowView(
+                    hostID: model.hostID, sessionID: id, seed: conversationSeed(sessionID: id, model: model),
+                    sessions: model.sessions
+                )
+                .id(id)
+            }
+        } else {
+            DLEmptyState(title: copy.text(.pickSession), systemImage: "bubble.left.and.bubble.right")
+        }
+    }
+
+    private func wideShortcuts(_ copy: InboxCopy) -> some View {
+        Group {
+            Button(copy.text(.newTask)) { model.openNewTask() }
+                .keyboardShortcut("n", modifiers: .command)
+            Button(copy.text(.searchPrompt)) { searchPresented = true }
+                .keyboardShortcut("f", modifiers: .command)
+        }
+        .opacity(0)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+    }
+
+    private func wideEscape() -> KeyPress.Result {
+        if !model.path.isEmpty {
+            model.path.removeLast()
+            return .handled
+        }
+        if searchPresented {
+            searchPresented = false
+            return .handled
+        }
+        if model.renameTarget != nil {
+            model.renameTarget = nil
+            return .handled
+        }
+        if model.deleteTarget != nil {
+            model.deleteTarget = nil
+            return .handled
+        }
+        return .ignored
+    }
+
     private func screen(_ copy: InboxCopy) -> some View {
         inbox(copy)
             .navigationTitle(copy.text(.brand))
@@ -137,59 +273,66 @@ struct InboxPage: View {
     }
 
     @ViewBuilder private func inbox(_ copy: InboxCopy) -> some View {
-        List {
-            if let banner = banner(copy) {
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        DLBanner(banner.text, systemImage: banner.icon, iconIsError: banner.iconIsError)
-                        HStack(spacing: 12) {
-                            Button(copy.text(.retry)) { Task { await model.refresh() } }
-                                .buttonStyle(.bordered)
-                            Button(copy.text(.diagnostics)) { model.path.append(.diagnostics) }
-                                .buttonStyle(.bordered)
-                        }
+        if sizeClass == .regular {
+            List(selection: $model.selectedSessionID) { inboxRows(copy) }
+                .listStyle(.plain)
+        } else {
+            List { inboxRows(copy) }
+                .listStyle(.plain)
+        }
+    }
+
+    @ViewBuilder private func inboxRows(_ copy: InboxCopy) -> some View {
+        if let banner = banner(copy) {
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    DLBanner(banner.text, systemImage: banner.icon, iconIsError: banner.iconIsError)
+                    HStack(spacing: 12) {
+                        Button(copy.text(.retry)) { Task { await model.refresh() } }
+                            .buttonStyle(.bordered)
+                        Button(copy.text(.diagnostics)) { model.path.append(.diagnostics) }
+                            .buttonStyle(.bordered)
                     }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            switch model.presentation {
-            case .loading:
-                DLEmptyState(title: copy.text(.loading), systemImage: "hourglass")
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            case .starters:
-                empty(copy, title: copy.text(.emptyTitle), message: copy.text(.emptyHint), symbol: "tray")
-                Section(copy.text(.startFrom)) {
-                    starter(copy, .starterOrganize)
-                    starter(copy, .starterTest)
-                    starter(copy, .starterDiff)
-                }
-            case .workspaceEmpty:
-                empty(
-                    copy, title: copy.text(.workspaceEmptyTitle), message: copy.text(.workspaceEmptyHint),
-                    symbol: "folder")
-                Button(copy.text(.showAll)) { model.setWorkspace(nil) }
-            case .offlineEmpty:
-                empty(
-                    copy, title: copy.format(.offlineTitle, model.displayName),
-                    message: copy.text(.offlineHintPlain), symbol: "wifi.slash")
-            case .search(let groups, let degraded, let failed):
-                searchResults(copy, groups: groups, degraded: degraded, failed: failed)
-            case .sections(let groups):
-                ForEach(groups, id: \.section) { group in
-                    Section {
-                        ForEach(group.sessions, id: \.sessionId) { session in
-                            sessionRow(session, copy: copy, needle: "")
-                        }
-                    } header: {
-                        Text("\(copy.section(group.section))  \(group.sessions.count)")
+        }
+        switch model.presentation {
+        case .loading:
+            DLEmptyState(title: copy.text(.loading), systemImage: "hourglass")
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+        case .starters:
+            empty(copy, title: copy.text(.emptyTitle), message: copy.text(.emptyHint), symbol: "tray")
+            Section(copy.text(.startFrom)) {
+                starter(copy, .starterOrganize)
+                starter(copy, .starterTest)
+                starter(copy, .starterDiff)
+            }
+        case .workspaceEmpty:
+            empty(
+                copy, title: copy.text(.workspaceEmptyTitle), message: copy.text(.workspaceEmptyHint),
+                symbol: "folder")
+            Button(copy.text(.showAll)) { model.setWorkspace(nil) }
+        case .offlineEmpty:
+            empty(
+                copy, title: copy.format(.offlineTitle, model.displayName),
+                message: copy.text(.offlineHintPlain), symbol: "wifi.slash")
+        case .search(let groups, let degraded, let failed):
+            searchResults(copy, groups: groups, degraded: degraded, failed: failed)
+        case .sections(let groups):
+            ForEach(groups, id: \.section) { group in
+                Section {
+                    ForEach(group.sessions, id: \.sessionId) { session in
+                        sessionRow(session, copy: copy, needle: "")
                     }
+                } header: {
+                    Text("\(copy.section(group.section))  \(group.sessions.count)")
                 }
             }
         }
-        .listStyle(.plain)
     }
 
     private func empty(_ copy: InboxCopy, title: String, message: String?, symbol: String) -> some View {
@@ -265,7 +408,14 @@ struct InboxPage: View {
                 isEnabled: true
             )
             .contentShape(Rectangle())
-            .onTapGesture { model.open(session) }
+            .onTapGesture {
+                if sizeClass == .regular, let id = session.sessionId {
+                    model.path.removeAll()
+                    model.selectedSessionID = id
+                } else {
+                    model.open(session)
+                }
+            }
             actions(content, session: session, copy: copy)
         }
         .contextMenu { inboxSessionActions(session, model: model, copy: copy) }
