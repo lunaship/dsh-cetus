@@ -282,7 +282,7 @@ class PreviewLocalProxyTest {
             bridge.start(responseProtocol = "vite-hmr")
             bridge.connect(requestProtocol = "vite-hmr")
             assertTrue(bridge.clientOpen.await(5, TimeUnit.SECONDS))
-            assertTrue(bridge.upstream.get()!!.send(payload))
+            assertTrue(awaitUpstream(bridge).send(payload))
             assertTrue(awaitSize(bridge.clientMessages, 1))
             assertEquals(payload, snapshot(bridge.clientMessages).single())
         }
@@ -307,7 +307,7 @@ class PreviewLocalProxyTest {
             bridge.start(responseProtocol = "vite-hmr")
             val client = bridge.connect(requestProtocol = "vite-hmr")
             assertTrue(bridge.clientOpen.await(5, TimeUnit.SECONDS))
-            val upstream = bridge.upstream.get()!!
+            val upstream = awaitUpstream(bridge)
             val gate = CountDownLatch(1)
             val sender = Thread {
                 gate.await()
@@ -456,6 +456,13 @@ private fun awaitSize(list: MutableList<*>, size: Int, timeoutMs: Long = 10_000)
     val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
     while (list.size < size && System.nanoTime() < deadline) Thread.sleep(10)
     return list.size >= size
+}
+
+/** 客户端 onOpen 可能早于上游服务端的 onOpen；等上游 socket 就位再用，避免偶发 NPE。 */
+private fun awaitUpstream(bridge: BridgeFixture, timeoutMs: Long = 5_000): WebSocket {
+    val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+    while (bridge.upstream.get() == null && System.nanoTime() < deadline) Thread.sleep(10)
+    return requireNotNull(bridge.upstream.get()) { "upstream WebSocket did not open" }
 }
 
 private fun snapshot(list: MutableList<String>): List<String> = synchronized(list) { ArrayList(list) }
