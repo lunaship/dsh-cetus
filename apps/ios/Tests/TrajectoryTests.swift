@@ -5,9 +5,9 @@ import Testing
 @Suite struct TrajectoryTests {
     @Test func groupsByTurnAndKeepsLaterTime() {
         let messages = [
-            HistoryMessage(id: "u", role: "user", text: "Shorten it", turn: 1, time: 10),
-            HistoryMessage(id: "a", role: "assistant", text: "Done", turn: 1, time: 20),
-            HistoryMessage(id: "u2", role: "user", text: "Again", turn: 2, time: 30),
+            HistoryMessage(id: "u", role: "user", text: "Shorten it", time: 10, turn: 1),
+            HistoryMessage(id: "a", role: "assistant", text: "Done", time: 20, turn: 1),
+            HistoryMessage(id: "u2", role: "user", text: "Again", time: 30, turn: 2),
         ]
         let turns = trajectoryTurns(messages)
         #expect(turns.map(\.id) == [1, 2])

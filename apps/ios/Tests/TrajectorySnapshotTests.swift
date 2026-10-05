@@ -16,11 +16,11 @@ import XCTest
     func testTrace() {
         let page = NavigationStack {
             TrajectoryPage(messages: [
-                HistoryMessage(id: "u", role: "user", text: "把发布说明写短一点", turn: 1, time: 1_700_000_000),
+                HistoryMessage(id: "u", role: "user", text: "把发布说明写短一点", time: 1_700_000_000, turn: 1),
                 HistoryMessage(
-                    id: "t", role: "tool_call", name: "read", args: #"{"path":"Notes.md"}"#, turn: 1,
-                    time: 1_700_000_040),
-                HistoryMessage(id: "a", role: "assistant", text: "标题可以再短一点。", turn: 1, time: 1_700_000_080),
+                    id: "t", role: "tool_call", time: 1_700_000_040, name: "read",
+                    args: #"{"path":"Notes.md"}"#, turn: 1),
+                HistoryMessage(id: "a", role: "assistant", text: "标题可以再短一点。", time: 1_700_000_080, turn: 1),
             ])
         }
         .environment(\.locale, Locale(identifier: "zh-Hans"))
