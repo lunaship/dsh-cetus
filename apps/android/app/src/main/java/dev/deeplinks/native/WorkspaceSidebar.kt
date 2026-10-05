@@ -48,7 +48,7 @@ internal class WorkspaceSidebarActions(
 
 /**
  * v4 工作区首页（2.1–2.6）。手机全屏首页与平板常驻侧栏共用。
- * 顶栏和列表平铺在画布上；搜索打开时整页换成 2.4 搜索页；长按条目出 2.6，点电脑状态行出 2.5。
+ * 顶栏和列表平铺在画布上；搜索打开时整页换成 2.4 搜索页；长按条目出 2.6，右上 ⋯ / 长按文件夹出 2.5。
  */
 @Composable
 internal fun WorkspaceSidebar(
@@ -112,7 +112,6 @@ internal fun WorkspaceSidebar(
         initialLoad = sessionsInitialLoad,
         hasError = sessionsLoadError != null,
     )
-    var computerSheetOpen by remember { mutableStateOf(false) }
     var sheetSession by remember { mutableStateOf<MobileSession?>(null) }
     val closeSearch = { actions.onClearSearch(); actions.onToggleSearch() }
     BackHandler(enabled = sidebarSearchOpen, onBack = closeSearch)
@@ -151,27 +150,15 @@ internal fun WorkspaceSidebar(
                 goalSummaries = goalSummaries,
                 onAnswerApproval = onAnswerApproval,
                 onPickStarter = onPickStarter,
-                onOpenComputer = { computerSheetOpen = true },
+                onOpenComputer = { actions.onOpenDevice() },
                 onLongPress = { sheetSession = it },
                 actions = actions,
                 onSearch = { onSelectWorkspace(null); actions.onClearSearch(); actions.onToggleSearch() },
                 statusItems = statusItems,
+                viaRemote = viaRemote,
+                onOpenArchived = onOpenArchived,
             )
         }
-    }
-    if (computerSheetOpen) {
-        HomeComputerSheet(
-            hostName = hostName,
-            online = online,
-            viaRemote = viaRemote,
-            offlineSinceLabel = offlineSinceLabel,
-            workspaces = homeWorkspaceOptions(visibleCandidates, knownWorkspaces, workspaceAccounts, workspaceRegistryReady),
-            onDismiss = { computerSheetOpen = false },
-            onOpenDevice = { actions.onOpenDevice() },
-            onAddWorkspace = { actions.onAddWorkspace() },
-            onOpenArchived = onOpenArchived,
-            onDeleteWorkspace = { actions.onDeleteWorkspace(it) },
-        )
     }
     sheetSession?.let { target ->
         HomeSessionSheet(
@@ -184,18 +171,6 @@ internal fun WorkspaceSidebar(
             onDelete = { actions.onDeleteSession(target) },
         )
     }
-}
-
-/** 2.5 的工作区管理列表：与首页沿用同一归属和计数口径。 */
-private fun homeWorkspaceOptions(
-    visible: List<MobileSession>,
-    workspaces: List<String>,
-    accounts: List<WorkspaceAccount>,
-    registryReady: Boolean,
-): List<HomeWorkspaceOption> {
-    val labels = dev.deeplinks.native.util.draftWorkspaceChipLabels(workspaces)
-    val counts = homeWorkspaceGroups(visible, workspaces, accounts, registryReady).associate { it.path to it.sessions.size }
-    return workspaces.zip(labels).map { (path, label) -> HomeWorkspaceOption(path, label, counts[path] ?: 0) }
 }
 
 /** 列表状态行：搜索降级提示、搜索空态 / 加载 / 错误、刷新横幅。 */

@@ -36,16 +36,9 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.homeAnswer
-import dev.deeplinks.core.homeComputerSection
-import dev.deeplinks.core.homeComputerSheetTitle
-import dev.deeplinks.core.homeComputerViaLan
-import dev.deeplinks.core.homeComputerViaRelay
 import dev.deeplinks.core.homeDiagnose
 import dev.deeplinks.core.homeForkAsNew
 import dev.deeplinks.core.homeShareSession
-import dev.deeplinks.core.homeStatusLine
-import dev.deeplinks.core.homeTaskCount
-import dev.deeplinks.core.homeWorkspaceSection
 import dev.deeplinks.native.ui.v4.DlAction
 import dev.deeplinks.native.ui.v4.DlBottomSheet
 import dev.deeplinks.native.ui.v4.DlButton
@@ -55,11 +48,6 @@ import dev.deeplinks.native.ui.v4.DlInboxItem
 import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.native.ui.v4.DlRowTrailing
 import dev.deeplinks.native.ui.v4.DlSectionHeader
-import dev.deeplinks.native.ui.v4.DlStatusDot
-import dev.deeplinks.native.ui.v4.DlTone
-import dev.deeplinks.native.ui.v4.DlTopBar
-import dev.deeplinks.native.ui.v4.DlTopBarAction
-import dev.deeplinks.native.ui.v4.DlTopBarNav
 import dev.deeplinks.native.util.homeTimeLabel
 import dev.deeplinks.native.util.workspaceDisplayName
 
@@ -67,34 +55,6 @@ import dev.deeplinks.native.util.workspaceDisplayName
  * v4 首页收件箱（2.1–2.6）的积木。布局由 WorkspaceSidebar 组合；这里只管样子，状态全部由参数注入。
  * 首页以文件夹分组，底部固定搜索与新任务。
  */
-
-/** 2.1 顶栏：大标题「DeepLinks」，下面一行电脑状态（点开 2.5），右上设置。 */
-@Composable
-internal fun HomeHeader(
-    hostName: String,
-    online: Boolean,
-    onOpenComputer: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    val s = DshS
-    val status = s.homeStatusLine.format(hostName.ifBlank { s.deviceAndPairing }, if (online) s.statusOnline else s.statusOffline)
-    DlTopBar(
-        title = "DeepLinks",
-        large = true,
-        nav = DlTopBarNav.None,
-        actions = listOf(
-            DlTopBarAction(SettingsOutline16, s.settingsTitle, onOpenSettings),
-        ),
-        onSubtitleClick = onOpenComputer,
-        subtitleContent = {
-            DlStatusDot(if (online) DlTone.Ok else DlTone.Off)
-            Spacer(Modifier.width(DshSpace.s4))
-            Text(status, style = DshType.supporting, color = Dsh.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.width(DshSpace.s4))
-            Icon(ChevronDownOutline16, contentDescription = null, tint = Dsh.labelSecondary, modifier = Modifier.size(DshIconSize.sm))
-        },
-    )
-}
 
 /** 条目之间的细分隔线，左边与文字对齐。 */
 @Composable
@@ -179,81 +139,6 @@ internal fun HomeWorkspaceChips(workspaces: List<String>, selected: String?, onS
         workspaces.forEach { cwd ->
             DlChip(workspaceDisplayName(cwd), onClick = { onSelect(cwd) }, selected = selected == cwd)
         }
-    }
-}
-
-/** 2.5 管理列表：显示已注册的工作区及会话数量。 */
-internal data class HomeWorkspaceOption(val path: String?, val label: String, val count: Int)
-
-/** 2.5 电脑与工作区弹层。每个动作先关弹层再执行，确认框不叠在弹层上。 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun HomeComputerSheet(
-    hostName: String,
-    online: Boolean,
-    viaRemote: Boolean,
-    offlineSinceLabel: String?,
-    workspaces: List<HomeWorkspaceOption>,
-    onDismiss: () -> Unit,
-    onOpenDevice: () -> Unit,
-    onAddWorkspace: () -> Unit,
-    onOpenArchived: () -> Unit,
-    onDeleteWorkspace: (String) -> Unit,
-) {
-    DlBottomSheet(onDismissRequest = onDismiss, title = DshS.homeComputerSheetTitle) {
-        HomeComputerSheetContent(
-            hostName = hostName,
-            online = online,
-            viaRemote = viaRemote,
-            offlineSinceLabel = offlineSinceLabel,
-            workspaces = workspaces,
-            onOpenDevice = { onDismiss(); onOpenDevice() },
-            onAddWorkspace = { onDismiss(); onAddWorkspace() },
-            onOpenArchived = { onDismiss(); onOpenArchived() },
-            onDeleteWorkspace = { onDismiss(); onDeleteWorkspace(it) },
-        )
-    }
-}
-
-@Composable
-internal fun HomeComputerSheetContent(
-    hostName: String,
-    online: Boolean,
-    viaRemote: Boolean,
-    offlineSinceLabel: String?,
-    workspaces: List<HomeWorkspaceOption>,
-    onOpenDevice: () -> Unit,
-    onAddWorkspace: () -> Unit,
-    onOpenArchived: () -> Unit,
-    onDeleteWorkspace: (String) -> Unit,
-) {
-    val s = DshS
-    val connection = when {
-        !online -> offlineSinceLabel?.let { s.homeOfflineHeader.format(it) } ?: s.statusOffline
-        viaRemote -> s.homeComputerViaRelay
-        else -> s.homeComputerViaLan
-    }
-    Column(Modifier.fillMaxWidth()) {
-        DlSectionHeader(s.homeComputerSection)
-        DlListRow(
-            title = hostName.ifBlank { s.deviceAndPairing },
-            subtitle = connection,
-            leading = LaptopOutline16,
-            trailing = DlRowTrailing.Chevron,
-            onClick = onOpenDevice,
-        )
-        DlSectionHeader(s.homeWorkspaceSection)
-        workspaces.forEach { option ->
-            DlListRow(
-                title = option.label,
-                subtitle = s.homeTaskCount.format(option.count),
-                leading = FolderClose16,
-                trailing = DlRowTrailing.DeleteAction(s.deleteWorkspace) { option.path?.let(onDeleteWorkspace) },
-            )
-        }
-        HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
-        DlListRow(title = s.addWorkspace, leading = PlusOutline16, leadingTint = DlTone.Brand, onClick = onAddWorkspace)
-        DlListRow(title = s.homeArchivedSessions, leading = ArchiveBoxOutline16, trailing = DlRowTrailing.Chevron, onClick = onOpenArchived)
     }
 }
 

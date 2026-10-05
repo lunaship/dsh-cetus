@@ -12,16 +12,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.Dsh
-import dev.deeplinks.native.HomeComputerSheetContent
 import dev.deeplinks.native.HomeEmptyStarters
-import dev.deeplinks.native.HomeHeader
+import dev.deeplinks.native.HomeMoreSheetContent
+import dev.deeplinks.native.HomeTopBar
+import dev.deeplinks.native.HomeWorkspaceSheetContent
 import dev.deeplinks.native.HomeInboxRow
 import dev.deeplinks.native.HomeBottomBar
+import dev.deeplinks.native.ui.v4.DlListRow
+import dev.deeplinks.native.ui.v4.DlSectionHeader
+import dev.deeplinks.native.ui.v4.DlTone
 import dev.deeplinks.native.ui.v4.DlWorkspaceRow
 import dev.deeplinks.native.HomeOfflineBanner
 import dev.deeplinks.native.HomeSearchPage
 import dev.deeplinks.native.HomeSessionSheetContent
-import dev.deeplinks.native.HomeWorkspaceOption
 import dev.deeplinks.native.MobileMessage
 import dev.deeplinks.native.MobileSearchResult
 import dev.deeplinks.native.MobileSession
@@ -78,7 +81,7 @@ private fun HomeCanvas(dark: Boolean, english: Boolean, online: Boolean = true, 
     ShotFrame(dark = dark, english = english) {
         Box(Modifier.fillMaxSize().background(Dsh.bgBase)) {
             Column(Modifier.fillMaxSize()) {
-                HomeHeader(hostName = "MacBook Pro", online = online, onOpenComputer = {}, onOpenSettings = {})
+                HomeTopBar(hostName = "MacBook Pro", online = online, viaRemote = false, offlineSinceLabel = if (online) null else "22:03", onOpenComputer = {}, onOpenMore = {})
                 Column(Modifier.weight(1f)) { content() }
                 HomeBottomBar(online = online, onSearch = {}, onCreate = {})
             }
@@ -86,7 +89,7 @@ private fun HomeCanvas(dark: Boolean, english: Boolean, online: Boolean = true, 
     }
 }
 
-/** 2.1 / 2.3：文件夹分组、紧凑会话和折叠后的待处理提示。 */
+/** 2.1 / 2.3：等你处理置顶，文件夹分组（每组 3 条 + 显示全部）和折叠后的待处理提示。 */
 @Composable
 private fun InboxRows(english: Boolean, online: Boolean) {
     val awaiting = listOf(
@@ -104,11 +107,16 @@ private fun InboxRows(english: Boolean, online: Boolean) {
         homeSession("s5", if (english) "Fix goal round crash" else "修复 goal round 崩溃", minutesAgo = 40, lastResult = MobileSessionResult(text = if (english) "Gate run all green" else "门禁全绿")),
         homeSession("s6", if (english) "Interrupted during gate run" else "跑门禁时被中断", minutesAgo = 50, stoppedReason = "interrupted"),
     )
-    val first = listOf(awaiting[0]) + running + recent
-    DlWorkspaceRow("dsh-links", first.size, true, 1, running.size, online, {}, {})
-    first.forEach { s ->
-        HomeInboxRow(s, if (s.sessionId == "s1") APPROVAL else null, online, null, {}, {}, {}, {}, compact = true)
+    DlSectionHeader(if (english) "Waiting for you" else "等你处理", trailing = awaiting.size.toString())
+    awaiting.forEach { s ->
+        HomeInboxRow(s, if (s.sessionId == "s1") APPROVAL else null, online, null, {}, {}, {}, {})
     }
+    val rest = running + recent
+    DlWorkspaceRow("dsh-links", rest.size + 1, true, 1, running.size, online, {}, {})
+    rest.take(3).forEach { s ->
+        HomeInboxRow(s, null, online, null, {}, {}, {}, {}, compact = true)
+    }
+    DlListRow(title = if (english) "Show all ${rest.size}" else "显示全部 ${rest.size} 个", titleTone = DlTone.Brand, modifier = Modifier.padding(start = 32.dp), onClick = {})
     DlWorkspaceRow("relay", 1, false, 1, 0, online, {}, {})
 }
 
@@ -201,26 +209,17 @@ internal fun HomeSearchDarkEn() {
     ShotFrame(dark = true, english = true) { SearchWall(english = true) }
 }
 
-/** 2.5 电脑与工作区 + 2.6 长按会话：两张弹层的静态外观。 */
+/** 2.5 更多 / 长按文件夹 + 2.6 长按会话：三张弹层的静态外观。 */
 @Composable
 private fun SheetsWall(english: Boolean) {
     Column(Modifier.fillMaxSize().background(Dsh.bgOverlay)) {
-        DlBottomSheetSurface(title = if (english) "Computer & workspaces" else "电脑与工作区") {
-            HomeComputerSheetContent(
-                hostName = "MacBook Pro",
-                online = true,
-                viaRemote = false,
-                offlineSinceLabel = null,
-                workspaces = listOf(
-                    HomeWorkspaceOption("/Users/me/dsh-links", "dsh-links", 4),
-                    HomeWorkspaceOption("/Users/me/relay", "relay", 1),
-                    HomeWorkspaceOption("/Users/me/notion-sync", "notion-sync", 1),
-                ),
-                onOpenDevice = {},
-                onAddWorkspace = {},
-                onOpenArchived = {},
-                onDeleteWorkspace = {},
-            )
+        DlBottomSheetSurface(title = if (english) "More" else "更多") {
+            HomeMoreSheetContent(onOpenSettings = {}, onOpenArchived = {})
+        }
+        Box(Modifier.padding(top = 16.dp)) {
+            DlBottomSheetSurface(title = "dsh-links") {
+                HomeWorkspaceSheetContent(label = "dsh-links", online = true, onNewTask = {}, onDelete = {})
+            }
         }
         Box(Modifier.padding(top = 16.dp)) {
             DlBottomSheetSurface {

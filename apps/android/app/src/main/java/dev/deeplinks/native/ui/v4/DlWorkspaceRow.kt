@@ -1,6 +1,7 @@
 package dev.deeplinks.native.ui.v4
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,7 +33,8 @@ import dev.deeplinks.native.EditOutline16
 import dev.deeplinks.native.FolderClose16
 import dev.deeplinks.native.FolderOpenOutline16
 
-/** v4 2.1：文件夹行；展开和新建分别拥有独立的触控区域。 */
+/** v4 2.1：文件夹行；展开和新建分别拥有独立的触控区域。[onLongClick] 出 2.5 工作区菜单。 */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DlWorkspaceRow(
     title: String,
@@ -43,6 +45,7 @@ fun DlWorkspaceRow(
     online: Boolean,
     onToggle: () -> Unit,
     onCreate: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val summary = listOfNotNull(
         L.homeTaskCount.format(count),
@@ -57,7 +60,7 @@ fun DlWorkspaceRow(
         Row(
             Modifier.weight(1f)
                 .semantics { stateDescription = expandedLabel }
-                .clickable(role = Role.Button, onClickLabel = expandedLabel, onClick = onToggle)
+                .combinedClickable(role = Role.Button, onClickLabel = expandedLabel, onLongClick = onLongClick, onClick = onToggle)
                 .heightIn(min = DshTouch.min)
                 .padding(vertical = DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically,
