@@ -24,8 +24,8 @@ enum ChatSurface: String, Identifiable {
 
 struct ChatSurfaceScreen: View {
     var surface: ChatSurface
-    var copy: ConversationCopy
     var draft = "/p"
+    @Environment(\.locale) private var locale
     var models: [ModelRow] = ChatSurfaceScreen.sampleModels
     var selectedModel = "step-5"
     var effort = "medium"
@@ -41,6 +41,7 @@ struct ChatSurfaceScreen: View {
     var solid = true
 
     var body: some View {
+        let copy = ConversationCopy(locale: locale)
         switch surface {
         case .palette:
             SlashPaletteScreen(draft: draft, copy: copy, solid: solid)
