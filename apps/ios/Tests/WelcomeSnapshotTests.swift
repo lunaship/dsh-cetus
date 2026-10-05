@@ -71,11 +71,31 @@ final class WelcomeSnapshotTests: XCTestCase {
         if increaseContrast {
             traits.append(UITraitCollection(accessibilityContrast: .high))
         }
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let previousKey = scene?.windows.first { $0.isKeyWindow }
+        let previousStyles = scene?.windows.map { window in
+            (window, window.overrideUserInterfaceStyle, window.traitOverrides.accessibilityContrast)
+        }
         assertSnapshot(
             of: view,
-            as: .image(layout: .fixed(width: 402, height: 874), traits: UITraitCollection(traitsFrom: traits)),
+            as: .image(
+                layout: .fixed(width: 402, height: 874),
+                traits: UITraitCollection(traitsFrom: traits)
+            ),
             named: named,
             testName: testName
         )
+        // SnapshotTesting leaves its temporary window on the shared scene. Later wide screenshots
+        // can draw through it and pick up this test's contrast or color style.
+        for window in scene?.windows ?? [] where window !== previousKey {
+            window.isHidden = true
+            window.rootViewController = nil
+            window.windowScene = nil
+        }
+        for (window, style, contrast) in previousStyles ?? [] {
+            window.overrideUserInterfaceStyle = style
+            window.traitOverrides.accessibilityContrast = contrast
+        }
+        previousKey?.makeKey()
     }
 }

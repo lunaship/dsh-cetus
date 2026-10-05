@@ -79,6 +79,9 @@ import XCTest
         let window = WideSnapshotWindow(windowScene: scene)
         window.frame = CGRect(origin: .zero, size: size)
         window.overrideUserInterfaceStyle = .light
+        window.traitOverrides.userInterfaceStyle = .light
+        window.traitOverrides.accessibilityContrast = .unspecified
+        window.traitOverrides.preferredContentSizeCategory = .large
         window.rootViewController = host
         window.isHidden = false
         window.makeKeyAndVisible()
