@@ -1,5 +1,7 @@
 package dev.deeplinks.native
 
+import android.app.ForegroundServiceStartNotAllowedException
+import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -31,6 +33,11 @@ import dev.deeplinks.core.taskProgressEventChangesNotification
 import dev.deeplinks.core.todoProgressCounts
 import dev.deeplinks.core.HostStore
 import dev.deeplinks.core.L
+import dev.deeplinks.core.MONITOR_ACTION_ANSWER
+import dev.deeplinks.core.MONITOR_ACTION_START
+import dev.deeplinks.core.MONITOR_ACTION_STOP
+import dev.deeplinks.core.MonitorStartDecision
+import dev.deeplinks.core.monitorStartDecision
 import dev.deeplinks.native.util.WorkspacePrefs
 import dev.deeplinks.native.util.parseStoppedReason
 import kotlinx.coroutines.CoroutineScope
@@ -78,48 +85,70 @@ class SessionBackgroundMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            if (intent.getStringExtra(EXTRA_SESSION_ID) == sessionId) stopMonitoring()
-            return START_NOT_STICKY
-        }
         val isRestore = intent == null
-        // 开关已关：进程被回收后系统按 START_STICKY 重建时不再恢复订阅（恢复走 startService，无需 startForeground）
-        if (isRestore && !WorkspacePrefs(this).backgroundTakeover) {
-            stopMonitoring()
-            return START_NOT_STICKY
-        }
+        val action = intent?.action
         val nextSessionId = intent?.getStringExtra(EXTRA_SESSION_ID)
             ?: if (isRestore) storedSessionId() else null
         val nextHost = HostStore.current(this)
-        if (nextSessionId.isNullOrBlank() || nextHost == null) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
         val expectedSlot = intent?.getStringExtra(EXTRA_HOST_SLOT)
-        if (expectedSlot != null && expectedSlot != nextHost.slotKey) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-        if (intent?.action == ACTION_ANSWER) {
-            if (sessionId != null && sessionId != nextSessionId) {
-                DshNotifier.cancelApproval(this, nextHost, nextSessionId)
-                DshNotifier.openSession(this, nextHost, nextSessionId)
+        val slotMatches = expectedSlot == null || (nextHost != null && expectedSlot == nextHost.slotKey)
+        val takeoverOn = WorkspacePrefs(this).backgroundTakeover
+        when (monitorStartDecision(action, nextHost != null, slotMatches, !nextSessionId.isNullOrBlank(), takeoverOn, isRestore)) {
+            MonitorStartDecision.StopPlain -> {
+                if (action == ACTION_STOP) {
+                    if (intent?.getStringExtra(EXTRA_SESSION_ID) == sessionId) stopMonitoring()
+                } else if (isRestore && !takeoverOn) {
+                    // 开关已关：系统按 START_STICKY 重建时不再恢复订阅。这条不是 startForegroundService。
+                    stopMonitoring()
+                } else {
+                    stopSelf()
+                }
                 return START_NOT_STICKY
             }
-            if (sessionId == null) configure(nextHost, nextSessionId, storedTitle().orEmpty(), storedSequence(), true)
-            else startForegroundNow()
-            val approvalId = intent.getStringExtra(EXTRA_APPROVAL_ID).orEmpty()
-            if (approvalId.isNotBlank()) submitApproval(nextHost, nextSessionId, approvalId, intent.getBooleanExtra(EXTRA_APPROVE, false))
+            MonitorStartDecision.SatisfyThenStop -> {
+                satisfyForegroundThenStop()
+                return START_NOT_STICKY
+            }
+            MonitorStartDecision.Continue -> Unit
+        }
+        val hostForStart = nextHost ?: return stopWithoutSession()
+        val sessionForStart = nextSessionId ?: return stopWithoutSession()
+        if (action == ACTION_ANSWER) {
+            if (sessionId != null && sessionId != sessionForStart) {
+                // 已经在看另一个会话。这次仍是 startForegroundService，再声明一次前台，但不把正在看的会话停掉。
+                if (host == null) satisfyForegroundThenStop() else startForegroundNow()
+                DshNotifier.cancelApproval(this, hostForStart, sessionForStart)
+                DshNotifier.openSession(this, hostForStart, sessionForStart)
+                return START_NOT_STICKY
+            }
+            if (sessionId == null) {
+                if (!configure(hostForStart, sessionForStart, storedTitle().orEmpty(), storedSequence(), true)) {
+                    return START_NOT_STICKY
+                }
+            } else if (!startForegroundNow()) {
+                return START_NOT_STICKY
+            }
+            val approvalId = intent?.getStringExtra(EXTRA_APPROVAL_ID).orEmpty()
+            if (approvalId.isNotBlank()) {
+                submitApproval(hostForStart, sessionForStart, approvalId, intent?.getBooleanExtra(EXTRA_APPROVE, false) == true)
+            }
             return START_STICKY
         }
-        configure(
-            nextHost,
-            nextSessionId,
+        if (!configure(
+            hostForStart,
+            sessionForStart,
             intent?.getStringExtra(EXTRA_TITLE) ?: storedTitle().orEmpty(),
             intent?.getLongExtra(EXTRA_AFTER_SEQ, storedSequence()) ?: storedSequence(),
             intent?.getBooleanExtra(EXTRA_BACKGROUND, false) ?: storedBackground(),
-        )
+        )) {
+            return START_NOT_STICKY
+        }
         return START_STICKY
+    }
+
+    private fun stopWithoutSession(): Int {
+        satisfyForegroundThenStop()
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -133,9 +162,9 @@ class SessionBackgroundMonitorService : Service() {
         super.onDestroy()
     }
 
-    private fun startForegroundNow() {
-        val currentHost = host ?: return
-        val sid = sessionId ?: return
+    private fun startForegroundNow(): Boolean {
+        val currentHost = host ?: return false
+        val sid = sessionId ?: return false
         DshNotifier.ensureChannel(this)
         progress = progress.copy(title = sessionTitle)
         val notification = DshNotifier.taskMonitorNotification(
@@ -145,7 +174,50 @@ class SessionBackgroundMonitorService : Service() {
             progress.snapshot(System.currentTimeMillis()),
         )
         lastProgressPostAt = android.os.SystemClock.elapsedRealtime()
-        foregroundPosted = true
+        return try {
+            postForeground(notification)
+            foregroundPosted = true
+            true
+        } catch (e: RuntimeException) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+                Log.w(TAG, "startForeground not allowed")
+                stopMonitoring()
+                false
+            } else {
+                throw e
+            }
+        }
+    }
+
+    /** startForegroundService 的提前退出也必须先进入前台，否则系统会在几秒后杀掉进程。 */
+    private fun satisfyForegroundThenStop() {
+        DshNotifier.ensureChannel(this)
+        val currentHost = host
+        val sid = sessionId
+        val notification = if (currentHost != null && !sid.isNullOrBlank()) {
+            DshNotifier.taskMonitorNotification(
+                this,
+                currentHost,
+                sid,
+                progress.snapshot(System.currentTimeMillis()),
+            )
+        } else {
+            DshNotifier.foregroundExitNotification(this)
+        }
+        try {
+            postForeground(notification)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        } catch (e: RuntimeException) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+                Log.w(TAG, "startForeground not allowed")
+            } else {
+                throw e
+            }
+        }
+        stopSelf()
+    }
+
+    private fun postForeground(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceCompat.startForeground(
                 this,
@@ -158,7 +230,7 @@ class SessionBackgroundMonitorService : Service() {
         }
     }
 
-    private fun configure(nextHost: Host, sid: String, title: String, afterSeq: Long, inBackground: Boolean) {
+    private fun configure(nextHost: Host, sid: String, title: String, afterSeq: Long, inBackground: Boolean): Boolean {
         if (sessionId != sid || host?.slotKey != nextHost.slotKey) {
             stopReader()
             terminalCheck?.cancel()
@@ -174,8 +246,9 @@ class SessionBackgroundMonitorService : Service() {
         progress = progress.copy(title = title)
         background = inBackground
         persist(afterSeq)
-        startForegroundNow()
+        if (!startForegroundNow()) return false
         if (background) startReader(afterSeq) else stopReader()
+        return true
     }
 
     private fun startReader(afterSeq: Long) {
@@ -584,9 +657,9 @@ class SessionBackgroundMonitorService : Service() {
         private const val KEY_TITLE = "title"
         private const val KEY_BACKGROUND = "background"
         private const val KEY_AFTER_SEQ = "afterSeq"
-        private const val ACTION_START = "dev.deeplinks.action.START_SESSION_MONITOR"
-        private const val ACTION_STOP = "dev.deeplinks.action.STOP_SESSION_MONITOR"
-        private const val ACTION_ANSWER = "dev.deeplinks.action.ANSWER_APPROVAL"
+        private const val ACTION_START = MONITOR_ACTION_START
+        private const val ACTION_STOP = MONITOR_ACTION_STOP
+        private const val ACTION_ANSWER = MONITOR_ACTION_ANSWER
         private const val EXTRA_SESSION_ID = "monitorSessionId"
         private const val EXTRA_TITLE = "monitorSessionTitle"
         private const val EXTRA_AFTER_SEQ = "monitorAfterSeq"
