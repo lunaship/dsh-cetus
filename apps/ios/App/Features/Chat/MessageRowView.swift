@@ -283,6 +283,7 @@ struct MessageRowView: View {
                     Button(chrome.copy.text(.viewAll)) { chrome.onViewChanges(tail.changesSeq) }
                         .font(DLFont.headline)
                         .frame(minHeight: 44)
+                        .modifier(ChangesZoomSource(namespace: chrome.changesNamespace, id: tail.changesSeq ?? 0))
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)

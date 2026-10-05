@@ -119,6 +119,7 @@ jobs:
             -only-testing:DeepLinksTests/NewTaskTests \
             -only-testing:DeepLinksTests/ChatSheetTests \
             -only-testing:DeepLinksTests/IntralineDiffContractTests \
+            -only-testing:DeepLinksTests/ReviewTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

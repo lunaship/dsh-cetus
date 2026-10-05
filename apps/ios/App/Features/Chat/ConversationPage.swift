@@ -60,6 +60,10 @@ struct ConversationPage: View {
     @State private var showAgents = false
     @State private var showSchedule = false
     @State private var showSelectText = false
+    @State private var showChanges = false
+    @State private var showFiles = false
+    @State private var showPreview = false
+    @Namespace private var changesZoom
     @State private var sheet: ChatSurface?
     @State private var renamePresented = false
     @State private var renameText = ""
@@ -105,6 +109,17 @@ struct ConversationPage: View {
                 }
                 .navigationDestination(isPresented: $showSelectText) {
                     SelectTextPage(text: selectedText, copy: copy)
+                }
+                .navigationDestination(isPresented: $showChanges) {
+                    ChangesPage(
+                        files: [], turn: 1, canPrevious: false, canNext: false, copy: ReviewCopy(locale: locale))
+                        .navigationTransition(.zoom(sourceID: 0, in: changesZoom))
+                }
+                .navigationDestination(isPresented: $showFiles) {
+                    FilesPage(path: "", entries: [], copy: ReviewCopy(locale: locale))
+                }
+                .navigationDestination(isPresented: $showPreview) {
+                    PreviewPage(previews: [], copy: ReviewCopy(locale: locale))
                 }
                 .sheet(item: $sheet) { item in
                     NavigationStack { sheetPage(item, copy: copy) }
@@ -205,14 +220,18 @@ struct ConversationPage: View {
                         onCopy: { model.copyAssistant($0) },
                         onRegenerate: { model.regenerate($0) },
                         onSuggest: { model.suggest($0) },
-                        onViewChanges: { model.viewChanges(seq: $0) },
+                        onViewChanges: { seq in
+                            model.viewChanges(seq: seq)
+                            if !staticSnapshot { showChanges = true }
+                        },
                         onLoadImage: { url in Task { await model.loadImage(url) } },
                         onSelectText: staticSnapshot
                             ? nil
                             : { text in
                                 selectedText = text
                                 showSelectText = true
-                            }),
+                            },
+                        changesNamespace: staticSnapshot ? nil : changesZoom),
                     pinsToTail: staticSnapshot ? pinsToTail : true,
                     pumpsFrames: !staticSnapshot,
                     onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot
@@ -385,12 +404,12 @@ struct ConversationPage: View {
             .accessibilityLabel(copy.format(.diffBadge, model.added ?? 0, model.deleted ?? 0))
             Menu {
                 Section(copy.text(.menuView)) {
-                    Button(copy.text(.menuChanges)) {}
-                    Button(copy.text(.menuFiles)) {}
+                    Button(copy.text(.menuChanges)) { showChanges = true }
+                    Button(copy.text(.menuFiles)) { showFiles = true }
                     Button(copy.text(.menuTrajectory)) { showTrajectory = true }
                     Button(copy.text(.menuAgents)) { showAgents = true }
                     Button(copy.text(.menuUsage)) { sheet = .usage }
-                    Button(copy.text(.menuPreview)) {}
+                    Button(copy.text(.menuPreview)) { showPreview = true }
                 }
                 Section(copy.text(.menuActions)) {
                     Button(copy.text(.menuGoal)) { sheet = .goal }
