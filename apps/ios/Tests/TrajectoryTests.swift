@@ -22,7 +22,7 @@ import Testing
         ]
         let tools = trajectoryTurns(messages, filter: .tool)
         #expect(tools.first?.lines.map(\.title) == ["read"])
-        #expect(trajectoryTurns(messages, query: "notes").first?.lines.map(\.id) == ["u"])
+        #expect(trajectoryTurns(messages, query: "notes").first?.lines.map(\.id) == ["u", "t"])
         #expect(trajectoryTurns(messages, query: "missing").isEmpty)
     }
 }
