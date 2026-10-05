@@ -2,6 +2,11 @@ import UIKit
 
 public final class DLComposerView: UIView, UITextViewDelegate {
     public var onSubmit: (() -> Void)?
+    public var onDraft: ((String) -> Void)?
+    public var onDecisionSecondary: (() -> Void)?
+    public var onDecisionPrimary: (() -> Void)?
+    /// SwiftUI 自己排位置时关掉。组件截图仍贴键盘。
+    public var pinsToKeyboard = true
 
     public var text: String = "" {
         didSet {
@@ -27,7 +32,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
 
     private enum Mode {
         case composer
-        case decision(status: String, question: String, secondaryTitle: String, primaryTitle: String)
+        case decision(
+            status: String, question: String, command: String?, secondaryTitle: String, primaryTitle: String)
     }
 
     public init(text: String = "", isEnabled: Bool = true, sendTitle: String = "Send") {
@@ -55,7 +61,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         super.didMoveToSuperview()
         NSLayoutConstraint.deactivate(keyboardPins)
         keyboardPins = []
-        guard let superview else { return }
+        guard pinsToKeyboard, let superview else { return }
         translatesAutoresizingMaskIntoConstraints = false
         keyboardPins = [
             leadingAnchor.constraint(equalTo: superview.leadingAnchor),
@@ -76,11 +82,13 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         question: String,
         secondaryTitle: String,
         primaryTitle: String,
+        command: String? = nil,
         animated: Bool
     ) {
         mode = .decision(
             status: status,
             question: question,
+            command: command,
             secondaryTitle: secondaryTitle,
             primaryTitle: primaryTitle
         )
@@ -91,6 +99,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         isSyncingText = true
         text = textView.text ?? ""
         isSyncingText = false
+        onDraft?(text)
     }
 
     private func applyMode(animated: Bool) {
@@ -98,15 +107,16 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         switch mode {
         case .composer:
             content = makeComposerContent()
-        case .decision(let status, let question, let secondaryTitle, let primaryTitle):
+        case .decision(let status, let question, let command, let secondaryTitle, let primaryTitle):
             content = makeDecisionContent(
                 status: status,
                 question: question,
+                command: command,
                 secondaryTitle: secondaryTitle,
                 primaryTitle: primaryTitle,
                 enabled: isEnabled,
-                onSecondary: {},
-                onPrimary: {}
+                onSecondary: { [weak self] in self?.onDecisionSecondary?() },
+                onPrimary: { [weak self] in self?.onDecisionPrimary?() }
             )
         }
         glass.install(content, animated: animated)

@@ -27,6 +27,8 @@ public struct RequestMessage: Equatable, Sendable {
     public var text: String
     public var type: String
     public var toolName: String?
+    /// 工具参数 JSON。只用来抽出命令块，没有就不画。
+    public var toolArgs: String?
     public var approvalId: String?
     public var callId: String?
     /// 这条审批 / 提问来自「手机接管」的请求快照；只有它才能显示批准按钮。
@@ -45,6 +47,7 @@ public struct RequestMessage: Equatable, Sendable {
         text: String = "",
         type: String = "text",
         toolName: String? = nil,
+        toolArgs: String? = nil,
         approvalId: String? = nil,
         callId: String? = nil,
         takenOverByPhone: Bool = false,
@@ -60,6 +63,7 @@ public struct RequestMessage: Equatable, Sendable {
         self.text = text
         self.type = type
         self.toolName = toolName
+        self.toolArgs = toolArgs
         self.approvalId = approvalId
         self.callId = callId
         self.takenOverByPhone = takenOverByPhone
@@ -144,6 +148,7 @@ extension RequestMessage {
         merged.outcome = mergeOutcome(outcome, incoming.outcome, status: status)
         merged.text = isBlank(text) ? incoming.text : text
         merged.toolName = toolName ?? incoming.toolName
+        merged.toolArgs = toolArgs ?? incoming.toolArgs
         merged.callId = callId ?? incoming.callId
         merged.approvalId = approvalId ?? incoming.approvalId
         merged.takenOverByPhone = takenOverByPhone || incoming.takenOverByPhone

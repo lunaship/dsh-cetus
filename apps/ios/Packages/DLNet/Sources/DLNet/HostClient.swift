@@ -104,6 +104,14 @@ public struct HostClient: Sendable {
                 method: "POST", url: Self.url(baseURL: baseURL, path: path, query: query), body: data, token: token))
     }
 
+    /// POST JSON。2xx 的正文原样返回，调用方自己解码。空正文也算成功。
+    public func postJSON(path: String, json body: some Encodable, query: [String: String] = [:]) async throws -> Data {
+        let data = try JSONEncoder().encode(body)
+        return try await send(
+            Self.makeRequest(
+                method: "POST", url: Self.url(baseURL: baseURL, path: path, query: query), body: data, token: token))
+    }
+
     // MARK: - 错误映射（纯函数，供测试与后续 DLRemote 复用）
 
     /// 状态码 + 错误体 → `HostClientError`。

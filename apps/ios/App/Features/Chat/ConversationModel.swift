@@ -32,6 +32,9 @@ protocol ConversationServing: Sendable {
     func resume(after seq: Int) async
     func setPhase(_ phase: AppPhase) async
     func stop() async
+    func sendPrompt(sessionID: String, text: String) async throws
+    func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws
+    func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws
 }
 
 extension ConversationServing {
@@ -51,6 +54,18 @@ extension ConversationServing {
     func resume(after seq: Int) async { _ = seq }
     func setPhase(_ phase: AppPhase) async { _ = phase }
     func stop() async {}
+    func sendPrompt(sessionID: String, text: String) async throws {
+        _ = (sessionID, text)
+        throw ConversationServiceError.offline
+    }
+    func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws {
+        _ = (sessionID, approvalID, outcome)
+        throw ConversationServiceError.offline
+    }
+    func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws {
+        _ = (sessionID, rpcID, answer)
+        throw ConversationServiceError.offline
+    }
 }
 
 struct ConversationSeed: Equatable, Sendable {
@@ -410,6 +425,18 @@ final class ConversationModel {
                 status.apply(detections: detections, sessionID: sessionID)
             }
         }
+    }
+
+    func serviceSend(_ text: String) async throws {
+        try await service.sendPrompt(sessionID: sessionID, text: text)
+    }
+
+    func serviceApproval(id: String, outcome: String) async throws {
+        try await service.submitApproval(sessionID: sessionID, approvalID: id, outcome: outcome)
+    }
+
+    func serviceQuestion(rpcID: String, answer: String) async throws {
+        try await service.submitQuestion(sessionID: sessionID, rpcID: rpcID, answer: answer)
     }
 
     private func rebuild(fade: Bool) {

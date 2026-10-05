@@ -72,8 +72,8 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 |---|---|---|---|---|
 | 4.1 | 运行中 | `UICollectionView` 消息流；系统导航栏 + `.navigationSubtitle`；diff 角标 + ⋯ `Menu`（同一 `ToolbarItemGroup`）。输入区 `DLComposerView` 留给 I4.3c | 本项不做输入区 | `Snapshot_4_1_running_*`、`Snapshot_4_1_unconfirmed`、`Snapshot_4_1_image` |
 | 4.2 | 轮尾 | 改动卡（最多 3 行 + 查看全部）→ 元信息 → 复制 / 重新生成 / 分享 → chip | 查看全部不进入改动页 | `Snapshot_4_2_tail_*` |
-| 4.3 | 待审批 | `DLDecisionBar`（玻璃容器；内「拒绝」`.bordered`，「允许一次」`.borderedProminent`+BrandFill）；内容 dim ~42% | 决策栏内按钮实色，不叠玻璃 | `Snapshot_4_3_approval_*` |
-| 4.4 | 回答问题 | 同容器；单选 / 多选 / 自写；上一题 / 跳过 / 下一题 | — | `Snapshot_4_4_question_*` |
+| 4.3 | 待审批 | 对话页底部 `DLComposerView` 切到决策：状态行、问题、命令块、拒绝 / 允许一次；消息流约 42% | 只处理手机接管的最新一条。加号、模型、权限、麦克风没有本项数据，不画 | `Snapshot_4_3_approval_*` |
+| 4.4 | 回答问题 | 同一玻璃容器切到提问。多题翻页和跳过还没接 | 只显示最新一条未终态提问 | `Snapshot_4_4_question_light_zh` |
 | 4.5 / 4.8 | 状态槽 | `DLStatusSlot`；优先级断线 > 待处理 > 目标 > 预览；`scrollEdgeEffectStyle(.soft, for: .top)` | 状态槽无玻璃 | `Snapshot_4_5_status_*`、`Snapshot_4_8_status_*` |
 | 4.6 | 工具过程 | `DLProcessLine` 展开细线步骤 | — | `Snapshot_4_6_process_*` |
 | 4.7 | 轨迹 | push；搜索 + 筛选 chip + 按轮分组 | I4.3d | `Snapshot_4_7_trace_*` |

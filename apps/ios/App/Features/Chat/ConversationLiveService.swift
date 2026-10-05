@@ -73,6 +73,38 @@ actor ConversationLiveService: ConversationServing {
         await stopStream()
     }
 
+    func sendPrompt(sessionID: String, text: String) async throws {
+        let http = try await connect()
+        let body = PromptBody(text: text, mode: "queue")
+        do {
+            _ = try await http.postJSON(path: try sessionPath(sessionID, "/prompt"), json: body)
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws {
+        let http = try await connect()
+        let body = ApprovalBody(approvalId: approvalID, outcome: outcome)
+        do {
+            _ = try await http.post(
+                RequestSubmitResponse.self, path: try sessionPath(sessionID, "/approval"), json: body)
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws {
+        let http = try await connect()
+        let body = QuestionBody(rpcId: rpcID, answer: QuestionAnswer(text: answer))
+        do {
+            _ = try await http.post(
+                RequestSubmitResponse.self, path: try sessionPath(sessionID, "/question"), json: body)
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
     private func connect() async throws -> HostClient {
         if let client { return client }
         guard let host = await store.get(hostId: hostID) else { throw ConversationServiceError.missingHost }
@@ -192,4 +224,23 @@ actor ConversationLiveService: ConversationServing {
             return false
         }
     }
+}
+
+private struct PromptBody: Encodable {
+    var text: String
+    var mode: String
+}
+
+private struct ApprovalBody: Encodable {
+    var approvalId: String
+    var outcome: String
+}
+
+private struct QuestionBody: Encodable {
+    var rpcId: String
+    var answer: QuestionAnswer
+}
+
+private struct QuestionAnswer: Encodable {
+    var text: String
 }
