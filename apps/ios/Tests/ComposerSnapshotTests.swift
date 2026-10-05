@@ -59,33 +59,58 @@ import XCTest
                 }
             }
         }
+        accessibility(scene) { make("zh-Hans") }
     }
 
     private func oneScene<V: View>(_ scene: String, make: () -> V) {
         render(scene, appearance: .light, language: "zh-Hans", large: false, make: make)
+        accessibility(scene, make: make)
+    }
+
+    private func accessibility<V: View>(_ scene: String, make: () -> V) {
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false,
+            reduceTransparency: true, named: "reduce-transparency", make: make)
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false,
+            increaseContrast: true, named: "increase-contrast", make: make)
     }
 
     private func render<V: View>(
-        _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool, make: () -> V
+        _ scene: String,
+        appearance: UIUserInterfaceStyle,
+        language: String,
+        large: Bool,
+        reduceTransparency: Bool = false,
+        increaseContrast: Bool = false,
+        named: String? = nil,
+        make: () -> V
     ) {
         let content = make()
             .environment(\.locale, Locale(identifier: language))
             .environment(\.colorScheme, appearance == .dark ? .dark : .light)
             .environment(\.dynamicTypeSize, large ? .accessibility3 : .large)
+            .environment(\._accessibilityReduceTransparency, reduceTransparency)
             .transaction { $0.disablesAnimations = true }
-        let image = chatImage(content, appearance: appearance, large: large)
+        let image = chatImage(
+            content, appearance: appearance, large: large, increaseContrast: increaseContrast)
         assertSnapshot(
-            of: image, as: .image, named: large ? "large" : "default",
+            of: image, as: .image, named: named ?? (large ? "large" : "default"),
             testName: snapshotName(scene, appearance: appearance, language: language))
     }
 
-    private func chatImage<V: View>(_ view: V, appearance: UIUserInterfaceStyle, large: Bool) -> UIImage {
+    private func chatImage<V: View>(
+        _ view: V, appearance: UIUserInterfaceStyle, large: Bool, increaseContrast: Bool = false
+    ) -> UIImage {
         let size = CGSize(width: 402, height: 874)
         let host = UIHostingController(rootView: view)
         host.view.backgroundColor = .systemBackground
         host.overrideUserInterfaceStyle = appearance
         host.traitOverrides.userInterfaceStyle = appearance
         host.traitOverrides.preferredContentSizeCategory = large ? .accessibilityExtraLarge : .large
+        if increaseContrast {
+            host.traitOverrides.accessibilityContrast = .high
+        }
         host.traitOverrides.userInterfaceIdiom = .phone
         host.safeAreaRegions = []
         host.view.frame = CGRect(origin: .zero, size: size)
