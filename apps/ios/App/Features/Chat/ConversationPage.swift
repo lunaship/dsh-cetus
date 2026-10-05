@@ -94,7 +94,7 @@ struct ConversationPage: View {
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
-                    .frame(minHeight: 72)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             )
             .sensoryFeedback(.success, trigger: decisionPulse)
@@ -138,7 +138,7 @@ struct ConversationPage: View {
                     onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot
                 )
                 .scrollEdgeEffectStyle(showsStatusSlot ? .soft : nil, for: .top)
-                .opacity(decision == nil ? 1 : 0.42)
+                .opacity(composerOn && decision != nil ? 0.42 : 1)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

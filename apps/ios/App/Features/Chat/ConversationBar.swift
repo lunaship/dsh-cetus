@@ -17,6 +17,13 @@ struct ConversationBar: UIViewRepresentable {
         return view
     }
 
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: DLComposerView, context: Context) -> CGSize? {
+        let width = proposal.width ?? uiView.bounds.width
+        let height = uiView.intrinsicContentSize.height
+        guard height > 1, height < 10_000 else { return nil }
+        return CGSize(width: width, height: height)
+    }
+
     func updateUIView(_ view: DLComposerView, context: Context) {
         view.pinsToKeyboard = false
         view.onDraft = onDraft

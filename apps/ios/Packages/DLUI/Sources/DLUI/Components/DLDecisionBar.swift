@@ -17,6 +17,7 @@ func makeDecisionContent(
     statusLabel.adjustsFontForContentSizeCategory = true
     statusLabel.textColor = enabled ? DLUIKitColor.wait : DLUIKitColor.tertiaryLabel
     statusLabel.numberOfLines = 1
+    statusLabel.setContentHuggingPriority(.required, for: .vertical)
 
     let questionLabel = UILabel()
     questionLabel.text = question
@@ -24,6 +25,7 @@ func makeDecisionContent(
     questionLabel.adjustsFontForContentSizeCategory = true
     questionLabel.textColor = enabled ? DLUIKitColor.label : DLUIKitColor.tertiaryLabel
     questionLabel.numberOfLines = 4
+    questionLabel.setContentHuggingPriority(.required, for: .vertical)
 
     let secondary = dlBarButton(title: secondaryTitle, prominent: false, enabled: enabled, action: onSecondary)
     let primary = dlBarButton(title: primaryTitle, prominent: true, enabled: enabled, action: onPrimary)
@@ -55,6 +57,9 @@ func makeDecisionContent(
         rows.append(pad)
     }
     rows.append(buttons)
+    for row in rows {
+        row.setContentHuggingPriority(.required, for: .vertical)
+    }
     let column = UIStackView(arrangedSubviews: rows)
     column.axis = .vertical
     column.spacing = 8

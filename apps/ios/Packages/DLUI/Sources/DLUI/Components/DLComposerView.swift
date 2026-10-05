@@ -29,6 +29,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private var didFinishInit = false
     private var mode: Mode = .composer
     private var sendTitle = "Send"
+    private var preferredBarHeight: CGFloat = 72
 
     private enum Mode {
         case composer
@@ -119,7 +120,21 @@ public final class DLComposerView: UIView, UITextViewDelegate {
                 onPrimary: { [weak self] in self?.onDecisionPrimary?() }
             )
         }
+        let width = bounds.width > 1 ? bounds.width : 378
+        let fitted = content.systemLayoutSizeFitting(
+            CGSize(width: max(1, width - 24), height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel)
+        preferredBarHeight = max(72, fitted.height + 24)
         glass.install(content, animated: animated)
+        invalidateIntrinsicContentSize()
+    }
+
+    public override var intrinsicContentSize: CGSize {
+        guard !pinsToKeyboard else {
+            return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+        }
+        return CGSize(width: UIView.noIntrinsicMetric, height: preferredBarHeight)
     }
 
     private func makeComposerContent() -> UIView {
