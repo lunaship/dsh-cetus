@@ -41,8 +41,8 @@ import XCTest
     private var approval: RequestMessage {
         RequestMessage(
             id: "a", role: "approval", text: "Run the tests", toolName: "bash",
-            toolArgs: #"{"command":"npm test"}"#, approvalId: "ap-1", requestStatus: .pending,
-            takenOverByPhone: true)
+            toolArgs: #"{"command":"npm test"}"#, approvalId: "ap-1", takenOverByPhone: true,
+            requestStatus: .pending)
     }
 
     private var question: RequestMessage {

@@ -5,17 +5,17 @@ import Testing
 @Suite struct PhoneDecisionTests {
     @Test func latestTakenOverApprovalWins() {
         let older = RequestMessage(
-            id: "q", role: "question", questionRpcId: "rpc", requestStatus: .pending, takenOverByPhone: true)
+            id: "q", role: "question", takenOverByPhone: true, questionRpcId: "rpc", requestStatus: .pending)
         let newer = RequestMessage(
-            id: "a", role: "approval", text: "bash", approvalId: "ap-1", requestStatus: .pending,
-            takenOverByPhone: true)
+            id: "a", role: "approval", text: "bash", approvalId: "ap-1", takenOverByPhone: true,
+            requestStatus: .pending)
         let decision = pendingPhoneDecision([older, newer])
         #expect(decision == .approval(newer))
     }
 
     @Test func skipsApprovalThePhoneDidNotTake() {
         let remote = RequestMessage(
-            id: "a", role: "approval", approvalId: "ap-1", requestStatus: .pending, takenOverByPhone: false)
+            id: "a", role: "approval", approvalId: "ap-1", takenOverByPhone: false, requestStatus: .pending)
         #expect(pendingPhoneDecision([remote]) == nil)
     }
 
