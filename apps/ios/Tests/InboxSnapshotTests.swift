@@ -52,34 +52,58 @@ import XCTest
                 }
             }
         }
+        renderAccessibility(scene, navigation: false) { make("zh-Hans") }
     }
 
     private func oneScene<V: View>(_ scene: String, make: () -> V) {
         render(scene, appearance: .light, language: "zh-Hans", large: false, navigation: false, make: make)
+        renderAccessibility(scene, navigation: false, make: make)
+    }
+
+    private func renderAccessibility<V: View>(_ scene: String, navigation: Bool, make: () -> V) {
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false, navigation: navigation,
+            reduceTransparency: true, make: make)
+        render(
+            scene, appearance: .light, language: "zh-Hans", large: false, navigation: navigation,
+            increaseContrast: true, make: make)
     }
 
     private func render<V: View>(
         _ scene: String, appearance: UIUserInterfaceStyle, language: String, large: Bool, navigation: Bool,
-        make: () -> V
+        reduceTransparency: Bool = false, increaseContrast: Bool = false, make: () -> V
     ) {
         let content = Group {
             if navigation { NavigationStack { make() } } else { make() }
         }
         .environment(\.locale, Locale(identifier: language))
+        .environment(\.colorScheme, appearance == .dark ? .dark : .light)
         .environment(\.dynamicTypeSize, large ? DynamicTypeSize.accessibility3 : DynamicTypeSize.large)
+        .environment(\._accessibilityReduceTransparency, reduceTransparency)
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
-        let traits = UITraitCollection(traitsFrom: [
+        var traits = [
             UITraitCollection(userInterfaceStyle: appearance),
             UITraitCollection(userInterfaceIdiom: .phone),
             UITraitCollection(
                 preferredContentSizeCategory: large
                     ? UIContentSizeCategory.accessibilityExtraLarge : UIContentSizeCategory.large),
-        ])
+        ]
+        if increaseContrast {
+            traits.append(UITraitCollection(accessibilityContrast: .high))
+        }
         assertSnapshot(
-            of: content, as: .image(layout: .fixed(width: 402, height: 874), traits: traits),
-            named: large ? "large" : "default",
+            of: content,
+            as: .image(layout: .fixed(width: 402, height: 874), traits: UITraitCollection(traitsFrom: traits)),
+            named: variantName(
+                large: large, reduceTransparency: reduceTransparency, increaseContrast: increaseContrast),
             testName: snapshotName(scene, appearance: appearance, language: language))
+    }
+
+    private func variantName(large: Bool, reduceTransparency: Bool, increaseContrast: Bool) -> String {
+        if reduceTransparency { return "reduce-transparency" }
+        if increaseContrast { return "increase-contrast" }
+        return large ? "large" : "default"
     }
 
     private func snapshotName(_ scene: String, appearance: UIUserInterfaceStyle, language: String) -> String {
