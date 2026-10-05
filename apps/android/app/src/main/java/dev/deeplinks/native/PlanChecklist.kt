@@ -134,16 +134,16 @@ private fun PlanChecklistRow(item: MobileTodoItem) {
 @Composable
 private fun PlanCheckBox(kind: PlanItemKind) {
     val shape = RoundedCornerShape(DshRadius.control)
-    Box(Modifier.size(DshIconSize.md), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(DshIconSize.sm), contentAlignment = Alignment.Center) {
         when (kind) {
             PlanItemKind.Active -> DlSpinner()
             PlanItemKind.Done -> Box(
-                Modifier.size(DshIconSize.md).clip(shape).background(Dsh.brand400),
+                Modifier.size(DshIconSize.sm).clip(shape).background(Dsh.labelTertiary),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(CheckOutline16, contentDescription = null, tint = Dsh.onBrand, modifier = Modifier.size(DshIconSize.xs))
             }
-            PlanItemKind.Pending -> Box(Modifier.size(DshIconSize.md).border(2.dp, Dsh.labelTertiary, shape))
+            PlanItemKind.Pending -> Box(Modifier.size(DshIconSize.sm).border(1.5.dp, Dsh.labelTertiary, shape))
         }
     }
 }

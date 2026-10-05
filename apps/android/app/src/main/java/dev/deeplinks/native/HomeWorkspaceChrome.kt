@@ -31,13 +31,11 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.homeComputerViaLan
 import dev.deeplinks.core.homeComputerViaRelay
-import dev.deeplinks.core.homeMore
 import dev.deeplinks.core.homeNewTaskIn
 import dev.deeplinks.core.homeOpenComputer
 import dev.deeplinks.native.ui.v4.DlBottomSheet
 import dev.deeplinks.native.ui.v4.DlIconButton
 import dev.deeplinks.native.ui.v4.DlListRow
-import dev.deeplinks.native.ui.v4.DlRowTrailing
 import dev.deeplinks.native.ui.v4.DlStatusDot
 import dev.deeplinks.native.ui.v4.DlTone
 
@@ -46,7 +44,7 @@ import dev.deeplinks.native.ui.v4.DlTone
  * 工作区只在首页文件夹列表里出现一次；不再有单独列出工作区的「电脑与工作区」弹层。
  */
 
-/** 2.1 顶栏：左 电脑（7.2）· 中 电脑名 + 连接状态（同样进 7.2）· 右 更多（2.5）。 */
+/** 2.1 顶栏：左 电脑（7.2）· 中 电脑名 + 连接状态（同样进 7.2）· 右 设置。 */
 @Composable
 internal fun HomeTopBar(
     hostName: String,
@@ -54,7 +52,7 @@ internal fun HomeTopBar(
     viaRemote: Boolean,
     offlineSinceLabel: String?,
     onOpenComputer: () -> Unit,
-    onOpenMore: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val s = DshS
     val status = when {
@@ -92,28 +90,7 @@ internal fun HomeTopBar(
                 Text(status, style = DshType.supporting, color = Dsh.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        DlIconButton(EllipsisOutline16, s.homeMore, onOpenMore)
-    }
-}
-
-/** 2.5 更多：设置 / 已归档。每个动作先关弹层再执行。 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun HomeMoreSheet(onDismiss: () -> Unit, onOpenSettings: () -> Unit, onOpenArchived: () -> Unit) {
-    DlBottomSheet(onDismissRequest = onDismiss, title = DshS.homeMore) {
-        HomeMoreSheetContent(
-            onOpenSettings = { onDismiss(); onOpenSettings() },
-            onOpenArchived = { onDismiss(); onOpenArchived() },
-        )
-    }
-}
-
-@Composable
-internal fun HomeMoreSheetContent(onOpenSettings: () -> Unit, onOpenArchived: () -> Unit) {
-    val s = DshS
-    Column(Modifier.fillMaxWidth()) {
-        DlListRow(title = s.settingsTitle, leading = SettingsOutline16, trailing = DlRowTrailing.Chevron, onClick = onOpenSettings)
-        DlListRow(title = s.homeArchivedSessions, leading = ArchiveBoxOutline16, trailing = DlRowTrailing.Chevron, onClick = onOpenArchived)
+        DlIconButton(SettingsOutline16, s.settingsTitle, onOpenSettings)
     }
 }
 

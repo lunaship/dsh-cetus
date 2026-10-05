@@ -2,7 +2,6 @@ package dev.deeplinks.native
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,15 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
@@ -53,28 +47,11 @@ import dev.deeplinks.core.queueRemove
 import dev.deeplinks.core.queueSteer
 import dev.deeplinks.core.queueSteering
 import dev.deeplinks.core.queueTitle
-import dev.deeplinks.core.scheduleDelete
-import dev.deeplinks.core.scheduleDeleteMessage
-import dev.deeplinks.core.scheduleEdit
 import dev.deeplinks.core.scheduleEnded
 import dev.deeplinks.core.scheduleLastDelivered
 import dev.deeplinks.core.scheduleNext
-import dev.deeplinks.core.schedulePrompt
-import dev.deeplinks.core.scheduleTimingNote
-import dev.deeplinks.core.scheduleTitle
-import dev.deeplinks.core.scheduledTasks
-import dev.deeplinks.core.schedulesAll
-import dev.deeplinks.core.schedulesEmpty
-import dev.deeplinks.core.schedulesEmptyHint
-import dev.deeplinks.core.schedulesFootnote
-import dev.deeplinks.core.schedulesThisSession
 import dev.deeplinks.core.slotClear
 import dev.deeplinks.native.ui.DshIconAction
-import dev.deeplinks.native.ui.v4.DlBottomSheet
-import dev.deeplinks.native.ui.v4.DlListRow
-import dev.deeplinks.native.ui.v4.DlRowTrailing
-import dev.deeplinks.native.ui.v4.DlSegmented
-import dev.deeplinks.native.ui.v4.DlSpinner
 import dev.deeplinks.native.ui.v4.DlTextField
 import java.time.Instant
 import java.time.ZoneId
@@ -284,143 +261,3 @@ internal fun scheduleSubtitle(task: ScheduledTask): String = listOfNotNull(
     if (task.active) formatScheduleTime(task.nextRunAt)?.let { L.scheduleNext.format(it) } else L.scheduleEnded,
     formatScheduleTime(task.lastDeliveredAt)?.let { L.scheduleLastDelivered.format(it) },
 ).joinToString(" · ")
-
-/**
- * 5.12 定时任务：本会话 / 全部会话两档 + 列表。点一条可改标题与提示词或删除。
- * DSH 不开放远程新建，也没有暂停接口，所以没有开关；状态写在副标题里。
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun ScheduledTasksSheet(open: Boolean, control: SessionControlController, hasSession: Boolean, onDismiss: () -> Unit) {
-    if (!open) return
-    var all by remember { mutableStateOf(!hasSession) }
-    var editing by remember { mutableStateOf<ScheduledTask?>(null) }
-    LaunchedEffect(all) { control.loadSchedules(all) }
-    DlBottomSheet(onDismissRequest = onDismiss, title = L.scheduledTasks) {
-        ScheduledTasksContent(
-            tasks = control.schedules.value,
-            loading = control.schedulesLoading.value,
-            loadError = control.schedulesError.value,
-            showScope = hasSession,
-            all = all,
-            enabled = control.busy.value == null,
-            onScopeChange = { all = it },
-            onRetry = { control.loadSchedules(all) },
-            onOpen = { editing = it },
-        )
-    }
-    editing?.let { task ->
-        ScheduleEditDialog(
-            task = task,
-            saving = control.busy.value == "schedule:${task.id}",
-            error = control.error.value,
-            onDismiss = { editing = null },
-            onSave = { title, prompt -> control.updateSchedule(task, title, prompt, all) { ok -> if (ok) editing = null } },
-            onDelete = { control.deleteSchedule(task, all) { ok -> if (ok) editing = null } },
-        )
-    }
-}
-
-/** 弹层正文，截图直接画这一块。 */
-@Composable
-internal fun ScheduledTasksContent(
-    tasks: List<ScheduledTask>,
-    loading: Boolean,
-    loadError: String?,
-    showScope: Boolean,
-    all: Boolean,
-    enabled: Boolean,
-    onScopeChange: (Boolean) -> Unit,
-    onRetry: () -> Unit,
-    onOpen: (ScheduledTask) -> Unit,
-) {
-    if (showScope) {
-        DlSegmented(
-            options = listOf(L.schedulesThisSession, L.schedulesAll),
-            selectedIndex = if (all) 1 else 0,
-            onSelect = { onScopeChange(it == 1) },
-            modifier = Modifier.fillMaxWidth().padding(start = DshSpace.s24, end = DshSpace.s24, bottom = DshSpace.s8),
-        )
-    }
-    when {
-        loading && tasks.isEmpty() -> Box(Modifier.fillMaxWidth().padding(DshSpace.s24), contentAlignment = Alignment.Center) {
-            DlSpinner()
-        }
-        loadError != null && tasks.isEmpty() -> DlListRow(
-            title = loadError,
-            danger = true,
-            trailing = DlRowTrailing.TextAction(L.retry, onRetry),
-        )
-        tasks.isEmpty() -> DlListRow(title = L.schedulesEmpty, subtitle = L.schedulesEmptyHint, leading = ClockOutline16, enabled = false)
-        else -> Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-            tasks.forEach { task ->
-                DlListRow(
-                    title = task.title.ifBlank { task.prompt.lineSequence().firstOrNull().orEmpty().take(40) },
-                    subtitle = scheduleSubtitle(task),
-                    leading = ClockOutline16,
-                    trailing = DlRowTrailing.Chevron,
-                    enabled = enabled,
-                    onClick = { onOpen(task) },
-                )
-            }
-        }
-    }
-    Text(
-        L.schedulesFootnote,
-        style = DshType.supporting,
-        color = Dsh.labelSecondary,
-        modifier = Modifier.padding(horizontal = DshSpace.s24, vertical = DshSpace.s8),
-    )
-}
-
-@Composable
-private fun ScheduleEditDialog(
-    task: ScheduledTask,
-    saving: Boolean,
-    error: String?,
-    onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit,
-    onDelete: () -> Unit,
-) {
-    var title by remember(task.id) { mutableStateOf(task.title) }
-    var prompt by remember(task.id) { mutableStateOf(task.prompt) }
-    var confirmDelete by remember(task.id) { mutableStateOf(false) }
-    DshDialogFrame(onDismiss = onDismiss, dismissible = !saving) { requestDismiss ->
-        DshDialogTitle(L.scheduleEdit)
-        DshDialogMessage(scheduleRuleLabel(task) + "\n" + L.scheduleTimingNote)
-        Spacer(Modifier.height(DshSpace.s16))
-        DlTextField(value = title, onValueChange = { title = it }, label = L.scheduleTitle, enabled = !saving)
-        Spacer(Modifier.height(DshSpace.s12))
-        DlTextField(
-            value = prompt,
-            onValueChange = { prompt = it },
-            label = L.schedulePrompt,
-            enabled = !saving,
-            singleLine = false,
-            minLines = 2,
-        )
-        DshDialogError(error)
-        DshDialogButtons(
-            dismissLabel = L.cancel,
-            onDismiss = requestDismiss,
-            confirmLabel = if (saving) L.saving else L.save,
-            onConfirm = { onSave(title, prompt) },
-            enabled = !saving,
-            confirmEnabled = prompt.isNotBlank() && (title != task.title || prompt != task.prompt),
-            leadingLabel = L.delete,
-            onLeading = { confirmDelete = true },
-        )
-    }
-    if (confirmDelete) {
-        DshConfirmDialog(
-            title = L.scheduleDelete,
-            message = L.scheduleDeleteMessage,
-            confirmLabel = L.delete,
-            danger = true,
-            saving = saving,
-            icon = TrashOutline16,
-            onDismiss = { confirmDelete = false },
-            onConfirm = { confirmDelete = false; onDelete() },
-        )
-    }
-}

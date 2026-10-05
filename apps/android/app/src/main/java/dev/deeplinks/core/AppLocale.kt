@@ -213,6 +213,7 @@ class DshStrings(private val values: Map<String, String>) {
     val autoLoadRemoteImagesFooter: String get() = t("autoLoadRemoteImagesFooter")
     val readImageFailed: String get() = t("readImageFailed")
     val archiveFailed: String get() = t("archiveFailed")
+    val deleteNotApplied: String get() = t("deleteNotApplied")
     val fallbackRetryLater: String get() = t("fallbackRetryLater")
     val fullTextSearchUnavailable: String get() = t("fullTextSearchUnavailable")
     val searchFailed: String get() = t("searchFailed")

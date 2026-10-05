@@ -511,13 +511,6 @@ internal fun SettingsHome(
         }
     }
     DshListSection(header = s.sectionOther) {
-        if (host != null) {
-            DshListRow(
-                title = s.sessionHistory,
-                icon = ArchiveBoxOutline16,
-                onClick = { onOpen(SettingsDest.SESSIONS) },
-            )
-        }
         DshListRow(
             title = s.tabAbout,
             icon = InfoOutline16,

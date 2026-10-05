@@ -361,7 +361,6 @@ fun WorkspaceScreen(
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
     // 新任务改为对话页草稿态（N1）：工作区选择器仍由状态驱动，「+ 新任务」不再开面板。
     var showDraftWorkspacePicker by remember { mutableStateOf(false) }
-    var showArchivedSheet by remember { mutableStateOf(false) }
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host.name, host.baseUrl)
     // K3 聚焦令牌：需要聚焦时只自增；真正的 requestFocus 在 InputBar 内部、下一帧执行。
     var composerFocusToken by remember { mutableStateOf(0) }
@@ -1785,21 +1784,6 @@ fun WorkspaceScreen(
     var composerTopPx by remember { mutableStateOf(-1f) }
     var historyRefreshing by remember { mutableStateOf(false) }
 
-    fun showArchiveUndo(sessionId: String) {
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = L.sessionArchivedToast,
-                actionLabel = L.undoAction,
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                // 服务端无 unarchive：走设置页同一套本地恢复通路
-                // （restoredSessionIds 会豁免 archivedSessionIds 同步过滤，见 applySessionSnapshot）
-                localStore.restoreSession(sessionId)
-                refreshSessions()
-            }
-        }
-    }
-
     var showShareSheet by remember { mutableStateOf(false) }
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
@@ -1809,15 +1793,6 @@ fun WorkspaceScreen(
             showPhoneChat()
         },
         onRenameSession = { openRename(it) },
-        onArchiveSession = { session ->
-            archiveSessionNow(session) { err ->
-                if (err == null) {
-                    showArchiveUndo(session.sessionId)
-                } else {
-                    sessionsLoadError = err
-                }
-            }
-        },
         onDeleteSession = { openDeleteSession(it) },
         onForkSession = { forkNow(it, closeDrawer = true) },
         onCreateSessionIn = { createSessionIn(it) },
@@ -2041,7 +2016,6 @@ fun WorkspaceScreen(
                 offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
                 onSelectWorkspace = { selectedHomeWorkspace = it },
-                onOpenArchived = { showArchivedSheet = true },
                 onPickStarter = onPickStarter,
                 activeApproval = homePendingApproval,
                 onAnswerApproval = { approvalId, outcome, onDone ->
@@ -2102,7 +2076,6 @@ fun WorkspaceScreen(
                     offlineSinceLabel = offlineSinceLabel,
                     selectedWorkspace = selectedHomeWorkspace,
                     onSelectWorkspace = { selectedHomeWorkspace = it },
-                    onOpenArchived = { showArchivedSheet = true },
                     onPickStarter = onPickStarter,
                     activeApproval = homePendingApproval,
                     onAnswerApproval = { approvalId, outcome, onDone ->
@@ -2125,10 +2098,8 @@ fun WorkspaceScreen(
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
             var goalDockExpanded by remember(currentSessionId) { mutableStateOf(false) }
-            var showSchedules by remember { mutableStateOf(false) }
             var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
-            ScheduledTasksSheet(showSchedules, workspaceViewModel.sessionControl, currentSessionId != null) { showSchedules = false }
             if (showUsage) UsageSheet(sessionStats) { showUsage = false }
             if (showShareSheet) {
                 val sid = currentSessionId
@@ -2177,9 +2148,7 @@ fun WorkspaceScreen(
                 onUsage = { showUsage = true },
                 previewSupported = workspaceViewModel.previewSupported.value, onPreview = { showPreviewSheet = true },
                 canGoal = workspaceViewModel.sessionControl.goal.value?.manageable == true, onGoal = { showGoalEdit = true },
-                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
                 onRename = { currentSession?.let { openRename(it) } },
-                onFork = { currentSessionId?.let { forkNow(it) } },
                 onShare = { showShareSheet = true },
             )
             val planItems = remember(messages) { latestPlanItems(messages) }
@@ -2741,11 +2710,6 @@ fun WorkspaceScreen(
     }
 
     // 模型选择底部抽屉（会话内与草稿态共用；草稿态目录由 openNewTaskDraft 重置加载）
-
-    ArchivedSessionsHost(
-        open = showArchivedSheet, prefs = workspacePrefs, sessions = sessions,
-        loading = sessionsInitialLoad, onDismiss = { showArchivedSheet = false },
-    )
 
     if (showDraftWorkspacePicker) {
         WorkspacePickerSheet(

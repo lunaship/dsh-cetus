@@ -31,7 +31,6 @@ internal class WorkspaceSidebarActions(
     val onNewSession: () -> Unit,
     val onSelectSession: (String) -> Unit,
     val onRenameSession: (MobileSession) -> Unit,
-    val onArchiveSession: (MobileSession) -> Unit,
     val onDeleteSession: (MobileSession) -> Unit,
     val onForkSession: (String) -> Unit,
     val onCreateSessionIn: (String?) -> Unit,
@@ -73,7 +72,6 @@ internal fun WorkspaceSidebar(
     offlineSinceLabel: String?,
     selectedWorkspace: String?,
     onSelectWorkspace: (String?) -> Unit,
-    onOpenArchived: () -> Unit,
     onPickStarter: (String) -> Unit,
     /** 当前会话里手机能处理的审批或提问（[pendingDecision]）：首页只对它给内联按钮。 */
     activeApproval: MobileMessage?,
@@ -139,7 +137,11 @@ internal fun WorkspaceSidebar(
             )
         } else {
             HomeWorkspacePage(
-                groups = homeWorkspaceGroups(visibleCandidates, knownWorkspaces, workspaceAccounts, workspaceRegistryReady),
+                // 没发过消息的空会话不上首页（正在跑的和当前打开的除外）
+                groups = homeWorkspaceGroups(
+                    visibleCandidates.filterNot { it.blank && !it.running && it.sessionId != currentSessionId },
+                    knownWorkspaces, workspaceAccounts, workspaceRegistryReady,
+                ),
                 hostIdentity = hostIdentity,
                 allSessions = sessions,
                 currentSessionId = currentSessionId,
@@ -156,7 +158,6 @@ internal fun WorkspaceSidebar(
                 onSearch = { onSelectWorkspace(null); actions.onClearSearch(); actions.onToggleSearch() },
                 statusItems = statusItems,
                 viaRemote = viaRemote,
-                onOpenArchived = onOpenArchived,
             )
         }
     }
@@ -165,9 +166,7 @@ internal fun WorkspaceSidebar(
             session = target,
             onDismiss = { sheetSession = null },
             onRename = { actions.onRenameSession(target) },
-            onFork = { actions.onForkSession(target.sessionId) },
             onShare = { actions.onShareSession(target.sessionId) },
-            onArchive = { actions.onArchiveSession(target) },
             onDelete = { actions.onDeleteSession(target) },
         )
     }

@@ -18,7 +18,6 @@ class WorkspaceMenuTest {
     private fun menu(
         ctx: Ctx = Ctx(),
         browseFiles: Boolean = false,
-        schedules: Boolean = false,
         changes: WorkspaceChangesSummary? = null,
         subagents: Int = 0,
     ) = sessionMenu(
@@ -29,23 +28,20 @@ class WorkspaceMenuTest {
         onBrowseFiles = { ctx.log += "files" },
         subagentCount = subagents,
         onUsage = { ctx.log += "usage" },
-        canSchedules = schedules,
-        onSchedules = { ctx.log += "schedules" },
         onRename = { ctx.log += "rename" },
-        onFork = { ctx.log += "fork" },
         onShare = { ctx.log += "share" },
     )
 
     @Test
-    fun baseMenuHasTraceAndUsageThenRenameForkShare() {
+    fun baseMenuHasTraceAndUsageThenRenameShare() {
         val m = menu()
         assertEquals(listOf(MenuL.menuTrace, L.translation("usageOpen")), m.view.map { it.label })
-        assertEquals(listOf(MenuL.menuRename, MenuL.menuFork, MenuL.menuShare), m.actions.map { it.label })
+        assertEquals(listOf(MenuL.menuRename, MenuL.menuShare), m.actions.map { it.label })
     }
 
     @Test
     fun archiveAndDeleteAreNotInSessionMenu() {
-        val labels = menu(browseFiles = true, schedules = true).let { it.view + it.actions }.map { it.label }
+        val labels = menu(browseFiles = true).let { it.view + it.actions }.map { it.label }
         assertTrue(L.archiveSession !in labels)
         assertTrue(L.deleteSession !in labels)
     }
@@ -63,7 +59,8 @@ class WorkspaceMenuTest {
         assertEquals(MenuL.menuFiles, menu(browseFiles = true).view[0].label)
         assertTrue(menu(subagents = 2).view.any { it.label == L.subagents })
         assertTrue(menu().view.none { it.label == L.subagents })
-        assertEquals(L.scheduledTasks, menu(schedules = true).actions.first().label)
+        // 定时任务和分叉不上手机
+        assertTrue(menu().actions.none { it.label == L.scheduledTasks })
     }
 
     @Test

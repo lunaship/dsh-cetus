@@ -15,7 +15,6 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.native.HomeEmptyStarters
 import dev.deeplinks.native.HomeFolderMoreRow
 import dev.deeplinks.native.HomeFolderSessionRow
-import dev.deeplinks.native.HomeMoreSheetContent
 import dev.deeplinks.native.HomeWorkspacesTitle
 import dev.deeplinks.native.HomeTopBar
 import dev.deeplinks.native.HomeWorkspaceSheetContent
@@ -71,7 +70,7 @@ private val APPROVAL = MobileMessage(
 )
 
 private val NO_ACTIONS = WorkspaceSidebarActions(
-    onOpenDevice = {}, onNewSession = {}, onSelectSession = {}, onRenameSession = {}, onArchiveSession = {},
+    onOpenDevice = {}, onNewSession = {}, onSelectSession = {}, onRenameSession = {},
     onDeleteSession = {}, onForkSession = {}, onCreateSessionIn = {}, onDeleteWorkspace = {}, onToggleSearch = {},
     onSearchQueryChange = {}, onClearSearch = {}, onRetrySearch = {}, onRetrySessions = {}, onAddWorkspace = {},
     onOpenSettings = {},
@@ -82,7 +81,7 @@ private fun HomeCanvas(dark: Boolean, english: Boolean, online: Boolean = true, 
     ShotFrame(dark = dark, english = english) {
         Box(Modifier.fillMaxSize().background(Dsh.bgBase)) {
             Column(Modifier.fillMaxSize()) {
-                HomeTopBar(hostName = "MacBook Pro", online = online, viaRemote = false, offlineSinceLabel = if (online) null else "22:03", onOpenComputer = {}, onOpenMore = {})
+                HomeTopBar(hostName = "MacBook Pro", online = online, viaRemote = false, offlineSinceLabel = if (online) null else "22:03", onOpenComputer = {}, onOpenSettings = {})
                 Column(Modifier.weight(1f)) { content() }
                 HomeBottomBar(online = online, onSearch = {}, onCreate = {})
             }
@@ -209,26 +208,19 @@ internal fun HomeSearchDarkEn() {
     ShotFrame(dark = true, english = true) { SearchWall(english = true) }
 }
 
-/** 2.5 更多 / 长按文件夹 + 2.6 长按会话：三张弹层的静态外观。 */
+/** 2.5 长按文件夹 + 2.6 长按会话：两张弹层的静态外观。 */
 @Composable
 private fun SheetsWall(english: Boolean) {
     Column(Modifier.fillMaxSize().background(Dsh.bgOverlay)) {
-        DlBottomSheetSurface(title = if (english) "More" else "更多") {
-            HomeMoreSheetContent(onOpenSettings = {}, onOpenArchived = {})
-        }
-        Box(Modifier.padding(top = 16.dp)) {
-            DlBottomSheetSurface(title = "dsh-links") {
-                HomeWorkspaceSheetContent(label = "dsh-links", online = true, onNewTask = {}, onDelete = {})
-            }
+        DlBottomSheetSurface(title = "dsh-links") {
+            HomeWorkspaceSheetContent(label = "dsh-links", online = true, onNewTask = {}, onDelete = {})
         }
         Box(Modifier.padding(top = 16.dp)) {
             DlBottomSheetSurface {
                 HomeSessionSheetContent(
                     session = homeSession("s3", if (english) "Approval status sync" else "完善审批状态同步"),
                     onRename = {},
-                    onFork = {},
                     onShare = {},
-                    onArchive = {},
                     onDelete = {},
                 )
             }

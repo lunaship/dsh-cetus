@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
-import dev.deeplinks.core.scheduledTasks
 import dev.deeplinks.native.AttachSheetContent
 import dev.deeplinks.native.CommandSuggestions
 import dev.deeplinks.native.ConversationShareContent
@@ -32,18 +31,15 @@ import dev.deeplinks.native.MobileModelGroup
 import dev.deeplinks.native.MobileModelOption
 import dev.deeplinks.native.ModelPickerContent
 import dev.deeplinks.native.PermissionPickerContent
-import dev.deeplinks.native.ScheduledTasksContent
 import dev.deeplinks.native.SelectTextPage
 import dev.deeplinks.native.ShieldOutline16
 import dev.deeplinks.native.SubagentNode
 import dev.deeplinks.native.SubagentTree
 import dev.deeplinks.native.TrashOutline16
-import dev.deeplinks.native.parseScheduledTasks
 import dev.deeplinks.native.ui.v4.DlBottomSheetSurface
 import dev.deeplinks.native.ui.v4.DlOverlayColor
 import dev.deeplinks.native.ui.v4.DlTextField
 import dev.deeplinks.native.ui.v4.DlTone
-import org.json.JSONArray
 
 private fun pick(en: Boolean, zh: String, english: String) = if (en) english else zh
 
@@ -107,18 +103,9 @@ private fun SheetsWallA(en: Boolean) {
     }
 }
 
-/** 5.9 / 5.12 / 5.1：分享、定时任务、指令面板。 */
+/** 5.9 / 5.1：分享、指令面板（定时任务弹层已从手机端删除）。 */
 @Composable
 private fun SheetsWallB(en: Boolean) {
-    val tasks = parseScheduledTasks(
-        JSONArray(
-            """[
-              {"id":"1","title":"${pick(en, "跑一遍测试", "Run the tests")}","prompt":"pnpm test","kind":"daily","time":"09:00"},
-              {"id":"2","title":"${pick(en, "检查依赖更新", "Check dependency updates")}","prompt":"check","kind":"weekly","weekdays":[1],"time":"10:00"},
-              {"id":"3","title":"${pick(en, "同步 Notion", "Sync Notion")}","prompt":"sync","kind":"every","everySeconds":3600,"status":"completed"}
-            ]""",
-        ),
-    )
     Column(Modifier.fillMaxSize().background(Dsh.bgOverlay)) {
         DlBottomSheetSurface(title = DshS.shareConversation) {
             ConversationShareContent(
@@ -133,20 +120,6 @@ private fun SheetsWallB(en: Boolean) {
                 ),
                 onShareImage = {},
                 onExportText = {},
-            )
-        }
-        SheetGap()
-        DlBottomSheetSurface(title = DshS.scheduledTasks) {
-            ScheduledTasksContent(
-                tasks = tasks,
-                loading = false,
-                loadError = null,
-                showScope = true,
-                all = false,
-                enabled = true,
-                onScopeChange = {},
-                onRetry = {},
-                onOpen = {},
             )
         }
         SheetGap()
