@@ -44,6 +44,7 @@ import XCTest
         host.view.backgroundColor = .systemBackground
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         guard let scene else { fatalError("review snapshots need a window scene") }
+        let previousKey = scene.windows.first { $0.isKeyWindow }
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(origin: .zero, size: size)
         window.rootViewController = host
@@ -53,6 +54,8 @@ import XCTest
         defer {
             window.isHidden = true
             window.rootViewController = nil
+            window.windowScene = nil
+            previousKey?.makeKey()
         }
         let format = UIGraphicsImageRendererFormat()
         format.scale = 3
