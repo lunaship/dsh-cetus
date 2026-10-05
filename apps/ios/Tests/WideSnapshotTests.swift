@@ -52,9 +52,14 @@ import XCTest
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
         let image = wideImage(page, size: size, regular: regular)
-        // 横屏里的玻璃导航栏同样有 1–2 个色阶的抗锯齿抖动。
+        // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
+        // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
         assertSnapshot(
-            of: image, as: .image(precision: 0.995), named: "default", testName: "Snapshot_\(scene)_light_zh")
+            of: image,
+            as: .image(precision: 0.995, perceptualPrecision: 0.99),
+            named: "default",
+            testName: "Snapshot_\(scene)_light_zh"
+        )
     }
 
     private func wideImage<V: View>(_ view: V, size: CGSize, regular: Bool) -> UIImage {
@@ -79,6 +84,9 @@ import XCTest
         let window = WideSnapshotWindow(windowScene: scene)
         window.frame = CGRect(origin: .zero, size: size)
         window.overrideUserInterfaceStyle = .light
+        window.traitOverrides.userInterfaceStyle = .light
+        window.traitOverrides.accessibilityContrast = .unspecified
+        window.traitOverrides.preferredContentSizeCategory = .large
         window.rootViewController = host
         window.isHidden = false
         window.makeKeyAndVisible()
