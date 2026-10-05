@@ -94,21 +94,17 @@ struct ConversationPage: View {
             .navigationSubtitle(copy.subtitle(workspace: model.workspaceName, phase: model.phase))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar(copy) }
-        if staticSnapshot {
-            Group {
-                if presentChanges {
-                    page.inspector(isPresented: .constant(true)) {
-                        ChangesPage(
-                            files: ReviewScreen.sampleFiles, turn: 3, canPrevious: true, canNext: false,
-                            copy: ReviewCopy(locale: locale)
-                        )
-                        .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
-                    }
-                } else {
-                    page
-                }
+        if staticSnapshot && presentChanges {
+            page.inspector(isPresented: .constant(true)) {
+                ChangesPage(
+                    files: ReviewScreen.sampleFiles, turn: 3, canPrevious: true, canNext: false,
+                    copy: ReviewCopy(locale: locale)
+                )
+                .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
             }
             .transaction { $0.disablesAnimations = true }
+        } else if staticSnapshot {
+            page.transaction { $0.disablesAnimations = true }
         } else {
             page
                 .navigationDestination(isPresented: $showTrajectory) {
