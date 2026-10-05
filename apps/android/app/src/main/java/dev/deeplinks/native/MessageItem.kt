@@ -225,10 +225,6 @@ internal fun MessageItem(
                     menuOpen = false
                     onQuote()
                 })
-                add(DshMenuItem(BranchOutline16, L.forkSession) {
-                    menuOpen = false
-                    onFork()
-                })
                 if (onRegenerate != null) {
                     add(DshMenuItem(RefreshOutline16, L.regenerate) {
                         menuOpen = false

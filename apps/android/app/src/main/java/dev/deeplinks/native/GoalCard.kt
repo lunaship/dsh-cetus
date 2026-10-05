@@ -31,7 +31,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.deeplinks.native.ui.v4.DlPill
+import dev.deeplinks.native.ui.v4.DlSize
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
@@ -94,26 +97,29 @@ internal fun GoalStatusSlot(
     Column(
         modifier = modifier
             .padding(horizontal = DshSpace.s12, vertical = DshSpace.s4)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(DshRadius.block))
-            .background(Dsh.surface1),
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
     ) {
         AnimatedVisibility(visible = showExpanded) {
             Column(
                 Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(DshRadius.container))
+                    .background(Dsh.surface1)
                     .heightIn(max = maxPanel)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = DshSpace.s16, end = DshSpace.s4, top = DshSpace.s12, bottom = DshSpace.s4),
-                verticalArrangement = Arrangement.spacedBy(DshSpace.s12),
+                    .padding(start = DshSpace.s12, end = DshSpace.s4, top = DshSpace.s8, bottom = DshSpace.s12),
+                verticalArrangement = Arrangement.spacedBy(DshSpace.s8),
             ) {
                 GoalDockHeader(goal, summary, plan, busy, onPauseOrResume, onEdit, onClear)
-                if (plan.isNotEmpty()) PlanChecklist(plan, Modifier.padding(end = DshSpace.s12))
+                if (plan.isNotEmpty()) PlanChecklist(plan, Modifier.padding(end = DshSpace.s8))
             }
         }
+        // 收起时是一颗和建议胶囊同高的小胶囊（Kurage「3 agents」那种），不再占一整行卡片
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = DshTouch.min)
+                .clip(DlPill)
+                .background(Dsh.surface1)
                 .then(
                     if (canExpand) {
                         Modifier.clickable(
@@ -124,43 +130,39 @@ internal fun GoalStatusSlot(
                         Modifier
                     },
                 )
+                .heightIn(min = DlSize.buttonCompact)
                 .padding(horizontal = DshSpace.s12),
             horizontalArrangement = Arrangement.spacedBy(DshSpace.s8),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (plan.isNotEmpty()) {
                 GoalProgressRing(done.toFloat() / plan.size)
-                Text(
-                    "$done/${plan.size}",
-                    style = DshType.supporting,
-                    color = Dsh.labelSecondary,
-                    maxLines = 1,
-                )
+                Text("$done/${plan.size}", style = DshType.caption, color = Dsh.labelSecondary, maxLines = 1)
             } else {
                 Icon(
                     if (hasGoal) GoalOutline16 else ChecklistOutline16,
                     contentDescription = null,
                     tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(DshIconSize.md),
+                    modifier = Modifier.size(DshIconSize.sm),
                 )
             }
             Text(
                 goalDockLine(goal, summary, plan),
-                style = DshType.body,
+                style = DshType.supporting,
                 color = Dsh.labelPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f, fill = false),
             )
-            goal?.takeIf { it.phase != "active" }?.let {
-                Text(goalPhaseLabel(it.phase), style = DshType.supporting, color = Dsh.labelSecondary, maxLines = 1)
+            goal?.takeIf { it.phase == "paused" || it.phase == "blocked" }?.let {
+                Text(goalPhaseLabel(it.phase), style = DshType.caption, color = Dsh.labelSecondary, maxLines = 1)
             }
             if (canExpand) {
                 Icon(
                     if (showExpanded) ChevronDownOutline16 else ChevronUpOutline16,
                     contentDescription = null,
-                    tint = Dsh.labelSecondary,
-                    modifier = Modifier.size(DshIconSize.sm),
+                    tint = Dsh.labelTertiary,
+                    modifier = Modifier.size(DshIconSize.xs),
                 )
             }
         }
@@ -169,10 +171,10 @@ internal fun GoalStatusSlot(
 
 @Composable
 private fun GoalProgressRing(progress: Float) {
-    Box(Modifier.size(DshIconSize.md), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(DshIconSize.sm), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(
             progress = { progress },
-            modifier = Modifier.size(DshIconSize.md),
+            modifier = Modifier.size(DshIconSize.sm),
             color = Dsh.brand400,
             trackColor = Dsh.borderSubtle,
             strokeWidth = 2.dp,
@@ -194,9 +196,9 @@ private fun GoalDockHeader(
     val meta = goal?.let { listOfNotNull(goalPhaseLabel(it.phase), goalRoundsLabel(it)).joinToString(" · ") }
     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(DshSpace.s4)) {
         Column(Modifier.weight(1f).padding(top = DshSpace.s4)) {
-            Text(title, style = DshType.bodyStrong, color = Dsh.labelPrimary, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, style = DshType.supporting, fontWeight = FontWeight.SemiBold, color = Dsh.labelPrimary, maxLines = 3, overflow = TextOverflow.Ellipsis)
             if (!meta.isNullOrBlank()) {
-                Text(meta, style = DshType.supporting, color = Dsh.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(meta, style = DshType.caption, color = Dsh.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (goal != null && goal.manageable) GoalDockMenu(goal, busy, onPauseOrResume, onEdit, onClear)

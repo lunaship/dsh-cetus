@@ -37,7 +37,6 @@ import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.homeAnswer
 import dev.deeplinks.core.homeDiagnose
-import dev.deeplinks.core.homeForkAsNew
 import dev.deeplinks.core.homeShareSession
 import dev.deeplinks.native.ui.v4.DlAction
 import dev.deeplinks.native.ui.v4.DlBottomSheet
@@ -149,25 +148,21 @@ internal fun HomeWorkspaceChips(workspaces: List<String>, selected: String?, onS
     }
 }
 
-/** 2.6 长按会话：重命名 / 分叉为新会话 / 分享对话 / 归档 / 删除（红色，最后）。 */
+/** 2.6 长按会话：重命名 / 分享对话 / 删除（红色，最后）。手机不做归档和分叉，删除即电脑端的删除。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeSessionSheet(
     session: MobileSession,
     onDismiss: () -> Unit,
     onRename: () -> Unit,
-    onFork: () -> Unit,
     onShare: () -> Unit,
-    onArchive: () -> Unit,
     onDelete: () -> Unit,
 ) {
     DlBottomSheet(onDismissRequest = onDismiss) {
         HomeSessionSheetContent(
             session = session,
             onRename = { onDismiss(); onRename() },
-            onFork = { onDismiss(); onFork() },
             onShare = { onDismiss(); onShare() },
-            onArchive = { onDismiss(); onArchive() },
             onDelete = { onDismiss(); onDelete() },
         )
     }
@@ -177,9 +172,7 @@ internal fun HomeSessionSheet(
 internal fun HomeSessionSheetContent(
     session: MobileSession,
     onRename: () -> Unit,
-    onFork: () -> Unit,
     onShare: () -> Unit,
-    onArchive: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val s = DshS
@@ -193,9 +186,7 @@ internal fun HomeSessionSheetContent(
             modifier = Modifier.padding(horizontal = DshSpace.s24, vertical = DshSpace.s8),
         )
         DlListRow(title = s.rename, leading = EditOutline16, onClick = onRename)
-        DlListRow(title = s.homeForkAsNew, leading = BranchOutline16, onClick = onFork)
         DlListRow(title = s.homeShareSession, leading = ShareOutline16, onClick = onShare)
-        DlListRow(title = s.archiveSession, leading = ArchiveBoxOutline16, onClick = onArchive)
         DlListRow(title = s.deleteSession, leading = TrashOutline16, danger = true, onClick = onDelete)
     }
 }
@@ -285,7 +276,7 @@ internal fun HomeBottomBar(online: Boolean, onSearch: () -> Unit, onCreate: () -
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                EditOutline16,
+                ComposeOutline16,
                 contentDescription = DshS.homeNewTask,
                 tint = if (online) Dsh.labelPrimary else Dsh.tertiaryText,
                 modifier = Modifier.size(DshIconSize.md),

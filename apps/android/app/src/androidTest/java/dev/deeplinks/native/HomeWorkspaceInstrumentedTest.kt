@@ -52,7 +52,7 @@ class HomeWorkspaceInstrumentedTest {
     private fun show(online: Boolean = true, pending: MobileMessage? = null) {
         val actions = WorkspaceSidebarActions(
             onOpenDevice = {}, onNewSession = { created = null }, onSelectSession = { selected = it },
-            onRenameSession = {}, onArchiveSession = {}, onDeleteSession = {}, onForkSession = {},
+            onRenameSession = {}, onDeleteSession = {}, onForkSession = {},
             onCreateSessionIn = { created = it }, onDeleteWorkspace = {}, onToggleSearch = {},
             onSearchQueryChange = {}, onClearSearch = {}, onRetrySearch = {}, onRetrySessions = {},
             onAddWorkspace = {}, onOpenSettings = {},

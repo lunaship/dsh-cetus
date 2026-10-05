@@ -55,7 +55,6 @@ internal fun HomeWorkspacePage(
     onSearch: () -> Unit,
     statusItems: LazyListScope.(Boolean) -> Unit,
     viaRemote: Boolean = false,
-    onOpenArchived: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { WorkspacePrefs(context) }
@@ -63,7 +62,6 @@ internal fun HomeWorkspacePage(
     val labels = draftWorkspaceChipLabels(groups.mapNotNull { it.path })
     val labelByPath = groups.mapNotNull { it.path }.zip(labels).toMap()
     var showAll by rememberSaveable(hostIdentity) { mutableStateOf(emptyList<String>()) }
-    var moreOpen by remember { mutableStateOf(false) }
     var sheetPath by remember { mutableStateOf<String?>(null) }
     val awaiting = groups.flatMap { it.sessions }.filter { it.awaitingInput }
         .distinctBy { it.sessionId }.sortedByDescending { sessionMillis(it.updatedAt) }
@@ -88,7 +86,7 @@ internal fun HomeWorkspacePage(
                 viaRemote = viaRemote,
                 offlineSinceLabel = offlineSinceLabel,
                 onOpenComputer = onOpenComputer,
-                onOpenMore = { moreOpen = true },
+                onOpenSettings = { actions.onOpenSettings() },
             )
             HomeCrashBanner()
             LazyColumn(
@@ -169,9 +167,6 @@ internal fun HomeWorkspacePage(
                         }
                     }
                 }
-                item(key = "home-add-workspace") {
-                    DlListRow(title = L.addWorkspace, leading = PlusOutline16, onClick = actions.onAddWorkspace)
-                }
             }
             HomeBottomBar(
                 online = online,
@@ -179,13 +174,6 @@ internal fun HomeWorkspacePage(
                 onCreate = actions.onNewSession,
             )
         }
-    }
-    if (moreOpen) {
-        HomeMoreSheet(
-            onDismiss = { moreOpen = false },
-            onOpenSettings = { actions.onOpenSettings() },
-            onOpenArchived = onOpenArchived,
-        )
     }
     sheetPath?.let { path ->
         HomeWorkspaceSheet(

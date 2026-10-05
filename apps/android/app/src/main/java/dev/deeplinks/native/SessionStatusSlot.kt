@@ -114,9 +114,12 @@ internal fun goalStatus(
     plan: List<MobileTodoItem>,
     running: Boolean,
 ): SessionStatus.Goal? {
+    // 已完成的目标不再常驻；计划全部做完且没有进行中的目标时也收起
+    val live = goal?.takeIf { it.phase != "complete" }
+    val openPlan = plan.takeIf { p -> live != null || p.any { planItemKind(it.status) != PlanItemKind.Done } }.orEmpty()
     // 没有结构化目标时，推断出的目标只在运行中显示，避免历史会话常驻一条旧目标
     val summary = goalSummary?.takeIf { goal == null && running && it.isNotBlank() }
-    return if (goal != null || plan.isNotEmpty() || summary != null) SessionStatus.Goal(goal, summary, plan) else null
+    return if (live != null || openPlan.isNotEmpty() || summary != null) SessionStatus.Goal(live, summary, openPlan) else null
 }
 
 /** 顶栏下方的状态槽。[status] 为空时不占位。 */
