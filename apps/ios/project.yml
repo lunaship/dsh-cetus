@@ -139,6 +139,17 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DeepLinks.app/DeepLinks"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  DeepLinksUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: DeepLinksUITests
+    dependencies:
+      - target: DeepLinks
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.uitests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   DeepLinks:
     build:
@@ -150,6 +161,7 @@ schemes:
     test:
       targets:
         - DeepLinksTests
+        - DeepLinksUITests
     run:
       config: Debug
     archive:

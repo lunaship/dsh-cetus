@@ -78,6 +78,10 @@ Linux 云端 agent：只改文档或非编译文件时，以仓库现有 Node / 
 - UI 改动影响截图：先触发该 workflow，再把 reference 提交进 PR
 - PR 描述附「新基线 ↔ 页面编号」对照；命名见 `docs/page-mapping.md`
 
+## 截图与生产路径
+
+凡是截图测试使用 staticSnapshot 或换成实心底的页面，生产代码路径必须至少有一个单测或 UI 测试覆盖；PR 里列出“截图路径 ≠ 生产路径”的差异清单。
+
 ## 深入文档
 
 | 主题 | 文件 |
