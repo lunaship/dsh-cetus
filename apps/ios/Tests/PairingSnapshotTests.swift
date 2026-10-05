@@ -156,12 +156,18 @@ final class PairingSnapshotTests: XCTestCase {
         if increaseContrast {
             traits.append(UITraitCollection(accessibilityContrast: .high))
         }
+        let variant = variantName(
+            large: large, reduceTransparency: reduceTransparency, increaseContrast: increaseContrast)
+        // WelcomeSnapshotTests owns the plain welcome accessibility names. Pairing keeps its
+        // existing matrix names but adds a suffix so both resources can enter one test bundle.
+        let name =
+            scene == "1_2_welcome" && (reduceTransparency || increaseContrast)
+            ? "Snapshot_1_2_pairing_welcome_light_zh" : snapshotName(scene, appearance: appearance, language: language)
         assertSnapshot(
             of: content,
             as: .image(layout: .fixed(width: 402, height: 874), traits: UITraitCollection(traitsFrom: traits)),
-            named: variantName(
-                large: large, reduceTransparency: reduceTransparency, increaseContrast: increaseContrast),
-            testName: snapshotName(scene, appearance: appearance, language: language))
+            named: variant,
+            testName: name)
     }
 
     private func variantName(large: Bool, reduceTransparency: Bool, increaseContrast: Bool) -> String {
