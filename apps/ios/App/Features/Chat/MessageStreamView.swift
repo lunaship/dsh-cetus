@@ -15,6 +15,7 @@ struct MessageChrome {
     var onSuggest: (String) -> Void
     var onViewChanges: (Int?) -> Void
     var onLoadImage: (String) -> Void
+    var onSelectText: ((String) -> Void)? = nil
 }
 
 struct MessageStreamView: UIViewControllerRepresentable {

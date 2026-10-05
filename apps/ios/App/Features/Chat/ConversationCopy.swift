@@ -111,6 +111,96 @@ enum ChatText: String {
     case trajectoryTool
     case trajectoryEmpty
     case trajectoryTurn
+    case paletteGroupAgent
+    case paletteGroupSession
+    case paletteGroupApp
+    case palettePlan
+    case palettePlanDetail
+    case paletteGoal
+    case paletteGoalDetail
+    case paletteSubagent
+    case paletteSubagentDetail
+    case paletteSkills
+    case paletteSkillsDetail
+    case palettePause
+    case palettePauseDetail
+    case paletteResume
+    case paletteResumeDetail
+    case paletteClear
+    case paletteClearDetail
+    case paletteFeedback
+    case paletteFeedbackDetail
+    case paletteNew
+    case paletteNewDetail
+    case paletteSearch
+    case paletteSearchDetail
+    case paletteModel
+    case paletteModelDetail
+    case palettePermission
+    case palettePermissionDetail
+    case paletteChat
+    case paletteChatDetail
+    case paletteTrace
+    case paletteTraceDetail
+    case paletteSettings
+    case paletteSettingsDetail
+    case modelTitle
+    case modelSection
+    case effortSection
+    case contextUsed
+    case modelScope
+    case searchModels
+    case noModels
+    case permTitle
+    case permRead
+    case permReadDetail
+    case permWrite
+    case permWriteDetail
+    case permFull
+    case permFullDetail
+    case permNote
+    case permConfirmTitle
+    case permConfirmBody
+    case permEnable
+    case attachTitle
+    case attachCamera
+    case attachPhotos
+    case attachNote
+    case usageTitle
+    case usageTokens
+    case usageEmpty
+    case usageCache
+    case usageIo
+    case usageTurns
+    case usageTime
+    case usageContext
+    case agentsTitle
+    case agentsEmpty
+    case agentsDone
+    case shareTitle
+    case shareImage
+    case shareText
+    case renameTitle
+    case renameField
+    case save
+    case cancel
+    case deleteTitle
+    case deleteBody
+    case deleteConfirm
+    case scheduleTitle
+    case scheduleSession
+    case scheduleAll
+    case scheduleEmpty
+    case scheduleDaily
+    case scheduleWeekly
+    case scheduleEvery
+    case scheduleOnce
+    case goalTitle
+    case goalField
+    case goalRounds
+    case goalClear
+    case selectTitle
+    case selectText
 
     var fallback: String {
         switch self {
@@ -220,6 +310,96 @@ enum ChatText: String {
         case .trajectoryTool: "Tools"
         case .trajectoryEmpty: "Nothing matches"
         case .trajectoryTurn: "Turn %d"
+        case .paletteGroupAgent: "Agent"
+        case .paletteGroupSession: "Session"
+        case .paletteGroupApp: "App"
+        case .palettePlan: "Plan"
+        case .palettePlanDetail: "Ask for a plan first"
+        case .paletteGoal: "Goal"
+        case .paletteGoalDetail: "Set a goal for this session"
+        case .paletteSubagent: "Sub-agent"
+        case .paletteSubagentDetail: "Hand part of the work to another agent"
+        case .paletteSkills: "Skills"
+        case .paletteSkillsDetail: "List available skills"
+        case .palettePause: "Pause"
+        case .palettePauseDetail: "Pause this session"
+        case .paletteResume: "Resume"
+        case .paletteResumeDetail: "Resume this session"
+        case .paletteClear: "Clear"
+        case .paletteClearDetail: "Clear the conversation"
+        case .paletteFeedback: "Feedback"
+        case .paletteFeedbackDetail: "Send feedback about this turn"
+        case .paletteNew: "New session"
+        case .paletteNewDetail: "Start a new task"
+        case .paletteSearch: "Search"
+        case .paletteSearchDetail: "Search sessions"
+        case .paletteModel: "Model"
+        case .paletteModelDetail: "Choose a model and effort"
+        case .palettePermission: "Permission"
+        case .palettePermissionDetail: "Choose what this session can do"
+        case .paletteChat: "Chat"
+        case .paletteChatDetail: "Back to the conversation"
+        case .paletteTrace: "Trajectory"
+        case .paletteTraceDetail: "Open the trajectory"
+        case .paletteSettings: "Settings"
+        case .paletteSettingsDetail: "Open settings"
+        case .modelTitle: "Model and effort"
+        case .modelSection: "Model"
+        case .effortSection: "Effort"
+        case .contextUsed: "Context used %d%% · this session only"
+        case .modelScope: "This choice only affects this session"
+        case .searchModels: "Search models"
+        case .noModels: "No models"
+        case .permTitle: "Access"
+        case .permRead: "Read only"
+        case .permReadDetail: "Can read the workspace, not change it"
+        case .permWrite: "Workspace write"
+        case .permWriteDetail: "Can change files in this workspace"
+        case .permFull: "Full access"
+        case .permFullDetail: "Can act outside the workspace"
+        case .permNote: "This only affects this session"
+        case .permConfirmTitle: "Allow full access?"
+        case .permConfirmBody: "The agent will be able to act outside this workspace."
+        case .permEnable: "Allow"
+        case .attachTitle: "Add"
+        case .attachCamera: "Camera"
+        case .attachPhotos: "Photos"
+        case .attachNote: "Files can't be attached from the phone."
+        case .usageTitle: "Usage"
+        case .usageTokens: "tokens"
+        case .usageEmpty: "No usage yet"
+        case .usageCache: "Cache hit"
+        case .usageIo: "In / cache / out"
+        case .usageTurns: "Turns / steps"
+        case .usageTime: "Model / tools"
+        case .usageContext: "Context"
+        case .agentsTitle: "Sub-agents"
+        case .agentsEmpty: "No sub-agents"
+        case .agentsDone: "Done"
+        case .shareTitle: "Share"
+        case .shareImage: "Share as image"
+        case .shareText: "Export as text"
+        case .renameTitle: "Rename"
+        case .renameField: "Name"
+        case .save: "Save"
+        case .cancel: "Cancel"
+        case .deleteTitle: "Delete this schedule?"
+        case .deleteBody: "This schedule will stop. The conversation stays."
+        case .deleteConfirm: "Delete"
+        case .scheduleTitle: "Schedules"
+        case .scheduleSession: "This session"
+        case .scheduleAll: "All sessions"
+        case .scheduleEmpty: "No schedules"
+        case .scheduleDaily: "Every day %@"
+        case .scheduleWeekly: "Weekly %@ %@"
+        case .scheduleEvery: "Every %@ min"
+        case .scheduleOnce: "Once"
+        case .goalTitle: "Edit goal"
+        case .goalField: "Goal"
+        case .goalRounds: "Round limit %d"
+        case .goalClear: "Clear goal"
+        case .selectTitle: "Select text"
+        case .selectText: "Select text"
         }
     }
 }

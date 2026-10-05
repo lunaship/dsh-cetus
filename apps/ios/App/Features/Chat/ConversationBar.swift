@@ -11,6 +11,11 @@ struct ConversationBar: UIViewRepresentable {
     var onSecondary: () -> Void
     var onPrimary: () -> Void
     var solidSnapshot = false
+    var suggestions: [ComposerSuggestion] = []
+    var onSuggestion: (String) -> Void = { _ in }
+    var showsAttach = false
+    var attachTitle = ""
+    var onAttach: () -> Void = {}
 
     func makeUIView(context: Context) -> DLComposerView {
         let view = DLComposerView(sendTitle: copy.text(.send))
@@ -33,6 +38,11 @@ struct ConversationBar: UIViewRepresentable {
         view.onSubmit = onSend
         view.onDecisionSecondary = onSecondary
         view.onDecisionPrimary = onPrimary
+        view.suggestions = suggestions
+        view.onSuggestion = onSuggestion
+        view.showsAttachButton = showsAttach
+        view.attachTitle = attachTitle
+        view.onAttach = onAttach
         if let decision {
             switch decision {
             case .approval(let message):

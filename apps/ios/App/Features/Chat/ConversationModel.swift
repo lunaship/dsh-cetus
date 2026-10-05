@@ -35,6 +35,15 @@ protocol ConversationServing: Sendable {
     func sendPrompt(sessionID: String, text: String) async throws
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws
     func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws
+    func models(sessionID: String) async throws -> SessionModelsResponse
+    func selectModel(sessionID: String, provider: String, model: String, effort: String?) async throws
+    func setPermission(sessionID: String, preset: String) async throws
+    func renameSession(sessionID: String, title: String) async throws
+    func forkSession(sessionID: String) async throws -> String?
+    func schedules(sessionID: String, all: Bool) async throws -> [ScheduleTask]
+    func editGoal(sessionID: String, refID: String, revision: Int, objective: String, rounds: Int) async throws
+    func clearGoal(sessionID: String, refID: String, revision: Int) async throws
+    func deleteSchedule(sessionID: String, scheduleID: String) async throws
 }
 
 extension ConversationServing {
@@ -64,6 +73,42 @@ extension ConversationServing {
     }
     func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws {
         _ = (sessionID, rpcID, answer)
+        throw ConversationServiceError.offline
+    }
+    func models(sessionID: String) async throws -> SessionModelsResponse {
+        _ = sessionID
+        throw ConversationServiceError.offline
+    }
+    func selectModel(sessionID: String, provider: String, model: String, effort: String?) async throws {
+        _ = (sessionID, provider, model, effort)
+        throw ConversationServiceError.offline
+    }
+    func setPermission(sessionID: String, preset: String) async throws {
+        _ = (sessionID, preset)
+        throw ConversationServiceError.offline
+    }
+    func renameSession(sessionID: String, title: String) async throws {
+        _ = (sessionID, title)
+        throw ConversationServiceError.offline
+    }
+    func forkSession(sessionID: String) async throws -> String? {
+        _ = sessionID
+        throw ConversationServiceError.offline
+    }
+    func schedules(sessionID: String, all: Bool) async throws -> [ScheduleTask] {
+        _ = (sessionID, all)
+        return []
+    }
+    func editGoal(sessionID: String, refID: String, revision: Int, objective: String, rounds: Int) async throws {
+        _ = (sessionID, refID, revision, objective, rounds)
+        throw ConversationServiceError.offline
+    }
+    func clearGoal(sessionID: String, refID: String, revision: Int) async throws {
+        _ = (sessionID, refID, revision)
+        throw ConversationServiceError.offline
+    }
+    func deleteSchedule(sessionID: String, scheduleID: String) async throws {
+        _ = (sessionID, scheduleID)
         throw ConversationServiceError.offline
     }
 }
@@ -437,6 +482,50 @@ final class ConversationModel {
 
     func serviceQuestion(rpcID: String, answer: String) async throws {
         try await service.submitQuestion(sessionID: sessionID, rpcID: rpcID, answer: answer)
+    }
+
+    func serviceModels() async -> [ModelRow] {
+        guard let response = try? await service.models(sessionID: sessionID) else { return [] }
+        return modelRows(response)
+    }
+
+    func serviceSelectModel(provider: String, model: String, effort: String?) async {
+        try? await service.selectModel(sessionID: sessionID, provider: provider, model: model, effort: effort)
+    }
+
+    func servicePermission(_ preset: String) async {
+        try? await service.setPermission(sessionID: sessionID, preset: preset)
+    }
+
+    func serviceRename(_ title: String) async throws {
+        try await service.renameSession(sessionID: sessionID, title: title)
+        self.title = title
+    }
+
+    func serviceFork() async throws -> String? {
+        try await service.forkSession(sessionID: sessionID)
+    }
+
+    func serviceSchedules(all: Bool) async -> [ScheduleTask] {
+        (try? await service.schedules(sessionID: sessionID, all: all)) ?? []
+    }
+
+    func serviceEditGoal(objective: String, rounds: Int) async {
+        guard let id = status.goal?.ref?.id, let revision = status.goal?.ref?.revision else { return }
+        try? await service.editGoal(
+            sessionID: sessionID, refID: id, revision: revision, objective: objective, rounds: rounds)
+        status.goal?.objective = objective
+        status.goal?.maxGoalRounds = rounds
+    }
+
+    func serviceClearGoal() async {
+        guard let id = status.goal?.ref?.id, let revision = status.goal?.ref?.revision else { return }
+        try? await service.clearGoal(sessionID: sessionID, refID: id, revision: revision)
+        status.goal = nil
+    }
+
+    func serviceDeleteSchedule(_ id: String) async {
+        try? await service.deleteSchedule(sessionID: sessionID, scheduleID: id)
     }
 
     private func rebuild(fade: Bool) {

@@ -1,10 +1,29 @@
 import UIKit
 
+public struct ComposerSuggestion: Equatable {
+    public var id: String
+    public var group: String
+    public var title: String
+    public var detail: String
+
+    public init(id: String, group: String, title: String, detail: String) {
+        self.id = id
+        self.group = group
+        self.title = title
+        self.detail = detail
+    }
+}
+
 public final class DLComposerView: UIView, UITextViewDelegate {
     public var onSubmit: (() -> Void)?
     public var onDraft: ((String) -> Void)?
     public var onDecisionSecondary: (() -> Void)?
     public var onDecisionPrimary: (() -> Void)?
+    public var onSuggestion: ((String) -> Void)?
+    public var onAttach: (() -> Void)?
+    public var suggestions: [ComposerSuggestion] = []
+    public var showsAttachButton = false
+    public var attachTitle = ""
     /// SwiftUI 自己排位置时关掉。组件截图仍贴键盘。
     public var pinsToKeyboard = true
     /// 页面截图关掉实时玻璃。
@@ -159,10 +178,53 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             self?.onSubmit?()
         }
         send.setContentHuggingPriority(.required, for: .horizontal)
-        let row = UIStackView(arrangedSubviews: [field, send])
+        var rowItems: [UIView] = []
+        if showsAttachButton {
+            let plus = UIButton(type: .system)
+            plus.setImage(UIImage(systemName: "plus"), for: .normal)
+            plus.accessibilityLabel = attachTitle
+            plus.addAction(UIAction { [weak self] _ in self?.onAttach?() }, for: .touchUpInside)
+            plus.widthAnchor.constraint(equalToConstant: 44).isActive = true
+            plus.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            rowItems.append(plus)
+        }
+        rowItems.append(field)
+        rowItems.append(send)
+        let row = UIStackView(arrangedSubviews: rowItems)
         row.axis = .horizontal
         row.alignment = .bottom
         row.spacing = 8
-        return row
+        guard !suggestions.isEmpty else { return row }
+        var arranged: [UIView] = []
+        var lastGroup: String?
+        for suggestion in suggestions {
+            if suggestion.group != lastGroup {
+                let header = UILabel()
+                header.text = suggestion.group
+                header.font = .preferredFont(forTextStyle: .footnote)
+                header.textColor = DLUIKitColor.secondaryLabel
+                header.adjustsFontForContentSizeCategory = true
+                arranged.append(header)
+                lastGroup = suggestion.group
+            }
+            var config = UIButton.Configuration.plain()
+            config.title = suggestion.title
+            config.subtitle = suggestion.detail
+            config.titleAlignment = .leading
+            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0)
+            config.baseForegroundColor = DLUIKitColor.label
+            let button = UIButton(configuration: config)
+            button.contentHorizontalAlignment = .leading
+            button.accessibilityIdentifier = suggestion.id
+            button.addAction(UIAction { [weak self] _ in self?.onSuggestion?(suggestion.id) }, for: .touchUpInside)
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            arranged.append(button)
+        }
+        arranged.append(row)
+        let stack = UIStackView(arrangedSubviews: arranged)
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 4
+        return stack
     }
 }

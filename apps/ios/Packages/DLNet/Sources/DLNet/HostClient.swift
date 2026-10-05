@@ -104,6 +104,13 @@ public struct HostClient: Sendable {
                 method: "POST", url: Self.url(baseURL: baseURL, path: path, query: query), body: data, token: token))
     }
 
+    /// DELETE。2xx 的正文原样返回。
+    public func delete(path: String, query: [String: String] = [:]) async throws -> Data {
+        try await send(
+            Self.makeRequest(
+                method: "DELETE", url: Self.url(baseURL: baseURL, path: path, query: query), body: nil, token: token))
+    }
+
     /// POST JSON。2xx 的正文原样返回，调用方自己解码。空正文也算成功。
     public func postJSON(path: String, json body: some Encodable, query: [String: String] = [:]) async throws -> Data {
         let data = try JSONEncoder().encode(body)

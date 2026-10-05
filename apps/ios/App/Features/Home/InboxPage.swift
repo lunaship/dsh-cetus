@@ -474,7 +474,8 @@ struct InboxDestinationPage: View {
             InboxArchivedPage(model: model)
         case .session(let id):
             ConversationFlowView(
-                hostID: model.hostID, sessionID: id, seed: conversationSeed(sessionID: id, model: model))
+                hostID: model.hostID, sessionID: id, seed: conversationSeed(sessionID: id, model: model),
+                sessions: model.sessions)
         case .settings:
             later(copy.text(.settings), copy.text(.laterSettings))
         case .computer:
