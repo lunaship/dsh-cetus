@@ -22,6 +22,19 @@ final class DLGlassBar: UIView {
         return nil
     }
 
+    /// 截图不用实时玻璃，避免两次录制对不齐。
+    func useSolidSnapshotBackground(_ solid: Bool) {
+        if solid {
+            effectView.effect = nil
+            effectView.backgroundColor = .secondarySystemGroupedBackground
+        } else if effectView.effect == nil {
+            let glass = UIGlassEffect(style: .regular)
+            glass.isInteractive = false
+            effectView.effect = glass
+            effectView.backgroundColor = nil
+        }
+    }
+
     func install(_ content: UIView, animated: Bool) {
         let holder = effectView.contentView
         let previous = holder.subviews

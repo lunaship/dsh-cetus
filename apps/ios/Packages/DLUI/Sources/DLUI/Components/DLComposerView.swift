@@ -2,6 +2,15 @@ import UIKit
 
 public final class DLComposerView: UIView, UITextViewDelegate {
     public var onSubmit: (() -> Void)?
+    public var onDraft: ((String) -> Void)?
+    public var onDecisionSecondary: (() -> Void)?
+    public var onDecisionPrimary: (() -> Void)?
+    /// SwiftUI 自己排位置时关掉。组件截图仍贴键盘。
+    public var pinsToKeyboard = true
+    /// 页面截图关掉实时玻璃。
+    public var usesSolidSnapshotBackground = false {
+        didSet { glass.useSolidSnapshotBackground(usesSolidSnapshotBackground) }
+    }
 
     public var text: String = "" {
         didSet {
@@ -24,10 +33,12 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private var didFinishInit = false
     private var mode: Mode = .composer
     private var sendTitle = "Send"
+    private var preferredBarHeight: CGFloat = 72
 
     private enum Mode {
         case composer
-        case decision(status: String, question: String, secondaryTitle: String, primaryTitle: String)
+        case decision(
+            status: String, question: String, command: String?, secondaryTitle: String, primaryTitle: String)
     }
 
     public init(text: String = "", isEnabled: Bool = true, sendTitle: String = "Send") {
@@ -55,7 +66,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         super.didMoveToSuperview()
         NSLayoutConstraint.deactivate(keyboardPins)
         keyboardPins = []
-        guard let superview else { return }
+        guard pinsToKeyboard, let superview else { return }
         translatesAutoresizingMaskIntoConstraints = false
         keyboardPins = [
             leadingAnchor.constraint(equalTo: superview.leadingAnchor),
@@ -76,11 +87,13 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         question: String,
         secondaryTitle: String,
         primaryTitle: String,
+        command: String? = nil,
         animated: Bool
     ) {
         mode = .decision(
             status: status,
             question: question,
+            command: command,
             secondaryTitle: secondaryTitle,
             primaryTitle: primaryTitle
         )
@@ -91,6 +104,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         isSyncingText = true
         text = textView.text ?? ""
         isSyncingText = false
+        onDraft?(text)
     }
 
     private func applyMode(animated: Bool) {
@@ -98,18 +112,33 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         switch mode {
         case .composer:
             content = makeComposerContent()
-        case .decision(let status, let question, let secondaryTitle, let primaryTitle):
+        case .decision(let status, let question, let command, let secondaryTitle, let primaryTitle):
             content = makeDecisionContent(
                 status: status,
                 question: question,
+                command: command,
                 secondaryTitle: secondaryTitle,
                 primaryTitle: primaryTitle,
                 enabled: isEnabled,
-                onSecondary: {},
-                onPrimary: {}
+                onSecondary: { [weak self] in self?.onDecisionSecondary?() },
+                onPrimary: { [weak self] in self?.onDecisionPrimary?() }
             )
         }
+        let width = bounds.width > 1 ? bounds.width : 378
+        let fitted = content.systemLayoutSizeFitting(
+            CGSize(width: max(1, width - 24), height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel)
+        preferredBarHeight = max(72, fitted.height + 24)
         glass.install(content, animated: animated)
+        invalidateIntrinsicContentSize()
+    }
+
+    public override var intrinsicContentSize: CGSize {
+        guard !pinsToKeyboard else {
+            return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+        }
+        return CGSize(width: UIView.noIntrinsicMetric, height: preferredBarHeight)
     }
 
     private func makeComposerContent() -> UIView {

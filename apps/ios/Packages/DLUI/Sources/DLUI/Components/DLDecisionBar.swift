@@ -4,6 +4,7 @@ import UIKit
 func makeDecisionContent(
     status: String,
     question: String,
+    command: String? = nil,
     secondaryTitle: String,
     primaryTitle: String,
     enabled: Bool,
@@ -16,6 +17,7 @@ func makeDecisionContent(
     statusLabel.adjustsFontForContentSizeCategory = true
     statusLabel.textColor = enabled ? DLUIKitColor.wait : DLUIKitColor.tertiaryLabel
     statusLabel.numberOfLines = 1
+    statusLabel.setContentHuggingPriority(.required, for: .vertical)
 
     let questionLabel = UILabel()
     questionLabel.text = question
@@ -23,6 +25,7 @@ func makeDecisionContent(
     questionLabel.adjustsFontForContentSizeCategory = true
     questionLabel.textColor = enabled ? DLUIKitColor.label : DLUIKitColor.tertiaryLabel
     questionLabel.numberOfLines = 4
+    questionLabel.setContentHuggingPriority(.required, for: .vertical)
 
     let secondary = dlBarButton(title: secondaryTitle, prominent: false, enabled: enabled, action: onSecondary)
     let primary = dlBarButton(title: primaryTitle, prominent: true, enabled: enabled, action: onPrimary)
@@ -31,7 +34,33 @@ func makeDecisionContent(
     buttons.spacing = 12
     buttons.distribution = .fillEqually
 
-    let column = UIStackView(arrangedSubviews: [statusLabel, questionLabel, buttons])
+    var rows: [UIView] = [statusLabel, questionLabel]
+    if let command, !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let code = UILabel()
+        code.text = command
+        code.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        code.adjustsFontForContentSizeCategory = true
+        code.textColor = enabled ? DLUIKitColor.label : DLUIKitColor.tertiaryLabel
+        code.numberOfLines = 4
+        let pad = UIView()
+        code.translatesAutoresizingMaskIntoConstraints = false
+        pad.addSubview(code)
+        NSLayoutConstraint.activate([
+            code.leadingAnchor.constraint(equalTo: pad.leadingAnchor, constant: 12),
+            code.trailingAnchor.constraint(equalTo: pad.trailingAnchor, constant: -12),
+            code.topAnchor.constraint(equalTo: pad.topAnchor, constant: 8),
+            code.bottomAnchor.constraint(equalTo: pad.bottomAnchor, constant: -8),
+        ])
+        pad.backgroundColor = .secondarySystemFill
+        pad.layer.cornerRadius = 8
+        pad.clipsToBounds = true
+        rows.append(pad)
+    }
+    rows.append(buttons)
+    for row in rows {
+        row.setContentHuggingPriority(.required, for: .vertical)
+    }
+    let column = UIStackView(arrangedSubviews: rows)
     column.axis = .vertical
     column.spacing = 8
     return column

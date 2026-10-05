@@ -84,6 +84,12 @@ enum ChatText: String {
     case statusDemoTitle
     case statusDemoUser
     case statusDemoAssistant
+    case send
+    case reject
+    case allowOnce
+    case waitApproval
+    case waitAnswer
+    case question
 
     var fallback: String {
         switch self {
@@ -166,6 +172,12 @@ enum ChatText: String {
         case .statusDemoTitle: "Approval sync"
         case .statusDemoUser: "Keep approval status in sync."
         case .statusDemoAssistant: "I'll check the event subscribers first."
+        case .send: "Send"
+        case .reject: "Reject"
+        case .allowOnce: "Allow once"
+        case .waitApproval: "Waiting for approval"
+        case .waitAnswer: "Waiting for an answer"
+        case .question: "Question"
         }
     }
 }

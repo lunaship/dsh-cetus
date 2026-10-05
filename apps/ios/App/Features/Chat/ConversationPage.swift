@@ -41,7 +41,14 @@ struct ConversationPage: View {
     var pinsToTail = false
     /// Legacy I4.3a fixtures explicitly opt out to preserve their baseline content.
     var showsStatusSlot = true
+    /// 旧截图走 staticSnapshot，不带输入区。新的 4.3 / 4.4 截图显式打开。
+    var showsComposer: Bool? = nil
+    /// 截图直接给决策，生产路径从请求归并里取最新一条。
+    var decisionPreview: PhoneDecision? = nil
     @State var statusExpanded = false
+    @State private var draft = ""
+    @State private var decisionPulse = 0
+    var draftDirectory: URL?
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -61,7 +68,46 @@ struct ConversationPage: View {
         }
     }
 
+    private var composerOn: Bool { showsComposer ?? !staticSnapshot }
+
+    private var decision: PhoneDecision? {
+        decisionPreview ?? pendingPhoneDecision(model.status.requests.messages)
+    }
+
     private func screen(_ copy: ConversationCopy) -> some View {
+        column(copy)
+            .modifier(
+                ComposerInset(on: composerOn) {
+                    ConversationBar(
+                        decision: decision,
+                        draft: draft,
+                        copy: copy,
+                        onDraft: { text in
+                            draft = text
+                            if let draftDirectory {
+                                ComposerDraftStore(directory: draftDirectory).save(hostID: model.hostID, text: text)
+                            }
+                        },
+                        onSend: { Task { await send(copy) } },
+                        onSecondary: { Task { await decide(allow: false) } },
+                        onPrimary: { Task { await decide(allow: true) } },
+                        solidSnapshot: staticSnapshot
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            )
+            .sensoryFeedback(.success, trigger: decisionPulse)
+            .onAppear {
+                guard draft.isEmpty, let draftDirectory else { return }
+                draft = ComposerDraftStore(directory: draftDirectory).load(hostID: model.hostID)
+            }
+            .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
+            .onChange(of: model.status.goal?.ref?.id) { _, _ in statusExpanded = false }
+    }
+
+    private func column(_ copy: ConversationCopy) -> some View {
         VStack(spacing: 0) {
             if showsStatusSlot {
                 ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
@@ -93,12 +139,41 @@ struct ConversationPage: View {
                     onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot
                 )
                 .scrollEdgeEffectStyle(showsStatusSlot ? .soft : nil, for: .top)
+                .opacity(composerOn && decision != nil ? 0.42 : 1)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DLColor.background)
-        .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
-        .onChange(of: model.status.goal?.ref?.id) { _, _ in statusExpanded = false }
+    }
+
+    private func send(_ copy: ConversationCopy) async {
+        _ = copy
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !staticSnapshot else { return }
+        do {
+            try await model.serviceSend(text)
+            draft = ""
+            if let draftDirectory {
+                ComposerDraftStore(directory: draftDirectory).save(hostID: model.hostID, text: "")
+            }
+        } catch {
+            // 失败或中途被回收都留着草稿，回来后回填，不自动重发。
+        }
+    }
+
+    private func decide(allow: Bool) async {
+        guard !staticSnapshot, let decision else { return }
+        do {
+            switch decision {
+            case .approval(let message):
+                guard let id = message.approvalId else { return }
+                try await model.serviceApproval(id: id, outcome: allow ? "allowed-once" : "rejected")
+            case .question(let message):
+                guard allow, let id = message.questionRpcId else { return }
+                try await model.serviceQuestion(rpcID: id, answer: draft)
+            }
+            decisionPulse += 1
+        } catch {}
     }
 
     private func displayTitle(_ copy: ConversationCopy) -> String {
@@ -136,6 +211,19 @@ struct ConversationPage: View {
                 Image(systemName: "ellipsis")
             }
             .accessibilityLabel(copy.text(.more))
+        }
+    }
+}
+
+private struct ComposerInset<Bar: View>: ViewModifier {
+    var on: Bool
+    @ViewBuilder var bar: () -> Bar
+
+    func body(content: Content) -> some View {
+        if on {
+            content.safeAreaInset(edge: .bottom, spacing: 0, content: bar)
+        } else {
+            content
         }
     }
 }
