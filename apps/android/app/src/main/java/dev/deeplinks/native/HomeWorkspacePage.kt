@@ -137,7 +137,5 @@ internal fun HomeWorkspacePage(
                 onCreate = actions.onNewSession,
             )
         }
-
     }
 }
-

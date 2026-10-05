@@ -254,7 +254,6 @@ internal fun HomeComputerSheetContent(
         HorizontalDivider(thickness = 1.dp, color = Dsh.outline)
         DlListRow(title = s.addWorkspace, leading = PlusOutline16, leadingTint = DlTone.Brand, onClick = onAddWorkspace)
         DlListRow(title = s.homeArchivedSessions, leading = ArchiveBoxOutline16, trailing = DlRowTrailing.Chevron, onClick = onOpenArchived)
-
     }
 }
 

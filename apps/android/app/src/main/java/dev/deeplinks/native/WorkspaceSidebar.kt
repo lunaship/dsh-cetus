@@ -24,7 +24,6 @@ import dev.deeplinks.native.util.sessionListKind
 import dev.deeplinks.native.util.sessionShowsRefreshBanner
 import dev.deeplinks.native.util.sessionsInWorkspace
 import dev.deeplinks.native.util.visibleUserWorkspaces
-import dev.deeplinks.native.util.workspaceDisplayName
 
 /** 侧栏回调集合（对齐 [ChatFeedActions] 模式：状态由参数注入，动作由此承载）。 */
 internal class WorkspaceSidebarActions(

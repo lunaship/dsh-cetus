@@ -110,7 +110,6 @@ private fun InboxRows(english: Boolean, online: Boolean) {
         HomeInboxRow(s, if (s.sessionId == "s1") APPROVAL else null, online, null, {}, {}, {}, {}, compact = true)
     }
     DlWorkspaceRow("relay", 1, false, 1, 0, online, {}, {})
-
 }
 
 @PreviewTest
