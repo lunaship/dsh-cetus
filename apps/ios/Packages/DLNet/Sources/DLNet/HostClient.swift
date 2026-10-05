@@ -105,7 +105,9 @@ public struct HostClient: Sendable {
     }
 
     /// 把状态码和正文都交回调用方。预览代理要转发 4xx，不能在这里抛掉。
-    public func exchange(method: String, path: String, body: Data?) async throws -> (status: Int, data: Data) {
+    public func exchange(method: String, path: String, body: Data?) async throws -> (
+        status: Int, data: Data, contentType: String
+    ) {
         let pinBefore = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
         do {
             let (data, response) = try await session.data(
@@ -114,7 +116,8 @@ public struct HostClient: Sendable {
             guard let http = response as? HTTPURLResponse else {
                 throw HostClientError.transport(URLError(.badServerResponse))
             }
-            return (http.statusCode, data)
+            let type = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
+            return (http.statusCode, data, type)
         } catch let error as HostClientError {
             throw error
         } catch {

@@ -120,7 +120,9 @@ struct ConversationPage: View {
                     FilesPage(path: "", entries: [], copy: ReviewCopy(locale: locale))
                 }
                 .navigationDestination(isPresented: $showPreview) {
-                    PreviewPage(previews: [], copy: ReviewCopy(locale: locale), loadsWeb: true)
+                    PreviewPage(
+                        previews: [], copy: ReviewCopy(locale: locale), loadsWeb: true,
+                        forward: model.previewForwarder())
                 }
                 .sheet(item: $sheet) { item in
                     NavigationStack { sheetPage(item, copy: copy) }

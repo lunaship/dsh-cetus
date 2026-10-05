@@ -193,6 +193,19 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    func previewExchange(path: String) async -> PreviewHTTPResult {
+        guard path.hasPrefix("/dsh-link/mobile/preview/") else {
+            return PreviewHTTPResult(status: 404, body: Data())
+        }
+        do {
+            let http = try await connect()
+            let result = try await http.exchange(method: "GET", path: path, body: nil)
+            return PreviewHTTPResult(status: result.status, contentType: result.contentType, body: result.data)
+        } catch {
+            return PreviewHTTPResult(status: 502, body: Data())
+        }
+    }
+
     func deleteSchedule(sessionID: String, scheduleID: String) async throws {
         let http = try await connect()
         guard !scheduleID.isEmpty, scheduleID.rangeOfCharacter(from: CharacterSet(charactersIn: "/?#")) == nil else {
