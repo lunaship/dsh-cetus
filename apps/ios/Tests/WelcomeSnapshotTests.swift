@@ -73,9 +73,7 @@ final class WelcomeSnapshotTests: XCTestCase {
         }
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let previousKey = scene?.windows.first { $0.isKeyWindow }
-        let previousStyles = scene?.windows.map { window in
-            (window, window.overrideUserInterfaceStyle, window.traitOverrides.accessibilityContrast)
-        }
+        let previousStyles = scene?.windows.map { ($0, $0.overrideUserInterfaceStyle) }
         assertSnapshot(
             of: view,
             as: .image(
@@ -92,9 +90,8 @@ final class WelcomeSnapshotTests: XCTestCase {
             window.rootViewController = nil
             window.windowScene = nil
         }
-        for (window, style, contrast) in previousStyles ?? [] {
+        for (window, style) in previousStyles ?? [] {
             window.overrideUserInterfaceStyle = style
-            window.traitOverrides.accessibilityContrast = contrast
         }
         previousKey?.makeKey()
     }
