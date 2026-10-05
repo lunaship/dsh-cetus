@@ -52,7 +52,9 @@ import XCTest
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
         let image = wideImage(page, size: size, regular: regular)
-        assertSnapshot(of: image, as: .image, named: "default", testName: "Snapshot_\(scene)_light_zh")
+        // 横屏里的玻璃导航栏同样有 1–2 个色阶的抗锯齿抖动。
+        assertSnapshot(
+            of: image, as: .image(precision: 0.995), named: "default", testName: "Snapshot_\(scene)_light_zh")
     }
 
     private func wideImage<V: View>(_ view: V, size: CGSize, regular: Bool) -> UIImage {

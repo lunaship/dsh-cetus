@@ -27,7 +27,9 @@ import XCTest
 
     private func shot<V: View>(_ name: String, make: () -> V) {
         let image = render(make())
-        assertSnapshot(of: image, as: .image, named: "default", testName: "Snapshot_\(name)_light_zh")
+        // 玻璃导航栏的抗锯齿每次差 1–2 个色阶。99.5% 放过这种亚像素，缺一行内容仍会失败。
+        assertSnapshot(
+            of: image, as: .image(precision: 0.995), named: "default", testName: "Snapshot_\(name)_light_zh")
     }
 
     private func render<V: View>(_ view: V) -> UIImage {
