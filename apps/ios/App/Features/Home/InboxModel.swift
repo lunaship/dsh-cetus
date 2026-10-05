@@ -324,6 +324,8 @@ final class InboxModel {
     var recentSearches: [String] = []
     var phoneAction: InboxPhoneAction?
     var path: [InboxDestination] = []
+    /// Wide layout only. Compact navigation still pushes `.session` onto `path`.
+    var selectedSessionID: String?
     var renameTarget: SessionSummary?
     var renameDraft = ""
     var deleteTarget: SessionSummary?

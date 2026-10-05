@@ -2092,6 +2092,23 @@
         }
       }
     },
+    "inbox.pickSession" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个对话"
+          }
+        }
+      }
+    },
     "inbox.brand" : {
       "extractionState" : "manual",
       "localizations" : {

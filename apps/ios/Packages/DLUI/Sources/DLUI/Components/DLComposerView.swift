@@ -16,6 +16,7 @@ public struct ComposerSuggestion: Equatable {
 
 public final class DLComposerView: UIView, UITextViewDelegate {
     public var onSubmit: (() -> Void)?
+    public var onEscape: (() -> Void)?
     public var onDraft: ((String) -> Void)?
     public var onDecisionSecondary: (() -> Void)?
     public var onDecisionPrimary: (() -> Void)?
@@ -117,6 +118,22 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             primaryTitle: primaryTitle
         )
         applyMode(animated: animated)
+    }
+
+    public override var keyCommands: [UIKeyCommand]? {
+        let send = UIKeyCommand(input: "\r", modifierFlags: .command, action: #selector(submitFromShortcut))
+        send.wantsPriorityOverSystemBehavior = true
+        let escape = UIKeyCommand(
+            input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(escapeFromShortcut))
+        return [send, escape]
+    }
+
+    @objc public func submitFromShortcut() {
+        onSubmit?()
+    }
+
+    @objc public func escapeFromShortcut() {
+        onEscape?()
     }
 
     public func textViewDidChange(_ textView: UITextView) {

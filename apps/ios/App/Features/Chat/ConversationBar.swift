@@ -8,6 +8,7 @@ struct ConversationBar: UIViewRepresentable {
     var copy: ConversationCopy
     var onDraft: (String) -> Void
     var onSend: () -> Void
+    var onEscape: () -> Void = {}
     var onSecondary: () -> Void
     var onPrimary: () -> Void
     var solidSnapshot = false
@@ -36,6 +37,7 @@ struct ConversationBar: UIViewRepresentable {
         view.usesSolidSnapshotBackground = solidSnapshot
         view.onDraft = onDraft
         view.onSubmit = onSend
+        view.onEscape = onEscape
         view.onDecisionSecondary = onSecondary
         view.onDecisionPrimary = onPrimary
         view.suggestions = suggestions

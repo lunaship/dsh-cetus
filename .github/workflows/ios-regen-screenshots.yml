@@ -54,7 +54,9 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
           status=$?
           set -e
-          if [ "$status" -ne 0 ] && [ -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain -- apps/ios/Tests/__Snapshots__)" ]; then
+          # Record mode fails every snapshot on purpose, even when the bytes
+          # did not change. A missing test result means the runner crashed.
+          if ! find "${DERIVED_DATA:-$HOME/Library/Developer/Xcode/DerivedData}" -name '*.xcresult' -print -quit | grep -q .; then
             exit "$status"
           fi
 

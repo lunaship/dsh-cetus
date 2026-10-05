@@ -53,7 +53,7 @@
 
 1.x 配对页面直接使用 `PhotosPicker`、`DataScannerViewController`（不支持时 `AVCaptureSession`）、系统 `alert` 与改名 `Form` sheet；扫描器桥接留在 App，不新增 DLUI 组件。
 
-系统组件直接用：`NavigationStack` `List` `Form` `.sheet` `confirmationDialog` `alert` `Menu` `Picker` `Toggle` `contextMenu` `swipeActions` `searchable`。新增封装组件先改本文件。
+系统组件直接用：`NavigationStack` `NavigationSplitView` `List` `Form` `.sheet` `.inspector` `confirmationDialog` `alert` `Menu` `Picker` `Toggle` `contextMenu` `swipeActions` `searchable`。新增封装组件先改本文件。
 
 2.x 不新增封装。`DLInboxRow` 增加可选的收件箱布局（状态点、脚注、等宽命令、搜索命中），`DLBanner` 增加可选图标；两者的原有调用外观不变。筛选、搜索、分组、左滑和长按用系统组件。底栏在系统玻璃里，「新任务」用 `.borderedProminent` + BrandFill，列表里的「允许一次」仍是 `.bordered` + accent tint。
 
@@ -71,7 +71,7 @@
 
 ## 10. 截图矩阵
 
-- 设备：iPhone 17 Pro（iOS 26.x）基线；iPad / 宽屏在 I4.8 验收。型号与系统版本改动需维护者批准。
+- 设备：iPhone 17 Pro（iOS 26.x）基线。I4.8 宽屏不另开模拟器，仍由这台机器按固定点尺寸渲染：竖屏 768×1024、横屏 1024×768、分屏宽 683 / 512 / 341（高 768）。341 用紧凑宽度，其余用常规宽度。型号与系统版本改动需维护者批准。
 - 主页面：浅 / 深 × 中 / 英 × 默认 / 大字号共 8 张。I4.1 暂不生成降低透明度 fixture：iOS 26.5 SDK 对应环境值只读，DLUI 无系统玻璃样式注入点；保留实际系统设置验收。
 - I4.1 其余状态各 1 张（浅色、中文、默认字号）；同名 / 改名各加 1 张英文，完整登记见 page-mapping.md。
 - I4.2 主状态 5 × 8，其余 10 张浅色中文。2.5 / 2.6 的系统菜单和对话框截同文案的静态列表；生产路径仍是 `toolbarTitleMenu`、`searchSuggestions`、`alert` 和 `confirmationDialog`。
