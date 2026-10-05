@@ -34,11 +34,28 @@ import Testing
         #expect(acceptedDownload(bytes: bytes, sha256: digest) == bytes)
     }
 
-    @Test func previewPathRequiresTheKey() {
-        #expect(previewTarget(path: "/secret/preview-1/index.html", key: "secret") == "preview-1")
-        #expect(previewTarget(path: "/other/preview-1/", key: "secret") == nil)
-        #expect(previewTarget(path: "/secret/", key: "secret") == nil)
-        #expect(previewLoopbackURL(port: 9, key: "secret", previewID: "preview-1").hasPrefix("http://127.0.0.1:9/"))
+    @Test func previewPathRequiresTheKeyAndAPreviewID() {
+        let key = String(repeating: "ab", count: 16)
+        let id = String(repeating: "cd", count: 12)
+        let mapped = mapPreviewPath(key: key, pathAndQuery: "/\(key)/\(id)/assets/app.js?x=1")
+        #expect(mapped == "/dsh-link/mobile/preview/\(id)/assets/app.js?x=1")
+        #expect(mapPreviewPath(key: key, pathAndQuery: "/other/\(id)/") == nil)
+        #expect(mapPreviewPath(key: key, pathAndQuery: "/\(key)/not-an-id/") == nil)
+        #expect(mapPreviewPath(key: key, pathAndQuery: "http://127.0.0.1/\(key)/\(id)/") == nil)
+        #expect(mapPreviewPath(key: key, pathAndQuery: "/\(key)/\(id)/../secret") == nil)
+        #expect(previewLoopbackURL(port: 9, key: key, previewID: id).hasPrefix("http://127.0.0.1:9/"))
         #expect(previewBindHost == "127.0.0.1")
+    }
+
+    @Test func fileKindAndPreviewNavigation() {
+        #expect(filePreviewKind(path: "a.swift", mime: nil) == .text)
+        #expect(filePreviewKind(path: "a.bin", mime: "image/png") == .image)
+        #expect(filePreviewKind(path: "a.pdf", mime: "application/pdf") == .quickLook)
+        let local = URL(string: "http://127.0.0.1:9/key/id/")!
+        #expect(previewNavigationAllowed(local, loopbackPort: 9))
+        #expect(!previewNavigationAllowed(URL(string: "https://example.com")!, loopbackPort: 9))
+        #expect(webSocketAccept("dGhlIHNhbXBsZSBub25jZQ==") == "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+        let frame = Data([0x81, 0x82, 0, 0, 0, 0, 0x68, 0x69])
+        #expect(readClientFrame(frame)?.frame.payload == Data("hi".utf8))
     }
 }

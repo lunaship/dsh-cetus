@@ -104,6 +104,25 @@ public struct HostClient: Sendable {
                 method: "POST", url: Self.url(baseURL: baseURL, path: path, query: query), body: data, token: token))
     }
 
+    /// 把状态码和正文都交回调用方。预览代理要转发 4xx，不能在这里抛掉。
+    public func exchange(method: String, path: String, body: Data?) async throws -> (status: Int, data: Data) {
+        let pinBefore = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
+        do {
+            let (data, response) = try await session.data(
+                for: Self.makeRequest(
+                    method: method, url: Self.url(baseURL: baseURL, path: path, query: [:]), body: body, token: token))
+            guard let http = response as? HTTPURLResponse else {
+                throw HostClientError.transport(URLError(.badServerResponse))
+            }
+            return (http.statusCode, data)
+        } catch let error as HostClientError {
+            throw error
+        } catch {
+            let pinAfter = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
+            throw Self.mapTransportError(error, pinErrorChanged: pinAfter != pinBefore)
+        }
+    }
+
     /// DELETE。2xx 的正文原样返回。
     public func delete(path: String, query: [String: String] = [:]) async throws -> Data {
         try await send(

@@ -1,7 +1,10 @@
 import DLCore
 import DLModels
+import DLNet
 import DLUI
+import QuickLook
 import SwiftUI
+import WebKit
 
 enum ReviewSurface: String {
     case changes
@@ -220,6 +223,8 @@ struct FilesPage: View {
 struct FilePreviewPage: View {
     var path: String
     var text: String?
+    var kind: FilePreviewKind = .text
+    var fileURL: URL?
     var discarded = false
     var liveShare = false
     var copy: ReviewCopy
@@ -239,6 +244,8 @@ struct FilePreviewPage: View {
                         .padding(16)
                         .textSelection(.enabled)
                 }
+            } else if kind == .quickLook, let fileURL {
+                QuickLookPreview(url: fileURL)
             } else {
                 Text(copy.text(.binaryFile))
                     .foregroundStyle(DLColor.secondaryLabel)
@@ -271,31 +278,141 @@ struct FilePreviewPage: View {
 struct PreviewPage: View {
     var previews: [PreviewInfo]
     var copy: ReviewCopy
+    var loadsWeb = false
+    var forward: (@Sendable (String) async -> PreviewHTTPResult)? = nil
+    @State private var proxy: PreviewLocalProxy?
+    @State private var boundPort = 0
+    @State private var openURL: URL?
 
     var body: some View {
-        Group {
+        let page = Group {
             if previews.isEmpty {
                 DLEmptyState(
                     title: copy.text(.previewEmpty), systemImage: "rectangle.dashed",
                     message: copy.text(.previewEmptyDetail))
             } else {
                 List(previews, id: \.previewId) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.label ?? copy.text(.previewTitle)).font(DLFont.headline)
-                        Text("\(previewBindHost):\(item.port ?? 0)")
-                            .font(DLFont.mono(DLFont.footnote))
-                            .foregroundStyle(DLColor.secondaryLabel)
-                        Text(copy.text(.previewLocal))
-                            .font(DLFont.footnote)
-                            .foregroundStyle(DLColor.secondaryLabel)
-                    }
-                    .frame(minHeight: 44)
+                    row(item)
                 }
             }
         }
         .navigationTitle(copy.text(.previewTitle))
         .navigationBarTitleDisplayMode(.inline)
         .background(DLColor.background)
+        if loadsWeb {
+            page
+                .navigationDestination(item: $openURL) { url in
+                    PreviewWebView(url: url, port: boundPort)
+                }
+                .task { await startProxy() }
+                .onDisappear { Task { await proxy?.stop() } }
+        } else {
+            page
+        }
+    }
+
+    @ViewBuilder private func row(_ item: PreviewInfo) -> some View {
+        let label = VStack(alignment: .leading, spacing: 4) {
+            Text(item.label ?? copy.text(.previewTitle)).font(DLFont.headline)
+            Text("\(previewBindHost):\(item.port ?? 0)")
+                .font(DLFont.mono(DLFont.footnote))
+                .foregroundStyle(DLColor.secondaryLabel)
+            Text(copy.text(.previewLocal))
+                .font(DLFont.footnote)
+                .foregroundStyle(DLColor.secondaryLabel)
+        }
+        .frame(minHeight: 44)
+        if loadsWeb {
+            Button {
+                Task { await open(item) }
+            } label: {
+                label
+            }
+        } else {
+            label
+        }
+    }
+
+    private func startProxy() async {
+        guard proxy == nil else { return }
+        let started = PreviewLocalProxy { path in
+            await forward?(path) ?? PreviewHTTPResult(status: 502, body: Data())
+        }
+        try? await started.start()
+        boundPort = Int(await started.port)
+        proxy = started
+    }
+
+    private func open(_ item: PreviewInfo) async {
+        guard let id = item.previewId, let proxy else { return }
+        openURL = URL(string: await proxy.localURL(previewID: id))
+    }
+}
+
+struct PreviewWebView: UIViewRepresentable {
+    var url: URL
+    var port: Int
+
+    func makeCoordinator() -> Coordinator { Coordinator(port: port) }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        let web = WKWebView(frame: .zero, configuration: configuration)
+        web.navigationDelegate = context.coordinator
+        web.load(URLRequest(url: url))
+        return web
+    }
+
+    func updateUIView(_ web: WKWebView, context: Context) {
+        context.coordinator.port = port
+    }
+
+    static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
+        web.configuration.websiteDataStore.removeData(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast
+        ) {}
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var port: Int
+        init(port: Int) { self.port = port }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction
+        ) async -> WKNavigationActionPolicy {
+            guard let url = navigationAction.request.url else { return .cancel }
+            if previewNavigationAllowed(url, loopbackPort: port) { return .allow }
+            await UIApplication.shared.open(url)
+            return .cancel
+        }
+    }
+}
+
+struct QuickLookPreview: UIViewControllerRepresentable {
+    var url: URL
+
+    func makeCoordinator() -> Coordinator { Coordinator(url: url) }
+
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: QLPreviewController, context: Context) {
+        context.coordinator.url = url
+        controller.reloadData()
+    }
+
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+        var url: URL
+        init(url: URL) { self.url = url }
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
+            url as NSURL
+        }
     }
 }
 
