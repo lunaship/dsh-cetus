@@ -90,3 +90,26 @@ public struct WorkspacePendingApprovalResponse: Codable, Equatable, Sendable {
         self.expiresAt = expiresAt
     }
 }
+
+/// `GET /dsh-link/mobile/agent-presets`。
+public struct AgentPresetListResponse: Codable, Equatable, Sendable {
+    public var presets: [AgentPreset]?
+
+    public init(presets: [AgentPreset]? = nil) {
+        self.presets = presets
+    }
+}
+
+public struct AgentPreset: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    public var name: String?
+    public var description: String?
+    public var isDefault: Bool?
+
+    public init(id: String, name: String? = nil, description: String? = nil, isDefault: Bool? = nil) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.isDefault = isDefault
+    }
+}

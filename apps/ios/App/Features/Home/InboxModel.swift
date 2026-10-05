@@ -210,6 +210,15 @@ protocol InboxServing: Sendable {
     func resumeHostEvents() async
     func setPhase(_ phase: AppPhase) async
     func stop() async
+    func agentPresets() async throws -> [AgentPreset]
+    func createSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String
+    func sendPrompt(sessionID: String, text: String) async throws
+    func createWorkspace(path: String) async throws -> WorkspaceWriteResult
+}
+
+enum WorkspaceWriteResult: Equatable, Sendable {
+    case created(WorkspaceInfo)
+    case pending(String)
 }
 
 extension InboxServing {
@@ -265,6 +274,23 @@ extension InboxServing {
     func setPhase(_ phase: AppPhase) async { _ = phase }
 
     func stop() async {}
+
+    func agentPresets() async throws -> [AgentPreset] { [] }
+
+    func createSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String {
+        _ = (preset, workspaceID, cwd)
+        throw InboxServiceError.offline
+    }
+
+    func sendPrompt(sessionID: String, text: String) async throws {
+        _ = (sessionID, text)
+        throw InboxServiceError.offline
+    }
+
+    func createWorkspace(path: String) async throws -> WorkspaceWriteResult {
+        _ = path
+        throw InboxServiceError.offline
+    }
 }
 
 enum InboxServiceError: Error, Equatable, Sendable {
@@ -530,6 +556,22 @@ final class InboxModel {
     func openNewTask(_ text: String = "") {
         starter = text
         path.append(.newTask(text))
+    }
+
+    func loadAgentPresets() async -> [AgentPreset] {
+        (try? await service.agentPresets()) ?? []
+    }
+
+    func createNewTaskSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String {
+        try await service.createSession(preset: preset, workspaceID: workspaceID, cwd: cwd)
+    }
+
+    func sendNewTask(_ text: String, sessionID: String) async throws {
+        try await service.sendPrompt(sessionID: sessionID, text: text)
+    }
+
+    func submitWorkspace(_ path: String) async throws -> WorkspaceWriteResult {
+        try await service.createWorkspace(path: path)
     }
 
     func open(_ session: SessionSummary) {

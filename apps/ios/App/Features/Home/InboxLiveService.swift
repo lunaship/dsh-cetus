@@ -186,6 +186,39 @@ actor InboxLiveService: InboxServing {
         if phase == .background { sessionReady = false }
     }
 
+    func agentPresets() async throws -> [AgentPreset] {
+        let http = try requireClient()
+        let response = try await http.get(AgentPresetListResponse.self, path: "/dsh-link/mobile/agent-presets")
+        return response.presets ?? []
+    }
+
+    func createSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String {
+        let http = try requireClient()
+        let response = try await http.post(
+            InboxAck.self, path: "/dsh-link/mobile/sessions",
+            json: SessionCreateBody(agentPreset: preset, workspaceId: workspaceID, cwd: workspaceID == nil ? cwd : nil))
+        guard response.ok != false, let id = response.sessionId, !id.isEmpty else { throw InboxServiceError.failed }
+        return id
+    }
+
+    func sendPrompt(sessionID: String, text: String) async throws {
+        let http = try requireClient()
+        _ = try await http.postJSON(
+            path: try sessionPath(sessionID, "/prompt"), json: NewTaskPromptBody(text: text, mode: "queue"))
+    }
+
+    func createWorkspace(path: String) async throws -> WorkspaceWriteResult {
+        let http = try requireClient()
+        let data = try await http.postJSON(
+            path: "/dsh-link/mobile/workspaces", json: WorkspaceCreateBody(path: path))
+        let decoded = try JSONDecoder().decode(WorkspaceWriteBody.self, from: data)
+        if decoded.pending == true {
+            return .pending(decoded.path ?? path)
+        }
+        guard let workspace = decoded.workspace else { throw InboxServiceError.failed }
+        return .created(workspace)
+    }
+
     func stop() async {
         networkSource?.cancel()
         networkSource = nil
@@ -422,4 +455,25 @@ private struct InboxApprovalBody: Encodable {
 private struct InboxAck: Decodable {
     var ok: Bool?
     var sessionId: String?
+}
+
+private struct SessionCreateBody: Encodable {
+    var agentPreset: String?
+    var workspaceId: String?
+    var cwd: String?
+}
+
+private struct NewTaskPromptBody: Encodable {
+    var text: String
+    var mode: String
+}
+
+private struct WorkspaceCreateBody: Encodable {
+    var path: String
+}
+
+private struct WorkspaceWriteBody: Decodable {
+    var workspace: WorkspaceInfo?
+    var pending: Bool?
+    var path: String?
 }
