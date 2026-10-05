@@ -72,12 +72,19 @@
 ## 10. 截图矩阵
 
 - 设备：iPhone 17 Pro（iOS 26.x）基线。I4.8 宽屏不另开模拟器，仍由这台机器按固定点尺寸渲染：竖屏 768×1024、横屏 1024×768、分屏宽 683 / 512 / 341（高 768）。341 用紧凑宽度，其余用常规宽度。型号与系统版本改动需维护者批准。
-- 主页面：浅 / 深 × 中 / 英 × 默认 / 大字号共 8 张。I4.1 暂不生成降低透明度 fixture：iOS 26.5 SDK 对应环境值只读，DLUI 无系统玻璃样式注入点；保留实际系统设置验收。
-- I4.1 其余状态各 1 张（浅色、中文、默认字号）；同名 / 改名各加 1 张英文，完整登记见 page-mapping.md。
-- I4.2 主状态 5 × 8，其余 10 张浅色中文。2.5 / 2.6 的系统菜单和对话框截同文案的静态列表；生产路径仍是 `toolbarTitleMenu`、`searchSuggestions`、`alert` 和 `confirmationDialog`。
-- I4.3a 主状态 `4_1_running`、`4_2_tail`、`4_6_process` 各 8 张；`4_1_unconfirmed`、`4_1_image` 各 1 张浅色中文。截图不挂 `.task`、不连网、不打开 WebView。不生成降低透明度 fixture。
-- I4.3b 状态槽 5 个主状态各 8 张，另外 6 个状态各 1 张，共 46 张；scene 名见 page-mapping.md。沿用 `staticSnapshot`，I4.3a fixture 显式不显示状态槽。
-- 基线只允许由 `ios-regen-screenshots.yml` 生成；禁止提交本地基线。
+- 主页面：浅 / 深 × 中 / 英 × 默认 / 大字号共 8 张。降低透明度与增强对比度按下面的 A2 合同追加，不另开深色、英文或大字号。
+- I4.1 其余状态各 1 张（浅色、中文、默认字号）；同名 / 改名各加 1 张英文，完整登记见 page-mapping.md。这些 scene 仍只有原有外观和语言，A2 只追加浅色中文的两张辅助功能变体。
+- I4.2 主状态 5 × 8，其余 10 张浅色中文。2.5 / 2.6 的系统菜单和对话框截同文案的静态列表；生产路径仍是 `toolbarTitleMenu`、`searchSuggestions`、`alert` 和 `confirmationDialog`。浅色中文的 scene 不因此补深色、英文或大字号。
+- I4.3a 主状态 `4_1_running`、`4_2_tail`、`4_6_process` 各 8 张；`4_1_unconfirmed`、`4_1_image` 各 1 张浅色中文。截图不挂 `.task`、不连网、不打开 WebView。后两张仍只有浅色中文，A2 只追加两张辅助功能变体。
+- I4.3b 状态槽 5 个主状态各 8 张，另外 6 个状态各 1 张浅色中文，共 46 张；scene 名见 page-mapping.md。沿用 `staticSnapshot`，I4.3a fixture 显式不显示状态槽。那 6 个状态不补深色、英文或大字号。
+- A2 变体：前 6 类（ChatSheet 5.x、NewTask 3.x、Review 6.x、Settings 7.x、Trajectory 4.7）每个现有 scene 要有浅 / 深 × 中 / 英 × 默认 / 大字号共 8 张，再加浅色中文默认字号的 `reduce-transparency` 与 `increase-contrast`。
+- Inbox、Pairing、Chat、Composer、StatusSlot、Wide 只给每个现有 scene 追加这两张浅色中文变体，原有 `default` / `large` 文件名不变。这些类里本来只有浅色中文的 scene 仍然只有浅色中文，不要求补深色、英文或大字号。
+- Welcome 例外：保留 `testWelcomeLight.light`，只要求 `Snapshot_1_2_welcome_light_zh.reduce-transparency`、`Snapshot_1_2_welcome_light_zh.increase-contrast`，以及 `Snapshot_1_2_welcome_a11y_light_en.large` 和 `Snapshot_1_2_welcome_a11y_dark_en.large`。不要求 8 张普通的 `Snapshot_1_2_welcome_<appearance>_<language>.<default|large>`。
+- Component 每个现有测试保留 `light` / `dark` / `long` / `disabled`，并要求 `en`、`large`、`reduce-transparency`、`increase-contrast`。UIKit 没有公开的降低透明度 trait，`testComposer` 与 `testDecisionBar` 的透明度变体只是文件名覆盖；对比度用 `UITraitCollection(accessibilityContrast: .high)`。
+- 可设置的透明度键是 `\._accessibilityReduceTransparency`。两张辅助功能变体都只在浅色中文默认字号，`named` 分别为 `reduce-transparency` 与 `increase-contrast`，`testName` 仍是 `Snapshot_<scene>_light_zh`。颜色同时设 `environment(\.colorScheme)` 与 trait `userInterfaceStyle`；大字号用 `environment(\.dynamicTypeSize, .accessibility3)` 与 `preferredContentSizeCategory: .accessibilityExtraLarge`。
+- `apps/ios/scripts/check-snapshot-matrix.mjs` 检查 Swift 声明，不检查 PNG。缺声明时非零退出并列清单。缺的 CI 基线不是这个本地脚本的失败，不要靠创建 PNG 修。
+- 基线只由 `ios-regen-screenshots.yml` 生成，只在 CI；禁止提交本地基线。
+- Review、Settings、Wide 保持 precision `0.995`：玻璃导航栏会差 1–2 个色阶。
 
 ## 11. 禁止清单
 
