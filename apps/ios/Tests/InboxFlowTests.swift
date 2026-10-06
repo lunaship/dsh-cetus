@@ -76,6 +76,19 @@ import Testing
         #expect(await script.deletes() == 0)
     }
 
+    @Test func certificateChangeStopsTheLinkAndKeepsCredentials() async {
+        let cache = InboxMemoryCache()
+        cache.save(hostID: "h", snapshot: cached([session("cached", updatedAt: 1)], name: "Mac"))
+        let script = Script(load: .failure(.certificate))
+        let model = make("h", script: script, cache: cache)
+        await model.refresh()
+        #expect(model.notice == .certificate)
+        #expect(model.link == .offline)
+        #expect(!model.missingHost)
+        #expect(model.sessions.map(\.sessionId) == ["cached"])
+        #expect(await script.deletes() == 0)
+    }
+
     @Test func archiveFailureStaysAndSuccessHidesUntilTheServerDropsIt() async {
         let script = Script(load: .success(payload([session("s", updatedAt: 1)])))
         await script.setArchiveError(.failed)
