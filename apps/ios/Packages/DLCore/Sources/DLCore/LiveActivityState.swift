@@ -41,4 +41,11 @@ public enum LiveActivityPolicy {
             hostRef: hostRef, sessionRef: sessionRef, title: cleanTitle.isEmpty ? sessionRef : cleanTitle, phase: phase,
             step: step, startedAt: startedAt, waitingCount: waitingCount)
     }
+
+    /// Approval wins over a question. Ordinary pending work stays running.
+    public static func phase(pendingApprovals: Int, pendingQuestions: Int, running: Bool) -> LiveActivityPhase {
+        if pendingApprovals > 0 { return .approval }
+        if pendingQuestions > 0 { return .question }
+        return running ? .running : .ended
+    }
 }
