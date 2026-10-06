@@ -97,3 +97,91 @@ APK 版本与 SHA-256：
 ## 历史
 
 2026-09-29 之前的封闭测试写的是已删除的 DLR/1：接入码、云端二维码、Control、`routeSecret`、Host Enrollment，以及「局域网与中继是两个独立入口」。那些入口已不存在。本文件只描述 DLP/1 的一张连接码。
+
+## iOS 质量核对（阶段 8）
+
+对照 `docs/ios/PLAN.md` 阶段 8 与桌面《DeepLinks iOS · 阶段 8 方案：质量加固》。本节只记录 iOS。上面的 Android / RC1 任务、退出标准和历史不因本节改变。
+
+本表最初写于 `origin/ios/main` 的 `0a3b2bd`（2026-10-05）。截至 2026-10-06，I4.7、I5.1、I6.2、I7.1、I7.2、I7.3 已合入 `ios/main`，但下表记录的真机、读屏、性能和长跑结果没有新增证据，不能把代码合并写成验收通过。
+
+每一行只有两种状态。「有证据」必须指向仓库里真实存在的测试、脚本或文件，并且只覆盖证据实际证明的范围。「未测」不能算通过。模拟器或单测通过不是真机验收。没有 Instruments trace 的项不算性能通过。没有 48 小时记录的长跑不算已做。
+
+### 辅助功能
+
+| 项 | 状态 | 证据或未测原因 |
+|---|---|---|
+| VoiceOver：配对 → 首页 → 对话 → 审批 | 未测 | 没有 VoiceOver 走查，也没有焦点顺序记录。部分控件有 `accessibilityLabel` / `accessibilityHint`（如 `PairingPages`、`InboxPage`、`ConversationPage`、`MessageRowView`、`DLStatusSlot`、`DLComposerView`），标签存在不等于读屏流程走通。 |
+| 可点目标至少 44pt | 未测 | 多处按钮写了 `minHeight: 44` 或 `greaterThanOrEqualToConstant: 44`（`PairingPages`、`ReviewPages`、`ChatSurfaces`、`DLChip`、`DLCodeBlock`、`DLComposerView`、`DLGlassBar`）。没有逐页测量，不能当成全部可点目标已达标。 |
+| 降低透明度：无截断、无重叠 | 未测 | `PairingSnapshotTests` 写明 SwiftUI 读不到降低透明度，`DLUI` 也没有系统玻璃样式的覆盖开关。I4.3a 至 I4.6 的执行记录都写了「降低透明度截图没做」。 |
+| 增强对比度：无截断、无重叠 | 未测 | 截图 trait 只有浅色 / 深色和字号，没有 `UIAccessibilityContrast` 或增强对比度的测试。 |
+| 粗体文本：无截断、无重叠 | 未测 | 没有 `legibilityWeight` 或粗体文本的测试与截图。 |
+| 最大辅助字号：无截断、无重叠 | 未测 | 部分页面有 `DynamicTypeSize.accessibility3`（`accessibilityExtraLarge`）模拟器快照，不是 AX5，也没有人工确认无截断、无重叠。覆盖范围见下表。设置、诊断、iPad 和新任务、弹层、改动、文件、预览没有这套大字号快照。 |
+
+已有的大字号快照只证明「这个 trait 下模拟器画得出基线」，不证明最大辅助字号验收通过：
+
+| 测试 | 页面 |
+|---|---|
+| `PairingSnapshotTests` | `testWelcome`、`testLANExplanation`、`testScan`、`testPending`、`testFailureStates` 里的 network。同名、改名、证书失败、提交中、相册识别不在这套矩阵里。 |
+| `InboxSnapshotTests` | `testInbox`、`testEmpty`、`testOffline`、`testSearch`、`testContext`。菜单、删除、重命名、归档和加载态只有浅色中文普通字号。 |
+| `ChatSnapshotTests` | `testRunning`、`testTail`、`testProcess`。未确认审批和图片场景没有大字号快照。 |
+| `StatusSlotSnapshotTests` | `testCollapsed`、`testExpanded`、`testDisconnected`、`testPending`、`testPreview`。 |
+| `ComposerSnapshotTests` | `testApproval`、`testQuestion`。 |
+
+没有 VoiceOver 焦点顺序，也没有最大字号的人工截图。
+
+### 性能
+
+| 项 | 状态 | 证据或未测原因 |
+|---|---|---|
+| 有本地快照时，冷启动到首页 < 1 秒 | 未测 | 没有 Instruments 时间点。I4.3a 执行记录写明 120fps 与 Instruments 未做。`ConversationFlowTests.snapshotThenHistoryReplacesWholePage` 只验证先读快照再换历史，不测量启动时间。 |
+| 3000 条消息滚动不掉帧 | 未测 | 没有 3000 条会话，也没有滚动掉帧记录。 |
+| 流式输出 10 分钟，内存不持续上涨 | 未测 | 没有 10 分钟流式运行，也没有内存曲线。 |
+
+### 稳定性
+
+五种情况都要有明确提示并且不崩溃。下表把「错误映射有单测」和「用户能看见的提示已测」分开。单测通过不是真机故障演练。
+
+| 项 | 状态 | 证据或未测原因 |
+|---|---|---|
+| 断网 | 有证据 | 首页：`InboxFlowTests.refreshFailureKeepsCacheAndSuccessReplacesIt` 在 `.offline` 后保留缓存，且 `deletes() == 0`；`approveSendsAllowedOnceAndDoesNothingOffline` 断网时不发送审批。横幅文案在 `InboxPage.offlineText` / `InboxCopy.offlineTitle`。对话：`ConversationStatusFlowTests.liveStreamDisconnectRecoveryAndGoalUpdates` 把重连显示为 `.disconnected`，目标不丢；`ConversationPage` 在 `loadFailed` 时显示 `ConversationCopy.loadFailed`。`SSEClientContractTests` 的「心跳超时：无行到达判定断线并按退避重连」覆盖断线重连。这些都不是拔网线的真机结果。 |
+| 证书变化 | 未测 | 已配对后的证书变化还没有一条覆盖「明确提示且不崩溃」的测试。已有的只是零件：`TLSFingerprintContractTests.evaluateReportsMismatchWithActualFingerprint` 与 `requirePinRejectsLanAddressWithoutValidFingerprint` 拒绝不匹配或缺失的指纹；`HostClientContractTests` 的「证书变更映射：钉扎失败 → certificateChanged（优先于 transport）」；`PinnedSessionDelegate` 只取消认证，不删凭据；`PairingFailureTests.everyErrorHasThreeSuggestionsAndStableReason` 只覆盖重新配对。首页虽然会把 `InboxServiceError.certificate` 放进横幅，但没有 `InboxFlowTests` 断言。对话收成 `ConversationServiceError.certificate` 后仍只显示通用的 `loadFailed` / `statusFailed`。 |
+| token 被吊销 | 有证据 | `HostClientContractTests` 的「401 → unauthorized」；`SSEClientContractTests` 的「401：终止且不再重连」；`InboxFlowTests.unauthorizedKeepsSessionsAndDoesNotDropTheHost` 保留缓存、`missingHost == false`、`deletes() == 0`；`ConversationFlowTests.unauthorizedKeepsSnapshot` 保留快照且 `approvalsSubmittable == false`。首页横幅是 `InboxCopy.unauthorized`：「This phone is no longer authorized. Pair again.」。这只证明 App 收到 401 后的行为。没有在隔离环境里做一次吊销，再观察旧请求和重连。 |
+| 电脑重启 | 未测 | 没有电脑重启用例。选路只在注入时钟下测过：`RouteSelectorContractTests` 的「Android: network change drops cached decisions」。 |
+| 插件升级 | 未测 | `HostClientContractTests` 的「404 → capabilityMissing」只映射错误。已配对界面没有插件升级或能力缺失的专用提示。配对页的 `PairingCopy.badRequest` 只用于配对请求格式不被支持。 |
+
+断网和 401 的单测没有删除凭据。证书钉扎失败只取消连接。没有真机确认这些路径在崩溃、后台恢复或电脑重启之后仍然不删错凭据。
+
+### 隐私
+
+| 项 | 状态 | 证据或未测原因 |
+|---|---|---|
+| 网络图片默认不加载 | 有证据 | `TranscriptTests.imagesAllowOnlyHTTPS`：https 才 `.allowed`，http、data、javascript 都是 `.blocked`。`ConversationFlowTests.actionsDoNotSend` 对 http 图片得到 `.blocked`。`MessageRowView` 在没有 `.loaded` 时只显示「Load image」按钮，要点击才调用 `loadImage`。这不是「所有远程内容都不出网」：公式和 Mermaid 仍会进随包资源的 `WKWebView`，预览代理会访问已配对电脑。 |
+| Release 日志不打印 token、路径、消息正文 | 未测 | 没有 Release 运行日志采样。`0a3b2bd` 的 `apps/ios` 生产 Swift 源码里搜不到 `print`、`debugPrint`、`NSLog`、`os_log` 或 `Logger(`；`import os` 只用于 `OSAllocatedUnfairLock`（`PinnedSessionDelegate`、`SSEClient`、`NetworkPathObserver`）。`HostStoreContractTests.jsonFileNeverContainsSensitiveValues` 只断言沙盒 `hosts.json` 不含 token、证书指纹和远程密钥，不是日志脱敏。源码检索不能代替 Release 日志验收。 |
+| 多任务切换时敏感页面模糊 | 未测 | 没有 `scenePhase == .inactive` 的模糊遮罩，也没有 `UIBlurEffect`。现有 `scenePhase` 只驱动连接：`InboxPage`、`ConversationPage`、`PairingFlowView`。`SSEClientContractTests` 的「前台门控：background 主动断开，active 用已提交游标重连，inactive 不动连接」明确保持连接，不盖模糊。 |
+| `PrivacyInfo.xcprivacy` 补齐需说明理由的 API | 未测 | `apps/ios/App/PrivacyInfo.xcprivacy` 只登记了 `NSPrivacyAccessedAPICategoryUserDefaults`，理由 `CA92.1`。三个扩展没有自己的隐私清单。`RouteSelector` 的默认时钟是 `ProcessInfo.processInfo.systemUptime`；是否还要登记其他需说明理由的 API，尚未按当前二进制核对。 |
+
+### 本地化
+
+| 项 | 状态 | 证据或未测原因 |
+|---|---|---|
+| 简体中文和英文逐页人工看一遍 | 未测 | 没有逐页人工记录。部分模拟器快照同时有 `en` 和 `zh-Hans`（配对、首页、对话、状态槽、输入区的矩阵测试），新任务、弹层、轨迹、改动、文件和预览多数只有浅色中文。快照不是人工验收。 |
+| `scripts/check-ios-locales.mjs` | 有证据 | 脚本检查 `sourceLanguage` 为 `en`、英文与 `zh-Hans` 的 key 和变体都存在、值非空、格式符类型一致。`scripts/check-ios-locales.test.mjs` 覆盖位置格式符、长度修饰、无法解析的格式符、`%d` 对 `%@`，以及缺语言和空值。`.github/workflows/ci-ios.yml` 的 iOS build 会运行 `node scripts/check-ios-locales.mjs` 和 `node --test scripts/check-ios-locales.test.mjs`。2026-10-05 在 `0a3b2bd` 上这两条命令通过。脚本自己写明还不比对 `substitutions`。 |
+
+### 真机验收
+
+下列次数都没有完整真机记录。模拟器单测、截图和 CI 都不能填进「结果」。2026-10-06 只在一台 iPhone（iOS 27.0.1）上完成了一次隔离局域网配对，并看到首页在线和会话列表；这不计入 10 次冷启动。远程首配、推送送达和 Live Activity 真机更新仍未验收。
+
+| 项 | 要求 | 状态 | 未测原因 |
+|---|---|---|---|
+| 局域网冷启动 | 10/10 | 未测 | 2026-10-06 一台 iPhone（iOS 27.0.1）完成一次隔离配对并显示首页，但没有 10 次冷启动记录，仍是 0/10。 |
+| 前后台切换 | 10/10 | 未测 | 没有真机前后台记录，0/10。单测里的 `PairingFlowTests.backgroundKeepsRecordAndForegroundRestartsPolling` 和 `SSEClientContractTests` 前台门控不是这 10 次。 |
+| Wi-Fi ↔ 蜂窝 | 5/5 | 未测 | 没有真机切换记录，0/5。`RouteSelectorContractTests` 的网络代切换是注入事件。 |
+| 远程首配 | 1 次 | 未测 | I5.3 未合入。`PairingContractTests.remoteIsParsedButNeverUsed` 只保存 `remote`，不连中继。 |
+| 审批 | 1 次 | 未测 | 没有真机审批记录。`InboxFlowTests.approveSendsAllowedOnceAndDoesNothingOffline` 和 `PhoneDecisionTests` 是注入服务。 |
+| 提问 | 1 次 | 未测 | 没有真机提问记录。`ComposerSnapshotTests.testQuestion` 只是快照；`PhoneDecisionTests.skipsQuestionAfterALaterUserMessage` 只测选择规则。 |
+| 推送四类：审批、提问、完成、失败 | 各送到 | 未测 | I6.2 只有本地网关测试。没有真实 APNs 送达，也没有四类通知的真机记录。 |
+| Live Activity 更新 | 1 次 | 未测 | I7.1 已合入，但没有真机上的 Live Activity 更新记录。 |
+| 吊销之后的行为 | 1 次 | 未测 | 没有隔离环境中的吊销记录。不要用共享 state 做这次观察。上表「token 被吊销」只覆盖 App 收到 401 后的单测。 |
+| 48 小时长跑 | 48 小时 | 未测 | 没有开始，也没有结束记录。做的时候必须使用隔离的 state 目录，并且不得吊销正在使用的真机配对。 |
+
+真机表在补齐次数、设备与系统版本、构建 revision 和时间之前，整列保持未测。
