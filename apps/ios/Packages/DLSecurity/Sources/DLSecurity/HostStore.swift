@@ -71,8 +71,13 @@ public actor HostStore {
     private static let stagedKeychainFieldSuffixes = keychainFieldSuffixes.map { $0 + ".next" }
 
     private let fileURL: URL
-    private let secureStore: SecureStore
+    private var secureStore: SecureStore
     private var hosts: [PairedHost]
+
+    /// 只给合同测试替换后续写入使用的存储。已加载的主机和正式凭据保持不动。
+    func replaceSecureStore(_ secureStore: SecureStore) {
+        self.secureStore = secureStore
+    }
 
     /// - Parameters:
     ///   - fileURL: 沙盒 JSON 的位置；默认 Application Support 下的 `paired-hosts.json`。
