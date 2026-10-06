@@ -14,6 +14,8 @@ public struct PairingQRPayload: Equatable, Sendable {
     public let urls: [String]
     public let name: String
     public let certFingerprint: String
+    /// 插件 state.deviceId。配对响应里的 deviceId 是手机，不放这里。旧二维码没有这个字段。
+    public let pluginHostId: String?
     public let issuedAt: Int?
     public let expiresAt: Int?
     public let remote: QrRemoteInfo?
@@ -31,6 +33,8 @@ public struct PairingQRPayload: Equatable, Sendable {
         let rawName = Self.optString(payload["name"], fallback: "dsh")
         name = rawName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "dsh" : rawName
         certFingerprint = Self.optString(payload["certFingerprint"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let pluginId = Self.optString(payload["deviceId"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        pluginHostId = pluginId.isEmpty ? nil : pluginId
         remote = certFingerprint.isEmpty ? nil : Self.parseRemote(payload["remote"])
         guard !code.isEmpty, !urls.isEmpty || remote != nil else { throw PairingQRParseError.incomplete }
         issuedAt = try Self.timestamp(payload["issuedAt"], field: "issuedAt")

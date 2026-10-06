@@ -136,17 +136,24 @@ public struct PairingClient: Sendable {
                 continue
             }
             // hostFromPair 使用 QR 的电脑名，响应 name 是手机名；主地址取实际成功地址。
+            // 响应 deviceId 是手机设备，不能当电脑身份。插件电脑身份在二维码 deviceId（state.deviceId）。
             let host = PairedHost(
                 hostId: attempt.hostId, name: attempt.qr.name, primaryUrl: normalized,
                 tailnetUrl: Self.tailnetSpare(urls: attempt.qr.urls, primary: normalized),
-                certFingerprint: attempt.qr.certFingerprint, remote: paired.remote, pairedAt: clock())
+                certFingerprint: attempt.qr.certFingerprint, remote: paired.remote, pairedAt: clock(),
+                pluginHostId: attempt.qr.pluginHostId)
             do {
+                // save 按插件 hostId 或证书指纹替换同一台电脑，并沿用旧的本地 hostId。
                 try await store.save(host: host, token: token)
+                let saved =
+                    await store.existingHost(
+                        certFingerprint: host.certFingerprint, hostId: host.hostId,
+                        pluginHostId: host.pluginHostId) ?? host
+                return paired.pending == true ? .pending(saved, expiresAt: paired.pendingExpiresAt) : .paired(saved)
             } catch {
                 // 请求已成功，保存失败不得再尝试别的地址创建记录。
                 return .failed(.storage)
             }
-            return paired.pending == true ? .pending(host, expiresAt: paired.pendingExpiresAt) : .paired(host)
         }
         return .failed(lastError)
     }

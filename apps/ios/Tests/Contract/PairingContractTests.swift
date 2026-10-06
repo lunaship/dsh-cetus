@@ -357,6 +357,57 @@ struct PairingContractTests {
         }
     }
 
+    @Test func repairingSameComputerReplacesTheStoredHost() async throws {
+        let context = try Context(replies: [
+            .http(200, try Self.fixture("pair")), .http(200, try Self.fixture("pair")),
+        ])
+        defer { context.clean() }
+        let firstQR = try qr(extra: #","deviceId":"dsh-computer""#)
+        guard case .paired(let first) = await context.client.pair(attempt(firstQR))
+        else {
+            Issue.record("Expected first pairing")
+            return
+        }
+        guard
+            case .paired(let second) = await context.client.pair(
+                .init(
+                    qr: try qr(extra: #","deviceId":"dsh-computer""#, urls: ["https://192.168.10.42:18640"]),
+                    deviceName: "iPhone", requestId: "request-456", hostId: "local-host-2"))
+        else {
+            Issue.record("Expected replacement pairing")
+            return
+        }
+        let hosts = await context.store.all()
+        #expect(hosts.count == 1)
+        #expect(second.hostId == first.hostId)
+        #expect(second.pluginHostId == "dsh-computer")
+        #expect(second.primaryUrl == "https://192.168.10.42:18640")
+        #expect(await context.store.token(for: first.hostId) == "<token>")
+        #expect(await context.store.get(hostId: "local-host-2") == nil)
+    }
+
+    @Test func repairingSameFingerprintReplacesHostWithoutPluginIdentity() async throws {
+        let context = try Context(replies: [.http(200, try Self.fixture("pair")), .http(200, try Self.fixture("pair"))])
+        defer { context.clean() }
+        guard case .paired(let first) = await context.client.pair(attempt(try qr())) else {
+            Issue.record("Expected first pairing")
+            return
+        }
+        guard
+            case .paired(let second) = await context.client.pair(
+                .init(
+                    qr: try qr(urls: ["https://192.168.10.42:18640"]), deviceName: "iPhone", requestId: "request-456",
+                    hostId: "local-host-2"))
+        else {
+            Issue.record("Expected fingerprint replacement")
+            return
+        }
+        #expect(await context.store.all().count == 1)
+        #expect(second.hostId == first.hostId)
+        #expect(second.pluginHostId == nil)
+        #expect(second.primaryUrl == "https://192.168.10.42:18640")
+    }
+
     @Test func storageFailureDoesNotRetryAfterHostAcceptedPairing() async throws {
         let context = try Context(replies: [.http(200, try Self.fixture("pair"))])
         defer { context.clean() }
@@ -429,7 +480,8 @@ struct PairingContractTests {
             return
         }
         let other = PairedHost(
-            hostId: "other", name: "Other", primaryUrl: host.primaryUrl, certFingerprint: Self.pin, pairedAt: 0)
+            hostId: "other", name: "Other", primaryUrl: host.primaryUrl,
+            certFingerprint: String(repeating: "cd", count: 32), pairedAt: 0)
         try await context.store.save(host: other, token: "other-token")
         let poller = PairingApprovalPoller(
             store: context.store, session: context.session, sleep: { _ in Issue.record("Must not sleep after 401") })

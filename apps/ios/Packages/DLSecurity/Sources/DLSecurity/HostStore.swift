@@ -12,6 +12,9 @@ public struct PairedHost: Equatable, Sendable {
     public var remote: DeviceRemoteInfo?
     /// 配对时间（Unix 毫秒，与合同其他时间戳同口径）。
     public var pairedAt: Int
+    /// 插件本机身份（二维码的 deviceId，即 state.deviceId）。
+    /// 配对响应里的 deviceId 是手机，不能放这里。旧记录没有这个字段。
+    public var pluginHostId: String?
 
     public init(
         hostId: String,
@@ -20,7 +23,8 @@ public struct PairedHost: Equatable, Sendable {
         tailnetUrl: String? = nil,
         certFingerprint: String,
         remote: DeviceRemoteInfo? = nil,
-        pairedAt: Int
+        pairedAt: Int,
+        pluginHostId: String? = nil
     ) {
         self.hostId = hostId
         self.name = name
@@ -29,6 +33,7 @@ public struct PairedHost: Equatable, Sendable {
         self.certFingerprint = certFingerprint
         self.remote = remote
         self.pairedAt = pairedAt
+        self.pluginHostId = pluginHostId
     }
 }
 
@@ -62,10 +67,17 @@ public actor HostStore {
         "remote.relayKey",
         "remote.outerCertificatePin",
     ]
+    /// 替换尚未提交时的暂存后缀。正式 key 在 JSON 写成功前不动，失败就能留住旧凭据。
+    private static let stagedKeychainFieldSuffixes = keychainFieldSuffixes.map { $0 + ".next" }
 
     private let fileURL: URL
-    private let secureStore: SecureStore
+    private var secureStore: SecureStore
     private var hosts: [PairedHost]
+
+    /// 只给合同测试替换后续写入使用的存储。已加载的主机和正式凭据保持不动。
+    public func replaceSecureStore(_ secureStore: SecureStore) {
+        self.secureStore = secureStore
+    }
 
     /// - Parameters:
     ///   - fileURL: 沙盒 JSON 的位置；默认 Application Support 下的 `paired-hosts.json`。
@@ -94,15 +106,71 @@ public actor HostStore {
         hosts.first(where: { $0.hostId == hostId })
     }
 
-    /// 保存一台已配对电脑（同一 hostId 覆盖）。token 是配对响应下发的设备 token。
-    public func save(host: PairedHost, token: String) throws {
-        try writeSensitiveParts(of: host, token: token)
-        if let index = hosts.firstIndex(where: { $0.hostId == host.hostId }) {
-            hosts[index] = host
-        } else {
-            hosts.append(host)
+    /// 同一台电脑的本地记录。两边都有插件 hostId 时只认它；
+    /// 否则按证书指纹；指纹无效时才按本地 hostId。指纹格式与 I3.4 一致（64 位十六进制）。
+    public func existingHost(certFingerprint: String, hostId: String, pluginHostId: String? = nil) -> PairedHost? {
+        if let pluginHostId = Self.nonempty(pluginHostId),
+            let match = hosts.first(where: { Self.nonempty($0.pluginHostId) == pluginHostId })
+        {
+            return match
         }
-        try Self.writeFile(records: hosts.map({ Self.record(of: $0) }), at: fileURL)
+        let fingerprint = CertificateFingerprint.normalize(certFingerprint)
+        if CertificateFingerprint.isValid(fingerprint),
+            let match = hosts.first(where: { CertificateFingerprint.normalize($0.certFingerprint) == fingerprint })
+        {
+            return match
+        }
+        let id = hostId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return nil }
+        return hosts.first(where: { $0.hostId == id })
+    }
+
+    /// 保存一台已配对电脑。同一 hostId，或同一张有效证书指纹，都替换原记录、不新增。
+    /// token 是配对响应下发的设备 token。
+    ///
+    /// 失败保留旧凭据：先把新凭据写到暂存 key，JSON 写成功后才替换内存并删旧 key；
+    /// 任一步失败都把内存和钥匙串恢复到调用前。hostId 变了（指纹命中旧记录）时，
+    /// 新记录沿用旧 hostId，避免凭据 key 与本地引用漂移。
+    public func save(host: PairedHost, token: String) throws {
+        let fingerprint = CertificateFingerprint.normalize(host.certFingerprint)
+        let stored = PairedHost(
+            hostId: host.hostId,
+            name: host.name,
+            primaryUrl: host.primaryUrl,
+            tailnetUrl: host.tailnetUrl,
+            certFingerprint: fingerprint,
+            remote: host.remote,
+            pairedAt: host.pairedAt,
+            pluginHostId: Self.nonempty(host.pluginHostId)
+        )
+        let index = Self.replacementIndex(in: hosts, for: stored)
+        let previous = index.map { hosts[$0] }
+        var incoming = stored
+        if let previous {
+            incoming.hostId = previous.hostId
+        }
+        let snapshot = hosts
+        let staged = previous != nil
+        do {
+            try writeSensitiveParts(of: incoming, token: token, staged: staged)
+            if let index {
+                hosts[index] = incoming
+            } else {
+                hosts.append(incoming)
+            }
+            try Self.writeFile(records: hosts.map({ Self.record(of: $0) }), at: fileURL)
+            if staged {
+                try commitStagedKeys(hostId: incoming.hostId)
+            }
+        } catch {
+            hosts = snapshot
+            if staged {
+                Self.removeStagedKeys(hostId: incoming.hostId, secureStore: secureStore)
+            } else {
+                Self.removeHostKeys(hostId: incoming.hostId, secureStore: secureStore)
+            }
+            throw error
+        }
     }
 
     /// 取设备 token。读取侧同样遵守「凭据缺失 = 未配对」：内存里没有这台主机时，
@@ -132,20 +200,68 @@ public actor HostStore {
 
     // MARK: - 敏感字段与 Keychain 的拆分
 
+    /// 同一台电脑在列表中的下标。两边都有插件 hostId 时只认它，换证也不新增。
+    /// 否则有效指纹优先，再退回本地 hostId。都没有则新增。
+    private static func replacementIndex(in hosts: [PairedHost], for host: PairedHost) -> Int? {
+        if let pluginHostId = nonempty(host.pluginHostId),
+            let index = hosts.firstIndex(where: { nonempty($0.pluginHostId) == pluginHostId })
+        {
+            return index
+        }
+        let fingerprint = CertificateFingerprint.normalize(host.certFingerprint)
+        if CertificateFingerprint.isValid(fingerprint),
+            let index = hosts.firstIndex(where: {
+                CertificateFingerprint.normalize($0.certFingerprint) == fingerprint
+            })
+        {
+            return index
+        }
+        return hosts.firstIndex(where: { $0.hostId == host.hostId })
+    }
+
+    private static func nonempty(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     /// 把敏感字段写进 SecureStore。先 Keychain 后 JSON（调用方负责顺序）：
     /// 让「JSON 条目存在 ⇒ 凭据已在 Keychain」尽量成立，中途失败的半态由初始化对账兜底。
-    private func writeSensitiveParts(of host: PairedHost, token: String) throws {
-        try secureStore.setData(Data(token.utf8), forKey: Self.tokenKey(host.hostId))
-        try secureStore.setData(Data(host.certFingerprint.utf8), forKey: Self.certFingerprintKey(host.hostId))
+    /// `staged` 为真时写到 `.next` 暂存 key，正式凭据留到 JSON 成功后再替换。
+    private func writeSensitiveParts(of host: PairedHost, token: String, staged: Bool) throws {
+        let hostId = host.hostId
+        try secureStore.setData(Data(token.utf8), forKey: Self.tokenKey(hostId, staged: staged))
+        try secureStore.setData(
+            Data(host.certFingerprint.utf8), forKey: Self.certFingerprintKey(hostId, staged: staged))
         if let relayKey = host.remote?.relayKey {
-            try secureStore.setData(Data(relayKey.utf8), forKey: Self.remoteRelayKeyKey(host.hostId))
+            try secureStore.setData(Data(relayKey.utf8), forKey: Self.remoteRelayKeyKey(hostId, staged: staged))
+        } else if staged {
+            try? secureStore.removeData(forKey: Self.remoteRelayKeyKey(hostId, staged: true))
         } else {
-            try? secureStore.removeData(forKey: Self.remoteRelayKeyKey(host.hostId))
+            try? secureStore.removeData(forKey: Self.remoteRelayKeyKey(hostId))
         }
         if let outerPin = host.remote?.outerCertificatePin {
-            try secureStore.setData(Data(outerPin.utf8), forKey: Self.remoteOuterPinKey(host.hostId))
+            try secureStore.setData(Data(outerPin.utf8), forKey: Self.remoteOuterPinKey(hostId, staged: staged))
+        } else if staged {
+            try? secureStore.removeData(forKey: Self.remoteOuterPinKey(hostId, staged: true))
         } else {
-            try? secureStore.removeData(forKey: Self.remoteOuterPinKey(host.hostId))
+            try? secureStore.removeData(forKey: Self.remoteOuterPinKey(hostId))
+        }
+    }
+
+    /// JSON 已换成新记录：把暂存凭据挪到正式 key。先写齐全部正式 key，再删暂存；
+    /// 中途失败时正式 key 可能已是新值，调用方会把内存退回旧记录并抛错。
+    /// 下次初始化若读到的是新凭据，仍只对应这一台电脑，不会多出一条。
+    private func commitStagedKeys(hostId: String) throws {
+        for suffix in Self.keychainFieldSuffixes {
+            let stagedKey = Self.keyPrefix + hostId + "." + suffix + ".next"
+            let liveKey = Self.keyPrefix + hostId + "." + suffix
+            if let data = try secureStore.data(forKey: stagedKey) {
+                try secureStore.setData(data, forKey: liveKey)
+                try? secureStore.removeData(forKey: stagedKey)
+            } else {
+                try? secureStore.removeData(forKey: liveKey)
+                try? secureStore.removeData(forKey: stagedKey)
+            }
         }
     }
 
@@ -154,6 +270,13 @@ public actor HostStore {
         {
             try? secureStore.removeData(forKey: key)
         }
+        removeStagedKeys(hostId: hostId, secureStore: secureStore)
+    }
+
+    private static func removeStagedKeys(hostId: String, secureStore: SecureStore) {
+        for suffix in keychainFieldSuffixes {
+            try? secureStore.removeData(forKey: keyPrefix + hostId + "." + suffix + ".next")
+        }
     }
 
     private static func removeRemoteKeys(hostId: String, secureStore: SecureStore) {
@@ -161,21 +284,30 @@ public actor HostStore {
         try? secureStore.removeData(forKey: remoteOuterPinKey(hostId))
     }
 
-    private static func tokenKey(_ hostId: String) -> String { keyPrefix + hostId + ".token" }
+    private static func tokenKey(_ hostId: String, staged: Bool = false) -> String {
+        keyPrefix + hostId + ".token" + (staged ? ".next" : "")
+    }
 
-    private static func certFingerprintKey(_ hostId: String) -> String { keyPrefix + hostId + ".certFingerprint" }
+    private static func certFingerprintKey(_ hostId: String, staged: Bool = false) -> String {
+        keyPrefix + hostId + ".certFingerprint" + (staged ? ".next" : "")
+    }
 
-    private static func remoteRelayKeyKey(_ hostId: String) -> String { keyPrefix + hostId + ".remote.relayKey" }
+    private static func remoteRelayKeyKey(_ hostId: String, staged: Bool = false) -> String {
+        keyPrefix + hostId + ".remote.relayKey" + (staged ? ".next" : "")
+    }
 
-    private static func remoteOuterPinKey(_ hostId: String) -> String {
-        keyPrefix + hostId + ".remote.outerCertificatePin"
+    private static func remoteOuterPinKey(_ hostId: String, staged: Bool = false) -> String {
+        keyPrefix + hostId + ".remote.outerCertificatePin" + (staged ? ".next" : "")
     }
 
     /// 从 key 反解 hostId；不认识的 key 返回 nil（不动别人的条目）。
+    /// 暂存 key 归到同一台电脑：正式记录不在时一并清掉。先匹配更长的字段，
+    /// 避免 `remote.relayKey` 被 `relayKey` 截断。
     private static func hostId(inKey key: String) -> String? {
         guard key.hasPrefix(keyPrefix) else { return nil }
-        let rest = key.dropFirst(keyPrefix.count)
-        for suffix in keychainFieldSuffixes {
+        let rest = String(key.dropFirst(keyPrefix.count))
+        let suffixes = (keychainFieldSuffixes + stagedKeychainFieldSuffixes).sorted { $0.count > $1.count }
+        for suffix in suffixes {
             let tail = "." + suffix
             if rest.hasSuffix(tail) {
                 return String(rest.dropLast(tail.count))
@@ -235,7 +367,8 @@ public actor HostStore {
                     tailnetUrl: record.tailnetUrl,
                     certFingerprint: String(decoding: fingerprintData, as: UTF8.self),
                     remote: remote,
-                    pairedAt: record.pairedAt
+                    pairedAt: record.pairedAt,
+                    pluginHostId: nonempty(record.pluginHostId)
                 )
             )
         }
@@ -289,7 +422,8 @@ public actor HostStore {
             pairedAt: host.pairedAt,
             remote: host.remote.map {
                 RemoteMeta(endpoint: $0.endpoint, routeId: $0.routeId, deviceHandle: $0.deviceHandle)
-            }
+            },
+            pluginHostId: nonempty(host.pluginHostId)
         )
     }
 }
@@ -303,6 +437,8 @@ private struct HostRecord: Codable {
     var tailnetUrl: String?
     var pairedAt: Int
     var remote: RemoteMeta?
+    /// 旧文件没有这个键；缺了按 nil 读，不让已配对电脑失效。
+    var pluginHostId: String?
 }
 
 private struct RemoteMeta: Codable {
