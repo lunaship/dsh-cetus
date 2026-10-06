@@ -158,26 +158,30 @@ public final class BackgroundSendCover: @unchecked Sendable {
         public init() {}
 
         public func begin(name: String) -> Int {
-            Self.onMain {
-                let token = UIApplication.shared.beginBackgroundTask(withName: name) {}
-                return Int(token.rawValue)
+            if Thread.isMainThread {
+                MainActor.assumeIsolated { Self.beginOnMain(name) }
+            } else {
+                DispatchQueue.main.sync { Self.beginOnMain(name) }
             }
         }
 
         public func end(_ token: Int) {
-            Self.onMain {
-                let identifier = UIBackgroundTaskIdentifier(rawValue: token)
-                guard identifier != .invalid else { return }
-                UIApplication.shared.endBackgroundTask(identifier)
+            if Thread.isMainThread {
+                MainActor.assumeIsolated { Self.endOnMain(token) }
+            } else {
+                DispatchQueue.main.sync { Self.endOnMain(token) }
             }
         }
 
-        private static func onMain<T>(_ body: @MainActor () -> T) -> T {
-            if Thread.isMainThread {
-                MainActor.assumeIsolated { body() }
-            } else {
-                DispatchQueue.main.sync { body() }
-            }
+        @MainActor private static func beginOnMain(_ name: String) -> Int {
+            let token = UIApplication.shared.beginBackgroundTask(withName: name) {}
+            return Int(token.rawValue)
+        }
+
+        @MainActor private static func endOnMain(_ token: Int) {
+            let identifier = UIBackgroundTaskIdentifier(rawValue: token)
+            guard identifier != .invalid else { return }
+            UIApplication.shared.endBackgroundTask(identifier)
         }
     }
 #endif
