@@ -46,7 +46,9 @@ jobs:
           RECORD_SNAPSHOTS=1 TEST_RUNNER_RECORD_SNAPSHOTS=1 xcodebuild \
             -scheme DeepLinks \
             -destination "$DEST" \
-            -only-testing:DeepLinksTests/ChatSheetSnapshotTests/testAttach \
+            -skip-testing:DeepLinksTests/ModelsLoadTests \
+            -skip-testing:DeepLinksTests/TokenUsageTests \
+            -skip-testing:DeepLinksTests/DemoFixturesTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
