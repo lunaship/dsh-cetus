@@ -5327,11 +5327,46 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "相册" } }
       }
     },
-    "chat.attachNote" : {
+    "chat.attachFiles" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Files can't be attached from the phone." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "手机不能附加文件。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Files" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文件" } }
+      }
+    },
+    "chat.attachUnsupported" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only PNG, JPEG, WebP, and GIF images can be attached." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "只能附加 PNG、JPEG、WebP、GIF 图片。" } }
+      }
+    },
+    "chat.attachTooLarge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That image is too large to attach." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这张图片太大，不能附加。" } }
+      }
+    },
+    "chat.attachLimit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Only 4 images can be attached." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "最多附加 4 张图片。" } }
+      }
+    },
+    "chat.attachUnreadable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't read that file." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "读不到这个文件。" } }
+      }
+    },
+    "chat.attachNoCrop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Images are sent as chosen. Cropping isn't available." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "图片按所选原样发送，不能裁剪。" } }
       }
     },
     "chat.usageTitle" : {

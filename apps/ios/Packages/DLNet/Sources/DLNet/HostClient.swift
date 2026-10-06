@@ -133,6 +133,13 @@ public struct HostClient: Sendable {
                 method: "DELETE", url: Self.url(baseURL: baseURL, path: path, query: query), body: nil, token: token))
     }
 
+    /// POST 已经编码好的 JSON。正文形状由调用方的纯函数决定。
+    public func postJSONData(path: String, body: Data, query: [String: String] = [:]) async throws -> Data {
+        try await send(
+            Self.makeRequest(
+                method: "POST", url: Self.url(baseURL: baseURL, path: path, query: query), body: body, token: token))
+    }
+
     /// POST JSON。2xx 的正文原样返回，调用方自己解码。空正文也算成功。
     public func postJSON(path: String, json body: some Encodable, query: [String: String] = [:]) async throws -> Data {
         let data = try JSONEncoder().encode(body)

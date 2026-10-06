@@ -86,7 +86,7 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 5.1 | 指令面板 | `/` 后在输入区上方列表（同玻璃容器） | — | `Snapshot_5_1_slash_*` |
 | 5.2 | 模型与推理 | `.sheet` + 分段推理 | — | `Snapshot_5_2_model_*` |
 | 5.3 / 5.4 | 权限 | `.sheet` 三项；完全权限橙色；`confirmationDialog` | — | `Snapshot_5_3_perm_*` |
-| 5.5 / 5.6 | 附件 | 拍照 / 相册；无「文件」 | 同 Android | `Snapshot_5_5_attach_*` |
+| 5.5 / 5.6 | 附件 | 拍照 / 相册 / 文件（`UIDocumentPicker`）。只把 PNG、JPEG、WebP、GIF 放进现有 `prompt.images`；其他文件拒绝。图片裁剪明确不做 | Android 仍无「文件」 | `Snapshot_5_5_attach_*`（本项未重录基线） |
 | 5.7 | 用量 | `.sheet` 大数字 + 进度 | — | `Snapshot_5_7_usage_*` |
 | 5.8 | 子代理 | push 树状列表 | — | `Snapshot_5_8_subagent_*` |
 | 5.9 | 分享 | `.sheet`；图片 / 文本 | — | `Snapshot_5_9_share_*` |

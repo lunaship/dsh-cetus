@@ -73,11 +73,11 @@ actor ConversationLiveService: ConversationServing {
         await stopStream()
     }
 
-    func sendPrompt(sessionID: String, text: String) async throws {
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
         let http = try await connect()
-        let body = PromptBody(text: text, mode: "queue")
+        let body = try encodePromptRequest(text: text, mode: "queue", images: images)
         do {
-            _ = try await http.postJSON(path: try sessionPath(sessionID, "/prompt"), json: body)
+            _ = try await http.postJSONData(path: try sessionPath(sessionID, "/prompt"), body: body)
         } catch {
             throw Self.map(error)
         }
@@ -337,11 +337,6 @@ actor ConversationLiveService: ConversationServing {
             return false
         }
     }
-}
-
-private struct PromptBody: Encodable {
-    var text: String
-    var mode: String
 }
 
 private struct ApprovalBody: Encodable {

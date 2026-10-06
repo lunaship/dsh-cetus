@@ -489,7 +489,7 @@ Figma 无法由 agent 操作，改为两步：
 | 5.1 指令面板 | 输入 `/` 后在输入区上方展开列表（同一玻璃容器内），按“智能体 / 会话”分组，边输入边过滤 |
 | 5.2 模型与推理 | `.sheet`（`.medium` / `.large`）：模型单选 + 推理等级 `Picker(.segmented)` + “上下文已用 46% · 只影响这个会话” |
 | 5.3 / 5.4 权限 | `.sheet` 三项单选；“完全权限”橙色图标与文字；选中时 `confirmationDialog` 二次确认 |
-| 5.5 / 5.6 附件 | `.sheet`：拍照（`UIImagePickerController` 相机）/ 相册（`PhotosPicker`）；没有“文件”（协议不支持，与 Android 一致） |
+| 5.5 / 5.6 附件 | `.sheet`：拍照（`UIImagePickerController` 相机）/ 相册（`PhotosPicker`）/ 文件（`UIDocumentPicker`）。文件只接受插件 `images[]` 允许的 PNG、JPEG、WebP、GIF，原样 base64，不裁剪 |
 | 5.7 用量 | `.sheet`：大数字 + 上下文进度条 + 键值行 |
 | 5.8 子代理 | push 页面：树状列表，状态只用转圈 / “完成”标签 |
 | 5.9 分享 | `.sheet`：预览卡 + “分享为图片”（`ImageRenderer` → `ShareLink`）/ “导出为文本” |

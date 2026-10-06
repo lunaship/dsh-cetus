@@ -165,7 +165,12 @@ enum ChatText: String {
     case attachTitle
     case attachCamera
     case attachPhotos
-    case attachNote
+    case attachFiles
+    case attachUnsupported
+    case attachTooLarge
+    case attachLimit
+    case attachUnreadable
+    case attachNoCrop
     case usageTitle
     case usageTokens
     case usageEmpty
@@ -364,7 +369,12 @@ enum ChatText: String {
         case .attachTitle: "Add"
         case .attachCamera: "Camera"
         case .attachPhotos: "Photos"
-        case .attachNote: "Files can't be attached from the phone."
+        case .attachFiles: "Files"
+        case .attachUnsupported: "Only PNG, JPEG, WebP, and GIF images can be attached."
+        case .attachTooLarge: "That image is too large to attach."
+        case .attachLimit: "Only 4 images can be attached."
+        case .attachUnreadable: "Couldn't read that file."
+        case .attachNoCrop: "Images are sent as chosen. Cropping isn't available."
         case .usageTitle: "Usage"
         case .usageTokens: "tokens"
         case .usageEmpty: "No usage yet"

@@ -54,7 +54,7 @@ struct ChatSurfaceScreen: View {
                 title: copy.text(.permConfirmTitle), message: copy.text(.permConfirmBody),
                 dismiss: copy.text(.cancel), confirm: copy.text(.permEnable), destructive: true)
         case .attach:
-            AttachSheet(copy: copy, cameraAvailable: true, onCamera: {}, onPhotos: {})
+            AttachSheet(copy: copy, cameraAvailable: true, onCamera: {}, onPhotos: {}, onFiles: {})
         case .usage:
             UsageSheet(figures: usage, copy: copy)
         case .agents:
@@ -299,6 +299,7 @@ struct AttachSheet: View {
     var cameraAvailable: Bool
     var onCamera: () -> Void
     var onPhotos: () -> Void
+    var onFiles: () -> Void
 
     var body: some View {
         List {
@@ -307,7 +308,9 @@ struct AttachSheet: View {
                 .frame(minHeight: 44)
             Button(copy.text(.attachPhotos), action: onPhotos)
                 .frame(minHeight: 44)
-            Text(copy.text(.attachNote))
+            Button(copy.text(.attachFiles), action: onFiles)
+                .frame(minHeight: 44)
+            Text(copy.text(.attachNoCrop))
                 .font(DLFont.footnote)
                 .foregroundStyle(DLColor.secondaryLabel)
         }
