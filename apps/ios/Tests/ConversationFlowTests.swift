@@ -120,6 +120,23 @@ import Testing
         #expect(await service.sent.count == 1)
     }
 
+    @Test func disconnectedWritesAttemptOnceAndKeepDraft() async {
+        let service = FailingPromptService()
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session",
+            service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: URL(fileURLWithPath: "/tmp")),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+        await model.retryConnection()
+        #expect(model.loadFailed)
+        await #expect(throws: ConversationServiceError.offline) {
+            try await model.serviceSend("继续", images: [])
+        }
+        #expect(await service.attempts == 1)
+        await model.retryConnection()
+        #expect(await service.attempts == 1)
+    }
+
     @Test func subtitleAndActivity() {
         let zh = ConversationCopy(locale: Locale(identifier: "zh-Hans"))
         let en = ConversationCopy(locale: Locale(identifier: "en"))
@@ -132,6 +149,16 @@ import Testing
 }
 
 private struct IdleConversationService: ConversationServing {}
+
+private actor FailingPromptService: ConversationServing {
+    private(set) var attempts = 0
+
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
+        _ = (sessionID, text, images)
+        attempts += 1
+        throw ConversationServiceError.offline
+    }
+}
 
 private actor RecordingPromptService: ConversationServing {
     private(set) var sent: [(text: String, images: [PromptImage])] = []
