@@ -164,12 +164,9 @@ import XCTest
         window.rootViewController = host
         window.isHidden = false
         window.makeKeyAndVisible()
-        for _ in 0..<2 {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-            host.view.setNeedsLayout()
-            host.view.layoutIfNeeded()
-            CATransaction.flush()
-        }
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        CATransaction.flush()
         let format = UIGraphicsImageRendererFormat()
         format.scale = 3
         format.opaque = true
