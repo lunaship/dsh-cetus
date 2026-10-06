@@ -177,7 +177,7 @@ private struct AccountFixture {
     let token = "token-1"
     let store: HostStore
     let names: ComputerLocalNames
-    let transport = SettingsScriptedTransport()
+    let transport: SettingsScriptedTransport
     let service: SettingsAccountService
 
     init() async throws {
