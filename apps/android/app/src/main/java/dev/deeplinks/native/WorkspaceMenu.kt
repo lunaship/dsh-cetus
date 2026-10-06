@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.L
 import dev.deeplinks.core.previewTitle
-import dev.deeplinks.core.scheduledTasks
 import dev.deeplinks.native.ui.v4.DlBottomSheet
 import dev.deeplinks.native.ui.v4.DlListRow
 import dev.deeplinks.native.ui.v4.DlRowTrailing
@@ -22,7 +21,6 @@ internal object MenuL {
     val menuFilesSubtitle: String get() = L.translation("menuFilesSubtitle")
     val menuTrace: String get() = L.translation("menuTrace")
     val menuRename: String get() = L.translation("menuRename")
-    val menuFork: String get() = L.translation("menuFork")
     val menuShare: String get() = L.translation("menuShare")
     val menuChangesSubtitle: String get() = L.translation("menuChangesSubtitle")
     val menuSubagentsRunning: String get() = L.translation("menuSubagentsRunning")
@@ -65,10 +63,7 @@ internal fun sessionMenu(
     onPreview: () -> Unit = {},
     canGoal: Boolean = false,
     onGoal: () -> Unit = {},
-    canSchedules: Boolean = false,
-    onSchedules: () -> Unit = {},
     onRename: () -> Unit = {},
-    onFork: () -> Unit = {},
     onShare: () -> Unit = {},
 ): SessionMenu {
     fun entry(icon: ImageVector, label: String, subtitle: String? = null, action: () -> Unit) =
@@ -85,9 +80,7 @@ internal fun sessionMenu(
     }
     val actions = buildList {
         if (canGoal) add(entry(GoalOutline16, L.goalRole, action = onGoal))
-        if (canSchedules) add(entry(ClockOutline16, L.scheduledTasks, action = onSchedules))
         add(entry(EditOutline16, MenuL.menuRename, action = onRename))
-        add(entry(BranchOutline16, MenuL.menuFork, action = onFork))
         add(entry(ShareOutline16, MenuL.menuShare, action = onShare))
     }
     return SessionMenu(view, actions)

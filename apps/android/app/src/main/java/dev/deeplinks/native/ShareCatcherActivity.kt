@@ -21,6 +21,7 @@ import dev.deeplinks.native.util.EXTRA_SHARE_SEQ
 import dev.deeplinks.native.util.EXTRA_SHARE_TEXT
 import dev.deeplinks.native.util.forwardedShareImageUris
 import dev.deeplinks.native.util.isContentUri
+import dev.deeplinks.native.util.isForeignContentUri
 import dev.deeplinks.native.util.parseIncomingShare
 import dev.deeplinks.native.util.prepareShareInbox
 import dev.deeplinks.native.util.shareCatcherKind
@@ -191,16 +192,19 @@ class ShareCatcherActivity : ComponentActivity() {
     }
 
     private fun streamUris(intent: Intent): List<Uri> {
-        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+        val ownAuthority = "$packageName.fileprovider"
+        val raw = if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
             val list = if (Build.VERSION.SDK_INT >= 33) {
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {
                 @Suppress("DEPRECATION")
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
             }
-            return list.orEmpty().filterNotNull()
+            list.orEmpty().filterNotNull()
+        } else {
+            listOfNotNull(streamUri(intent))
         }
-        return listOfNotNull(streamUri(intent))
+        return raw.filter { isForeignContentUri(it.toString(), ownAuthority) }
     }
 
     private fun streamUri(intent: Intent): Uri? =

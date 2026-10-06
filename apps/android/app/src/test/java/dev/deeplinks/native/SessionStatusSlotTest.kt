@@ -78,8 +78,32 @@ class SessionStatusSlotTest {
         val title = goalSlotTitle(goal, null, plan)
         assertTrue(title, title.contains("1/3"))
         assertTrue(title, title.contains("3"))
-        val meta = goalSlotMeta(goal, null, plan)
-        assertTrue(meta.orEmpty(), meta.orEmpty().contains("补单测"))
-        assertEquals(goal.objective, goalSlotMeta(goal, null, emptyList()))
+    }
+
+    @Test
+    fun dockLineShowsCurrentStepThenObjective() {
+        assertEquals("补单测", goalDockLine(goal, null, plan))
+        assertEquals(goal.objective, goalDockLine(goal, null, emptyList()))
+        assertEquals("修登录", goalDockLine(null, "修登录", emptyList()))
+    }
+
+    @Test
+    fun completedGoalAndFinishedPlanAreHidden() {
+        val done = goal.copy(phase = "complete")
+        assertNull(goalStatus(done, null, emptyList(), running = false))
+        val finished = plan.map { it.copy(status = "completed") }
+        assertNull(goalStatus(done, null, finished, running = false))
+        // 计划还没做完时继续显示计划，但不再显示已完成的目标
+        val s = goalStatus(done, null, plan, running = false)
+        assertNull(s?.goal)
+        assertEquals(plan, s?.plan)
+    }
+
+    @Test
+    fun goalStatusIsSeparateFromTopSlot() {
+        assertNull(goalStatus(null, null, emptyList(), running = false))
+        assertEquals(plan, goalStatus(null, null, plan, running = false)?.plan)
+        assertNull(goalStatus(null, "修登录", emptyList(), running = false))
+        assertEquals("修登录", goalStatus(null, "修登录", emptyList(), running = true)?.summary)
     }
 }

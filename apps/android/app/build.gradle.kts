@@ -58,8 +58,8 @@ android {
         applicationId = "dev.deeplinks"
         minSdk = 26
         targetSdk = 36
-        versionCode = 35
-        versionName = "0.5.0-beta.27"
+        versionCode = 39
+        versionName = "0.5.0-beta.31"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -177,7 +177,10 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    implementation(libs.zxing.embedded)
+    implementation(libs.zxing.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -8,6 +8,7 @@
 > 基线：`lunaship/dsh-links` main @ `7b9c164`（v4 重设计已合入）。
 > 页面编号（1.x–8.x）与 `docs/redesign-v4/design-v4.html` 一一对应；iOS 子项编号用 `I<阶段>.<序号>`。
 > iOS 设计稿：`apps/ios/docs/design/`（PNG + `README.md`），与本文冲突时以本文为准并在 PR 中指出。
+> 续作执行单（I4.8 收尾之后）：[`docs/ios/CONTINUE.md`](CONTINUE.md)。规则与红线仍以本文为准。
 
 ---
 

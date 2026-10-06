@@ -361,7 +361,6 @@ fun WorkspaceScreen(
     var pendingModel by remember { mutableStateOf<Triple<String, String, String?>?>(null) }
     // 新任务改为对话页草稿态（N1）：工作区选择器仍由状态驱动，「+ 新任务」不再开面板。
     var showDraftWorkspacePicker by remember { mutableStateOf(false) }
-    var showArchivedSheet by remember { mutableStateOf(false) }
     val hostLabel = dev.deeplinks.native.util.hostDisplayLabel(workspacePrefs.hostAlias, host.name, host.baseUrl)
     // K3 聚焦令牌：需要聚焦时只自增；真正的 requestFocus 在 InputBar 内部、下一帧执行。
     var composerFocusToken by remember { mutableStateOf(0) }
@@ -1785,21 +1784,6 @@ fun WorkspaceScreen(
     var composerTopPx by remember { mutableStateOf(-1f) }
     var historyRefreshing by remember { mutableStateOf(false) }
 
-    fun showArchiveUndo(sessionId: String) {
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = L.sessionArchivedToast,
-                actionLabel = L.undoAction,
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                // 服务端无 unarchive：走设置页同一套本地恢复通路
-                // （restoredSessionIds 会豁免 archivedSessionIds 同步过滤，见 applySessionSnapshot）
-                localStore.restoreSession(sessionId)
-                refreshSessions()
-            }
-        }
-    }
-
     var showShareSheet by remember { mutableStateOf(false) }
     val sidebarActions = WorkspaceSidebarActions(
         onOpenDevice = { onOpenDevice(null) },
@@ -1809,15 +1793,6 @@ fun WorkspaceScreen(
             showPhoneChat()
         },
         onRenameSession = { openRename(it) },
-        onArchiveSession = { session ->
-            archiveSessionNow(session) { err ->
-                if (err == null) {
-                    showArchiveUndo(session.sessionId)
-                } else {
-                    sessionsLoadError = err
-                }
-            }
-        },
         onDeleteSession = { openDeleteSession(it) },
         onForkSession = { forkNow(it, closeDrawer = true) },
         onCreateSessionIn = { createSessionIn(it) },
@@ -2035,13 +2010,12 @@ fun WorkspaceScreen(
                 workspaceRegistryReady = workspaceRegistryReady,
                 sessionsInitialLoad = sessionsInitialLoad,
                 sessionsLoadError = sessionsLoadError,
-                hostName = hostLabel,
+                hostName = hostLabel, hostIdentity = hostIdentity,
                 online = hostReachable,
                 viaRemote = dev.deeplinks.native.util.HostConnectivity.viaRemote,
                 offlineSinceLabel = offlineSinceLabel,
                 selectedWorkspace = selectedHomeWorkspace,
                 onSelectWorkspace = { selectedHomeWorkspace = it },
-                onOpenArchived = { showArchivedSheet = true },
                 onPickStarter = onPickStarter,
                 activeApproval = homePendingApproval,
                 onAnswerApproval = { approvalId, outcome, onDone ->
@@ -2096,13 +2070,12 @@ fun WorkspaceScreen(
                     workspaceRegistryReady = workspaceRegistryReady,
                     sessionsInitialLoad = sessionsInitialLoad,
                     sessionsLoadError = sessionsLoadError,
-                    hostName = hostLabel,
+                    hostName = hostLabel, hostIdentity = hostIdentity,
                     online = hostReachable,
                     viaRemote = dev.deeplinks.native.util.HostConnectivity.viaRemote,
                     offlineSinceLabel = offlineSinceLabel,
                     selectedWorkspace = selectedHomeWorkspace,
                     onSelectWorkspace = { selectedHomeWorkspace = it },
-                    onOpenArchived = { showArchivedSheet = true },
                     onPickStarter = onPickStarter,
                     activeApproval = homePendingApproval,
                     onAnswerApproval = { approvalId, outcome, onDone ->
@@ -2124,10 +2097,9 @@ fun WorkspaceScreen(
             val contentUnderTop by remember { derivedStateOf { listState.canScrollBackward } }
             // ===== 顶栏：返回或收起侧栏 + 会话名 + 溢出菜单 =====
             var headerMenuOpen by remember { mutableStateOf(false) }
-            var showSchedules by remember { mutableStateOf(false) }
+            var goalDockExpanded by remember(currentSessionId) { mutableStateOf(false) }
             var showUsage by remember { mutableStateOf(false) }
             val shareDark = Dsh.isDark
-            ScheduledTasksSheet(showSchedules, workspaceViewModel.sessionControl, currentSessionId != null) { showSchedules = false }
             if (showUsage) UsageSheet(sessionStats) { showUsage = false }
             if (showShareSheet) {
                 val sid = currentSessionId
@@ -2176,11 +2148,14 @@ fun WorkspaceScreen(
                 onUsage = { showUsage = true },
                 previewSupported = workspaceViewModel.previewSupported.value, onPreview = { showPreviewSheet = true },
                 canGoal = workspaceViewModel.sessionControl.goal.value?.manageable == true, onGoal = { showGoalEdit = true },
-                canSchedules = workspaceViewModel.sessionControl.supported.value, onSchedules = { showSchedules = true },
                 onRename = { currentSession?.let { openRename(it) } },
-                onFork = { currentSessionId?.let { forkNow(it) } },
                 onShare = { showShareSheet = true },
             )
+            val planItems = remember(messages) { latestPlanItems(messages) }
+            // 目标 + 计划：对话页停靠在输入框上沿；顶部状态槽只留断线 / 预览
+            val dockGoal = goalStatus(workspaceViewModel.sessionControl.goal.value, workspaceViewModel.currentGoalSummary.value, planItems, running)
+                .takeIf { viewMode == "chat" && currentSessionId != null }
+            if (dockGoal == null && goalDockExpanded) goalDockExpanded = false
             // ===== 顶部 chrome（L9：无全宽玻璃条，控件悬浮 + 边缘渐隐） =====
             Column(Modifier.align(Alignment.TopCenter).overlayTopChrome(chrome, Dsh.bgBase, viewMode != "chat" || contentUnderTop)) {
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -2229,18 +2204,11 @@ fun WorkspaceScreen(
                 everConnected = streamEverConnected,
                 quietElapsed = streamQuietElapsed,
             )
-            val inChat = viewMode == "chat" && currentSessionId != null
-            val previewPorts = rememberPreviewDetections(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat")
-            val planItems = remember(messages) { latestPlanItems(messages) }
             SessionStatusSlot(
                 status = sessionStatus(
                     stream = streamBanner,
                     unreachableHost = hostLabel.takeIf { !sessionsInitialLoad && sessionsLoadError != null && sessions.isEmpty() },
-                    goal = workspaceViewModel.sessionControl.goal.value.takeIf { inChat },
-                    goalSummary = workspaceViewModel.currentGoalSummary.value.takeIf { inChat },
-                    plan = if (inChat) planItems else emptyList(),
-                    running = running,
-                    previewPorts = previewPorts,
+                    previewPorts = rememberPreviewDetections(client, currentSessionId, workspaceViewModel.previewDetect.value && viewMode == "chat"),
                     onRetryStream = { streamClient?.reconnect() },
                     onRetryHost = { refreshSessions(reportFailure = true) },
                     onOpenDevice = { onOpenDevice(null) },
@@ -2466,6 +2434,7 @@ fun WorkspaceScreen(
             }
             } // Box 结束（消息流 + 悬浮层）
 
+            GoalDockScrim(goalDockExpanded) { goalDockExpanded = false }
             // ===== 底部 chrome 叠层：命令候选 + 输入区（命令候选最多长到顶部 chrome 下沿） =====
             Column(Modifier.align(Alignment.BottomCenter).padding(top = topChromeDp).overlayBottomChrome(chrome)) {
             // 命令候选（输入以 / 开头时，DSH 命令/技能/子智能体/快捷操作）—— 悬浮在输入区上方
@@ -2549,6 +2518,7 @@ fun WorkspaceScreen(
                 } else {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
                 if (currentSessionId != null) {
+                    ChatGoalDock(dockGoal, workspaceViewModel.sessionControl, goalDockExpanded, { goalDockExpanded = it }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
                     QueuedPromptsStrip(workspaceViewModel.sessionControl, { restored -> inputText = if (inputText.isBlank()) restored else inputText + "\n" + restored }, Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp))
                     // 建议行（4.3）：继续 / 复核 / 查看改动 (N)；离线时此处显示「电脑离线」灰字。
                     // 快捷胶囊只预填、不发送（L8）。
@@ -2740,11 +2710,6 @@ fun WorkspaceScreen(
     }
 
     // 模型选择底部抽屉（会话内与草稿态共用；草稿态目录由 openNewTaskDraft 重置加载）
-
-    ArchivedSessionsHost(
-        open = showArchivedSheet, prefs = workspacePrefs, sessions = sessions,
-        loading = sessionsInitialLoad, onDismiss = { showArchivedSheet = false },
-    )
 
     if (showDraftWorkspacePicker) {
         WorkspacePickerSheet(

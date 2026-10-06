@@ -40,6 +40,7 @@ sealed interface DlRowTrailing {
     data class Radio(val selected: Boolean) : DlRowTrailing
     data class Check(val checked: Boolean) : DlRowTrailing
     data class TextAction(val label: String, val onClick: () -> Unit) : DlRowTrailing
+    data class DeleteAction(val label: String, val onClick: () -> Unit) : DlRowTrailing
 }
 
 /**
@@ -178,6 +179,10 @@ private fun DlRowTrailingContent(trailing: DlRowTrailing, enabled: Boolean) {
                 modifier = Modifier.size(DshIconSize.md),
             )
         }
+        is DlRowTrailing.DeleteAction -> DlButton(
+            DlAction(trailing.label, trailing.onClick, DlButtonStyle.Danger, enabled),
+            compact = true,
+        )
         is DlRowTrailing.TextAction -> DlButton(
             DlAction(trailing.label, trailing.onClick, DlButtonStyle.Text, enabled),
             compact = true,

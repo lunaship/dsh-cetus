@@ -85,9 +85,10 @@ class PinnedSslTest {
     fun `pinned trust manager rejects empty chain and wrong fingerprint`() {
         val cert = testCert()
         val tmWrong = PinnedSsl.pinnedTrustManager("b".repeat(64))
-        assertThrows(PinnedSsl.CertChangedException::class.java) {
+        val empty = assertThrows(PinnedSsl.CertChangedException::class.java) {
             tmWrong.checkServerTrusted(emptyArray(), "RSA")
         }
+        assertEquals("服务器未提供证书链", empty.message)
         assertThrows(PinnedSsl.CertChangedException::class.java) {
             tmWrong.checkServerTrusted(arrayOf(cert), "RSA")
         }

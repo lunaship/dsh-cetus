@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import dev.deeplinks.native.SessionBackgroundMonitorService
+import dev.deeplinks.core.resolveFromIntentStrict
 import dev.deeplinks.native.util.WorkspacePrefs
 
 /**
@@ -18,10 +19,25 @@ import dev.deeplinks.native.util.WorkspacePrefs
  */
 class ApprovalActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val pending = goAsync()
+        Thread({
+            try {
+                handle(context, intent)
+            } finally {
+                pending.finish()
+            }
+        }, "dsh-approval-action").apply { isDaemon = true }.start()
+    }
+
+    private fun handle(context: Context, intent: Intent) {
         val sessionId = intent.getStringExtra(EXTRA_SESSION_ID) ?: return
         val approvalId = intent.getStringExtra(EXTRA_APPROVAL_ID) ?: return
         val approve = intent.getBooleanExtra(EXTRA_APPROVE, false)
-        val host = HostStore.load(context).resolveFromIntent(intent) ?: return
+        val host = HostStore.load(context).resolveFromIntentStrict(intent)
+        if (host == null) {
+            cancelUnresolved(context, intent, sessionId)
+            return
+        }
         val prefs = WorkspacePrefs(context)
         // 兜底顺序：先看接管是否还开着，再看通知栏直批开关，最后才是锁屏。
         // 接管关闭时审批已交回电脑网页，旧通知上的「允许」不许再生效。
@@ -41,6 +57,13 @@ class ApprovalActionReceiver : BroadcastReceiver() {
             ApprovalReceiverDecision.Answer ->
                 SessionBackgroundMonitorService.answerApproval(context, host, sessionId, approvalId, approve)
         }
+    }
+
+    /** 通知指向的主机已经不在本机时，按 Intent 里的名字和地址算出同一条通知 id 并取消。 */
+    private fun cancelUnresolved(context: Context, intent: Intent, sessionId: String) {
+        val name = intent.getStringExtra(EXTRA_HOST_NAME)?.takeIf { it.isNotBlank() } ?: return
+        val url = intent.getStringExtra(EXTRA_HOST_BASE_URL)?.takeIf { it.isNotBlank() } ?: return
+        DshNotifier.cancelApproval(context, Host(name, url, ""), sessionId)
     }
 
     companion object {

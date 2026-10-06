@@ -592,7 +592,6 @@ private fun SessionMenuWall() {
         subagentCount = 2,
         previewSupported = true,
         canGoal = true,
-        canSchedules = true,
     )
     Column(Modifier.fillMaxSize().background(Dsh.bgOverlay), verticalArrangement = Arrangement.Bottom) {
         DlBottomSheetSurface { SessionMenuContent(menu) }

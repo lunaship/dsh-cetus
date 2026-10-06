@@ -1,6 +1,7 @@
 package dev.deeplinks.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,11 +36,26 @@ class UpdateCheckTest {
     @Test
     fun newerReleaseIgnoresCurrentAndOlder() {
         val releases = listOf(
-            AppRelease("app-v0.5.0-beta.22", "https://example.com/22", ""),
-            AppRelease("app-v0.5.0-beta.24", "https://example.com/24", ""),
+            AppRelease("app-v0.5.0-beta.22", "https://github.com/lunaship/dsh-links/releases/tag/app-v0.5.0-beta.22", ""),
+            AppRelease("app-v0.5.0-beta.24", "https://github.com/lunaship/dsh-links/releases/tag/app-v0.5.0-beta.24", ""),
         )
         assertEquals("app-v0.5.0-beta.24", newerRelease("0.5.0-beta.23", releases)?.tagName)
         assertNull(newerRelease("0.5.0-beta.24", releases))
+    }
+
+    @Test
+    fun releaseUrlMustBeThisGithubRepo() {
+        val ok = "https://github.com/lunaship/dsh-links/releases/tag/app-v1"
+        assertTrue(isGithubReleaseUrl(ok))
+        assertTrue(isGithubReleaseUrl("https://GITHUB.COM/lunaship/dsh-links/releases/tag/app-v1"))
+        assertFalse(isGithubReleaseUrl("http://github.com/lunaship/dsh-links/releases/tag/app-v1"))
+        assertFalse(isGithubReleaseUrl("https://example.com/lunaship/dsh-links/releases/tag/app-v1"))
+        assertFalse(isGithubReleaseUrl("https://github.com/other/dsh-links/releases/tag/app-v1"))
+        assertFalse(isGithubReleaseUrl("https://github.com/lunaship/dsh-links"))
+        val evil = AppRelease("app-v9.0.0", "https://example.com/lunaship/dsh-links/releases/tag/app-v9", "")
+        val good = AppRelease("app-v9.0.0", ok, "")
+        assertNull(newerRelease("0.0.1", listOf(evil)))
+        assertEquals("app-v9.0.0", newerRelease("0.0.1", listOf(evil, good))?.tagName)
     }
 
     @Test

@@ -3,7 +3,6 @@ package dev.deeplinks.core
 import android.annotation.SuppressLint
 import java.net.URI
 import java.security.MessageDigest
-import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.X509TrustManager
@@ -17,7 +16,9 @@ import javax.net.ssl.X509TrustManager
  * - 私网 / 回环空指纹 fail-closed，不得静默回退到系统 PKI。
  */
 object PinnedSsl {
-    class CertChangedException : SSLHandshakeException("主机证书已变更，请重新配对")
+    class CertChangedException(
+        message: String = "主机证书已变更，请重新配对",
+    ) : SSLHandshakeException(message)
 
     fun normalizeFingerprint(raw: String?): String =
         (raw ?: "").lowercase().replace(":", "").replace(" ", "").trim()
@@ -120,10 +121,8 @@ object PinnedSsl {
             override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
             override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
-                if (chain.isEmpty()) throw CertChangedException()
-                // 空链直接拒绝：原来这里 chain[0] 会抛「Empty list doesn't contain element at index 0」
-                // 这种不可读的错，排查时白花时间（2026-09-29 手动配对真机上就是这么卡住的）。
-                if (chain.isEmpty()) throw CertificateException("服务器未提供证书链")
+                // 空链仍是证书身份失败（调用方靠 CertChangedException 提示重新配对），但消息要能读。
+                if (chain.isEmpty()) throw CertChangedException("服务器未提供证书链")
                 if (fingerprintOf(chain[0]) != expectedPin) throw CertChangedException()
             }
         }

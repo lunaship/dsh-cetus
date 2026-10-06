@@ -700,7 +700,9 @@ class MobileApiClient(private val host: Host) {
 
     /** 删除会话（服务端归档，workspace.archiveSession 语义；对标 web 删除）。 */
     fun archiveSession(sessionId: String) {
-        request("POST", "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") + "/archive", JSONObject())
+        val root = request("POST", "/dsh-link/mobile/sessions/" + java.net.URLEncoder.encode(sessionId, "UTF-8") + "/archive", JSONObject())
+        // 插件把电脑端的结果放在 archived；明确为 false 说明电脑没删掉，不能假装成功（旧插件不带这个字段）
+        if (!root.optBoolean("archived", true)) throw IllegalStateException(L.deleteNotApplied)
     }
 
     /** 选择会话模型（可选推理等级，对齐 Web session.selectModel）。 */

@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.deeplinks.core.Dsh
@@ -122,6 +123,7 @@ private fun PlanChecklistRow(item: MobileTodoItem) {
             color = if (kind == PlanItemKind.Done) Dsh.labelSecondary else Dsh.labelPrimary,
             style = DshType.supporting,
             fontWeight = if (kind == PlanItemKind.Active) FontWeight.SemiBold else null,
+            textDecoration = if (kind == PlanItemKind.Done) TextDecoration.LineThrough else null,
             modifier = Modifier.weight(1f),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -132,16 +134,16 @@ private fun PlanChecklistRow(item: MobileTodoItem) {
 @Composable
 private fun PlanCheckBox(kind: PlanItemKind) {
     val shape = RoundedCornerShape(DshRadius.control)
-    Box(Modifier.size(DshIconSize.md), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(DshIconSize.sm), contentAlignment = Alignment.Center) {
         when (kind) {
             PlanItemKind.Active -> DlSpinner()
             PlanItemKind.Done -> Box(
-                Modifier.size(DshIconSize.md).clip(shape).background(Dsh.brand400),
+                Modifier.size(DshIconSize.sm).clip(shape).background(Dsh.labelTertiary),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(CheckOutline16, contentDescription = null, tint = Dsh.onBrand, modifier = Modifier.size(DshIconSize.xs))
             }
-            PlanItemKind.Pending -> Box(Modifier.size(DshIconSize.md).border(2.dp, Dsh.labelTertiary, shape))
+            PlanItemKind.Pending -> Box(Modifier.size(DshIconSize.sm).border(1.5.dp, Dsh.labelTertiary, shape))
         }
     }
 }

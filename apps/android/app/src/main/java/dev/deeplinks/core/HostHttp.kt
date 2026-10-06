@@ -368,11 +368,18 @@ object HostHttp {
     }.getOrDefault(false)
 
     private fun evictPools(includeLan: Boolean) {
+        val clients = buildList {
+            if (includeLan) addAll(lanClients.values)
+            addAll(remoteClients.values)
+        }
+        evictClients(clients)
+    }
+
+    /** 只驱逐被替换掉的 client。主线程自动转后台，和 [evictPools] 同一条路。 */
+    private fun evictClients(clients: Collection<OkHttpClient>) {
+        if (clients.isEmpty()) return
         val evict = {
-            runCatching {
-                if (includeLan) lanClients.values.forEach { it.connectionPool.evictAll() }
-                remoteClients.values.forEach { it.connectionPool.evictAll() }
-            }
+            runCatching { clients.forEach { it.connectionPool.evictAll() } }
             Unit
         }
         if (isMainThread()) {
@@ -380,6 +387,13 @@ object HostHttp {
         } else {
             evict()
         }
+    }
+
+    private fun retireClients(map: ConcurrentHashMap<String, OkHttpClient>, stale: Set<String>) {
+        if (stale.isEmpty()) return
+        val removed = mutableListOf<OkHttpClient>()
+        for (key in stale) map.remove(key)?.let { removed += it }
+        evictClients(removed)
     }
 
     /** 网络变化：丢掉空闲连接，下一次请求按新网络重新选路（RFC §7.2 第 1 条）。 */
@@ -442,11 +456,15 @@ object HostHttp {
         PinnedSsl.normalizeUrl(host.baseUrl).trimEnd('/').lowercase() +
             "\u001f" + PinnedSsl.normalizeFingerprint(host.certFingerprint)
 
-    private fun clientFor(host: Host, request: DshRequest): OkHttpClient =
-        lanClients.computeIfAbsent(lanKey(host)) { lanClient(host) }.newBuilder()
+    private fun clientFor(host: Host, request: DshRequest): OkHttpClient {
+        val key = lanKey(host)
+        val client = lanClients.computeIfAbsent(key) { lanClient(host) }
+        retireClients(lanClients, staleLanKeys(lanClients.keys, key))
+        return client.newBuilder()
             .connectTimeout(request.connectTimeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(request.readTimeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .build()
+    }
 
     private fun lanClient(host: Host): OkHttpClient {
         val pin = PinnedSsl.normalizeFingerprint(host.certFingerprint)
@@ -512,10 +530,36 @@ object HostHttp {
         val offset = selector.clockOffsetSec(key)
         val cacheKey = lanKey(host) + "\u001f" + remote.endpoint + "\u001f" + DlpKey.of(remote) + "\u001f" + offset
         // 远程多了外层 WSS 与会合两跳：建立期与读取期都放宽，不让调用方各自判断
-        return remoteClients.computeIfAbsent(cacheKey) { buildRemoteClient(host, remote, offset) }.newBuilder()
+        val client = remoteClients.computeIfAbsent(cacheKey) { buildRemoteClient(host, remote, offset) }
+        retireClients(remoteClients, staleRemoteKeys(remoteClients.keys, cacheKey))
+        return client.newBuilder()
             .connectTimeout(maxOf(request.connectTimeoutMs, REMOTE_CONNECT_MS).toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(maxOf(request.readTimeoutMs, REMOTE_READ_MS).toLong(), TimeUnit.MILLISECONDS)
             .build()
+    }
+
+    /** 同一条远程路由换了时钟偏移时，丢掉旧 key。最后一段是 offset。 */
+    internal fun staleRemoteKeys(existingKeys: Collection<String>, newKey: String): Set<String> {
+        val cut = newKey.lastIndexOf('\u001f')
+        if (cut <= 0) return emptySet()
+        val prefix = newKey.substring(0, cut)
+        return existingKeys.filterTo(linkedSetOf()) { existing ->
+            if (existing == newKey) return@filterTo false
+            val idx = existing.lastIndexOf('\u001f')
+            idx > 0 && existing.substring(0, idx) == prefix
+        }
+    }
+
+    /** 同一 URL 换了证书指纹时，丢掉旧 key。第一段是 URL。 */
+    internal fun staleLanKeys(existingKeys: Collection<String>, newKey: String): Set<String> {
+        val cut = newKey.indexOf('\u001f')
+        if (cut <= 0) return emptySet()
+        val url = newKey.substring(0, cut)
+        return existingKeys.filterTo(linkedSetOf()) { existing ->
+            if (existing == newKey) return@filterTo false
+            val idx = existing.indexOf('\u001f')
+            idx > 0 && existing.substring(0, idx) == url
+        }
     }
 
     /** 生产配置的远程客户端；抽成 internal 让复用测试直接测这一份配置（R6）。 */

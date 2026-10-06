@@ -149,7 +149,8 @@ internal fun InputBar(
         },
         controls = {
             if (!running) ComposerAttachButton(permissionPreset, permissionLabel, onPickImage, onTakePhoto, onOpenPermissionPicker)
-            Box(Modifier.weight(1f, fill = false)) {
+            // 平时只留 + 和发送：模型 / 权限座位在点进输入框或已有内容时才出现（手机端要简洁）
+            if (composerFocused || !composerIdle || presetLabel != null) Box(Modifier.weight(1f, fill = false)) {
                 ComposerSeatsRow(
                     modelName = modelName,
                     modelEffort = modelEffort,
