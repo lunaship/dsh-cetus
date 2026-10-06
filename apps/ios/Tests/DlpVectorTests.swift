@@ -152,7 +152,11 @@ struct DlpVectorTests {
 
     private func load() throws -> VectorFile {
         let bundle = Bundle(for: DlpVectorBundleToken.self)
-        let nested = bundle.url(forResource: "vectors", withExtension: "json", subdirectory: "dlp1")
+        let nested = bundle.url(
+            forResource: "vectors",
+            withExtension: "json",
+            subdirectory: "dlp1"
+        )
         let url = nested
             ?? bundle.url(forResource: "vectors", withExtension: "json")
         guard let url else { throw DlpCrypto.Failure.invalidLength("vectors") }
