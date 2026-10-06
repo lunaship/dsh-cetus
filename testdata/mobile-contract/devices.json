@@ -11,7 +11,10 @@
       "status": "pending",
       "replacing": false,
       "pendingExpiresAt": 1767225900000,
-      "pairedFrom": "127.0.0.1"
+      "pairedFrom": "127.0.0.1",
+      "push": {
+        "enabled": false
+      }
     },
     {
       "deviceId": "<deviceId>",
@@ -23,7 +26,10 @@
       "status": "active",
       "replacing": false,
       "pendingExpiresAt": null,
-      "pairedFrom": ""
+      "pairedFrom": "",
+      "push": {
+        "enabled": false
+      }
     }
   ]
 }

@@ -254,7 +254,20 @@ DSH 结果映射：`allowed-once`/`rejected` → `resolved`；`cancelled` → `c
 
 ## 后台通知
 
-完整后台推送（ENH-01）渠道待定，未实施。现有通知仍只覆盖 App 进程收到当前会话 SSE 之后的本地提醒。
+未声明 `capabilities.push.v = 1` 的插件没有独立后台推送。现有通知仍只覆盖 App 进程收到当前会话 SSE 之后的本地提醒。
+
+### 推送注册
+
+`capabilities.push = { v: 1 }` 时，当前认证设备可以：
+
+- `POST /dsh-link/mobile/push/register`，body 为 `{ gateway, kid, sealed, k, prefs }`。
+- `DELETE /dsh-link/mobile/push/register`，删除当前设备的推送记录。
+
+`gateway` 只能是无凭据、无查询参数、无片段的 HTTPS origin。`sealed` 必须是对象 `{ v: 1, kid, enc, ct }`，不能是字符串。`k` 是 64 位十六进制内容密钥。`prefs` 的四个布尔字段是 `approval`、`question`、`completed`、`failed`。字段无效返回 400。
+
+写入和删除都经过设备变更闸门。设备被吊销后，已进入闸门的旧请求返回 401，不保留推送数据。再次 POST 完整替换旧记录。面板关闭、手机注销、吊销和待确认过期都会删除该设备的 `sealed` 与 `k`。网关返回 410 时也只删除这些推送字段，不删除局域网 token 或证书钉扎。
+
+设备列表新增 `push: { enabled: boolean }`。它不包含 gateway、kid、sealed、k 或密文。插件日志只记录截短的设备 ID、状态和原因。
 
 ### `stoppedReason`（与 `activity` / `lastResult` 同一批）
 

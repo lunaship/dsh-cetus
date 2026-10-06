@@ -589,6 +589,16 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       })
     }
 
+    if (pathname === "/dsh-link/mobile/push/register" && (req.method === "POST" || req.method === "DELETE")) {
+      const body = req.method === "POST" ? await readAuthorizedJson(req, res, state, device) : {}
+      if (req.method === "POST" && !body) return
+      const result = await runMobileDeviceMutation(rt, state, device, () => (
+        req.method === "DELETE" ? rt.push.unregister(device) : rt.push.register(device, body)
+      ))
+      if (mobileMutationWasRevoked(result)) return respondDeviceRevoked(res)
+      return json(res, result.status, result.body)
+    }
+
     if (req.method === "GET" && pathname === "/dsh-link/mobile/devices") {
       const devices = [...(state.devices ?? [])]
         .sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0))

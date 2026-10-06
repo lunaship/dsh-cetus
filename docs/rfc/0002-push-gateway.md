@@ -299,6 +299,19 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 - `DELETE /dsh-link/mobile/push/register`：注销。
 - 写入经设备变更闸门；吊销设备时同步删除该设备推送数据。
 
+注册字段：
+
+- `gateway` 必须是无用户名、密码、查询参数和片段的 HTTPS 源地址。插件只保存其 origin。
+- `sealed` 必须是 `{ v: 1, kid, enc, ct }` 对象；`enc`、`ct` 为 base64url。字符串或其他类型返回 400。
+- 顶层 `kid` 必须与 `sealed.kid` 一致。`k` 是 32 字节内容密钥的 64 位十六进制。
+- `prefs` 只含布尔值 `approval`、`question`、`completed`、`failed`。未开启的类型不发送。
+
+关闭与轮换：
+
+- 手机 `DELETE`、面板关闭、设备吊销或待确认设备过期，都会删除该设备完整 `push` 记录，并取消尚未发出的重试。
+- 同一设备再次 `POST` 是完整替换，不保留旧 `k`、`sealed` 或合并时间。网关密钥轮换后，App 必须用新 `kid` 重新封装并注册。
+- 410 只删除该设备的 `push` 记录，不删除设备 token、证书钉扎或局域网配对。
+
 合同细节写入 `docs/MOBILE_SYNC_CONTRACT.md`「推送」节；`COMPATIBILITY.md` / `PRIVACY.md` 同步边界说明。
 
 ### 6.3 面板
@@ -363,3 +376,4 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 | 2026-10-03 | I1.3 初稿：从 PLAN v1.1 阶段 6 抽出合同 |
 | 2026-10-03 | 按 PLAN v1.2：锁定 HPKE 套件为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305；明确 `info`/`aad`/线上格式/`kid` 绑定；增加 `testdata/push/hpke/` 占位说明 |
 | 2026-10-03 | 按 PLAN v1.3：`sealed` 定为 JSON 对象（字符串 → 400）；AAD 域分离为 `dlpush/1 token|` / `dlpush/1 content|`；向量目录分 `hpke/` 与 `content/` |
+| 2026-10-04 | 明确插件注册字段、关闭、密钥轮换、410 与吊销清理边界 |

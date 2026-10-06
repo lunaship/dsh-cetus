@@ -557,9 +557,12 @@ const createPanelModule = (require) => {
         : paired.map((d) => h(Row, {
             key: d.deviceId || d.name,
             title: d.name,
-            desc: joinParts([...deviceRoute(d, remote), seenLabel(d.lastSeenAt)]),
+            desc: joinParts([...deviceRoute(d, remote), seenLabel(d.lastSeenAt), d.push?.enabled ? '推送：已开启' : '推送：未开启']),
             descTone: d.via === 'relay' ? 'warn' : null,
-            actions: h('button', { type: 'button', className: 'dl-btn is-quiet is-revoke', onClick: () => actions.revoke(d) }, '吊销'),
+            actions: h(React.Fragment, null,
+              d.push?.enabled ? h('button', { type: 'button', className: 'dl-btn is-quiet', onClick: () => actions.disablePush(d) }, '关闭推送') : null,
+              h('button', { type: 'button', className: 'dl-btn is-quiet is-revoke', onClick: () => actions.revoke(d) }, '吊销'),
+            ),
           })),
     )
   }
@@ -906,6 +909,7 @@ const createPanelModule = (require) => {
         if (!silent && !window.confirm(`吊销「${device.name}」？这台手机要重新扫码才能再连。`)) return undefined
         return after(postJson('/dsh-link/revoke', device.deviceId ? { deviceId: device.deviceId } : { name: device.name }).catch(() => {}))
       },
+      disablePush: (device) => after(postJson('/dsh-link/push/disable', { deviceId: device.deviceId }).catch(() => {})),
       revokeAll: () => {
         if (!window.confirm('吊销全部已配对手机？它们都要重新扫码。')) return undefined
         return after(postJson('/dsh-link/revoke-all', {}).catch(() => {}))
