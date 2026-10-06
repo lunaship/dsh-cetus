@@ -312,9 +312,17 @@ public func inboxRowContent(session: SessionSummary, action: InboxPhoneAction?, 
             allowsSwipe: true)
     }
     if session.awaitingInput == true {
+        // No request snapshot. A host event names approval or a question;
+        // a list row only carries awaitingInput, so an unknown kind stays generic.
+        let status: InboxStatusKind =
+            switch session.hostWait {
+            case .awaitingApproval?: .waitingApproval
+            case .awaitingInput?: .waitingAnswer
+            default: .waiting
+            }
         return InboxRowContent(
             dot: .wait,
-            status: .waiting,
+            status: status,
             workspace: workspace,
             subagentCount: subagents,
             preview: nil,
@@ -483,22 +491,31 @@ private func inboxUpdated(_ session: SessionSummary, event: HostSessionStateEven
     case .running?:
         next.running = true
         next.awaitingInput = false
-    case .awaitingApproval?, .awaitingInput?:
+        next.hostWait = nil
+    case .awaitingApproval?:
         next.running = true
         next.awaitingInput = true
+        next.hostWait = .awaitingApproval
+    case .awaitingInput?:
+        next.running = true
+        next.awaitingInput = true
+        next.hostWait = .awaitingInput
     case .completed?:
         next.running = false
         next.awaitingInput = false
+        next.hostWait = nil
         next.activity = nil
         next.stoppedReason = nil
     case .failed?:
         next.running = false
         next.awaitingInput = false
+        next.hostWait = nil
         next.activity = nil
         next.stoppedReason = "error"
     case .stopped?:
         next.running = false
         next.awaitingInput = false
+        next.hostWait = nil
         next.activity = nil
         if nonBlank(next.stoppedReason) == nil { next.stoppedReason = "stopped" }
     case .unknown(_)?, nil:

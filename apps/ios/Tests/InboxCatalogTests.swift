@@ -70,7 +70,7 @@ import Testing
         #expect(ranges.count == 1)
     }
 
-    @Test func rowTextsFollowAndroidExceptBareAwaiting() {
+    @Test func rowTextsFollowAndroid() {
         let running = session(
             "run", updatedAt: 1, running: true, cwd: "/src/app", subagents: 2,
             activity: SessionActivity(kind: .tool, label: "npm test", step: 3))
@@ -101,7 +101,18 @@ import Testing
 
         let bare = inboxRowContent(session: waiting, action: nil, offline: false)
         #expect(bare.status == .waiting)
+        #expect(bare.pending == .none)
         #expect(bare.command == nil)
+        #expect(bare.allowsSwipe)
+        let approved = session(
+            "approve", updatedAt: 1, running: true, awaiting: true, hostWait: .awaitingApproval)
+        #expect(inboxRowContent(session: approved, action: nil, offline: false).status == .waitingApproval)
+        let asked = session(
+            "ask", updatedAt: 1, running: true, awaiting: true, hostWait: .awaitingInput)
+        let askedRow = inboxRowContent(session: asked, action: nil, offline: false)
+        #expect(askedRow.status == .waitingAnswer)
+        #expect(askedRow.pending == .none)
+        #expect(askedRow.preview == nil)
 
         let done = session("done", updatedAt: 1, lastResult: SessionLastResult(files: 2))
         #expect(inboxRowContent(session: done, action: nil, offline: false).status == .done)
@@ -110,17 +121,35 @@ import Testing
         #expect(inboxRowContent(session: stopped, action: nil, offline: false).status == .stopped(.interrupted))
     }
 
+    @Test func hostWaitStaysOutOfSessionJSON() throws {
+        let row = session("s", updatedAt: 1, awaiting: true, hostWait: .awaitingInput)
+        let data = try JSONEncoder().encode(row)
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["hostWait"] == nil)
+        #expect(object["awaitingInput"] as? Bool == true)
+        let decoded = try JSONDecoder().decode(SessionSummary.self, from: data)
+        #expect(decoded.hostWait == nil)
+        #expect(decoded.awaitingInput == true)
+    }
+
     @Test func hostEventMovesSessionBetweenStates() {
         var rows = [session("s", updatedAt: 1, running: true)]
         rows = inboxApplying(event("s", .awaitingApproval, title: "Wait"), to: rows, nowMillis: 2_000)
         #expect(rows[0].awaitingInput == true)
+        #expect(rows[0].hostWait == .awaitingApproval)
+        #expect(inboxRowContent(session: rows[0], action: nil, offline: false).status == .waitingApproval)
+        rows = inboxApplying(event("s", .awaitingInput), to: rows, nowMillis: 2_500)
+        #expect(rows[0].hostWait == .awaitingInput)
+        #expect(inboxRowContent(session: rows[0], action: nil, offline: false).status == .waitingAnswer)
         #expect(rows[0].running == true)
         #expect(rows[0].title == "Wait")
         rows = inboxApplying(event("s", .completed), to: rows, nowMillis: 3_000)
         #expect(rows[0].running == false)
+        #expect(rows[0].hostWait == nil)
         #expect(rows[0].stoppedReason == nil)
         rows = inboxApplying(event("s", .failed), to: rows, nowMillis: 4_000)
         #expect(rows[0].stoppedReason == "error")
+        #expect(rows[0].hostWait == nil)
         rows = inboxApplying(event("missing", .running), to: rows, nowMillis: 5_000)
         #expect(rows.contains { $0.sessionId == "missing" && $0.running == true })
     }
@@ -178,12 +207,13 @@ import Testing
         subagents: Int? = nil,
         activity: SessionActivity? = nil,
         lastResult: SessionLastResult? = nil,
-        stopped: String? = nil
+        stopped: String? = nil,
+        hostWait: HostSessionState? = nil
     ) -> SessionSummary {
         SessionSummary(
             sessionId: id, title: title, updatedAt: updatedAt, running: running, blank: blank, cwd: cwd,
             origin: origin, subagentCount: subagents, awaitingInput: awaiting, activity: activity,
-            lastResult: lastResult, stoppedReason: stopped)
+            lastResult: lastResult, stoppedReason: stopped, hostWait: hostWait)
     }
 
     private func event(_ id: String, _ state: HostSessionState, title: String? = nil) -> HostSessionStateEvent {
