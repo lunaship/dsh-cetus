@@ -312,9 +312,14 @@ public func inboxRowContent(session: SessionSummary, action: InboxPhoneAction?, 
             allowsSwipe: true)
     }
     if session.awaitingInput == true {
-        // No request snapshot. The host event distinguishes approval from a question.
-        // A session row only carries awaitingInput, so an unknown kind uses Android's approval label.
-        let status: InboxStatusKind = session.hostWait == .awaitingInput ? .waitingAnswer : .waitingApproval
+        // No request snapshot. A host event names approval or a question;
+        // a list row only carries awaitingInput, so an unknown kind stays generic.
+        let status: InboxStatusKind =
+            switch session.hostWait {
+            case .awaitingApproval?: .waitingApproval
+            case .awaitingInput?: .waitingAnswer
+            default: .waiting
+            }
         return InboxRowContent(
             dot: .wait,
             status: status,

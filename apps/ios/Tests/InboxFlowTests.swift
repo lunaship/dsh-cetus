@@ -144,7 +144,7 @@ import Testing
         let loaded = model.sessions.map { row in
             inboxRowContent(session: row, action: model.phoneAction, offline: false).status
         }
-        #expect(loaded == [.waitingApproval, .waitingApproval])
+        #expect(loaded == [.waiting, .waiting])
 
         await model.apply(
             .state(
@@ -158,7 +158,7 @@ import Testing
         await model.refresh()
         let reloaded = model.sessions.first { $0.sessionId == "ask" }
         #expect(reloaded?.hostWait == nil)
-        #expect(inboxRowContent(session: reloaded!, action: nil, offline: false).status == .waitingApproval)
+        #expect(inboxRowContent(session: reloaded!, action: nil, offline: false).status == .waiting)
     }
 
     @Test func previewServiceInheritsProtocolDefaults() async {
