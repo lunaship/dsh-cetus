@@ -70,7 +70,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: App/Info.plist
-        CODE_SIGN_ENTITLEMENTS: ""
+        CODE_SIGN_ENTITLEMENTS: App/DeepLinks.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
   NotificationService:
@@ -108,11 +108,14 @@ targets:
       - path: Extensions/Share
         excludes:
           - Info.plist
+    dependencies:
+      - package: DLCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.share
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/Share/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Extensions/Share/Share.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
   DeepLinksTests:

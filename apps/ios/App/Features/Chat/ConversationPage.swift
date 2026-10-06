@@ -11,11 +11,13 @@ struct ConversationFlowView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: ConversationModel
     var sessions: [SessionSummary] = []
+    var sharePrefill: SharePrefill?
 
     init(
         hostID: String, sessionID: String, seed: ConversationSeed, sessions: [SessionSummary] = [],
-        model: ConversationModel? = nil
+        sharePrefill: SharePrefill? = nil, model: ConversationModel? = nil
     ) {
+        self.sharePrefill = sharePrefill
         self.sessions = sessions
         if let model {
             _model = State(initialValue: model)
@@ -29,7 +31,7 @@ struct ConversationFlowView: View {
     }
 
     var body: some View {
-        ConversationPage(model: model, sessions: sessions)
+        ConversationPage(model: model, sessions: sessions, sharePrefill: sharePrefill)
             .onChange(of: scenePhase) { _, phase in
                 let mapped: AppPhase =
                     switch phase {
@@ -45,6 +47,7 @@ struct ConversationFlowView: View {
 struct ConversationPage: View {
     @Bindable var model: ConversationModel
     var sessions: [SessionSummary] = []
+    var sharePrefill: SharePrefill? = nil
     /// Screenshot path: no `.task`, no stream, no display link, no web view, no share sheet.
     var staticSnapshot = false
     var pinsToTail = false
@@ -242,6 +245,11 @@ struct ConversationPage: View {
             )
             .sensoryFeedback(.success, trigger: decisionPulse)
             .onAppear {
+                if let sharePrefill, sharePrefill.target == .session(model.sessionID) {
+                    draft = sharePrefill.text
+                    attachments = sharePrefill.images
+                    return
+                }
                 guard draft.isEmpty, let draftDirectory else { return }
                 draft = ComposerDraftStore(directory: draftDirectory).load(hostID: model.hostID)
             }

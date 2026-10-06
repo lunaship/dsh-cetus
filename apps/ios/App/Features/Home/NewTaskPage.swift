@@ -12,6 +12,7 @@ enum NewTaskSheet: String {
 struct NewTaskPage: View {
     var hostID: String
     var starter: String
+    var starterImages: [PromptImage] = []
     var workspaces: [WorkspaceInfo]
     var presets: [AgentPreset]
     var staticSnapshot = false
@@ -22,11 +23,14 @@ struct NewTaskPage: View {
     var loadPresets: () async -> [AgentPreset] = { [] }
     var createSession: (String?, String?, String?) async throws -> String = { _, _, _ in throw InboxServiceError.offline
     }
-    var sendPrompt: (String, String) async throws -> Void = { _, _ in throw InboxServiceError.offline }
+    var sendPrompt: (String, String, [PromptImage]) async throws -> Void = { _, _, _ in
+        throw InboxServiceError.offline
+    }
     var createWorkspace: (String) async throws -> WorkspaceWriteResult = { _ in throw InboxServiceError.offline }
 
     @Environment(\.locale) private var locale
     @State private var draft = ""
+    @State private var images: [PromptImage] = []
     @State private var saved = ""
     @State private var workspace: WorkspaceInfo?
     @State private var preset: AgentPreset?
@@ -59,6 +63,7 @@ struct NewTaskPage: View {
             saved = NewTaskDraftStore.load(hostID: hostID)
             if !starter.isEmpty {
                 draft = starter
+                images = starterImages
             } else if draft.isEmpty {
                 draft = saved
             }
@@ -174,11 +179,12 @@ struct NewTaskPage: View {
     private func send(_ copy: NewTaskCopy) async {
         _ = copy
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !staticSnapshot else { return }
+        guard (!text.isEmpty || !images.isEmpty), !staticSnapshot else { return }
         do {
             let id = try await createSession(preset?.id, workspace?.workspaceId, workspace?.path)
-            try await sendPrompt(id, text)
+            try await sendPrompt(id, text, images)
             draft = ""
+            images = []
             NewTaskDraftStore.save(hostID: hostID, text: "")
             onOpenSession(id)
         } catch {}
