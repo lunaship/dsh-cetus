@@ -83,7 +83,9 @@ struct SettingsDetailPage: View {
     @AppStorage("settings.theme") private var theme = "system"
     @AppStorage("settings.notifyMaster") private var notifyMaster = false
     @AppStorage("settings.notifyApproval") private var notifyApproval = false
+    @AppStorage("settings.notifyQuestion") private var notifyQuestion = false
     @AppStorage("settings.notifyDone") private var notifyDone = false
+    @AppStorage("settings.notifyFailed") private var notifyFailed = false
     @AppStorage("settings.liveActivity") private var liveActivity = false
     @AppStorage("settings.balanceAlert") private var balanceAlert = false
     @AppStorage("settings.balanceAlertAmount") private var balanceAlertAmount = ""
@@ -144,10 +146,19 @@ struct SettingsDetailPage: View {
                 LabeledContent(copy.text(.language), value: copy.text(.languageValue))
             case .notifications:
                 Toggle(copy.text(.notifyMaster), isOn: $notifyMaster)
+                    .disabled(true)
                 Toggle(copy.text(.notifyApproval), isOn: $notifyApproval)
+                    .disabled(!notifyMaster)
+                Toggle(copy.text(.notifyQuestion), isOn: $notifyQuestion)
+                    .disabled(!notifyMaster)
                 Toggle(copy.text(.notifyDone), isOn: $notifyDone)
-                Toggle(copy.text(.liveActivity), isOn: $liveActivity)
-                Text(copy.text(.pushNote))
+                    .disabled(!notifyMaster)
+                Toggle(copy.text(.notifyFailed), isOn: $notifyFailed)
+                    .disabled(!notifyMaster)
+                Text(copy.text(.pushUnavailable))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(copy.text(.pushPrivacy))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             case .appearance:
@@ -526,7 +537,11 @@ enum SettingsText: String {
     case history
     case about
     case notifyApproval
+    case notifyQuestion
     case notifyDone
+    case notifyFailed
+    case pushUnavailable
+    case pushPrivacy
     case liveActivity
     case pushNote
     case themeSystem
@@ -609,8 +624,13 @@ enum SettingsText: String {
         case .history: "Session history"
         case .about: "About"
         case .notifyApproval: "When approval is needed"
+        case .notifyQuestion: "When a question arrives"
         case .notifyDone: "When a task finishes"
+        case .notifyFailed: "When a task fails"
         case .liveActivity: "Live Activity"
+        case .pushUnavailable: "This build cannot register for notifications."
+        case .pushPrivacy:
+            "Notifications pass through the gateway, but their content stays end-to-end encrypted. They can only open the app."
         case .pushNote: "Delivery through the official gateway arrives in a later update."
         case .themeSystem: "System"
         case .themeLight: "Light"
