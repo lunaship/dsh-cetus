@@ -848,6 +848,7 @@ RFC 必须写清以下内容：
 | A3.6 / A3.7 / A3.8 / A3.11 | #146 | 多题、目标与历史翻页。提问按插件原始 questions 保序提交，本地 questionsJSON 不进入请求编码。目标编辑、暂停、恢复、清除使用现有 goal 接口和 id/revision；失败不改本地阶段或文字。更早历史用 `beforeSeq`，失败保留消息和游标。iOS 构建、单测、端到端通过。截图比较两次失败但分别落在未改动的轨迹页和新任务页，判定为既有基线抖动；Node 的同头失败是既有 diagnostics 计时波动，另一次同头成功。squash `58059e26`。真机未测。 |
 | A4 | #143 | SSE 退避、公式 CSP 与隐私清单。iOS 仍用 initial × 2^(n−1)，封顶后再乘 0.8–1.2；Android 是 1.5 / 3 / 6 / 15 秒阶梯再乘 0.7–1.3，两边故意保持不同。公式页保留 `style-src 'unsafe-inline'`，因为 KaTeX 与 Mermaid 的运行时样式不能预先 hash，也没有 nonce。PrivacyInfo 只保留已证实的 UserDefaults；`ProcessInfo.systemUptime` 不作为启动时间 API 登记。squash `ee4f68b0`。 |
 | A5 | — | 已写 `apps/ios/docs/device-check.md`。等待维护者用免费 Apple ID 安装 `58059e26`，完成局域网冒烟、10 页玻璃可读性、权限被拒、网络切换、卸载重装和深色 BrandFill 选择。未完成前不进入阶段 5。 |
+| I6.2 | #159 | 本地推送网关。HPKE、内容加密、内存限流和假 APNs HTTP/2 都在 push/ 内测试。gofmt、vet、race 和 10 秒 FuzzPushBody 通过。CI 先按多个包调用 fuzz，已改为逐个目标。squash 81e6f179。不部署，不读取真实 APNs 密钥，也不改插件或 iOS App。 |
 | I5.1 | #157 | DLP/1 帧编解码。控制帧、数据分块、签名和 HMAC 读取同一份 testdata/dlp1/vectors.json。iOS 构建、单测、端到端、截图比较通过。squash 2ee82887。不打开网络，也不改中继。 |
 | I8 | #154 | 离开前台时遮住页面。inactive 与 background 覆盖当前内容；截图测试不经过根页面。第一次截图比较失败在未改动的轨迹页，重跑通过。iOS 构建、单测、端到端通过。squash 846c2288。真机未测。 |
 | I7.1 | #152 | 本地 Live Activity。扩展显示会话标题、状态、步骤和计时；审批优先于提问，关闭或结束后不显示。远程启动和推送更新仍依赖阶段 6 网关，本次未做。iOS 构建、单测、端到端、截图比较通过。squash 617c925e。真机未测。 |
