@@ -1,6 +1,10 @@
 import DLModels
 import SwiftUI
 
+#if canImport(UIKit)
+    import UIKit
+#endif
+
 enum SettingsPage: Hashable {
     case computer
     case diagnostics
@@ -19,6 +23,8 @@ struct SettingsHomePage: View {
     var computerName: String
     var computerAddress: String
     var online = true
+    var account: (any SettingsAccountServing)?
+    var crashReport: SettingsCrashReport?
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -56,7 +62,7 @@ struct SettingsHomePage: View {
         }
         .navigationTitle(copy.text(.title))
         .navigationDestination(for: SettingsPage.self) { page in
-            SettingsDetailPage(page: page)
+            SettingsDetailPage(page: page, account: account, crashReport: crashReport)
         }
     }
 }
@@ -64,6 +70,8 @@ struct SettingsHomePage: View {
 struct SettingsDetailPage: View {
     var page: SettingsPage
     var checks: [DiagnosticCheck] = SettingsDetailPage.sampleChecks
+    var account: (any SettingsAccountServing)?
+    var crashReport: SettingsCrashReport?
     @AppStorage("settings.theme") private var theme = "system"
     @AppStorage("settings.notifyMaster") private var notifyMaster = false
     @AppStorage("settings.notifyApproval") private var notifyApproval = false
@@ -71,6 +79,12 @@ struct SettingsDetailPage: View {
     @AppStorage("settings.liveActivity") private var liveActivity = false
     @AppStorage("settings.balanceAlert") private var balanceAlert = false
     @State private var apiKey = ""
+    @State private var computerName = ""
+    @State private var loadedChecks: [DiagnosticCheck]?
+    @State private var notice: String?
+    @State private var busy = false
+    @State private var unpaired = false
+    @State private var crashExport: SettingsCrashExport?
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -82,11 +96,23 @@ struct SettingsDetailPage: View {
                 LabeledContent(copy.text(.tailscale), value: copy.text(.notPaired))
                 LabeledContent(copy.text(.relay), value: copy.text(.notPaired))
                 NavigationLink(copy.text(.diagnostics), value: SettingsPage.diagnostics)
-                Button(copy.text(.renameComputer)) {}
+                if account != nil {
+                    TextField(copy.text(.renameComputer), text: $computerName)
+                    Button(copy.text(.renameComputer)) { Task { await renameComputer(copy) } }
+                        .disabled(busy || computerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } else {
+                    Button(copy.text(.renameComputer)) {}
+                }
                 Button(copy.text(.replaceComputer)) {}
-                Button(copy.text(.unpair), role: .destructive) {}
+                Button(copy.text(.unpair), role: .destructive) { Task { await unpair(copy) } }
+                    .disabled(busy || account == nil || unpaired)
+                if let notice {
+                    Text(notice)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             case .diagnostics:
-                ForEach(checks, id: \.id) { check in
+                ForEach(displayedChecks, id: \.id) { check in
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(check.id ?? "")
@@ -145,18 +171,83 @@ struct SettingsDetailPage: View {
             case .crash:
                 Text(copy.text(.crashBody))
                     .font(.footnote)
-                Button(copy.text(.exportCrash)) {}
+                if let crashExport {
+                    ShareLink(item: crashExport.text, preview: SharePreview(copy.text(.crash))) {
+                        Label(copy.text(.exportCrash), systemImage: "square.and.arrow.up")
+                    }
+                } else {
+                    Button(copy.text(.exportCrash)) { exportCrash(copy) }
+                        .disabled(crashReport == nil)
+                }
             }
         }
         .navigationTitle(title(copy))
         .navigationBarTitleDisplayMode(.inline)
+        .task { await loadAccount(copy) }
         .toolbar {
             if page == .diagnostics {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(copy.text(.copyResult)) {}
+                    Button(copy.text(.copyResult)) { copyDiagnostics() }
                 }
             }
         }
+    }
+
+    private var displayedChecks: [DiagnosticCheck] {
+        loadedChecks ?? checks
+    }
+
+    private func loadAccount(_ copy: SettingsCopy) async {
+        guard let account else { return }
+        if page == .computer {
+            let snapshot = await account.loadComputer()
+            if computerName.isEmpty { computerName = snapshot.displayName }
+        }
+        if page == .diagnostics {
+            do {
+                let report = try await account.diagnostics()
+                loadedChecks = report.checks ?? []
+                notice = nil
+            } catch {
+                notice = copy.text(.diagnosticsUnavailable)
+            }
+        }
+    }
+
+    private func renameComputer(_ copy: SettingsCopy) async {
+        guard let account, !busy else { return }
+        busy = true
+        defer { busy = false }
+        if let renamed = await account.renameComputer(computerName) {
+            computerName = renamed.displayName
+            notice = nil
+        } else {
+            notice = copy.text(.renameFailed)
+        }
+    }
+
+    private func unpair(_ copy: SettingsCopy) async {
+        guard let account, !busy else { return }
+        busy = true
+        defer { busy = false }
+        let outcome = await account.unpair()
+        if shouldDeleteCredentials(after: outcome) {
+            unpaired = true
+            notice = nil
+        } else {
+            notice = copy.text(.unpairFailed)
+        }
+    }
+
+    private func exportCrash(_ copy: SettingsCopy) {
+        _ = copy
+        crashExport = SettingsCrashStore.export(from: crashReport)
+    }
+
+    private func copyDiagnostics() {
+        #if canImport(UIKit)
+            UIPasteboard.general.string = diagnosticsClipboard(displayedChecks)
+        #endif
     }
 
     static let sampleChecks = [
@@ -271,6 +362,9 @@ enum SettingsText: String {
     case crash
     case crashBody
     case exportCrash
+    case renameFailed
+    case unpairFailed
+    case diagnosticsUnavailable
 
     var fallback: String {
         switch self {
@@ -332,6 +426,9 @@ enum SettingsText: String {
         case .crash: "Last crash"
         case .crashBody: "MetricKit keeps the last diagnostic on this phone. Nothing is uploaded."
         case .exportCrash: "Export"
+        case .renameFailed: "Couldn't rename this computer."
+        case .unpairFailed: "Couldn't unpair. The saved credential was kept."
+        case .diagnosticsUnavailable: "Diagnostics are unavailable on this computer."
         }
     }
 }
