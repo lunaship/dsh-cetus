@@ -190,6 +190,55 @@ import Testing
         #expect(other.collapsedFolders.isEmpty)
         #expect(other.expandedPreviews.isEmpty)
     }
+    @Test func productionHomeCoversInlineSearchAndDelete() async {
+        let rows = [
+            session("need", updatedAt: 6, awaiting: true, cwd: "/work/app"),
+            session("one", updatedAt: 5, cwd: "/work/app"),
+            session("two", updatedAt: 4, cwd: "/work/app"),
+            session("three", updatedAt: 3, cwd: "/work/app"),
+            session("four", updatedAt: 2, cwd: "/work/app"),
+        ]
+        let script = Script(load: .success(payload(rows, workspaces: ["/work/app"])))
+        await script.setRequests(
+            RequestsSnapshotResponse(approvals: [PendingApproval(approvalId: "a", status: .pending, toolName: "bash")])
+        )
+        let model = make("h", script: script, cache: InboxMemoryCache())
+        await model.refresh()
+        let page = InboxPage(model: model)
+        let copy = InboxCopy(locale: Locale(identifier: "zh-Hans"))
+        var surface = page.homeSurface(copy: copy)
+        #expect(surface.more == ["设置", "已归档"])
+        #expect(!surface.more.contains("添加工作区"))
+        let pinned = surface.sections[0].entries[0]
+        #expect(pinned.workspace == "app")
+        #expect(pinned.actions.map { $0.title } == ["拒绝", "允许一次", "删除"])
+        #expect(pinned.actions[2].confirmsDelete)
+        let folder = surface.sections[1]
+        #expect(folder.entries.map { $0.title } == ["one", "two", "three"])
+        #expect(folder.entries.allSatisfy { $0.compact && $0.workspace == nil })
+        #expect(folder.toggle == "显示全部 4 个")
+        model.togglePreview(folder.id)
+        surface = page.homeSurface(copy: copy)
+        #expect(surface.sections[1].entries.count == 4)
+        #expect(surface.sections[1].toggle == "收起")
+        model.query = "one"
+        model.useSearchResult(
+            InboxSearchPayload(items: [SessionSearchItem(sessionId: "one", snippet: "found")], degraded: false))
+        surface = page.homeSurface(copy: copy)
+        #expect(surface.search.map { $0.title } == ["one"])
+        model.askDelete(rows[1])
+        surface = page.homeSurface(copy: copy)
+        #expect(surface.deleteSession == "one")
+        model.deleteWorkspacePath = "/work/app"
+        surface = page.homeSurface(copy: copy)
+        #expect(surface.deleteWorkspace == "/work/app")
+        model.link = .offline
+        model.query = ""
+        model.useSearchResult(nil)
+        surface = page.homeSurface(copy: copy)
+        #expect(surface.sections[0].entries[0].actions.prefix(2).allSatisfy { !$0.enabled })
+        #expect(surface.sections[1].createEnabled == false)
+    }
 
     @Test func searchIgnoresTheStatusFilter() async {
         let rows = [
@@ -219,10 +268,14 @@ import Testing
     }
 
     private func payload(
-        _ sessions: [SessionSummary], route: InboxRouteKind = .local, archived: [String] = []
+        _ sessions: [SessionSummary], route: InboxRouteKind = .local, archived: [String] = [],
+        workspaces: [String] = []
     ) -> InboxPayload {
         InboxPayload(
-            sessions: sessions, archivedIDs: archived, workspaces: [], hostName: "Mac", route: route,
+            sessions: sessions, archivedIDs: archived,
+            workspaces: workspaces.map {
+                WorkspaceInfo(path: $0, sessionIds: sessions.compactMap { $0.sessionId })
+            }, hostName: "Mac", route: route,
             eventsEnabled: false)
     }
 
@@ -232,9 +285,11 @@ import Testing
     }
 
     private func session(
-        _ id: String, updatedAt: Int, title: String? = nil, running: Bool = false, awaiting: Bool = false
+        _ id: String, updatedAt: Int, title: String? = nil, running: Bool = false, awaiting: Bool = false,
+        cwd: String? = nil
     ) -> SessionSummary {
         SessionSummary(
-            sessionId: id, title: title, updatedAt: updatedAt, running: running, awaitingInput: awaiting)
+            sessionId: id, title: title ?? id, updatedAt: updatedAt, running: running, cwd: cwd,
+            awaitingInput: awaiting)
     }
 }

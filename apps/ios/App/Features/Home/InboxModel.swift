@@ -458,11 +458,12 @@ final class InboxModel {
             if tokens.first != nil { return .workspaceEmpty }
             return .starters
         }
-        return .folders(inboxWorkspaceFolders(
-            sessions: visibleSessions,
-            workspaces: inboxVisibleWorkspaces(workspaces),
-            accounts: workspaceAccounts,
-            registryReady: !workspaces.isEmpty))
+        return .folders(
+            inboxWorkspaceFolders(
+                sessions: visibleSessions,
+                workspaces: inboxVisibleWorkspaces(workspaces),
+                accounts: workspaceAccounts,
+                registryReady: !workspaces.isEmpty))
     }
 
     var workspaceAccounts: [InboxWorkspaceAccount] {
