@@ -630,7 +630,8 @@ struct InboxDestinationPage: View {
             SettingsHomePage(
                 computerName: model.computerName.isEmpty ? model.hostID : model.computerName,
                 computerAddress: model.hostID,
-                online: model.link.isOnline)
+                online: model.link.isOnline,
+                models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)))
         case .computer:
             later(copy.text(.computers), copy.text(.laterComputer))
         case .diagnostics:

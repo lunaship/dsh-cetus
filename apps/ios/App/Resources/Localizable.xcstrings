@@ -6194,6 +6194,139 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t unpair. The saved credential was kept." } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有解除配对，本机凭证仍保留。" } }
       }
+    },
+    "settings.reasoningEffort" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reasoning" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "推理等级" } }
+      }
+    },
+    "settings.balanceSignedOut" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Signed out on this computer" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台电脑尚未登录" } }
+      }
+    },
+    "settings.balanceFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Balance lookup failed" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "余额查询失败" } }
+      }
+    },
+    "settings.balanceAlertAmount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Amount" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "金额" } }
+      }
+    },
+    "settings.saveModels" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save models" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存模型" } }
+      }
+    },
+    "settings.customProviderDesktop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom protocol and base URL stay on the computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自定义协议和地址只在电脑上设置。" } }
+      }
+    },
+    "settings.errorOffline" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This computer is offline." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台电脑离线。" } }
+      }
+    },
+    "settings.errorMissingHost" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This computer is not paired." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台电脑尚未配对。" } }
+      }
+    },
+    "settings.errorUnauthorized" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in again on this computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请在这台电脑上重新登录。" } }
+      }
+    },
+    "settings.errorCertificate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The computer certificate does not match." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电脑证书不匹配。" } }
+      }
+    },
+    "settings.errorReadOnly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This setting is read only." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这项设置是只读的。" } }
+      }
+    },
+    "settings.errorConflict" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This setting changed on the computer. Reload it." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这项设置已在电脑上变化，请重新加载。" } }
+      }
+    },
+    "settings.errorRejected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The computer rejected this change." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电脑拒绝了这项修改。" } }
+      }
+    },
+    "settings.errorEmptyKey" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter an API key before saving." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存前请输入 API 密钥。" } }
+      }
+    },
+    "settings.errorInvalidKey" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This API key is not accepted." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这个 API 密钥不被接受。" } }
+      }
+    },
+    "settings.errorInvalidAmount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter an amount of zero or more." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请输入大于或等于零的金额。" } }
+      }
+    },
+    "settings.errorNotAddable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This provider cannot be added from the phone." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这个提供方不能从手机添加。" } }
+      }
+    },
+    "settings.errorModelsInherited" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "These models are inherited and cannot be edited here." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这些模型是继承的，不能在这里修改。" } }
+      }
+    },
+    "settings.errorEmptyModels" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep at least one model." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "至少保留一个模型。" } }
+      }
     }
   },
 

@@ -123,6 +123,7 @@ jobs:
             -only-testing:DeepLinksTests/ReviewTests \
             -only-testing:DeepLinksTests/SettingsTests \
             -only-testing:DeepLinksTests/SettingsAccountTests \
+            -only-testing:DeepLinksTests/SettingsModelsTests \
             -only-testing:DeepLinksTests/WideLayoutTests \
             -only-testing:DeepLinksTests/PreviewProxyTests \
             test \

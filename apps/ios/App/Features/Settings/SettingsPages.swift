@@ -25,6 +25,7 @@ struct SettingsHomePage: View {
     var online = true
     var account: (any SettingsAccountServing)?
     var crashReport: SettingsCrashReport?
+    var models: SettingsModelsModel?
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -62,7 +63,13 @@ struct SettingsHomePage: View {
         }
         .navigationTitle(copy.text(.title))
         .navigationDestination(for: SettingsPage.self) { page in
-            SettingsDetailPage(page: page, account: account, crashReport: crashReport)
+            SettingsDetailPage(page: page, account: account, crashReport: crashReport, models: models)
+        }
+        .task {
+            if let models {
+                await models.load(
+                    locale: locale.identifier, lastBalanceAt: models.state.lastBalanceAt)
+            }
         }
     }
 }
@@ -72,12 +79,14 @@ struct SettingsDetailPage: View {
     var checks: [DiagnosticCheck] = SettingsDetailPage.sampleChecks
     var account: (any SettingsAccountServing)?
     var crashReport: SettingsCrashReport?
+    var models: SettingsModelsModel?
     @AppStorage("settings.theme") private var theme = "system"
     @AppStorage("settings.notifyMaster") private var notifyMaster = false
     @AppStorage("settings.notifyApproval") private var notifyApproval = false
     @AppStorage("settings.notifyDone") private var notifyDone = false
     @AppStorage("settings.liveActivity") private var liveActivity = false
     @AppStorage("settings.balanceAlert") private var balanceAlert = false
+    @AppStorage("settings.balanceAlertAmount") private var balanceAlertAmount = ""
     @State private var apiKey = ""
     @State private var computerName = ""
     @State private var loadedChecks: [DiagnosticCheck]?
@@ -85,6 +94,10 @@ struct SettingsDetailPage: View {
     @State private var busy = false
     @State private var unpaired = false
     @State private var crashExport: SettingsCrashExport?
+    @State private var selectedDiscovered: Set<String> = []
+    @State private var presetID: String?
+    @State private var modelID = ""
+    @State private var effortID: String?
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -148,17 +161,9 @@ struct SettingsDetailPage: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             case .defaults:
-                LabeledContent(copy.text(.preset), value: copy.text(.presetValue))
-                LabeledContent(copy.text(.permission), value: copy.text(.permissionValue))
-                LabeledContent(copy.text(.model), value: copy.text(.modelValue))
-                LabeledContent(copy.text(.busySend), value: copy.text(.busyQueue))
+                defaultsSection(copy)
             case .models:
-                LabeledContent(copy.text(.balance), value: copy.text(.balanceValue))
-                LabeledContent(copy.text(.providers), value: copy.text(.providersValue))
-                SecureField(copy.text(.apiKey), text: $apiKey)
-                    .textContentType(.password)
-                Button(copy.text(.discoverModels)) {}
-                Toggle(copy.text(.balanceAlert), isOn: $balanceAlert)
+                modelsSection(copy)
             case .history:
                 Text(copy.text(.historyEmpty))
                     .foregroundStyle(.secondary)
@@ -194,6 +199,15 @@ struct SettingsDetailPage: View {
                 }
             }
         }
+        .onAppear { syncDrafts() }
+        .onChange(of: models?.state.defaults) { _, _ in syncDrafts() }
+    }
+
+    private func syncDrafts() {
+        guard let defaults = models?.state.defaults else { return }
+        presetID = defaults.agentPreset
+        modelID = [defaults.modelProvider, defaults.model].compactMap { $0 }.joined(separator: "\n")
+        effortID = defaults.reasoningEffort
     }
 
     private var displayedChecks: [DiagnosticCheck] {
@@ -259,6 +273,191 @@ struct SettingsDetailPage: View {
         DiagnosticCheck(id: "remote.relay", status: .skip, code: "REMOTE_DISABLED"),
     ]
 
+    @ViewBuilder private func defaultsSection(_ copy: SettingsCopy) -> some View {
+        if let models {
+            Picker(copy.text(.preset), selection: $presetID) {
+                if presetID == nil { Text(copy.text(.modelValue)).tag(Optional<String>.none) }
+                ForEach(models.state.presets) { preset in
+                    Text(preset.name ?? preset.id).tag(Optional(preset.id))
+                }
+            }
+            .disabled(!models.state.settingsWritable || models.state.presets.isEmpty)
+            .onChange(of: presetID) { _, value in
+                guard let value, value != models.state.defaults.agentPreset else { return }
+                Task { await models.savePreset(value) }
+            }
+            LabeledContent(
+                copy.text(.permission),
+                value: models.state.defaults.permissionPreset ?? copy.text(.modelValue))
+            Picker(copy.text(.model), selection: $modelID) {
+                Text(copy.text(.modelValue)).tag("")
+                ForEach(modelChoices(models.state.modelGroups)) { choice in
+                    Text(choice.title).tag(choice.id)
+                }
+            }
+            .disabled(!models.state.settingsWritable || models.state.modelGroups.isEmpty)
+            .onChange(of: modelID) { _, value in
+                let current = [models.state.defaults.modelProvider, models.state.defaults.model].compactMap { $0 }
+                    .joined(separator: "\n")
+                let parts = value.split(separator: "\n", maxSplits: 1).map(String.init)
+                guard parts.count == 2, value != current else { return }
+                Task { await models.saveDefaultModel(provider: parts[0], model: parts[1]) }
+            }
+            Picker(copy.text(.reasoningEffort), selection: $effortID) {
+                Text(copy.text(.modelValue)).tag(Optional<String>.none)
+                ForEach(effortChoices(models.state), id: \.self) { effort in
+                    Text(effort).tag(Optional(effort))
+                }
+            }
+            .disabled(!models.state.settingsWritable || effortChoices(models.state).isEmpty)
+            .onChange(of: effortID) { _, value in
+                guard let value, value != models.state.defaults.reasoningEffort else { return }
+                Task { await models.saveReasoningEffort(value) }
+            }
+            LabeledContent(
+                copy.text(.busySend),
+                value: models.state.defaults.busyEnter ?? copy.text(.modelValue))
+            if let error = models.state.error {
+                Text(errorText(error, copy: copy)).font(.footnote).foregroundStyle(.red)
+            }
+        } else {
+            LabeledContent(copy.text(.preset), value: copy.text(.presetValue))
+            LabeledContent(copy.text(.permission), value: copy.text(.permissionValue))
+            LabeledContent(copy.text(.model), value: copy.text(.modelValue))
+            LabeledContent(copy.text(.busySend), value: copy.text(.busyQueue))
+        }
+    }
+
+    @ViewBuilder private func modelsSection(_ copy: SettingsCopy) -> some View {
+        if let models {
+            LabeledContent(copy.text(.balance), value: balanceText(models.state.balance, copy: copy))
+            if models.showsBalanceNotice(enabled: balanceAlert, amount: balanceAlertAmount) {
+                Text(copy.text(.balanceAlert)).font(.footnote).foregroundStyle(.orange)
+            }
+            ForEach(models.state.providers.providers ?? [], id: \.provider) { row in
+                providerRow(row, copy: copy, models: models)
+            }
+            if let addable = models.state.providers.addable, !addable.isEmpty, models.state.providers.writable == true {
+                Picker(
+                    copy.text(.providers),
+                    selection: Binding(
+                        get: { "" },
+                        set: { id in
+                            guard !id.isEmpty else { return }
+                            Task { await models.addProvider(id: id) }
+                        })
+                ) {
+                    Text(copy.text(.providersValue)).tag("")
+                    ForEach(addable, id: \.provider) { item in
+                        Text(item.displayName ?? item.provider ?? "").tag(item.provider ?? "")
+                    }
+                }
+            } else if (models.state.providers.providers ?? []).isEmpty {
+                LabeledContent(copy.text(.providers), value: copy.text(.providersValue))
+            }
+            Text(copy.text(.customProviderDesktop)).font(.footnote).foregroundStyle(.secondary)
+            SecureField(copy.text(.apiKey), text: keyBinding(models))
+                .textContentType(.password)
+            Toggle(copy.text(.balanceAlert), isOn: $balanceAlert)
+            if balanceAlert {
+                TextField(copy.text(.balanceAlertAmount), text: $balanceAlertAmount)
+                    .onSubmit { _ = models.validateAlert(enabled: true, amount: balanceAlertAmount) }
+            }
+            if let error = models.state.error {
+                Text(errorText(error, copy: copy)).font(.footnote).foregroundStyle(.red)
+            }
+        } else {
+            LabeledContent(copy.text(.balance), value: copy.text(.balanceValue))
+            LabeledContent(copy.text(.providers), value: copy.text(.providersValue))
+            SecureField(copy.text(.apiKey), text: $apiKey).textContentType(.password)
+            Button(copy.text(.discoverModels)) {}
+            Toggle(copy.text(.balanceAlert), isOn: $balanceAlert)
+        }
+    }
+
+    @ViewBuilder private func providerRow(_ row: ProviderRow, copy: SettingsCopy, models: SettingsModelsModel)
+        -> some View
+    {
+        let id = row.provider ?? ""
+        LabeledContent(row.displayName ?? id, value: (row.models ?? []).compactMap(\.id).joined(separator: ", "))
+        if row.credential?.writable == true {
+            Button(copy.text(.apiKey)) { Task { await models.replaceCredential(provider: id) } }
+        }
+        if row.canDiscover == true {
+            Button(copy.text(.discoverModels)) {
+                selectedDiscovered = []
+                Task { await models.discover(provider: id) }
+            }
+        }
+        if models.state.discovered.isEmpty == false, row.canDiscover == true {
+            ForEach(models.state.discovered, id: \.id) { model in
+                let modelID = model.id ?? ""
+                Toggle(
+                    model.name ?? modelID,
+                    isOn: Binding(
+                        get: { selectedDiscovered.contains(modelID) },
+                        set: { on in
+                            if on { selectedDiscovered.insert(modelID) } else { selectedDiscovered.remove(modelID) }
+                        }))
+            }
+            Button(copy.text(.saveModels)) {
+                Task { await models.saveDiscovered(provider: id, selected: selectedDiscovered) }
+            }
+            .disabled(row.modelsEditable != true)
+        }
+    }
+
+    private func keyBinding(_ models: SettingsModelsModel) -> Binding<String> {
+        Binding(get: { models.state.apiKey }, set: { models.state.apiKey = $0 })
+    }
+
+    private func effortChoices(_ state: SettingsModelsState) -> [String] {
+        guard let provider = state.defaults.modelProvider, let model = state.defaults.model else { return [] }
+        return state.modelGroups.first { $0.provider == provider }?.models?.first { $0.id == model }?.reasoningEfforts
+            ?? []
+    }
+
+    private func modelChoices(_ groups: [SessionModelGroup]) -> [SettingsModelChoice] {
+        groups.flatMap { group in
+            (group.models ?? []).map { model in
+                SettingsModelChoice(
+                    id: [group.provider, model.id].compactMap { $0 }.joined(separator: "\n"),
+                    title: [group.providerName ?? group.provider, model.name ?? model.id].compactMap { $0 }
+                        .joined(separator: " "))
+            }
+        }
+    }
+
+    private func balanceText(_ balance: BalanceResponse, copy: SettingsCopy) -> String {
+        switch balance.status {
+        case .ready:
+            (balance.wallets ?? []).compactMap { wallet in
+                [wallet.currency, wallet.balance].compactMap { $0 }.joined(separator: " ")
+            }.joined(separator: ", ")
+        case .signedOut: copy.text(.balanceSignedOut)
+        case .failed: copy.text(.balanceFailed)
+        case .unavailable, .none, .unknown: copy.text(.balanceValue)
+        }
+    }
+
+    private func errorText(_ error: SettingsModelsError, copy: SettingsCopy) -> String {
+        switch error {
+        case .offline: copy.text(.errorOffline)
+        case .missingHost: copy.text(.errorMissingHost)
+        case .unauthorized: copy.text(.errorUnauthorized)
+        case .certificate: copy.text(.errorCertificate)
+        case .notWritable: copy.text(.errorReadOnly)
+        case .conflict: copy.text(.errorConflict)
+        case .rejected: copy.text(.errorRejected)
+        case .emptyKey: copy.text(.errorEmptyKey)
+        case .invalidKey: copy.text(.errorInvalidKey)
+        case .invalidAmount: copy.text(.errorInvalidAmount)
+        case .notAddable: copy.text(.errorNotAddable)
+        case .modelsInherited: copy.text(.errorModelsInherited)
+        case .emptyModels: copy.text(.errorEmptyModels)
+        }
+    }
+
     private func title(_ copy: SettingsCopy) -> String {
         switch page {
         case .computer: copy.text(.computer)
@@ -306,6 +505,11 @@ private func diagnosticDetailText(_ value: DiagnosticDetailValue) -> String {
     }
 }
 
+private struct SettingsModelChoice: Identifiable {
+    var id: String
+    var title: String
+}
+
 enum SettingsText: String {
     case title
     case online
@@ -335,8 +539,14 @@ enum SettingsText: String {
     case permissionValue
     case model
     case modelValue
+    case reasoningEffort
     case busySend
     case busyQueue
+    case balanceSignedOut
+    case balanceFailed
+    case balanceAlertAmount
+    case saveModels
+    case customProviderDesktop
     case modelsEmpty
     case historyEmpty
     case version
@@ -368,6 +578,19 @@ enum SettingsText: String {
     case renameFailed
     case unpairFailed
     case diagnosticsUnavailable
+    case errorOffline
+    case errorMissingHost
+    case errorUnauthorized
+    case errorCertificate
+    case errorReadOnly
+    case errorConflict
+    case errorRejected
+    case errorEmptyKey
+    case errorInvalidKey
+    case errorInvalidAmount
+    case errorNotAddable
+    case errorModelsInherited
+    case errorEmptyModels
 
     var fallback: String {
         switch self {
@@ -399,8 +622,14 @@ enum SettingsText: String {
         case .permissionValue: "Workspace write"
         case .model: "Model"
         case .modelValue: "Not chosen"
+        case .reasoningEffort: "Reasoning"
         case .busySend: "Send while running"
         case .busyQueue: "Queue"
+        case .balanceSignedOut: "Signed out on this computer"
+        case .balanceFailed: "Balance lookup failed"
+        case .balanceAlertAmount: "Amount"
+        case .saveModels: "Save models"
+        case .customProviderDesktop: "Custom protocol and base URL stay on the computer."
         case .modelsEmpty: "Models and balance are read from this computer."
         case .historyEmpty: "No archived sessions on this phone."
         case .version: "Version"
@@ -432,6 +661,19 @@ enum SettingsText: String {
         case .renameFailed: "Couldn't rename this computer."
         case .unpairFailed: "Couldn't unpair. The saved credential was kept."
         case .diagnosticsUnavailable: "Diagnostics are unavailable on this computer."
+        case .errorOffline: "This computer is offline."
+        case .errorMissingHost: "This computer is not paired."
+        case .errorUnauthorized: "Sign in again on this computer."
+        case .errorCertificate: "The computer certificate does not match."
+        case .errorReadOnly: "This setting is read only."
+        case .errorConflict: "This setting changed on the computer. Reload it."
+        case .errorRejected: "The computer rejected this change."
+        case .errorEmptyKey: "Enter an API key before saving."
+        case .errorInvalidKey: "This API key is not accepted."
+        case .errorInvalidAmount: "Enter an amount of zero or more."
+        case .errorNotAddable: "This provider cannot be added from the phone."
+        case .errorModelsInherited: "These models are inherited and cannot be edited here."
+        case .errorEmptyModels: "Keep at least one model."
         }
     }
 }
