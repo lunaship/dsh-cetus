@@ -100,7 +100,7 @@ import Testing
         #expect(questionRow.allowsSwipe)
 
         let bare = inboxRowContent(session: waiting, action: nil, offline: false)
-        #expect(bare.status == .waiting)
+        #expect(bare.status == .waitingApproval)
         #expect(bare.pending == .none)
         #expect(bare.command == nil)
         #expect(bare.allowsSwipe)

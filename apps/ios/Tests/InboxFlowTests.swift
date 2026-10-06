@@ -135,6 +135,32 @@ import Testing
         #expect(model.approvalTick == 1)
     }
 
+    @Test func bareWaitingRowUsesHostKindUntilReload() async {
+        let approval = session("approve", updatedAt: 2, running: true, awaiting: true)
+        let question = session("ask", updatedAt: 1, running: true, awaiting: true)
+        let script = Script(load: .success(payload([approval, question])))
+        let model = make("h", script: script, cache: InboxMemoryCache())
+        await model.refresh()
+        let loaded = model.sessions.map { row in
+            inboxRowContent(session: row, action: model.phoneAction, offline: false).status
+        }
+        #expect(loaded == [.waitingApproval, .waitingApproval])
+
+        await model.apply(
+            .state(
+                HostSessionStateEvent(
+                    type: "session/state", sessionId: "ask", state: .awaitingInput, seq: 7)))
+        let asked = model.sessions.first { $0.sessionId == "ask" }
+        #expect(asked?.hostWait == .awaitingInput)
+        #expect(inboxRowContent(session: asked!, action: model.phoneAction, offline: false).status == .waitingAnswer)
+        #expect(model.sessions.first { $0.sessionId == "approve" }?.hostWait == nil)
+
+        await model.refresh()
+        let reloaded = model.sessions.first { $0.sessionId == "ask" }
+        #expect(reloaded?.hostWait == nil)
+        #expect(inboxRowContent(session: reloaded!, action: nil, offline: false).status == .waitingApproval)
+    }
+
     @Test func previewServiceInheritsProtocolDefaults() async {
         let service = EmptyInboxService()
         let events = await service.openEvents()
