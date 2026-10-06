@@ -3154,6 +3154,62 @@
         }
       }
     },
+    "inbox.showAllCount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show all %d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示全部 %d 个" } }
+      }
+    },
+    "inbox.collapseAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Collapse" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "收起" } }
+      }
+    },
+    "inbox.newHere" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "New task here" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在这里新建" } }
+      }
+    },
+    "inbox.ungrouped" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ungrouped" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未分组" } }
+      }
+    },
+    "inbox.more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更多" } }
+      }
+    },
+    "inbox.deleteWorkspace" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete workspace" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除工作区" } }
+      }
+    },
+    "inbox.deleteWorkspaceTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete workspace?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除工作区？" } }
+      }
+    },
+    "inbox.deleteWorkspaceMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove %@ from this phone. Sessions stay on the computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从这台手机移除 %@。会话仍留在电脑上。" } }
+      }
+    },
     "inbox.computers" : {
       "extractionState" : "manual",
       "localizations" : {
