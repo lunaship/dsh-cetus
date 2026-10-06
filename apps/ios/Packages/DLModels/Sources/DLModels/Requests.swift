@@ -61,6 +61,8 @@ public struct PendingQuestion: Codable, Equatable, Sendable {
     public var deadlineAt: Int?
     /// pending 澄清带原始 questions 数组（DSH 形状）；已终态的记录不带。
     public var questions: [ClarifyingQuestion]?
+    /// 解码时截下的 questions 数组原文。回填答案时原样使用，不经模型重编码。
+    public var questionsJSON: String?
 
     public init(
         rpcId: String? = nil,
@@ -68,7 +70,8 @@ public struct PendingQuestion: Codable, Equatable, Sendable {
         sessionId: String? = nil,
         createdAt: Int? = nil,
         deadlineAt: Int? = nil,
-        questions: [ClarifyingQuestion]? = nil
+        questions: [ClarifyingQuestion]? = nil,
+        questionsJSON: String? = nil
     ) {
         self.rpcId = rpcId
         self.status = status
@@ -76,6 +79,45 @@ public struct PendingQuestion: Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.deadlineAt = deadlineAt
         self.questions = questions
+        self.questionsJSON = questionsJSON
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(rpcId, forKey: .rpcId)
+        try container.encodeIfPresent(status, forKey: .status)
+        try container.encodeIfPresent(sessionId, forKey: .sessionId)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(deadlineAt, forKey: .deadlineAt)
+        try container.encodeIfPresent(questions, forKey: .questions)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        rpcId = try container.decodeIfPresent(String.self, forKey: .rpcId)
+        status = try container.decodeIfPresent(RequestStatus.self, forKey: .status)
+        sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
+        createdAt = try container.decodeIfPresent(Int.self, forKey: .createdAt)
+        deadlineAt = try container.decodeIfPresent(Int.self, forKey: .deadlineAt)
+        questions = try container.decodeIfPresent([ClarifyingQuestion].self, forKey: .questions)
+        questionsJSON = try? Self.rawJSON(in: container, forKey: .questions)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case rpcId
+        case status
+        case sessionId
+        case createdAt
+        case deadlineAt
+        case questions
+    }
+
+    private static func rawJSON(
+        in container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys
+    ) throws -> String? {
+        guard container.contains(key), try !container.decodeNil(forKey: key) else { return nil }
+        let raw = try container.decode(RawJSON.self, forKey: key)
+        return raw.text
     }
 }
 
@@ -213,11 +255,40 @@ public struct QuestionRequestEvent: Codable, Equatable, Sendable {
     public var rpcId: String?
     public var sessionId: String?
     public var questions: [ClarifyingQuestion]?
+    /// 解码时截下的 questions 数组原文。回填答案时原样使用。
+    public var questionsJSON: String?
 
-    public init(rpcId: String? = nil, sessionId: String? = nil, questions: [ClarifyingQuestion]? = nil) {
+    public init(
+        rpcId: String? = nil, sessionId: String? = nil, questions: [ClarifyingQuestion]? = nil,
+        questionsJSON: String? = nil
+    ) {
         self.rpcId = rpcId
         self.sessionId = sessionId
         self.questions = questions
+        self.questionsJSON = questionsJSON
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(rpcId, forKey: .rpcId)
+        try container.encodeIfPresent(sessionId, forKey: .sessionId)
+        try container.encodeIfPresent(questions, forKey: .questions)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        rpcId = try container.decodeIfPresent(String.self, forKey: .rpcId)
+        sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
+        questions = try container.decodeIfPresent([ClarifyingQuestion].self, forKey: .questions)
+        if container.contains(.questions), (try? container.decodeNil(forKey: .questions)) == false {
+            questionsJSON = try? container.decode(RawJSON.self, forKey: .questions).text
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case rpcId
+        case sessionId
+        case questions
     }
 }
 

@@ -57,6 +57,8 @@ struct ConversationPage: View {
     var presentChanges = false
     @State var statusExpanded = false
     @State private var draft = ""
+    @State private var questionForm = QuestionForm(questions: [])
+    @State private var questionRPC: String?
     @State private var decisionPulse = 0
     @State private var showTrajectory = false
     @State private var showAgents = false
@@ -195,13 +197,22 @@ struct ConversationPage: View {
     private var composerOn: Bool { showsComposer ?? !staticSnapshot }
 
     private var decision: PhoneDecision? {
-        decisionPreview ?? pendingPhoneDecision(model.status.requests.messages)
+        decisionPreview ?? pendingPhoneDecision(model.messages, requests: model.status.requests.messages)
+    }
+
+    private var activeQuestion: RequestMessage? {
+        guard case .question(let message) = decision else { return nil }
+        return message
     }
 
     private func screen(_ copy: ConversationCopy) -> some View {
         column(copy)
             .modifier(
                 ComposerInset(on: composerOn) {
+                    if activeQuestion != nil, !staticSnapshot {
+                        questionChoices(copy)
+                        questionNavigator(copy)
+                    }
                     ConversationBar(
                         decision: decision,
                         draft: draft,
@@ -247,6 +258,19 @@ struct ConversationPage: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
             }
+            if !staticSnapshot, model.status.kind == .disconnected {
+                Button(copy.text(.statusRetry)) { Task { await model.retryConnection() } }
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, 16)
+            }
+            if !staticSnapshot, model.hasOlder || model.olderFailed {
+                Button(model.olderFailed ? copy.text(.loadOlderFailed) : copy.text(.loadOlder)) {
+                    Task { await model.loadOlder() }
+                }
+                .disabled(model.loadingOlder)
+                .frame(minHeight: 44)
+                .padding(.horizontal, 16)
+            }
             if model.rows.isEmpty {
                 DLEmptyState(title: copy.text(.empty), systemImage: "bubble.left.and.bubble.right")
             } else {
@@ -284,6 +308,94 @@ struct ConversationPage: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DLColor.background)
+    }
+
+    private func questionChoices(_ copy: ConversationCopy) -> some View {
+        let options = questionForm.current?.options ?? []
+        let selected = questionForm.current.map { questionForm.draft(for: $0).selected } ?? []
+        return VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(options.enumerated()), id: \.offset) { entry in
+                let value = QuestionForm.optionValue(entry.element) ?? ""
+                let label = entry.element.label ?? value
+                Button {
+                    toggleQuestionOption(value)
+                } label: {
+                    HStack {
+                        Image(systemName: selected.contains(value) ? "checkmark.circle.fill" : "circle")
+                        Text(label.isEmpty ? value : label)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(minHeight: 44)
+                }
+                .disabled(label.isEmpty && value.isEmpty)
+            }
+        }
+        .padding(.horizontal, 16)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(copy.text(.question))
+    }
+
+    private func toggleQuestionOption(_ value: String) {
+        guard let question = questionForm.current, !value.isEmpty else { return }
+        var selected = questionForm.draft(for: question).selected
+        if question.multiple == true {
+            if let index = selected.firstIndex(of: value) {
+                selected.remove(at: index)
+            } else {
+                selected.append(value)
+            }
+        } else {
+            selected = selected == [value] ? [] : [value]
+            draft = ""
+        }
+        questionForm.updateCurrent(selected: selected, custom: draft)
+    }
+
+    private func questionNavigator(_ copy: ConversationCopy) -> some View {
+        let count = max(questionForm.questions.count, 1)
+        return HStack {
+            Button(copy.text(.questionPrevious)) { moveQuestion(.previous) }
+                .disabled(!questionForm.canGoBack)
+            if questionForm.canSkip {
+                Button(copy.text(.questionSkip)) { moveQuestion(.skip) }
+            }
+            Spacer()
+            Text(copy.format(.questionProgress, questionForm.index + 1, count))
+                .font(DLFont.footnote)
+                .foregroundStyle(DLColor.secondaryLabel)
+            Spacer()
+            Button(questionForm.isLast ? copy.text(.send) : copy.text(.questionNext)) {
+                moveQuestion(questionForm.isLast ? .submit : .next)
+            }
+        }
+        .frame(minHeight: 44)
+        .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
+        .onChange(of: activeQuestion?.questionRpcId) { _, _ in
+            if let activeQuestion { syncQuestionForm(activeQuestion) }
+        }
+    }
+
+    private func syncQuestionForm(_ message: RequestMessage) {
+        guard questionRPC != message.questionRpcId else { return }
+        questionRPC = message.questionRpcId
+        questionForm = QuestionForm(questions: QuestionForm.questions(from: message.questionPayloadJson))
+        draft = ""
+    }
+
+    private func moveQuestion(_ action: QuestionNavigation) {
+        guard let message = activeQuestion, let id = message.questionRpcId else { return }
+        syncQuestionForm(message)
+        questionForm.updateCurrent(custom: draft)
+        if action == .submit {
+            guard let body = questionForm.move(.submit) else { return }
+            Task {
+                try? await model.serviceQuestion(rpcID: id, answer: body)
+                draft = ""
+            }
+            return
+        }
+        _ = questionForm.move(action)
+        draft = questionForm.current.flatMap { questionForm.draft(for: $0).custom } ?? ""
     }
 
     private func dismissPresented() -> KeyPress.Result {
@@ -372,7 +484,11 @@ struct ConversationPage: View {
                 try await model.serviceApproval(id: id, outcome: allow ? "allowed-once" : "rejected")
             case .question(let message):
                 guard allow, let id = message.questionRpcId else { return }
-                try await model.serviceQuestion(rpcID: id, answer: draft)
+                syncQuestionForm(message)
+                questionForm.updateCurrent(custom: draft)
+                guard let body = questionForm.move(.submit) else { return }
+                try await model.serviceQuestion(rpcID: id, answer: body)
+                draft = ""
             }
             decisionPulse += 1
         } catch {}
@@ -426,6 +542,8 @@ struct ConversationPage: View {
             GoalEditSheet(
                 text: model.status.goal?.objective ?? "", rounds: model.status.goal?.maxGoalRounds ?? 8, copy: copy,
                 onSave: { text, rounds in Task { await model.serviceEditGoal(objective: text, rounds: rounds) } },
+                onPause: { Task { await model.servicePauseGoal() } },
+                pauseTitle: model.status.goal?.phase == .paused ? copy.text(.paletteResume) : copy.text(.palettePause),
                 onClear: { Task { await model.serviceClearGoal() } })
         default:
             EmptyView()

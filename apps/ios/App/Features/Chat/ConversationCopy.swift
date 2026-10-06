@@ -204,6 +204,13 @@ enum ChatText: String {
     case goalField
     case goalRounds
     case goalClear
+    case questionPrevious
+    case questionSkip
+    case questionNext
+    case questionProgress
+    case statusRetry
+    case loadOlder
+    case loadOlderFailed
     case selectTitle
     case selectText
 
@@ -408,6 +415,13 @@ enum ChatText: String {
         case .goalField: "Goal"
         case .goalRounds: "Round limit %d"
         case .goalClear: "Clear goal"
+        case .questionPrevious: "Previous"
+        case .questionSkip: "Skip"
+        case .questionNext: "Next"
+        case .questionProgress: "Question %d of %d"
+        case .statusRetry: "Retry"
+        case .loadOlder: "Load earlier messages"
+        case .loadOlderFailed: "Couldn't load earlier messages"
         case .selectTitle: "Select text"
         case .selectText: "Select text"
         }

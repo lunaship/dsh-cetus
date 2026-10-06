@@ -88,8 +88,9 @@ private actor StatusStreamService: ConversationServing {
     private var continuation: AsyncStream<ConversationSignal>.Continuation?
     private(set) var reads = 0
 
-    func history(sessionID: String) async throws -> HistoryResponse {
-        HistoryResponse(messages: [], maxSeq: 0, goal: SessionGoal(objective: "Fix", phase: .active))
+    func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse {
+        _ = (sessionID, beforeSeq)
+        return HistoryResponse(messages: [], maxSeq: 0, goal: SessionGoal(objective: "Fix", phase: .active))
     }
 
     func open(sessionID: String, afterSeq: Int) async throws -> AsyncStream<ConversationSignal> {
@@ -108,6 +109,16 @@ private actor StatusStreamService: ConversationServing {
         return PreviewDetectionsResponse(detections: [PreviewDetection(port: 3000, sessionId: "s")])
     }
 
-    func send(_ signal: ConversationSignal) { continuation?.yield(signal) }
+    func send(_ signal: ConversationSignal) {
+        let encoded: ConversationSignal
+        if case .statusEvent(let name, let data, let raw) = signal, raw.isEmpty,
+            let bytes = try? JSONEncoder().encode(data)
+        {
+            encoded = .statusEvent(name: name, data: data, raw: bytes)
+        } else {
+            encoded = signal
+        }
+        continuation?.yield(encoded)
+    }
     func stop() async { continuation?.finish() }
 }

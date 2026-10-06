@@ -5600,6 +5600,55 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除目标" } }
       }
     },
+    "chat.questionPrevious" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Previous" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "上一题" } }
+      }
+    },
+    "chat.questionSkip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跳过" } }
+      }
+    },
+    "chat.questionNext" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下一题" } }
+      }
+    },
+    "chat.questionProgress" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Question %d of %d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "第 %d 题，共 %d 题" } }
+      }
+    },
+    "chat.statusRetry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } }
+      }
+    },
+    "chat.loadOlder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load earlier messages" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "加载更早消息" } }
+      }
+    },
+    "chat.loadOlderFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load earlier messages" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更早消息加载失败" } }
+      }
+    },
     "chat.selectTitle" : {
       "extractionState" : "manual",
       "localizations" : {
