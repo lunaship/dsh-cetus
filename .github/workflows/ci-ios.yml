@@ -112,6 +112,7 @@ jobs:
             -only-testing:DeepLinksTests/TranscriptTests \
             -only-testing:DeepLinksTests/TranscriptSnapshotTests \
             -only-testing:DeepLinksTests/ConversationFlowTests \
+            -only-testing:DeepLinksTests/PromptAttachmentTests \
             -only-testing:DeepLinksTests/ConversationStatusTests \
             -only-testing:DeepLinksTests/ConversationStatusFlowTests \
             -only-testing:DeepLinksTests/PhoneDecisionTests \
