@@ -154,8 +154,8 @@ private func promptImage(from decision: PromptAttachmentDecision) -> PromptImage
 }
 
 private actor FailingHistory: ConversationServing {
-    func history(sessionID: String) async throws -> HistoryResponse {
-        _ = sessionID
+    func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse {
+        _ = (sessionID, beforeSeq)
         throw ConversationServiceError.unauthorized
     }
 }
@@ -168,8 +168,8 @@ private actor GatedHistory: ConversationServing {
         self.response = response
     }
 
-    func history(sessionID: String) async throws -> HistoryResponse {
-        _ = sessionID
+    func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse {
+        _ = (sessionID, beforeSeq)
         await withCheckedContinuation { waiters.append($0) }
         return response
     }
