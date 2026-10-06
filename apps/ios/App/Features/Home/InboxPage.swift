@@ -23,7 +23,9 @@ struct InboxFlowView: View {
         } else {
             _model = State(
                 initialValue: InboxModel(
-                    hostID: hostID, service: InboxLiveService(hostID: hostID), cache: InboxDiskCache()))
+                    hostID: hostID,
+                    service: InboxLiveService(hostID: hostID, backgroundTasks: SystemBackgroundTasks()),
+                    cache: InboxDiskCache()))
         }
     }
 

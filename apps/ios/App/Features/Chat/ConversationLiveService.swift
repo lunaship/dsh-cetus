@@ -9,15 +9,23 @@ actor ConversationLiveService: ConversationServing {
     private let store: HostStore
     private let routes: RouteSelector
     private let gate = ForegroundGate()
+    private let backgroundSend: BackgroundSendCover
+    private var phase: AppPhase = .active
     private var client: HostClient?
     private var sse: SSEClient?
     private var pump: Task<Void, Never>?
     private var continuation: AsyncStream<ConversationSignal>.Continuation?
 
-    init(hostID: String, store: HostStore = HostStore(), routes: RouteSelector = RouteSelector()) {
+    init(
+        hostID: String,
+        store: HostStore = HostStore(),
+        routes: RouteSelector = RouteSelector(),
+        backgroundTasks: any BackgroundTaskHandling = NoopBackgroundTasks()
+    ) {
         self.hostID = hostID
         self.store = store
         self.routes = routes
+        self.backgroundSend = BackgroundSendCover(tasks: backgroundTasks)
     }
 
     func history(sessionID: String, beforeSeq: Int? = nil) async throws -> HistoryResponse {
@@ -69,7 +77,10 @@ actor ConversationLiveService: ConversationServing {
     }
 
     func setPhase(_ phase: AppPhase) async {
+        self.phase = phase
         gate.update(phase)
+        // SSE 由 gate 立即断开。这里只覆盖还没写完的 HTTP 请求。
+        backgroundSend.coverIfNeeded(phase: phase)
     }
 
     func stop() async {
@@ -77,6 +88,8 @@ actor ConversationLiveService: ConversationServing {
     }
 
     func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
+        backgroundSend.beginSend(phase: phase)
+        defer { backgroundSend.finishSend() }
         let http = try await connect()
         let body = try encodePromptRequest(text: text, mode: "queue", images: images)
         do {

@@ -23,7 +23,8 @@ struct ConversationFlowView: View {
             _model = State(
                 initialValue: ConversationModel(
                     hostID: hostID, sessionID: sessionID, seed: seed,
-                    service: ConversationLiveService(hostID: hostID), box: .live()))
+                    service: ConversationLiveService(
+                        hostID: hostID, backgroundTasks: SystemBackgroundTasks()), box: .live()))
         }
     }
 

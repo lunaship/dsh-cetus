@@ -8,6 +8,8 @@ actor InboxLiveService: InboxServing {
     private let store: HostStore
     private let routes: RouteSelector
     private let gate = ForegroundGate()
+    private let backgroundSend: BackgroundSendCover
+    private var phase: AppPhase = .active
     private var client: HostClient?
     private var eventsEnabled = false
     private var hostSSE: SSEClient?
@@ -22,10 +24,16 @@ actor InboxLiveService: InboxServing {
     private var networkSource: SystemNetworkPathEventSource?
     private var networkContinuation: AsyncStream<Void>.Continuation?
 
-    init(hostID: String, store: HostStore = HostStore(), routes: RouteSelector = RouteSelector()) {
+    init(
+        hostID: String,
+        store: HostStore = HostStore(),
+        routes: RouteSelector = RouteSelector(),
+        backgroundTasks: any BackgroundTaskHandling = NoopBackgroundTasks()
+    ) {
         self.hostID = hostID
         self.store = store
         self.routes = routes
+        self.backgroundSend = BackgroundSendCover(tasks: backgroundTasks)
     }
 
     func load(resetStreams: Bool) async throws -> InboxPayload {
@@ -182,8 +190,10 @@ actor InboxLiveService: InboxServing {
     }
 
     func setPhase(_ phase: AppPhase) {
+        self.phase = phase
         gate.update(phase)
         if phase == .background { sessionReady = false }
+        backgroundSend.coverIfNeeded(phase: phase)
     }
 
     func agentPresets() async throws -> [AgentPreset] {
@@ -202,6 +212,8 @@ actor InboxLiveService: InboxServing {
     }
 
     func sendPrompt(sessionID: String, text: String) async throws {
+        backgroundSend.beginSend(phase: phase)
+        defer { backgroundSend.finishSend() }
         let http = try requireClient()
         _ = try await http.postJSON(
             path: try sessionPath(sessionID, "/prompt"), json: NewTaskPromptBody(text: text, mode: "queue"))
