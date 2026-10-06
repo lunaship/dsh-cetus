@@ -1,6 +1,33 @@
 {
-  "_comment": "PLACEHOLDER — wrong prefix \"dlpush/1 token|\" must fail; also mutate tag/ciphertext and expired ts cases. Filled in I6.2.",
-  "status": "placeholder",
+  "_comment": "Negative content cases derived from dlpush-v1-seal-open.json case content-approval-device-7. wrong_prefix uses dlpush/1 token| plus the same deviceId and must fail Open. ts_expired is a plaintext the NSE must treat as stale; it is not a crypto failure.",
+  "status": "generated",
   "wrong_aad_prefix_utf8": "dlpush/1 token|",
-  "cases": []
+  "base_case": "content-approval-device-7",
+  "max_age_seconds": 900,
+  "cases": [
+    {
+      "id": "mutate-tag",
+      "mutate": "tag",
+      "expect": "open_failed"
+    },
+    {
+      "id": "mutate-ciphertext",
+      "mutate": "ciphertext",
+      "expect": "open_failed"
+    },
+    {
+      "id": "wrong-prefix-token",
+      "mutate": "wrong_prefix",
+      "aad_utf8": "dlpush/1 token|device-7",
+      "expect": "open_failed"
+    },
+    {
+      "id": "ts-expired",
+      "mutate": "ts",
+      "ts": 1728000000,
+      "now": 1728000901,
+      "max_age_seconds": 900,
+      "expect": "generic_copy"
+    }
+  ]
 }

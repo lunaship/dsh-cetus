@@ -46,4 +46,9 @@ jobs:
             echo "no fuzz tests yet"
             exit 0
           fi
-          go test ./... -run '^$' -fuzz 'Fuzz' -fuzztime 10s
+          for file in "${fuzzes[@]}"; do
+            dir=$(dirname "$file")
+            while IFS= read -r target; do
+              go test "./$dir" -run '^$' -fuzz "$target" -fuzztime 10s
+            done < <(grep -E -o 'func Fuzz[A-Za-z0-9_]+' "$file" | awk '{print $2}')
+          done
