@@ -553,7 +553,6 @@ final class ConversationModel {
                 await self.ingest(signal)
             }
         }
-        status.connection = .connected
     }
 
     func serviceModels() async -> [ModelRow] {
