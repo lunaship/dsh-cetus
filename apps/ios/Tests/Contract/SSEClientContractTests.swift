@@ -890,4 +890,40 @@ struct SSEClientContractTests {
 
         task.cancel()
     }
+
+    // MARK: - I7.3 发送中切后台
+
+    @Test("只有后台且发送未完成时才申请短后台时间")
+    func backgroundSendDecisionCoversOnlyInFlightWrite() {
+        #expect(BackgroundSendDecision.entering(phase: .active, sendInFlight: true) == .idle)
+        #expect(BackgroundSendDecision.entering(phase: .inactive, sendInFlight: true) == .idle)
+        #expect(BackgroundSendDecision.entering(phase: .background, sendInFlight: false) == .idle)
+        #expect(BackgroundSendDecision.entering(phase: .background, sendInFlight: true) == .begin)
+        #expect(BackgroundSendDecision.finishing() == .end)
+    }
+
+    @Test("一次在途发送只申请一个后台任务，结束后关闭")
+    func backgroundSendCoverBeginsOnceAndEnds() async {
+        let tasks = RecordingBackgroundTasks()
+        let cover = BackgroundSendCover(tasks: tasks)
+        #expect(cover.coverIfNeeded(phase: .background) == .idle)
+        #expect(tasks.beganNames.isEmpty)
+
+        cover.beginSend(phase: .active)
+        #expect(cover.coverIfNeeded(phase: .active) == .idle)
+        #expect(cover.coverIfNeeded(phase: .background) == .begin)
+        #expect(cover.coverIfNeeded(phase: .background) == .idle)
+        #expect(tasks.beganNames == [BackgroundSendCover.taskName])
+        #expect(tasks.openCount == 1)
+
+        cover.beginSend(phase: .background)
+        #expect(tasks.beganNames.count == 1)
+        #expect(tasks.openCount == 1)
+        cover.finishSend()
+        #expect(tasks.openCount == 1)
+        cover.finishSend()
+        #expect(tasks.openCount == 0)
+        #expect(tasks.endedTokens.count == 1)
+        #expect(cover.hasOpenTask == false)
+    }
 }

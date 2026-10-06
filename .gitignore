@@ -19,3 +19,4 @@ secrets*
 .env.*
 !.env.example
 .local/
+.build/
