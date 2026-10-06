@@ -125,13 +125,18 @@ import Testing
         #expect(model.state.error == .emptyKey)
         model.state.apiKey = "  sk-new  "
         await model.replaceCredential(provider: "openai")
-        #expect(await script.credentials == [("openai", "sk-new")])
+        let credentials = await script.credentials
+        #expect(credentials.count == 1)
+        #expect(credentials.first?.0 == "openai")
+        #expect(credentials.first?.1 == "sk-new")
         #expect(model.state.apiKey == "")
         #expect(model.displayedKey == "")
         model.state.apiKey = "OPENAI_API_KEY=sk-new"
         await model.replaceCredential(provider: "openai")
         #expect(model.state.error == .invalidKey)
-        #expect(await script.credentials == [("openai", "sk-new")])
+        let unchanged = await script.credentials
+        #expect(unchanged.count == 1)
+        #expect(unchanged.first?.1 == "sk-new")
     }
 
     @Test func addRejectsProvidersOutsideTheCatalog() async {
@@ -144,7 +149,10 @@ import Testing
         #expect(model.state.error == .notAddable)
         #expect(await script.added.isEmpty)
         await model.addProvider(id: "openai")
-        #expect(await script.added == [("openai", nil)])
+        let added = await script.added
+        #expect(added.count == 1)
+        #expect(added.first?.0 == "openai")
+        #expect(added.first?.1 == nil)
     }
 
     @Test func discoverFiltersKnownModelsAndRefusesInheritedWrites() async {
