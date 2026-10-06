@@ -119,6 +119,16 @@ struct InboxPage: View {
             } message: {
                 Text(copy.format(.deleteMessage, deleteName(copy)))
             }
+            .confirmationDialog(
+                copy.text(.deleteWorkspaceTitle), isPresented: workspaceDeletePresented, titleVisibility: .visible
+            ) {
+                Button(copy.text(.deleteWorkspace), role: .destructive) {
+                    if let path = model.deleteWorkspacePath { Task { await model.deleteWorkspace(path) } }
+                }
+                Button(copy.text(.cancel), role: .cancel) { model.deleteWorkspacePath = nil }
+            } message: {
+                Text(copy.format(.deleteWorkspaceMessage, model.deleteWorkspacePath ?? ""))
+            }
             .sensoryFeedback(.success, trigger: model.approvalTick)
             .onOpenURL { model.receiveShare(url: $0, store: ShareGroupStore.live()) }
             .sheet(isPresented: sharePresented) {
@@ -268,10 +278,9 @@ struct InboxPage: View {
 
     private func screen(_ copy: InboxCopy) -> some View {
         inbox(copy)
-            .navigationTitle(copy.text(.brand))
+            .navigationTitle(model.displayName)
             .navigationSubtitle(copy.subtitle(name: model.displayName, link: model.link))
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarTitleMenu { titleMenu(copy) }
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar(copy) }
     }
 
@@ -281,6 +290,10 @@ struct InboxPage: View {
 
     private var deletePresented: Binding<Bool> {
         Binding(get: { model.deleteTarget != nil }, set: { if !$0 { model.deleteTarget = nil } })
+    }
+
+    private var workspaceDeletePresented: Binding<Bool> {
+        Binding(get: { model.deleteWorkspacePath != nil }, set: { if !$0 { model.deleteWorkspacePath = nil } })
     }
 
     private func deleteName(_ copy: InboxCopy) -> String {
@@ -339,17 +352,55 @@ struct InboxPage: View {
                 message: copy.text(.offlineHintPlain), symbol: "wifi.slash")
         case .search(let groups, let degraded, let failed):
             searchResults(copy, groups: groups, degraded: degraded, failed: failed)
-        case .sections(let groups):
-            ForEach(groups, id: \.section) { group in
-                Section {
-                    ForEach(group.sessions, id: \.sessionId) { session in
+        case .folders(let folders):
+            let pinned = folders.flatMap(\.sessions).filter { $0.awaitingInput == true }
+            if !pinned.isEmpty {
+                Section(copy.text(.filterAwaiting)) {
+                    ForEach(pinned, id: \.sessionId) { session in
                         sessionRow(session, copy: copy, needle: "")
                     }
+                }
+            }
+            ForEach(folders, id: \.key) { folder in
+                let rest = folder.sessions.filter { $0.awaitingInput != true }
+                let open = !model.collapsedFolders.contains(folder.key)
+                let shown = model.expandedPreviews.contains(folder.key) ? rest : Array(rest.prefix(3))
+                Section {
+                    if open {
+                        ForEach(shown, id: \.sessionId) { session in
+                            sessionRow(session, copy: copy, needle: "")
+                                .padding(.leading, 16)
+                        }
+                        if rest.count > 3 {
+                            Button(copy.format(shown.count == rest.count ? .collapseAll : .showAllCount, rest.count)) {
+                                model.togglePreview(folder.key)
+                            }
+                        }
+                        if let path = folder.path {
+                            Button(copy.text(.newHere)) { model.openNewTask(workspace: path) }
+                                .disabled(!model.actionsEnabled)
+                        }
+                    }
                 } header: {
-                    Text("\(copy.section(group.section))  \(group.sessions.count)")
+                    Button(folderTitle(folder, copy: copy)) { model.toggleFolder(folder.key) }
+                        .contextMenu {
+                            if let path = folder.path {
+                                Button(copy.text(.newHere)) { model.openNewTask(workspace: path) }
+                                Button(copy.text(.deleteWorkspace), role: .destructive) {
+                                    model.deleteWorkspacePath = path
+                                }
+                            }
+                        }
                 }
             }
         }
+    }
+
+    private func folderTitle(_ folder: InboxWorkspaceFolder, copy: InboxCopy) -> String {
+        let labels = inboxWorkspaceLabels(model.folderPaths)
+        let name = folder.path.flatMap { labels[$0] } ?? copy.text(.ungrouped)
+        let counts = [folder.awaitingCount, folder.runningCount].filter { $0 > 0 }.map(String.init)
+        return counts.isEmpty ? name : name + " " + counts.joined(separator: " · ")
     }
 
     private func empty(_ copy: InboxCopy, title: String, message: String?, symbol: String) -> some View {
@@ -439,8 +490,6 @@ struct InboxPage: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if content.allowsSwipe {
                 Button(copy.text(.delete), role: .destructive) { model.askDelete(session) }
-                Button(copy.text(.archive)) { Task { await model.archive(session) } }
-                    .tint(.gray)
             }
         }
         .accessibilityElement(children: .combine)
@@ -561,19 +610,20 @@ struct InboxPage: View {
                     }
                 }
             }
-            Button(copy.text(.addWorkspace)) { model.path.append(.addWorkspace) }
             Button(copy.text(.archived)) { model.path.append(.archived) }
         }
     }
 
     @ToolbarContentBuilder private func toolbar(_ copy: InboxCopy) -> some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                model.path.append(.settings)
+            Menu {
+                titleMenu(copy)
+                Button(copy.text(.settings)) { model.path.append(.settings) }
+                Button(copy.text(.addWorkspace)) { model.path.append(.addWorkspace) }
             } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "ellipsis")
             }
-            .accessibilityLabel(copy.text(.settings))
+            .accessibilityLabel(copy.text(.more))
         }
         ToolbarItem(placement: .bottomBar) {
             Menu {
@@ -618,14 +668,6 @@ struct InboxPage: View {
 }
 
 @ViewBuilder func inboxSessionActions(_ session: SessionSummary, model: InboxModel, copy: InboxCopy) -> some View {
-    Button(copy.text(.rename)) { model.askRename(session) }
-    Button(copy.text(.fork)) { Task { await model.fork(session) } }
-    if let id = session.sessionId {
-        ShareLink(item: copy.format(.shareBody, inboxDisplayTitle(session.title), id)) {
-            Label(copy.text(.share), systemImage: "square.and.arrow.up")
-        }
-    }
-    Button(copy.text(.archive)) { Task { await model.archive(session) } }
     Button(copy.text(.delete), role: .destructive) { model.askDelete(session) }
 }
 

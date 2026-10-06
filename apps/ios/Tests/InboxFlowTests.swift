@@ -169,6 +169,28 @@ import Testing
         #expect(!saw)
     }
 
+    @Test func folderExpansionIsRememberedPerComputer() {
+        let suite = "inbox-tests-(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let preferences = InboxPreferences(defaults: defaults)
+        let first = InboxModel(
+            hostID: "mac", service: Script(load: .success(payload([]))), cache: InboxMemoryCache(),
+            preferences: preferences, autostart: false)
+        first.toggleFolder("workspace:/work/app")
+        first.togglePreview("workspace:/work/app")
+        let second = InboxModel(
+            hostID: "mac", service: Script(load: .success(payload([]))), cache: InboxMemoryCache(),
+            preferences: preferences, autostart: false)
+        let other = InboxModel(
+            hostID: "other", service: Script(load: .success(payload([]))), cache: InboxMemoryCache(),
+            preferences: preferences, autostart: false)
+        #expect(second.collapsedFolders == ["workspace:/work/app"])
+        #expect(second.expandedPreviews == ["workspace:/work/app"])
+        #expect(other.collapsedFolders.isEmpty)
+        #expect(other.expandedPreviews.isEmpty)
+    }
+
     @Test func searchIgnoresTheStatusFilter() async {
         let rows = [
             session("run", updatedAt: 2, title: "approval run", running: true),

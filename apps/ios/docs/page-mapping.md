@@ -50,12 +50,12 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 
 | v4 | 页面 | iOS 页面 / 组件 / API | 与 Android 差异 | 截图测试 |
 |---|---|---|---|---|
-| 2.1 | 首页 | `NavigationStack` + 大标题；`.navigationSubtitle` 电脑状态；`toolbarTitleMenu`（2.5）；plain `List` 三组；`DLInboxRow`；底栏筛选 / 搜索 /「新任务」（唯一 BrandFill）；`.refreshable` | 无 FAB；搜索在底栏；「允许一次」为 `.bordered`+tint | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading`、`Snapshot_2_1_filtered` |
+| 2.1 | 首页 | 居中电脑名；待处理跨工作区置顶；工作区文件夹默认 3 条；空工作区可新建；底栏搜索 /「新任务」 | 与 Android 同口径；置顶会话不在文件夹重复 | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading` |
 | 2.2 | 空态 | `DLEmptyState` +「从一件事开始」三行 | — | `Snapshot_2_2_empty_*`、`Snapshot_2_2_workspace` |
 | 2.3 | 离线 | 顶 `DLBanner` + 重试 / 诊断；批准按钮禁用 | — | `Snapshot_2_3_offline_*` |
 | 2.4 | 搜索 | `.searchable(text:tokens:)`；工作区 token；`.searchSuggestions` | 工作区用 token | `Snapshot_2_4_search_*`、`Snapshot_2_4_suggestions`、`Snapshot_2_4_empty`、`Snapshot_2_4_degraded` |
-| 2.5 | 电脑与工作区 | `toolbarTitleMenu` 两组 | 菜单代替弹层 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived`（静态列表） |
-| 2.6 | 长按 / 左滑 | `contextMenu`；`swipeActions` 归档 / 删除；**审批不滑动** | 多左滑 | `Snapshot_2_6_context_*`、`Snapshot_2_6_delete`、`Snapshot_2_6_rename` |
+| 2.5 | 电脑与工作区 | 右上角「更多」保留电脑切换；设置和已归档也在其中 | 不再使用标题菜单；首页不提供添加工作区 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived` |
+| 2.6 | 长按 / 左滑 | 会话菜单只留删除并二次确认；工作区长按可新建或删除，删除也二次确认 | 首页不再提供归档、分叉和重命名 | `Snapshot_2_6_delete` |
 
 ## 3.x 新任务
 

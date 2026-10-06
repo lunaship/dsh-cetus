@@ -48,7 +48,7 @@ enum InboxPresentation: Equatable, Sendable {
     case workspaceEmpty
     case offlineEmpty
     case search(InboxSearchGroups, degraded: Bool, failed: Bool)
-    case sections([InboxSectionGroup])
+    case folders([InboxWorkspaceFolder])
 }
 
 struct InboxComputer: Equatable, Identifiable, Sendable {
@@ -180,6 +180,22 @@ struct InboxPreferences {
         defaults.set(values, forKey: key("recent", hostID))
     }
 
+    func collapsedFolders(hostID: String) -> Set<String> {
+        Set(defaults.stringArray(forKey: key("collapsed", hostID)) ?? [])
+    }
+
+    func setCollapsedFolders(_ keys: Set<String>, hostID: String) {
+        defaults.set(keys.sorted(), forKey: key("collapsed", hostID))
+    }
+
+    func expandedPreviews(hostID: String) -> Set<String> {
+        Set(defaults.stringArray(forKey: key("preview", hostID)) ?? [])
+    }
+
+    func setExpandedPreviews(_ keys: Set<String>, hostID: String) {
+        defaults.set(keys.sorted(), forKey: key("preview", hostID))
+    }
+
     func lastOnline(hostID: String) -> Date? {
         let stamp = defaults.double(forKey: key("online", hostID))
         guard stamp > 0 else { return nil }
@@ -214,6 +230,7 @@ protocol InboxServing: Sendable {
     func createSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String
     func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws
     func createWorkspace(path: String) async throws -> WorkspaceWriteResult
+    func deleteWorkspace(path: String) async throws
 }
 
 enum WorkspaceWriteResult: Equatable, Sendable {
@@ -291,6 +308,11 @@ extension InboxServing {
         _ = path
         throw InboxServiceError.offline
     }
+
+    func deleteWorkspace(path: String) async throws {
+        _ = path
+        throw InboxServiceError.offline
+    }
 }
 
 enum InboxServiceError: Error, Equatable, Sendable {
@@ -329,6 +351,7 @@ final class InboxModel {
     var renameTarget: SessionSummary?
     var renameDraft = ""
     var deleteTarget: SessionSummary?
+    var deleteWorkspacePath: String?
     var approvalTick = 0
     var notice: InboxNotice?
     var searching = false
@@ -369,6 +392,8 @@ final class InboxModel {
         self.calendar = calendar
         deletedIDs = preferences.deletedIDs(hostID: hostID)
         recentSearches = preferences.recentSearches(hostID: hostID)
+        collapsedFolders = preferences.collapsedFolders(hostID: hostID)
+        expandedPreviews = preferences.expandedPreviews(hostID: hostID)
         if let saved = preferences.workspace(hostID: hostID) {
             tokens = [InboxWorkspaceToken(path: saved, name: inboxWorkspaceName(saved) ?? saved)]
         }
@@ -383,6 +408,19 @@ final class InboxModel {
     }
 
     var actionsEnabled: Bool { link.isOnline }
+    var collapsedFolders: Set<String> = []
+    var expandedPreviews: Set<String> = []
+    var folderPaths: [String] { inboxVisibleWorkspaces(workspaces) }
+
+    func toggleFolder(_ key: String) {
+        collapsedFolders.formSymmetricDifference([key])
+        preferences.setCollapsedFolders(collapsedFolders, hostID: hostID)
+    }
+
+    func togglePreview(_ key: String) {
+        expandedPreviews.formSymmetricDifference([key])
+        preferences.setExpandedPreviews(expandedPreviews, hostID: hostID)
+    }
 
     var effectiveArchived: Set<String> { archivedIDs.union(pendingArchive) }
 
@@ -420,7 +458,18 @@ final class InboxModel {
             if tokens.first != nil { return .workspaceEmpty }
             return .starters
         }
-        return .sections(inboxFiltered(inboxSections(visibleSessions), filter: filter))
+        return .folders(inboxWorkspaceFolders(
+            sessions: visibleSessions,
+            workspaces: inboxVisibleWorkspaces(workspaces),
+            accounts: workspaceAccounts,
+            registryReady: !workspaces.isEmpty))
+    }
+
+    var workspaceAccounts: [InboxWorkspaceAccount] {
+        workspaces.compactMap { workspace in
+            guard let path = workspace.path else { return nil }
+            return InboxWorkspaceAccount(path: path, sessionIDs: workspace.sessionIds ?? [])
+        }
     }
 
     func start() async {
@@ -556,6 +605,23 @@ final class InboxModel {
             }
             return InboxComputerRow(id: computer.id, title: title, current: computer.id == hostID)
         }
+    }
+
+    func deleteWorkspace(_ path: String) async {
+        guard actionsEnabled else { return }
+        do {
+            try await service.deleteWorkspace(path: path)
+            deleteWorkspacePath = nil
+            workspaces.removeAll { inboxNormalizeWorkspacePath($0.path ?? "") == inboxNormalizeWorkspacePath(path) }
+            if tokens.first?.path == path { setWorkspace(nil) }
+        } catch {
+            notice = .delete
+        }
+    }
+
+    func openNewTask(workspace path: String) {
+        setWorkspace(path)
+        openNewTask()
     }
 
     func openNewTask(_ text: String = "") {
