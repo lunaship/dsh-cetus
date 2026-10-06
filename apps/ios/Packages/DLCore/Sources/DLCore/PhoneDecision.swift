@@ -33,6 +33,21 @@ public func pendingPhoneDecision(
     return nil
 }
 
+/// 历史里这条提问之后出现过用户消息时，不再继续问。对齐 Android 的 later user message 规则。
+public func pendingPhoneDecision(
+    _ history: [HistoryMessage],
+    requests: [RequestMessage]
+) -> PhoneDecision? {
+    pendingPhoneDecision(requests) { question in
+        guard let id = question.id.isEmpty ? question.questionRpcId : question.id else { return false }
+        let needles = [id, "question-\(question.questionRpcId ?? "")"]
+        guard let index = history.lastIndex(where: { message in
+            message.role == "question" && needles.contains { $0 == message.id }
+        }) else { return false }
+        return history[history.index(after: index)...].contains { $0.role == "user" }
+    }
+}
+
 /// 审批参数里的命令。拿不到时返回 nil，决策栏不画空命令块。
 public func approvalCommand(from args: String?) -> String? {
     guard let args, let data = args.data(using: .utf8),

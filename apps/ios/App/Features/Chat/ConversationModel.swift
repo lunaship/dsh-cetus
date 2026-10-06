@@ -17,14 +17,14 @@ enum ConversationServiceError: Error, Equatable {
 enum ConversationSignal: Equatable, Sendable {
     case frame(StreamFrame)
     case stats(HistoryStats)
-    case statusEvent(name: String, data: JSONValue)
+    case statusEvent(name: String, data: JSONValue, raw: Data = Data())
     case connection(ConversationConnection)
     case resync
     case failed
 }
 
 protocol ConversationServing: Sendable {
-    func history(sessionID: String) async throws -> HistoryResponse
+    func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse
     func open(sessionID: String, afterSeq: Int) async throws -> AsyncStream<ConversationSignal>
     func requests(sessionID: String) async throws -> RequestsSnapshotResponse?
     func detections() async throws -> PreviewDetectionsResponse?
@@ -34,7 +34,7 @@ protocol ConversationServing: Sendable {
     func stop() async
     func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws
-    func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws
+    func submitQuestion(sessionID: String, rpcID: String, answer: QuestionAnswerBody) async throws
     func models(sessionID: String) async throws -> SessionModelsResponse
     func selectModel(sessionID: String, provider: String, model: String, effort: String?) async throws
     func setPermission(sessionID: String, preset: String) async throws
@@ -48,8 +48,8 @@ protocol ConversationServing: Sendable {
 }
 
 extension ConversationServing {
-    func history(sessionID: String) async throws -> HistoryResponse {
-        _ = sessionID
+    func history(sessionID: String, beforeSeq: Int? = nil) async throws -> HistoryResponse {
+        _ = (sessionID, beforeSeq)
         throw ConversationServiceError.offline
     }
 
@@ -72,7 +72,7 @@ extension ConversationServing {
         _ = (sessionID, approvalID, outcome)
         throw ConversationServiceError.offline
     }
-    func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws {
+    func submitQuestion(sessionID: String, rpcID: String, answer: QuestionAnswerBody) async throws {
         _ = (sessionID, rpcID, answer)
         throw ConversationServiceError.offline
     }
@@ -173,6 +173,20 @@ final class ConversationModel {
 
     /// Read-only SSE status. Sending remains an independent HostClient HTTP operation in I4.3c.
     private(set) var status = ConversationStatusState()
+    var testStatus: ConversationStatusState {
+        get { status }
+        set { status = newValue }
+    }
+    func testSetHasOlder(_ value: Bool, beforeSeq: Int?) {
+        hasOlder = value
+        olderBeforeSeq = beforeSeq
+    }
+    var testOlderBeforeSeq: Int? { olderBeforeSeq }
+    func seedForTest(messages: [HistoryMessage], hasOlder: Bool, beforeSeq: Int?) {
+        self.messages = messages
+        self.hasOlder = hasOlder
+        olderBeforeSeq = beforeSeq
+    }
     private(set) var title: String
     private(set) var workspacePath: String
     private(set) var messages: [HistoryMessage] = []
@@ -181,6 +195,10 @@ final class ConversationModel {
     private(set) var stoppedReason: String?
     private(set) var confirmingSnapshot = false
     private(set) var loadFailed = false
+    private(set) var hasOlder = false
+    private(set) var loadingOlder = false
+    private(set) var olderFailed = false
+    private var olderBeforeSeq: Int?
     private(set) var expanded: Set<String> = []
     private(set) var stats: HistoryStats?
     private(set) var maxSeq = 0
@@ -259,16 +277,7 @@ final class ConversationModel {
         status.connection = .connecting
         showSnapshotIfPresent()
         do {
-            let history = try await service.history(sessionID: sessionID)
-            replace(history)
-            let stream = try await service.open(sessionID: sessionID, afterSeq: maxSeq)
-            streamTask = Task { [weak self] in
-                guard let self else { return }
-                for await signal in stream {
-                    if Task.isCancelled { break }
-                    await self.ingest(signal)
-                }
-            }
+            try await reloadAndOpen()
         } catch {
             loadFailed = true
             status.connection = .failed
@@ -386,6 +395,9 @@ final class ConversationModel {
         stoppedReason = history.stoppedReason ?? seed.stoppedReason
         confirmingSnapshot = false
         loadFailed = false
+        hasOlder = history.hasMore == true
+        olderBeforeSeq = history.nextBeforeSeq
+        olderFailed = false
         if stoppedReason != nil {
             running = false
         } else {
@@ -393,6 +405,14 @@ final class ConversationModel {
         }
         rebuild(fade: false)
         persistNow()
+    }
+
+    private func prepend(_ page: HistoryResponse) {
+        messages = prependHistoryPage(page.messages ?? [], before: messages)
+        hasOlder = page.hasMore == true
+        olderBeforeSeq = page.nextBeforeSeq
+        olderFailed = false
+        rebuild(fade: false)
     }
 
     private func ingest(_ signal: ConversationSignal) async {
@@ -407,12 +427,12 @@ final class ConversationModel {
         case .connection(let connection):
             status.connection = connection
             if connection == .connected { loadFailed = false }
-        case .statusEvent(let name, let data):
-            absorbStatusEvent(name, data: data)
+        case .statusEvent(let name, let data, let raw):
+            absorbStatusEvent(name, data: data, raw: raw)
         case .resync:
             status.connection = .reconnecting
             buffer.discard()
-            if let history = try? await service.history(sessionID: sessionID) {
+            if let history = try? await service.history(sessionID: sessionID, beforeSeq: nil) {
                 replace(history)
                 await service.resume(after: maxSeq)
             } else {
@@ -424,12 +444,11 @@ final class ConversationModel {
         }
     }
 
-    private func absorbStatusEvent(_ name: String, data: JSONValue) {
-        guard let bytes = try? JSONEncoder().encode(data) else { return }
-        let decoder = JSONDecoder()
+    private func absorbStatusEvent(_ name: String, data: JSONValue, raw: Data) {
+        let decoder = JSONDecoder().preservingRawJSON(raw)
         switch name {
         case "ready":
-            guard let ready = try? decoder.decode(StreamReadyEvent.self, from: bytes) else { return }
+            guard let ready = try? decoder.decode(StreamReadyEvent.self, from: raw) else { return }
             requestsAvailable = ready.capabilities?.requests?.snapshot == true
             previewDetectionAvailable = ready.capabilities?.preview?.detect == 1
             previewRefreshTask?.cancel()
@@ -449,13 +468,13 @@ final class ConversationModel {
         case "stats":
             status.apply(projections: data)
         case "question":
-            if let event = try? decoder.decode(QuestionRequestEvent.self, from: bytes),
+            if let event = try? decoder.decode(QuestionRequestEvent.self, from: raw),
                 event.sessionId == nil || event.sessionId == sessionID
             {
                 status.question(event)
             }
         case "question-resolved":
-            if let event = try? decoder.decode(QuestionResolvedEvent.self, from: bytes),
+            if let event = try? decoder.decode(QuestionResolvedEvent.self, from: raw),
                 event.sessionId == nil || event.sessionId == sessionID
             {
                 status.resolveQuestion(event)
@@ -485,8 +504,51 @@ final class ConversationModel {
         try await service.submitApproval(sessionID: sessionID, approvalID: id, outcome: outcome)
     }
 
-    func serviceQuestion(rpcID: String, answer: String) async throws {
+    func serviceQuestion(rpcID: String, answer: QuestionAnswerBody) async throws {
         try await service.submitQuestion(sessionID: sessionID, rpcID: rpcID, answer: answer)
+        status.requests.update(requestId: rpcID, status: .resolved, outcome: "answered")
+    }
+
+    /// 向上翻一页。失败只标记，不替换当前尾页。
+    func loadOlder() async {
+        guard hasOlder, !loadingOlder, let before = olderBeforeSeq, before > 0 else { return }
+        loadingOlder = true
+        olderFailed = false
+        defer { loadingOlder = false }
+        do {
+            let page = try await service.history(sessionID: sessionID, beforeSeq: before)
+            prepend(page)
+        } catch {
+            olderFailed = true
+        }
+    }
+
+    /// 断线状态槽的重试：重新拉尾页并恢复流，不碰凭据。
+    func retryConnection() async {
+        status.connection = .connecting
+        loadFailed = false
+        do {
+            try await reloadAndOpen()
+        } catch {
+            loadFailed = true
+            status.connection = .failed
+        }
+    }
+
+    private func reloadAndOpen() async throws {
+        let history = try await service.history(sessionID: sessionID, beforeSeq: nil)
+        replace(history)
+        streamTask?.cancel()
+        await service.stop()
+        let stream = try await service.open(sessionID: sessionID, afterSeq: maxSeq)
+        streamTask = Task { [weak self] in
+            guard let self else { return }
+            for await signal in stream {
+                if Task.isCancelled { break }
+                await self.ingest(signal)
+            }
+        }
+        status.connection = .connected
     }
 
     func serviceModels() async -> [ModelRow] {
@@ -517,16 +579,20 @@ final class ConversationModel {
 
     func serviceEditGoal(objective: String, rounds: Int) async {
         guard let id = status.goal?.ref?.id, let revision = status.goal?.ref?.revision else { return }
-        try? await service.editGoal(
-            sessionID: sessionID, refID: id, revision: revision, objective: objective, rounds: rounds)
-        status.goal?.objective = objective
-        status.goal?.maxGoalRounds = rounds
+        do {
+            try await service.editGoal(
+                sessionID: sessionID, refID: id, revision: revision, objective: objective, rounds: rounds)
+            status.goal?.objective = objective
+            status.goal?.maxGoalRounds = rounds
+        } catch {}
     }
 
     func serviceClearGoal() async {
         guard let id = status.goal?.ref?.id, let revision = status.goal?.ref?.revision else { return }
-        try? await service.clearGoal(sessionID: sessionID, refID: id, revision: revision)
-        status.goal = nil
+        do {
+            try await service.clearGoal(sessionID: sessionID, refID: id, revision: revision)
+            status.goal = nil
+        } catch {}
     }
 
     func previewForwarder() -> @Sendable (String) async -> PreviewHTTPResult {

@@ -1,3 +1,4 @@
+import DLModels
 import DLSecurity
 import Foundation
 
@@ -193,7 +194,7 @@ public struct HostClient: Sendable {
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
         let data = try await send(request)
         do {
-            return try JSONDecoder().decode(T.self, from: data)
+            return try JSONDecoder().decodePreservingRawJSON(T.self, from: data)
         } catch {
             throw HostClientError.decoding(String(describing: error))
         }

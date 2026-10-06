@@ -212,6 +212,8 @@ public struct SessionRequestState: Equatable, Sendable {
     public var toolName: String?
     public var callId: String?
     public var questions: [ClarifyingQuestion]?
+    /// 快照里 questions 数组的原文。提交时优先用它，避免重编码丢掉未知字段。
+    public var questionsJSON: String?
 
     public init(
         id: String,
@@ -220,7 +222,8 @@ public struct SessionRequestState: Equatable, Sendable {
         outcome: String? = nil,
         toolName: String? = nil,
         callId: String? = nil,
-        questions: [ClarifyingQuestion]? = nil
+        questions: [ClarifyingQuestion]? = nil,
+        questionsJSON: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -229,6 +232,7 @@ public struct SessionRequestState: Equatable, Sendable {
         self.toolName = toolName
         self.callId = callId
         self.questions = questions
+        self.questionsJSON = questionsJSON
     }
 }
 
@@ -264,7 +268,8 @@ public func parseSessionRequestSnapshot(_ response: RequestsSnapshotResponse) ->
             kind: "question",
             status: question.status ?? .pending,
             outcome: nil,
-            questions: question.questions
+            questions: question.questions,
+            questionsJSON: question.questionsJSON
         )
     }
     return SessionRequestSnapshot(approvals: approvals, questions: questions)
@@ -309,8 +314,9 @@ private func questionSummaryText(_ questions: [ParsedQuestion], _ fallback: Stri
     .joined(separator: "\n")
 }
 
-/// questions 数组序列化成回传用的 JSON 字符串（Android 侧是快照原串，iOS 由模型重编码）。
-private func questionPayloadJSON(_ questions: [ClarifyingQuestion]?) -> String? {
+/// 回传用的 questions JSON。有原文就原样保留；只有模型构造的题目时才编码，未知字段不会因此出现。
+private func questionPayloadJSON(_ questions: [ClarifyingQuestion]?, raw: String? = nil) -> String? {
+    if let raw, !isBlank(raw) { return raw }
     guard let questions, let data = try? JSONEncoder().encode(questions) else { return nil }
     return String(data: data, encoding: .utf8)
 }
@@ -344,7 +350,7 @@ public func applyRequestSnapshotToMessages(
             }
             let parsed = parseClarifyingQuestions(record.questions)
             updated.takenOverByPhone = true
-            updated.questionPayloadJson = questionPayloadJSON(record.questions)
+            updated.questionPayloadJson = questionPayloadJSON(record.questions, raw: record.questionsJSON)
             updated.questionOptions = parsed.first?.optionLabels ?? []
             updated.questionHeader = parsed.first.flatMap { nonBlank($0.header) }
             updated.text = questionSummaryText(parsed, isBlank(updated.text) ? record.id : updated.text)
@@ -391,7 +397,7 @@ public func mergeMessagesWithRequestSnapshot(
             questionRpcId: record.id,
             questionOptions: parsed.first?.optionLabels ?? [],
             questionHeader: parsed.first.flatMap { nonBlank($0.header) },
-            questionPayloadJson: questionPayloadJSON(record.questions)
+            questionPayloadJson: questionPayloadJSON(record.questions, raw: record.questionsJSON)
         )
         extra.requestStatus = record.status
         extras.append(extra)

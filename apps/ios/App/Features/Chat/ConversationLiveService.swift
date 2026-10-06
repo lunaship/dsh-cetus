@@ -20,10 +20,13 @@ actor ConversationLiveService: ConversationServing {
         self.routes = routes
     }
 
-    func history(sessionID: String) async throws -> HistoryResponse {
+    func history(sessionID: String, beforeSeq: Int? = nil) async throws -> HistoryResponse {
         let http = try await connect()
+        var query: [String: String] = [:]
+        if let beforeSeq, beforeSeq > 0 { query["beforeSeq"] = String(beforeSeq) }
         do {
-            return try await http.get(HistoryResponse.self, path: try sessionPath(sessionID, "/history"))
+            return try await http.get(
+                HistoryResponse.self, path: try sessionPath(sessionID, "/history"), query: query)
         } catch {
             throw Self.map(error)
         }
@@ -94,9 +97,9 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
-    func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws {
+    func submitQuestion(sessionID: String, rpcID: String, answer: QuestionAnswerBody) async throws {
         let http = try await connect()
-        let body = QuestionBody(rpcId: rpcID, answer: QuestionAnswer(text: answer))
+        let body = QuestionBody(rpcId: rpcID, answer: answer)
         do {
             _ = try await http.post(
                 RequestSubmitResponse.self, path: try sessionPath(sessionID, "/question"), json: body)
@@ -262,7 +265,7 @@ actor ConversationLiveService: ConversationServing {
         if ["ready", "stats", "question", "question-resolved"].contains(name),
             let value = try? JSONDecoder().decode(JSONValue.self, from: data)
         {
-            continuation?.yield(.statusEvent(name: name, data: value))
+            continuation?.yield(.statusEvent(name: name, data: value, raw: data))
         }
         if event.event == "stats", let stats = try? JSONDecoder().decode(HistoryStats.self, from: data) {
             continuation?.yield(.stats(stats))
@@ -346,11 +349,7 @@ private struct ApprovalBody: Encodable {
 
 private struct QuestionBody: Encodable {
     var rpcId: String
-    var answer: QuestionAnswer
-}
-
-private struct QuestionAnswer: Encodable {
-    var text: String
+    var answer: QuestionAnswerBody
 }
 
 private struct EmptyJSON: Encodable {}

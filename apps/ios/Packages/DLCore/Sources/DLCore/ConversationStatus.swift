@@ -137,9 +137,17 @@ public struct ConversationStatusState: Equatable, Sendable {
         }
     }
 
+    public mutating func absorbQuestion(_ message: RequestMessage) {
+        requests.absorb([message])
+    }
+
     public mutating func question(_ event: QuestionRequestEvent) {
         guard let id = event.rpcId, !id.isEmpty else { return }
-        requests.absorb([RequestMessage(id: id, role: "question", questionRpcId: id, requestStatus: .pending)])
+        requests.absorb([
+            RequestMessage(
+                id: id, role: "question", questionRpcId: id, questionPayloadJson: event.questionsJSON,
+                requestStatus: .pending)
+        ])
     }
 
     public mutating func resolveQuestion(_ event: QuestionResolvedEvent) {
