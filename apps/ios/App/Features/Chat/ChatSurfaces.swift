@@ -533,20 +533,16 @@ private func zoneSuffix(_ zone: String) -> String {
 struct GoalEditSheet: View {
     var copy: ConversationCopy
     var onSave: (String, Int) -> Void
-    var onPause: () -> Void
-    var pauseTitle: String
     var onClear: () -> Void
     @State private var text: String
     @State private var rounds: Int
 
     init(
         text: String, rounds: Int, copy: ConversationCopy, onSave: @escaping (String, Int) -> Void = { _, _ in },
-        onPause: @escaping () -> Void = {}, pauseTitle: String = "", onClear: @escaping () -> Void = {}
+        onClear: @escaping () -> Void = {}
     ) {
         self.copy = copy
         self.onSave = onSave
-        self.onPause = onPause
-        self.pauseTitle = pauseTitle
         self.onClear = onClear
         _text = State(initialValue: text)
         _rounds = State(initialValue: rounds)
@@ -568,10 +564,6 @@ struct GoalEditSheet: View {
                     .foregroundStyle(DLColor.err)
                     .frame(minHeight: 44)
                 Spacer()
-                if !pauseTitle.isEmpty {
-                    Button(pauseTitle, action: onPause)
-                        .frame(minHeight: 44)
-                }
             }
             .padding(.horizontal, 16)
             .background(DLColor.background)
