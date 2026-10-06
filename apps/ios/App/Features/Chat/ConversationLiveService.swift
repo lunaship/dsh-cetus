@@ -185,6 +185,18 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    func pauseGoal(sessionID: String, refID: String, revision: Int, resume: Bool) async throws {
+        let http = try await connect()
+        let suffix = resume ? "/goal/resume" : "/goal/pause"
+        do {
+            _ = try await http.postJSON(
+                path: try sessionPath(sessionID, suffix),
+                json: GoalClearBody(ref: GoalRefBody(id: refID, revision: revision)))
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws {
         let http = try await connect()
         do {

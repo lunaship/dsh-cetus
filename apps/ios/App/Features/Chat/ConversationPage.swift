@@ -542,6 +542,8 @@ struct ConversationPage: View {
             GoalEditSheet(
                 text: model.status.goal?.objective ?? "", rounds: model.status.goal?.maxGoalRounds ?? 8, copy: copy,
                 onSave: { text, rounds in Task { await model.serviceEditGoal(objective: text, rounds: rounds) } },
+                onPause: { Task { await model.servicePauseGoal() } },
+                pauseTitle: model.status.goal?.phase == .paused ? copy.text(.paletteResume) : copy.text(.palettePause),
                 onClear: { Task { await model.serviceClearGoal() } })
         default:
             EmptyView()

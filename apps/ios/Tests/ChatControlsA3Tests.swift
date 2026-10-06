@@ -145,6 +145,20 @@ import Testing
         #expect(model.olderFailed)
     }
 
+    @Test func goalPauseFailureKeepsPhase() async {
+        let service = ScriptedConversationService(pauseError: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session", service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+        model.testStatus.goal = SessionGoal(
+            ref: SessionGoalRef(id: "goal", revision: 3), objective: "完成 A3", phase: .active)
+        await model.servicePauseGoal()
+        #expect(model.testStatus.goal?.phase == .active)
+    }
+
     @Test func goalClearFailureKeepsGoal() async {
         let service = ScriptedConversationService(clearError: true)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -173,15 +187,18 @@ private actor ScriptedConversationService: ConversationServing {
         case history(Int?)
         case question(String, QuestionAnswerBody)
         case edit(String, Int, String, Int)
+        case pause(String, Int, Bool)
         case clear(String, Int)
     }
 
     var historyError = false
+    var pauseError = false
     var clearError = false
     private(set) var calls: [Call] = []
 
-    init(historyError: Bool = false, clearError: Bool = false) {
+    init(historyError: Bool = false, pauseError: Bool = false, clearError: Bool = false) {
         self.historyError = historyError
+        self.pauseError = pauseError
         self.clearError = clearError
     }
 
@@ -212,6 +229,12 @@ private actor ScriptedConversationService: ConversationServing {
     ) async throws {
         _ = sessionID
         calls.append(.edit(refID, revision, objective, rounds))
+    }
+
+    func pauseGoal(sessionID: String, refID: String, revision: Int, resume: Bool) async throws {
+        _ = sessionID
+        calls.append(.pause(refID, revision, resume))
+        if pauseError { throw ConversationServiceError.failed }
     }
 
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws {

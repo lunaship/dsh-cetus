@@ -42,6 +42,7 @@ protocol ConversationServing: Sendable {
     func forkSession(sessionID: String) async throws -> String?
     func schedules(sessionID: String, all: Bool) async throws -> [ScheduleTask]
     func editGoal(sessionID: String, refID: String, revision: Int, objective: String, rounds: Int) async throws
+    func pauseGoal(sessionID: String, refID: String, revision: Int, resume: Bool) async throws
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws
     func deleteSchedule(sessionID: String, scheduleID: String) async throws
     func previewExchange(path: String) async -> PreviewHTTPResult
@@ -102,6 +103,10 @@ extension ConversationServing {
     }
     func editGoal(sessionID: String, refID: String, revision: Int, objective: String, rounds: Int) async throws {
         _ = (sessionID, refID, revision, objective, rounds)
+        throw ConversationServiceError.offline
+    }
+    func pauseGoal(sessionID: String, refID: String, revision: Int, resume: Bool) async throws {
+        _ = (sessionID, refID, revision, resume)
         throw ConversationServiceError.offline
     }
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws {
@@ -584,6 +589,15 @@ final class ConversationModel {
                 sessionID: sessionID, refID: id, revision: revision, objective: objective, rounds: rounds)
             status.goal?.objective = objective
             status.goal?.maxGoalRounds = rounds
+        } catch {}
+    }
+
+    func servicePauseGoal() async {
+        guard let goal = status.goal, let id = goal.ref?.id, let revision = goal.ref?.revision else { return }
+        let resume = goal.phase == .paused
+        do {
+            try await service.pauseGoal(sessionID: sessionID, refID: id, revision: revision, resume: resume)
+            status.goal?.phase = resume ? .active : .paused
         } catch {}
     }
 
