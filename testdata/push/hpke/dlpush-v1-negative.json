@@ -1,6 +1,34 @@
 {
-  "_comment": "PLACEHOLDER — negative cases: mutate enc/ct/aad/kid; wrong prefix \"dlpush/1 content|\" must fail Open. Filled in I6.2.",
-  "status": "placeholder",
+  "_comment": "Negative HPKE cases derived from testdata/push/hpke/dlpush-v1-seal-open.json case token-seal-gw-2026-10. Each mutation must fail Open. wrong_prefix uses dlpush/1 content| plus the same kid.",
+  "status": "generated",
   "wrong_aad_prefix_utf8": "dlpush/1 content|",
-  "cases": []
+  "base_case": "token-seal-gw-2026-10",
+  "cases": [
+    {
+      "id": "mutate-enc",
+      "mutate": "enc",
+      "expect": "open_failed"
+    },
+    {
+      "id": "mutate-ct",
+      "mutate": "ct",
+      "expect": "open_failed"
+    },
+    {
+      "id": "mutate-aad",
+      "mutate": "aad",
+      "expect": "open_failed"
+    },
+    {
+      "id": "mutate-kid",
+      "mutate": "kid",
+      "expect": "open_failed"
+    },
+    {
+      "id": "wrong-prefix-content",
+      "mutate": "wrong_prefix",
+      "aad_utf8": "dlpush/1 content|gw-2026-10",
+      "expect": "open_failed"
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
-  "_comment": "PLACEHOLDER — I6.2 fills AES-256-GCM positive cases with aad=\"dlpush/1 content|\"+deviceId.",
-  "status": "placeholder",
+  "_comment": "Positive AES-256-GCM content seal. aad is UTF-8 dlpush/1 content| plus deviceId. Wire is standard base64 of nonce || ciphertext || tag, no newlines. Key and nonce are fixed so iOS and the plugin can Open the same bytes.",
+  "status": "generated",
   "algorithm": "AES-256-GCM",
   "nonce_bytes": 12,
   "aad_prefix_utf8": "dlpush/1 content|",
@@ -8,5 +8,15 @@
     "layout": "nonce||ciphertext||tag",
     "encoding": "base64-std"
   },
-  "cases": []
+  "cases": [
+    {
+      "id": "content-approval-device-7",
+      "deviceId": "device-7",
+      "key": "4242424242424242424242424242424242424242424242424242424242424242",
+      "nonce": "0102030405060708090a0b0c",
+      "aad_utf8": "dlpush/1 content|device-7",
+      "plaintext_utf8": "{\"sessionId\":\"sess-1\",\"title\":\"Need approval\",\"tool\":\"bash\",\"ts\":1728000000,\"type\":\"approval\",\"v\":1}",
+      "ct": "AQIDBAUGBwgJCgsMzthVKT4AIGzik9XqcKsdqePM7vclsxUG56awfL10LLDMPyvDgXBFUwxYsgGh8eH0dS7ZWr2EuYn2a+oxeXpHLsFiHwkxhN8mQLxQJARAyQSy/5Nz1jLo73nKnEhhfjmoXy9/YYsofvRglvCzCPalMl++n+0="
+    }
+  ]
 }

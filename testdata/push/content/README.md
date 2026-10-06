@@ -2,7 +2,7 @@
 
 > 位置：`testdata/push/content/`  
 > 合同：`docs/rfc/0002-push-gateway.md` §5.4；PLAN v1.3 阶段 6。  
-> **本目录现阶段只有占位与说明。真实向量在阶段 6（I6.2）由 Go 生成并提交。**  
+> 真实向量已由 I6.2 的 Go 测试生成并写入本目录。  
 > HPKE / sealed 向量见并列目录 `../hpke/`。
 
 ## 算法
@@ -15,8 +15,8 @@
 
 | 文件 | 用途 | 状态 |
 |---|---|---|
-| `dlpush-v1-seal-open.json` | 正例：加密 / 解密得相同明文 | 占位 |
-| `dlpush-v1-negative.json` | 篡改；误用 `token|` 前缀必须失败；过期 / 损坏兜底 | 占位 |
+| `dlpush-v1-seal-open.json` | 正例：加密 / 解密得相同明文 | 已生成 |
+| `dlpush-v1-negative.json` | 篡改；误用 `token|` 前缀必须失败；过期 / 损坏兜底 | 已生成 |
 
 ## 生成约定（阶段 6）
 

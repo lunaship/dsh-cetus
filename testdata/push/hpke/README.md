@@ -2,7 +2,7 @@
 
 > 位置：`testdata/push/hpke/`  
 > 合同：`docs/rfc/0002-push-gateway.md` §5.3；算法见 PLAN v1.3 阶段 6。  
-> **本目录现阶段只有占位与说明。真实向量在阶段 6（I6.2）由 Go 生成并提交。**  
+> 真实向量已由 I6.2 的 Go 测试生成并写入本目录。  
 > 内容加密向量见并列目录 `../content/`。
 
 ## 套件（已定）
@@ -23,9 +23,9 @@ CryptoKit：`Curve25519_SHA256_ChachaPoly`。Go circl：同一组合。
 
 | 文件 | 用途 | 状态 |
 |---|---|---|
-| `rfc9180-a2-base.json` | RFC 9180 附录 A.2.1 官方向量 | 占位 |
-| `dlpush-v1-seal-open.json` | 本项目 info/aad/线上格式的正例 | 占位 |
-| `dlpush-v1-negative.json` | 篡改 enc/ct/aad/kid；误用 `content|` 前缀必须失败 | 占位 |
+| `rfc9180-a2-base.json` | RFC 9180 附录 A.2.1 官方向量（第一条加密） | 已生成 |
+| `dlpush-v1-seal-open.json` | 本项目 info/aad/线上格式的正例 | 已生成 |
+| `dlpush-v1-negative.json` | 篡改 enc/ct/aad/kid；误用 `content|` 前缀必须失败 | 已生成 |
 
 ## 生成约定（阶段 6）
 

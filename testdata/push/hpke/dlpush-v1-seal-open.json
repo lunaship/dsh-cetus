@@ -1,6 +1,6 @@
 {
-  "_comment": "PLACEHOLDER — I6.2 Go generator fills positive Seal/Open cases using info=\"dlpush/1 token\", aad=\"dlpush/1 token|\"+kid, wire object {v,kid,enc,ct}.",
-  "status": "placeholder",
+  "_comment": "Positive DLPUSH/1 token seal. info is UTF-8 dlpush/1 token. aad is UTF-8 dlpush/1 token| plus kid. ikmE/skRm/pkRm are the RFC 9180 A.2.1 receiver and ephemeral seed, reused only so Seal is reproducible. enc/ct are base64url without padding. plaintext JSON key order is fixed.",
+  "status": "generated",
   "suite": {
     "mode": "0x00",
     "kem_id": "0x0020",
@@ -14,5 +14,21 @@
     "encoding": "base64url-nopad",
     "sealed_json_type": "object"
   },
-  "cases": []
+  "cases": [
+    {
+      "id": "token-seal-gw-2026-10",
+      "kid": "gw-2026-10",
+      "ikmE": "909a9b35d3dc4713a5e72a4da274b55d3d3821a37e5d099e74a647db583a904b",
+      "skRm": "8057991eef8f1f1af18f4a9491d16a1ce333f695d4db8e38da75975c4478e0fb",
+      "pkRm": "4310ee97d88cc1f088a5576c77ab0cf5c3ac797f3d95139c6c84b5429c59662a",
+      "aad_utf8": "dlpush/1 token|gw-2026-10",
+      "plaintext_utf8": "{\"apnsToken\":\"abababababababababababababababababababababababababababababababab\",\"bundleId\":\"dev.deeplinks.ios\",\"env\":\"sandbox\"}",
+      "sealed": {
+        "v": 1,
+        "kid": "gw-2026-10",
+        "enc": "GvoI097AR6ZDiFFj8RgEdvp921TGqAKeoz-VeWvyrEo",
+        "ct": "EC-1bDjWMvTebcb0HT7IhdhctCgSI3cvtlgcmil_RY2JgY4gATez1lwbIJ_0T7LfK1LyK3Re3LOzuMFs20DOmvngxyExG7aprwWLHJtPbyNZmOi4k0su-ZrqS1n-t9zvq3s7k2l90TG7SGJPcBf48RNFIe98T9f0rKEV2GbEgQ7XKBC0Q4TvbcrfqSiXoE0"
+      }
+    }
+  ]
 }
