@@ -212,7 +212,7 @@ protocol InboxServing: Sendable {
     func stop() async
     func agentPresets() async throws -> [AgentPreset]
     func createSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String
-    func sendPrompt(sessionID: String, text: String) async throws
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws
     func createWorkspace(path: String) async throws -> WorkspaceWriteResult
 }
 
@@ -282,8 +282,8 @@ extension InboxServing {
         throw InboxServiceError.offline
     }
 
-    func sendPrompt(sessionID: String, text: String) async throws {
-        _ = (sessionID, text)
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
+        _ = (sessionID, text, images)
         throw InboxServiceError.offline
     }
 
@@ -337,6 +337,9 @@ final class InboxModel {
     var calendar = Calendar.current
     var missingHost = false
     var starter = ""
+    var sharePrefill: SharePrefill?
+    var pendingShare: ShareInboxRecord?
+    var shareRecents: [ShareRecentSession] = []
     private var archivedIDs: Set<String> = []
     private var pendingArchive: Set<String> = []
     private var deletedIDs: Set<String> = []
@@ -568,8 +571,8 @@ final class InboxModel {
         try await service.createSession(preset: preset, workspaceID: workspaceID, cwd: cwd)
     }
 
-    func sendNewTask(_ text: String, sessionID: String) async throws {
-        try await service.sendPrompt(sessionID: sessionID, text: text)
+    func sendNewTask(_ text: String, images: [PromptImage] = [], sessionID: String) async throws {
+        try await service.sendPrompt(sessionID: sessionID, text: text, images: images)
     }
 
     func submitWorkspace(_ path: String) async throws -> WorkspaceWriteResult {
@@ -579,6 +582,55 @@ final class InboxModel {
     func open(_ session: SessionSummary) {
         guard let id = session.sessionId else { return }
         path.append(.session(id))
+    }
+
+    /// Reads one shared item and shows the picker. It does not send.
+    func receiveShare(url: URL, store: ShareGroupStore?) {
+        guard let id = ShareInbox.id(from: url), let store, let record = store.readRecord(id: id) else { return }
+        shareRecents = store.readRecents()
+        pendingShare = record
+    }
+
+    func cancelShare(store: ShareGroupStore?) {
+        if let id = pendingShare?.id { store?.consume(id: id) }
+        pendingShare = nil
+    }
+
+    /// The selected target only receives a draft. Sending stays on the composer button.
+    func acceptShare(_ target: ShareTarget, store: ShareGroupStore?) {
+        guard let record = pendingShare else { return }
+        let image = store.flatMap { $0.imageData(for: record) }.flatMap { bytes in
+            if case .image(let prompt) = classifyPromptAttachment(
+                bytes: bytes, declaredMediaType: nil, existingCount: 0)
+            {
+                return prompt
+            }
+            return nil
+        }
+        sharePrefill = ShareInbox.prefill(record: record, image: image, target: target)
+        store?.consume(id: record.id)
+        pendingShare = nil
+        switch target {
+        case .newTask:
+            starter = record.text
+            path.append(.newTask(record.text))
+        case .session(let id):
+            path.append(.session(id))
+        }
+    }
+
+    func takeSharePrefill(for target: ShareTarget) -> SharePrefill? {
+        guard sharePrefill?.target == target else { return nil }
+        let value = sharePrefill
+        sharePrefill = nil
+        return value
+    }
+
+    /// Titles only. The extension never receives tokens, paths, or message text.
+    private func publishShareRecents() {
+        guard let store = ShareGroupStore.live() else { return }
+        let recents = ShareSessionSource.recent(from: sessions)
+        try? store.writeRecents(recents)
     }
 
     func askRename(_ session: SessionSummary) {
@@ -705,6 +757,7 @@ final class InboxModel {
         do {
             let payload = try await service.load(resetStreams: resetStreams)
             sessions = payload.sessions
+            publishShareRecents()
             let serverArchived = Set(payload.archivedIDs)
             pendingArchive.subtract(serverArchived)
             archivedIDs = serverArchived

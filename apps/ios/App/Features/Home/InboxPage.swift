@@ -120,7 +120,22 @@ struct InboxPage: View {
                 Text(copy.format(.deleteMessage, deleteName(copy)))
             }
             .sensoryFeedback(.success, trigger: model.approvalTick)
+            .onOpenURL { model.receiveShare(url: $0, store: ShareGroupStore.live()) }
+            .sheet(isPresented: sharePresented) {
+                if let record = model.pendingShare {
+                    SharePickerSheet(
+                        record: record, recents: model.shareRecents, copy: ShareCopy(locale: locale),
+                        onPick: { model.acceptShare($0, store: ShareGroupStore.live()) },
+                        onCancel: { model.cancelShare(store: ShareGroupStore.live()) })
+                }
+            }
         }
+    }
+
+    private var sharePresented: Binding<Bool> {
+        Binding(
+            get: { model.pendingShare != nil },
+            set: { shown in if !shown { model.cancelShare(store: ShareGroupStore.live()) } })
     }
 
     private func wide(_ copy: InboxCopy) -> some View {
@@ -627,7 +642,8 @@ struct InboxDestinationPage: View {
         case .session(let id):
             ConversationFlowView(
                 hostID: model.hostID, sessionID: id, seed: conversationSeed(sessionID: id, model: model),
-                sessions: model.sessions)
+                sessions: model.sessions,
+                sharePrefill: model.takeSharePrefill(for: .session(id)))
         case .settings:
             SettingsHomePage(
                 computerName: model.computerName.isEmpty ? model.hostID : model.computerName,
@@ -642,6 +658,7 @@ struct InboxDestinationPage: View {
             NewTaskPage(
                 hostID: model.hostID,
                 starter: starter,
+                starterImages: model.takeSharePrefill(for: .newTask)?.images ?? [],
                 workspaces: model.workspaces,
                 presets: [],
                 onOpenSession: { model.open(SessionSummary(sessionId: $0)) },
@@ -649,7 +666,9 @@ struct InboxDestinationPage: View {
                 createSession: { preset, workspaceID, cwd in
                     try await model.createNewTaskSession(preset: preset, workspaceID: workspaceID, cwd: cwd)
                 },
-                sendPrompt: { id, text in try await model.sendNewTask(text, sessionID: id) },
+                sendPrompt: { id, text, images in
+                    try await model.sendNewTask(text, images: images, sessionID: id)
+                },
                 createWorkspace: { try await model.submitWorkspace($0) })
         case .addWorkspace:
             later(copy.text(.addWorkspace), copy.text(.laterAddWorkspace))

@@ -113,6 +113,7 @@ jobs:
             -only-testing:DeepLinksTests/TranscriptSnapshotTests \
             -only-testing:DeepLinksTests/ConversationFlowTests \
             -only-testing:DeepLinksTests/PromptAttachmentTests \
+            -only-testing:DeepLinksTests/ShareInboxTests \
             -only-testing:DeepLinksTests/ConversationStatusTests \
             -only-testing:DeepLinksTests/ConversationStatusFlowTests \
             -only-testing:DeepLinksTests/PhoneDecisionTests \

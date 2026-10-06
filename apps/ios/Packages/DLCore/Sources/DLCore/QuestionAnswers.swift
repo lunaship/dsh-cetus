@@ -95,7 +95,7 @@ public struct QuestionForm: Equatable, Sendable {
         case .skip:
             guard canSkip, let question = current else { return nil }
             drafts[Self.key(question, at: index)] = QuestionDraft()
-            if isLast { return answerBody }
+            if isLast { return nil }
             index += 1
         case .next:
             guard !isLast, currentCanAdvance else { return nil }

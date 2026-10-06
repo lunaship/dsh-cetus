@@ -1,3 +1,4 @@
+import DLCore
 import DLModels
 import DLNet
 import DLSecurity
@@ -211,12 +212,12 @@ actor InboxLiveService: InboxServing {
         return id
     }
 
-    func sendPrompt(sessionID: String, text: String) async throws {
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage] = []) async throws {
         backgroundSend.beginSend(phase: phase)
         defer { backgroundSend.finishSend() }
         let http = try requireClient()
-        _ = try await http.postJSON(
-            path: try sessionPath(sessionID, "/prompt"), json: NewTaskPromptBody(text: text, mode: "queue"))
+        let body = try encodePromptRequest(text: text, mode: "queue", images: images)
+        _ = try await http.postJSONData(path: try sessionPath(sessionID, "/prompt"), body: body)
     }
 
     func createWorkspace(path: String) async throws -> WorkspaceWriteResult {
@@ -473,11 +474,6 @@ private struct SessionCreateBody: Encodable {
     var agentPreset: String?
     var workspaceId: String?
     var cwd: String?
-}
-
-private struct NewTaskPromptBody: Encodable {
-    var text: String
-    var mode: String
 }
 
 private struct WorkspaceCreateBody: Encodable {

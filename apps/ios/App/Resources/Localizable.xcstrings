@@ -1,6 +1,48 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+      "share.title": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": { "stringUnit": { "state": "translated", "value": "Send to DeepLinks" } },
+          "zh-Hans": { "stringUnit": { "state": "translated", "value": "发送到 DeepLinks" } }
+        }
+      },
+      "share.sendTo": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": { "stringUnit": { "state": "translated", "value": "Send to" } },
+          "zh-Hans": { "stringUnit": { "state": "translated", "value": "发到" } }
+        }
+      },
+      "share.newTask": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": { "stringUnit": { "state": "translated", "value": "New task" } },
+          "zh-Hans": { "stringUnit": { "state": "translated", "value": "新任务" } }
+        }
+      },
+      "share.newTaskDetail": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": { "stringUnit": { "state": "translated", "value": "Start in the current workspace" } },
+          "zh-Hans": { "stringUnit": { "state": "translated", "value": "在当前工作区新建" } }
+        }
+      },
+      "share.cancel": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": { "stringUnit": { "state": "translated", "value": "Cancel" } },
+          "zh-Hans": { "stringUnit": { "state": "translated", "value": "取消" } }
+        }
+      },
+      "share.imageNote": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": { "stringUnit": { "state": "translated", "value": "Shared image" } },
+          "zh-Hans": { "stringUnit": { "state": "translated", "value": "分享的图片" } }
+        }
+      },
       "chat.statusDemoObjective": {
         "extractionState": "manual",
         "localizations": {
