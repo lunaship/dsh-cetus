@@ -7,6 +7,37 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
+struct ConversationComposerSurface: Equatable, Sendable {
+    var placement: String
+    var kind: String?
+    var title: String?
+    var expanded: Bool
+    var showsPlan: Bool
+    var material: String
+    var collapsedWidth: String
+    var expandedLimit: String
+    var decisionVisible: Bool
+}
+
+extension ConversationPage {
+    func composerSurface(copy: ConversationCopy, expanded: Bool) -> ConversationComposerSurface {
+        let kind = model.status.kind
+        return ConversationComposerSurface(
+            placement: showsStatusSlot ? "composer" : "hidden",
+            kind: kind.map { String(describing: $0) },
+            title: kind.map {
+                ConversationStatusView.statusTitle($0, state: model.status, copy: copy, expanded: expanded)
+            },
+            expanded: kind == .goal && expanded,
+            showsPlan: kind == .goal && expanded && !model.status.plan.isEmpty,
+            material: kind == nil ? "none" : "capsule",
+            collapsedWidth: kind == nil ? "none" : "hug",
+            expandedLimit: kind == .goal && expanded ? "half-screen" : "none",
+            decisionVisible: decision != nil
+        )
+    }
+}
+
 struct ConversationFlowView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: ConversationModel
@@ -213,6 +244,9 @@ struct ConversationPage: View {
         column(copy)
             .modifier(
                 ComposerInset(on: composerOn) {
+                    if showsStatusSlot {
+                        ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
+                    }
                     if activeQuestion != nil, !staticSnapshot {
                         questionChoices(copy)
                         questionNavigator(copy)
@@ -259,10 +293,7 @@ struct ConversationPage: View {
 
     private func column(_ copy: ConversationCopy) -> some View {
         VStack(spacing: 0) {
-            if showsStatusSlot {
-                ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
-            }
-            if model.loadFailed && (!showsStatusSlot || model.status.kind != .disconnected) {
+            if model.loadFailed && model.status.kind != .disconnected {
                 DLBanner(copy.text(.loadFailed), systemImage: "wifi.exclamationmark", iconIsError: true)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
