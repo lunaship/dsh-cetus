@@ -38,6 +38,54 @@ import Testing
         #expect(visible.map(\.sessionId) == ["fresh", "old"])
     }
 
+    @Test func foldersFollowRegistryAndKeepEmptyWorkspaces() {
+        let rows = [
+            session("owned", updatedAt: 3, cwd: "/tmp/process"),
+            session("other", updatedAt: 2, cwd: "/work/app"),
+            session("owned", updatedAt: 1, title: "older"),
+        ]
+        let accounts = [InboxWorkspaceAccount(path: "/work/app/", sessionIDs: ["owned"])]
+        let folders = inboxWorkspaceFolders(
+            sessions: rows, workspaces: ["/work/lib", "/work/app", "/work/app/"],
+            accounts: accounts, registryReady: true)
+        #expect(folders.map { $0.path } == ["/work/lib", "/work/app", nil])
+        #expect(folders[0].sessions.isEmpty)
+        #expect(folders[1].sessions.map { $0.sessionId } == ["owned"])
+        #expect(folders[2].sessions.map { $0.sessionId } == ["other"])
+    }
+
+    @Test func pinnedAwaitingIsNotRepeatedAndSameNamesKeepParents() {
+        let rows = [
+            session("need", updatedAt: 5, awaiting: true, cwd: "/a/app"),
+            session("one", updatedAt: 4, cwd: "/a/app"),
+            session("two", updatedAt: 3, cwd: "/a/app"),
+            session("three", updatedAt: 2, cwd: "/a/app"),
+            session("four", updatedAt: 1, cwd: "/a/app"),
+            session("other", updatedAt: 6, cwd: "/b/app"),
+        ]
+        let folders = inboxWorkspaceFolders(
+            sessions: rows, workspaces: ["/a/app", "/b/app"], accounts: [], registryReady: false)
+        let pinned = folders.flatMap { $0.sessions }.filter { $0.awaitingInput == true }
+        let folderRows = folders[0].sessions.filter { $0.awaitingInput != true }
+        #expect(pinned.map { $0.sessionId } == ["need"])
+        #expect(folderRows.prefix(3).map { $0.sessionId } == ["one", "two", "three"])
+        #expect(!folderRows.map { $0.sessionId }.contains("need"))
+        #expect(inboxWorkspaceLabels(folders.compactMap { $0.path }) == ["/a/app": "a/app", "/b/app": "b/app"])
+        #expect(folders[0].awaitingCount == 1)
+        #expect(folders[0].runningCount == 0)
+    }
+
+    @Test func foldersFallBackToCwdOnlyBeforeRegistry() {
+        let rows = [session("loose", updatedAt: 2, cwd: "/work/app/")]
+        let ready = inboxWorkspaceFolders(
+            sessions: rows, workspaces: [], accounts: [], registryReady: true)
+        #expect(ready.map { $0.path } == [nil])
+        let early = inboxWorkspaceFolders(
+            sessions: rows, workspaces: ["/work/app"], accounts: [], registryReady: false)
+        #expect(early[0].path == "/work/app")
+        #expect(early[0].sessions.map { $0.sessionId } == ["loose"])
+    }
+
     @Test func workspaceOwnerBeatsCwd() {
         let rows = [
             session("owned", updatedAt: 2, cwd: "/elsewhere/nope"),

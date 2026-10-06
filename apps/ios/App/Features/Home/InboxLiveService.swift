@@ -232,6 +232,13 @@ actor InboxLiveService: InboxServing {
         return .created(workspace)
     }
 
+    func deleteWorkspace(path: String) async throws {
+        let http = try requireClient()
+        let response = try await http.post(
+            InboxAck.self, path: "/dsh-link/mobile/workspaces/delete", json: WorkspaceCreateBody(path: path))
+        if response.ok == false { throw InboxServiceError.failed }
+    }
+
     func stop() async {
         networkSource?.cancel()
         networkSource = nil
