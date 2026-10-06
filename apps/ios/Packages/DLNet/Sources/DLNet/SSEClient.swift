@@ -49,7 +49,8 @@ extension SSEClient {
 ///   会话流由上层 `recordReceived` + `commit` 驱动。重连一律用已提交游标。
 /// - 心跳超时：`heartbeatTimeout`（默认 35 秒）内没有任何行到达判定断线
 ///   （主机事件流 25 秒发 `event: heartbeat`，会话流 15 秒发 `: keepalive` 注释行，都算活动）。
-/// - 断线后指数退避重连，上限 30 秒；401 终止且不再重连，报 `.unauthorized`。
+/// - 断线后指数退避重连，上限 30 秒，并叠加确定性可注入的 ±20% 抖动；
+///   401 终止且不再重连，报 `.unauthorized`。
 /// - 前台门控：`follow(_:)` 接入 `ForegroundGate`；进 background 主动断开，
 ///   回 active 用已提交游标重连（真正接 `scenePhase` 在 App 层）。
 public actor SSEClient {
@@ -60,15 +61,23 @@ public actor SSEClient {
         public var initialBackoff: Duration
         /// 退避上限（PLAN：30 秒）。
         public var maxBackoff: Duration
+        /// 相对基础档位的对称抖动比例。默认 0.2，即 ±20%；测试可传 0 固定结果。
+        public var jitterFraction: Double
+        /// 返回 0...1。生产用系统随机数打散同时重连；测试注入固定值。
+        public var jitterSample: @Sendable () -> Double
 
         public init(
             heartbeatTimeout: Duration? = .seconds(35),
             initialBackoff: Duration = .seconds(1),
-            maxBackoff: Duration = .seconds(30)
+            maxBackoff: Duration = .seconds(30),
+            jitterFraction: Double = 0.2,
+            jitterSample: @escaping @Sendable () -> Double = { Double.random(in: 0...1) }
         ) {
             self.heartbeatTimeout = heartbeatTimeout
             self.initialBackoff = initialBackoff
             self.maxBackoff = maxBackoff
+            self.jitterFraction = jitterFraction
+            self.jitterSample = jitterSample
         }
 
         public static let standard = Timing()
@@ -211,17 +220,45 @@ public actor SSEClient {
 
     // MARK: - 退避（纯函数，供测试）
 
-    /// 指数退避：第 n 次连续失败等 `initial * 2^(n-1)`，封顶 `max`。
-    public static func backoffDelay(failures: Int, initial: Duration, cap: Duration) -> Duration {
+    /// 指数退避：第 n 次连续失败等 `initial * 2^(n-1)`，封顶 `cap`，再乘 `1 ± jitterFraction`。
+    /// `unitSample` 为 0...1，0.5 表示不偏移。抖动发生在封顶之后，所以上界可以超过 cap；返回值不为负。
+    /// 默认 `jitterFraction` 为 0：旧调用仍得到确定的基础档位。生产路径传 0.2。
+    public static func backoffDelay(
+        failures: Int,
+        initial: Duration,
+        cap: Duration,
+        jitterFraction: Double = 0,
+        unitSample: Double = 0.5
+    ) -> Duration {
         let exponent = max(0, failures - 1)
         var delay = initial
         for _ in 0..<min(exponent, 32) {
-            delay = delay * 2
-            if delay >= cap {
-                return cap
+            let doubled = delay * 2
+            if doubled >= cap {
+                delay = cap
+                break
             }
+            delay = doubled
         }
-        return delay >= cap ? cap : delay
+        if delay > cap {
+            delay = cap
+        }
+        return applyJitter(delay, fraction: jitterFraction, unitSample: unitSample)
+    }
+
+    /// `factor = (1 - fraction) + 2 * fraction * unitSample`。越界的比例和采样都夹到合法范围。
+    private static func applyJitter(_ delay: Duration, fraction: Double, unitSample: Double) -> Duration {
+        guard fraction > 0, delay > .zero else { return delay }
+        let bounded = min(max(fraction, 0), 1)
+        let sample = min(max(unitSample, 0), 1)
+        let factor = (1 - bounded) + (2 * bounded * sample)
+        let (seconds, attoseconds) = delay.components
+        let scaled = (Double(seconds) + Double(attoseconds) / 1e18) * factor
+        let whole = scaled.rounded(.towardZero)
+        let fractionSeconds = scaled - whole
+        let nanos = (fractionSeconds * 1_000_000_000).rounded()
+        let result = Duration.seconds(Int64(whole)) + .nanoseconds(Int64(nanos))
+        return result > .zero ? result : .zero
     }
 
     // MARK: - 状态机
@@ -320,7 +357,9 @@ public actor SSEClient {
         let delay = Self.backoffDelay(
             failures: consecutiveFailures,
             initial: timing.initialBackoff,
-            cap: timing.maxBackoff
+            cap: timing.maxBackoff,
+            jitterFraction: timing.jitterFraction,
+            unitSample: timing.jitterSample()
         )
         emit(.retryScheduled(delayMs: Self.milliseconds(of: delay), reason: reason))
         retryTask = Task.detached(priority: .medium) { [weak self] in

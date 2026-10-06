@@ -39,6 +39,7 @@ public actor RouteSelector {
     private var revisions: [String: UInt64] = [:]
 
     /// 默认使用进程单调时钟，不受系统日期调整影响；测试注入虚拟秒数。
+    /// `ProcessInfo.systemUptime` 不在 Apple “需说明理由的 API”启动时间清单里（清单是 `mach_absolute_time` 与读取启动时间的 `sysctl`），所以不写进 `PrivacyInfo.xcprivacy`。
     public init(clock: @escaping Clock = { ProcessInfo.processInfo.systemUptime }) {
         self.clock = clock
     }

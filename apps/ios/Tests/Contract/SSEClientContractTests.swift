@@ -34,7 +34,8 @@ struct SSEClientContractTests {
     private static let fastTiming = SSEClient.Timing(
         heartbeatTimeout: .milliseconds(300),
         initialBackoff: .milliseconds(20),
-        maxBackoff: .milliseconds(120)
+        maxBackoff: .milliseconds(120),
+        jitterFraction: 0
     )
 
     private final class LockBox<Value: Sendable>: @unchecked Sendable {
@@ -704,6 +705,36 @@ struct SSEClientContractTests {
         #expect(await collector.box.snapshot.contains(.retryScheduled(delayMs: 20, reason: .heartbeatTimeout)))
     }
 
+    @Test("重连退避使用注入的 ±20% 随机源")
+    func injectedJitterChangesScheduledDelay() async {
+        let transport = ScriptedSSETransport(scripts: [.hold()])
+        let client = SSEClient(
+            transport: transport,
+            makeRequest: { _ in URLRequest(url: Self.eventsURL) },
+            timing: SSEClient.Timing(
+                heartbeatTimeout: .milliseconds(300),
+                initialBackoff: .milliseconds(20),
+                maxBackoff: .milliseconds(120),
+                jitterFraction: 0.2,
+                jitterSample: { 0 }
+            )
+        )
+        let collector = OutputCollector()
+        collector.start(client)
+
+        await client.start()
+        let retried = await waitUntil {
+            await collector.box.snapshot.contains { output in
+                if case .retryScheduled(_, let reason) = output { return reason == .heartbeatTimeout }
+                return false
+            }
+        }
+        #expect(retried)
+        await client.stop()
+
+        #expect(await collector.box.snapshot.contains(.retryScheduled(delayMs: 16, reason: .heartbeatTimeout)))
+    }
+
     @Test("401：终止且不再重连")
     func unauthorizedTerminatesWithoutReconnect() async {
         let transport = ScriptedSSETransport(scripts: [.hold(status: 401)])
@@ -727,7 +758,7 @@ struct SSEClientContractTests {
         #expect(transport.openedRequests.count == 1)
     }
 
-    @Test("退避序列：指数增长且不超过 30 秒上限")
+    @Test("退避序列：指数增长、基础档封顶，抖动可注入")
     func backoffSequenceIsExponentialAndCapped() {
         let delays = (1...8).map { SSEClient.backoffDelay(failures: $0, initial: .seconds(1), cap: .seconds(30)) }
         #expect(
@@ -743,6 +774,36 @@ struct SSEClientContractTests {
         }
         #expect(
             fast == [.milliseconds(20), .milliseconds(40), .milliseconds(80), .milliseconds(120), .milliseconds(120)])
+
+        // ±20%：注入 0 / 0.5 / 1，不依赖系统随机。抖动在封顶之后，上界可以超过 cap。
+        let low = SSEClient.backoffDelay(
+            failures: 1, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: 0)
+        let mid = SSEClient.backoffDelay(
+            failures: 1, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: 0.5)
+        let high = SSEClient.backoffDelay(
+            failures: 1, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: 1)
+        #expect(low == .milliseconds(800))
+        #expect(mid == .seconds(1))
+        #expect(high == .milliseconds(1_200))
+        let cappedLow = SSEClient.backoffDelay(
+            failures: 8, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: 0)
+        let cappedHigh = SSEClient.backoffDelay(
+            failures: 8, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: 1)
+        #expect(cappedLow == .seconds(24))
+        #expect(cappedHigh == .seconds(36))
+        // 越界采样夹到 [0, 1]；负比例不抖动；比例超过 1 按 1 处理。
+        let clampedLow = SSEClient.backoffDelay(
+            failures: 1, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: -4)
+        let clampedHigh = SSEClient.backoffDelay(
+            failures: 1, initial: .seconds(1), cap: .seconds(30), jitterFraction: 0.2, unitSample: 9)
+        #expect(clampedLow == .milliseconds(800))
+        #expect(clampedHigh == .milliseconds(1_200))
+        let noJitter = SSEClient.backoffDelay(
+            failures: 2, initial: .seconds(1), cap: .seconds(30), jitterFraction: -1, unitSample: 0)
+        #expect(noJitter == .seconds(2))
+        let fullSwing = SSEClient.backoffDelay(
+            failures: 2, initial: .seconds(1), cap: .seconds(30), jitterFraction: 3, unitSample: 0)
+        #expect(fullSwing == .zero)
     }
 
     // MARK: - 前台门控

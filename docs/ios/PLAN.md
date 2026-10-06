@@ -114,6 +114,7 @@
 - 中继转来的错误码可能被伪造：只能提示，不得据此删除或改写本机凭据（与 Android 一致）。
 - 通知扩展（NSE）和分享扩展**不联网**、不读设备 token，只能读各自需要的最小数据。
 - 渲染不可信内容的 WKWebView：非持久数据存储、禁止访问文件、CSP 只放行随包资源、禁止联网（预览页除外，预览页只放行本机回环代理）。
+- 公式与 Mermaid 的 `style-src 'unsafe-inline'` 保留：随包 KaTeX / Mermaid 按内容写运行时 style，不能预先 hash，也没有可用的 nonce。详见 `apps/ios/AGENTS.md`。
 - 网络图片默认不自动加载（与 Android 一致）。
 - 不引入第三方统计、崩溃上报 SDK；崩溃诊断只用系统 MetricKit，本机查看，用户主动导出。
 - 不复制 lody-ios 或其他 AGPL / GPL 项目的源码；引入任何依赖前在 PR 里写明许可证。
