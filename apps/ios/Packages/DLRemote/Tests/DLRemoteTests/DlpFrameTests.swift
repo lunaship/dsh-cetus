@@ -102,11 +102,12 @@ struct DlpFrameTests {
         #expect(DlpWire.parseControlFrame(duplicate) == nil)
         #expect(!DlpCrypto.safeEqual(Data([1, 2, 3]), Data([1, 2, 4])))
         #expect(DlpCrypto.safeEqual(Data([1, 2, 3]), Data([1, 2, 3])))
-        #expect(!DlpCrypto.verify(
+        let accepted = DlpCrypto.verify(
             publicKey: Data(repeating: 9, count: 32),
             transcript: Data([1]),
             signature: Data(repeating: 8, count: 64)
-        ))
+        )
+        #expect(!accepted)
     }
 }
 
