@@ -45,7 +45,7 @@ struct SharePickerSheet: View {
                     .accessibilityLabel(copy.text(.imageNote))
             }
             Text(record.text.isEmpty ? copy.text(.imageNote) : record.text)
-                .font(DLFont.subheadline)
+                .font(DLFont.meta)
                 .foregroundStyle(DLColor.secondaryLabel)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
