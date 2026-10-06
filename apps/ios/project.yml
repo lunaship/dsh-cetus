@@ -108,8 +108,8 @@ targets:
       - path: Extensions/Share
         excludes:
           - Info.plist
-    dependencies:
-      - package: DLCore
+      - path: Packages/DLCore/Sources/DLCore/ShareInbox.swift
+      - path: Packages/DLCore/Sources/DLCore/PromptAttachment.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.share

@@ -475,7 +475,6 @@ private struct SessionCreateBody: Encodable {
     var cwd: String?
 }
 
-
 private struct WorkspaceCreateBody: Encodable {
     var path: String
 }

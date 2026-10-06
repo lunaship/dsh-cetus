@@ -179,7 +179,7 @@ struct NewTaskPage: View {
     private func send(_ copy: NewTaskCopy) async {
         _ = copy
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard (!text.isEmpty || !images.isEmpty), !staticSnapshot else { return }
+        guard !text.isEmpty || !images.isEmpty, !staticSnapshot else { return }
         do {
             let id = try await createSession(preset?.id, workspace?.workspaceId, workspace?.path)
             try await sendPrompt(id, text, images)
