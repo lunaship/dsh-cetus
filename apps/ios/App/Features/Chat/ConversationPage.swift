@@ -14,6 +14,8 @@ struct ConversationComposerSurface: Equatable, Sendable {
     var expanded: Bool
     var showsPlan: Bool
     var material: String
+    var collapsedWidth: String
+    var expandedLimit: String
     var decisionVisible: Bool
 }
 
@@ -28,7 +30,9 @@ extension ConversationPage {
             },
             expanded: kind == .goal && expanded,
             showsPlan: kind == .goal && expanded && !model.status.plan.isEmpty,
-            material: kind == nil ? "none" : "grouped",
+            material: kind == nil ? "none" : "capsule",
+            collapsedWidth: kind == nil ? "none" : "hug",
+            expandedLimit: kind == .goal && expanded ? "half-screen" : "none",
             decisionVisible: decision != nil
         )
     }

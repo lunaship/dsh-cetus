@@ -88,13 +88,16 @@ import Testing
         #expect(surface.kind == "goal")
         #expect(surface.expanded)
         #expect(surface.showsPlan)
-        #expect(surface.material == "grouped")
+        #expect(surface.material == "capsule")
+        #expect(surface.collapsedWidth == "hug")
+        #expect(surface.expandedLimit == "half-screen")
         #expect(surface.decisionVisible == false)
         state.question(QuestionRequestEvent(rpcId: "q"))
         model.testStatus = state
         surface = page.composerSurface(copy: copy, expanded: true)
         #expect(surface.kind == "pending")
         #expect(surface.expanded == false)
+        #expect(surface.expandedLimit == "none")
         #expect(surface.showsPlan == false)
         #expect(surface.decisionVisible)
         state.connection = .reconnecting
