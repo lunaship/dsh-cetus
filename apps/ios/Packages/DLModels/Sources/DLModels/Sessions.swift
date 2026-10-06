@@ -71,6 +71,9 @@ public struct SessionSummary: Codable, Equatable, Sendable {
     public var lastResult: SessionLastResult?
     /// 这一轮怎么结束的（`turn/end` 的 `reason.kind`）；`completed` 或取不到时不下发。
     public var stoppedReason: String?
+    /// 主机 `session/state` 记下的等待类型。会话行本身不带这个字段（合同只下发
+    /// `awaitingInput`），所以不进 JSON；列表刷新会丢掉，要靠后续主机事件再记。
+    public var hostWait: HostSessionState?
 
     public init(
         sessionId: String? = nil,
@@ -86,7 +89,8 @@ public struct SessionSummary: Codable, Equatable, Sendable {
         awaitingInput: Bool? = nil,
         activity: SessionActivity? = nil,
         lastResult: SessionLastResult? = nil,
-        stoppedReason: String? = nil
+        stoppedReason: String? = nil,
+        hostWait: HostSessionState? = nil
     ) {
         self.sessionId = sessionId
         self.title = title
@@ -102,6 +106,12 @@ public struct SessionSummary: Codable, Equatable, Sendable {
         self.activity = activity
         self.lastResult = lastResult
         self.stoppedReason = stoppedReason
+        self.hostWait = hostWait
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionId, title, updatedAt, running, blank, cwd, agentPreset, origin
+        case parentSessionId, subagentCount, awaitingInput, activity, lastResult, stoppedReason
     }
 }
 
