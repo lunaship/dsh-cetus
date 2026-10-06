@@ -164,7 +164,7 @@ public struct QuestionForm: Equatable, Sendable {
         return question.multiple == true ? kept : Array(kept.prefix(1))
     }
 
-    static func optionValue(_ option: QuestionOption) -> String? {
+    public static func optionValue(_ option: QuestionOption) -> String? {
         for candidate in [option.id, option.value, option.label] {
             let trimmed = candidate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if !trimmed.isEmpty { return trimmed }

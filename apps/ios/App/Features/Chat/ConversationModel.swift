@@ -511,7 +511,7 @@ final class ConversationModel {
 
     func serviceQuestion(rpcID: String, answer: QuestionAnswerBody) async throws {
         try await service.submitQuestion(sessionID: sessionID, rpcID: rpcID, answer: answer)
-        status.requests.update(requestId: rpcID, status: .resolved, outcome: "answered")
+        status.resolveQuestion(QuestionResolvedEvent(rpcId: rpcID, outcome: "answered"))
     }
 
     /// 向上翻一页。失败只标记，不替换当前尾页。
