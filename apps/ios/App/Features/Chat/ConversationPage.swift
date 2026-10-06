@@ -7,6 +7,33 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
+struct ConversationComposerSurface: Equatable, Sendable {
+    var placement: String
+    var kind: String?
+    var title: String?
+    var expanded: Bool
+    var showsPlan: Bool
+    var material: String
+    var decisionVisible: Bool
+}
+
+extension ConversationPage {
+    func composerSurface(copy: ConversationCopy, expanded: Bool) -> ConversationComposerSurface {
+        let kind = model.status.kind
+        return ConversationComposerSurface(
+            placement: showsStatusSlot ? "composer" : "hidden",
+            kind: kind.map { String(describing: $0) },
+            title: kind.map {
+                ConversationStatusView.statusTitle($0, state: model.status, copy: copy, expanded: expanded)
+            },
+            expanded: kind == .goal && expanded,
+            showsPlan: kind == .goal && expanded && !model.status.plan.isEmpty,
+            material: kind == nil ? "none" : "grouped",
+            decisionVisible: decision != nil
+        )
+    }
+}
+
 struct ConversationFlowView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: ConversationModel

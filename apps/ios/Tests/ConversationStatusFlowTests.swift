@@ -65,6 +65,44 @@ import Testing
         #expect(model.status.kind == nil)
         await model.stop()
     }
+    @Test func productionComposerPlacesOneStatusAndCollapsesGoal() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let model = ConversationModel(
+            hostID: "host", sessionID: "s", service: StatusStreamService(),
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory))
+        let page = ConversationPage(model: model)
+        let copy = ConversationCopy(locale: Locale(identifier: "zh-Hans"))
+        var state = ConversationStatusState()
+        state.apply(
+            projections: .object([
+                "goal": .object(["objective": .string("Fix"), "phase": .string("active")]),
+                "todos": .array([
+                    .object(["content": .string("Read"), "status": .string("completed")]),
+                    .object(["content": .string("Test"), "status": .string("in_progress")]),
+                ]),
+            ]))
+        model.testStatus = state
+        var surface = page.composerSurface(copy: copy, expanded: true)
+        #expect(surface.placement == "composer")
+        #expect(surface.kind == "goal")
+        #expect(surface.expanded)
+        #expect(surface.showsPlan)
+        #expect(surface.material == "grouped")
+        #expect(surface.decisionVisible == false)
+        state.question(QuestionRequestEvent(rpcId: "q"))
+        model.testStatus = state
+        surface = page.composerSurface(copy: copy, expanded: true)
+        #expect(surface.kind == "pending")
+        #expect(surface.expanded == false)
+        #expect(surface.showsPlan == false)
+        #expect(surface.decisionVisible)
+        state.connection = .reconnecting
+        model.testStatus = state
+        surface = page.composerSurface(copy: copy, expanded: true)
+        #expect(surface.kind == "disconnected")
+        #expect(surface.expanded == false)
+    }
 
     @Test func statusCopyHasBothLocales() {
         let en = ConversationCopy(locale: Locale(identifier: "en"))
