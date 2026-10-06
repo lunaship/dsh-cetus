@@ -118,11 +118,12 @@ public struct QuestionForm: Equatable, Sendable {
     }
 
     public var isComplete: Bool {
-        !questions.isEmpty && !questions.contains(where: Self.isUnsupported) && questions.enumerated().allSatisfy { offset, question in
-            Self.isOptional(question)
-                || Self.answered(
-                    question, draft: drafts[Self.key(question, at: offset)] ?? QuestionDraft())
-        }
+        !questions.isEmpty && !questions.contains(where: Self.isUnsupported)
+            && questions.enumerated().allSatisfy { offset, question in
+                Self.isOptional(question)
+                    || Self.answered(
+                        question, draft: drafts[Self.key(question, at: offset)] ?? QuestionDraft())
+            }
     }
 
     public var answerBody: QuestionAnswerBody? {

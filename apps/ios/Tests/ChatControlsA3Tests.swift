@@ -9,8 +9,8 @@ import Testing
 @Suite struct QuestionRawJSONTests {
     @Test func roundTripKeepsUnknownFieldsOrderAndNull() throws {
         let raw = """
-        {"rpcId":"q-1","status":"pending","questions":[{"id":"tone","question":"语气？","options":["直接",{"id":"soft","label":"温和","extra":null}],"kind":"select","vendor":{"keep":true}}],"note":null}
-        """
+            {"rpcId":"q-1","status":"pending","questions":[{"id":"tone","question":"语气？","options":["直接",{"id":"soft","label":"温和","extra":null}],"kind":"select","vendor":{"keep":true}}],"note":null}
+            """
         let data = Data(raw.utf8)
         let decoded = try JSONDecoder().decodePreservingRawJSON(PendingQuestion.self, from: data)
         #expect(decoded.questionsJSON?.contains("\"vendor\"") == true)
@@ -27,8 +27,8 @@ import Testing
         #expect(text.contains("\"vendor\"") == false)
 
         let eventRaw = """
-        {"rpcId":"q-1","questions":[{"z":1,"id":"tone","unknown":null}]}
-        """
+            {"rpcId":"q-1","questions":[{"z":1,"id":"tone","unknown":null}]}
+            """
         let event = try JSONDecoder().decodePreservingRawJSON(
             QuestionRequestEvent.self, from: Data(eventRaw.utf8))
         #expect(event.questionsJSON == "[{\"z\":1,\"id\":\"tone\",\"unknown\":null}]")
@@ -38,13 +38,20 @@ import Testing
 
     @Test func snapshotKeepsOriginalQuestionJSON() throws {
         let raw = """
-        {"questions":[{"rpcId":"q","status":"pending","questions":[{"id":"tone","z":1,"unknown":null}]}]}
-        """
+            {"questions":[{"rpcId":"q","status":"pending","questions":[{"id":"tone","z":1,"unknown":null}]}]}
+            """
         let response = try JSONDecoder().decodePreservingRawJSON(
             RequestsSnapshotResponse.self, from: Data(raw.utf8))
         let snapshot = parseSessionRequestSnapshot(response)
         let messages = mergeMessagesWithRequestSnapshot([], snapshot: snapshot)
-        let expected = "[" + String(decoding: Data([0x7b,0x22,0x69,0x64,0x22,0x3a,0x22,0x74,0x6f,0x6e,0x65,0x22,0x2c,0x22,0x7a,0x22,0x3a,0x31,0x2c,0x22,0x75,0x6e,0x6b,0x6e,0x6f,0x77,0x6e,0x22,0x3a,0x6e,0x75,0x6c,0x6c,0x7d]), as: UTF8.self) + "]"
+        let expected =
+            "["
+            + String(
+                decoding: Data([
+                    0x7b, 0x22, 0x69, 0x64, 0x22, 0x3a, 0x22, 0x74, 0x6f, 0x6e, 0x65, 0x22, 0x2c, 0x22, 0x7a, 0x22,
+                    0x3a, 0x31, 0x2c, 0x22, 0x75, 0x6e, 0x6b, 0x6e, 0x6f, 0x77, 0x6e, 0x22, 0x3a, 0x6e, 0x75, 0x6c,
+                    0x6c, 0x7d,
+                ]), as: UTF8.self) + "]"
         #expect(messages.first?.questionPayloadJson == expected)
     }
 }
@@ -53,7 +60,8 @@ import Testing
     @Test func previousSkipNextSubmitOnce() {
         var form = QuestionForm(
             questions: [
-                ClarifyingQuestion(id: "tone", question: "语气？", options: [QuestionOption(id: "direct", label: "直接")], kind: "select"),
+                ClarifyingQuestion(
+                    id: "tone", question: "语气？", options: [QuestionOption(id: "direct", label: "直接")], kind: "select"),
                 ClarifyingQuestion(id: "note", question: "补充？", kind: "text", optional: true),
             ])
         form.updateCurrent(selected: ["direct"])
@@ -92,7 +100,8 @@ import Testing
 @MainActor @Suite struct ChatControlsServiceTests {
     @Test func olderHistoryGoalAndQuestionUseInjectedService() async throws {
         let service = ScriptedConversationService()
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
         let model = ConversationModel(
             hostID: "host", sessionID: "session",
             service: service,
@@ -132,7 +141,8 @@ import Testing
 
     @Test func olderHistoryFailureKeepsMessagesAndCursor() async {
         let service = ScriptedConversationService(historyError: true)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
         let model = ConversationModel(
             hostID: "host", sessionID: "session", service: service,
             box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),
@@ -162,7 +172,8 @@ import Testing
 
     @Test func goalClearFailureKeepsGoal() async {
         let service = ScriptedConversationService(clearError: true)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
         let model = ConversationModel(
             hostID: "host", sessionID: "session", service: service,
             box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),

@@ -267,16 +267,16 @@ extension String {
     }
 }
 
-public extension JSONDecoder {
+extension JSONDecoder {
     /// 让模型里的 `questionsJSON` 能取到同一份响应原文。没有原文时该字段保持空。
     @discardableResult
-    func preservingRawJSON(_ data: Data) -> JSONDecoder {
+    public func preservingRawJSON(_ data: Data) -> JSONDecoder {
         userInfo[RawJSON.userInfoKey] = RawJSONCapture(data)
         return self
     }
 
     /// 解码并保留原文片段。提问快照和提问事件用它，不改其他响应的解码路径。
-    func decodePreservingRawJSON<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+    public func decodePreservingRawJSON<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         preservingRawJSON(data)
         return try decode(type, from: data)
     }

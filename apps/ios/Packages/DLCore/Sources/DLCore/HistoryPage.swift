@@ -25,9 +25,11 @@ public func userFollowedQuestion(_ question: RequestMessage, in messages: [Histo
     let id = question.id.trimmingCharacters(in: .whitespacesAndNewlines)
     let needles = [id, rpcID, rpcID.isEmpty ? "" : "question-\(rpcID)"].filter { !$0.isEmpty }
     guard !needles.isEmpty else { return false }
-    guard let index = messages.lastIndex(where: { message in
-        message.role == "question" && needles.contains { $0 == message.id }
-    }) else {
+    guard
+        let index = messages.lastIndex(where: { message in
+            message.role == "question" && needles.contains { $0 == message.id }
+        })
+    else {
         return false
     }
     return messages[(index + 1)...].contains { $0.role == "user" }

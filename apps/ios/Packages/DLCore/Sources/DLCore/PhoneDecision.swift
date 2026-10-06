@@ -42,9 +42,11 @@ public func pendingPhoneDecision(
     pendingPhoneDecision(requests) { question in
         guard let id = question.id.isEmpty ? question.questionRpcId : question.id else { return false }
         let needles = [id, "question-\(question.questionRpcId ?? "")"]
-        guard let index = history.lastIndex(where: { message in
-            message.role == "question" && needles.contains { $0 == message.id }
-        }) else { return false }
+        guard
+            let index = history.lastIndex(where: { message in
+                message.role == "question" && needles.contains { $0 == message.id }
+            })
+        else { return false }
         return history[history.index(after: index)...].contains { $0.role == "user" }
     }
 }
