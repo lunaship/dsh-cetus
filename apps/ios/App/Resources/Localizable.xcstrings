@@ -5964,6 +5964,34 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要审批时" } }
       }
     },
+    "settings.notifyQuestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When a question arrives" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要回答时" } }
+      }
+    },
+    "settings.notifyFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When a task fails" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任务失败时" } }
+      }
+    },
+    "settings.pushUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This build cannot register for notifications." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当前构建不能注册通知。" } }
+      }
+    },
+    "settings.pushPrivacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications pass through the gateway, but their content stays end-to-end encrypted. They can only open the app." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通知经过网关转发，内容端到端加密；只能打开 App，不能直接批准。" } }
+      }
+    },
     "settings.notifyDone" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -80,6 +80,7 @@ targets:
       - path: Extensions/NotificationService
         excludes:
           - Info.plist
+      - path: Packages/DLSecurity/Sources/DLSecurity/PushRegistration.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.notification-service

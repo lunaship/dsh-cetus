@@ -16,6 +16,11 @@ let package = Package(
             dependencies: [
                 .product(name: "DLModels", package: "DLModels")
             ]
+        ),
+        .testTarget(
+            name: "DLSecurityTests",
+            dependencies: ["DLSecurity"],
+            path: "Tests"
         )
     ]
 )

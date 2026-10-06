@@ -96,6 +96,7 @@ public struct PluginCapabilities: Codable, Equatable, Sendable {
     public var files: FileCapabilities?
     public var diagnostics: DiagnosticsCapabilities?
     public var events: EventsCapabilities?
+    public var push: PushCapabilities?
     public var preview: PreviewCapabilities?
 
     public init(
@@ -107,6 +108,7 @@ public struct PluginCapabilities: Codable, Equatable, Sendable {
         files: FileCapabilities? = nil,
         diagnostics: DiagnosticsCapabilities? = nil,
         events: EventsCapabilities? = nil,
+        push: PushCapabilities? = nil,
         preview: PreviewCapabilities? = nil
     ) {
         self.protocolVersion = protocolVersion
@@ -117,6 +119,7 @@ public struct PluginCapabilities: Codable, Equatable, Sendable {
         self.files = files
         self.diagnostics = diagnostics
         self.events = events
+        self.push = push
         self.preview = preview
     }
 
@@ -129,6 +132,7 @@ public struct PluginCapabilities: Codable, Equatable, Sendable {
         case files
         case diagnostics
         case events
+        case push
         case preview
     }
 }
@@ -207,6 +211,14 @@ public struct FileCapabilities: Codable, Equatable, Sendable {
 }
 
 public struct DiagnosticsCapabilities: Codable, Equatable, Sendable {
+    public var v: Int?
+
+    public init(v: Int? = nil) {
+        self.v = v
+    }
+}
+
+public struct PushCapabilities: Codable, Equatable, Sendable {
     public var v: Int?
 
     public init(v: Int? = nil) {
