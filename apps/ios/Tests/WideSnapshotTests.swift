@@ -110,12 +110,6 @@ import XCTest
         window.isHidden = false
         window.makeKeyAndVisible()
         host.view.frame = CGRect(origin: .zero, size: size)
-        defer {
-            window.isHidden = true
-            window.rootViewController = nil
-            window.windowScene = nil
-            previousKey?.makeKey()
-        }
 
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
@@ -136,9 +130,14 @@ import XCTest
         let format = UIGraphicsImageRendererFormat()
         format.scale = window.screen.scale > 0 ? window.screen.scale : 3
         format.opaque = true
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
             host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        window.isHidden = true
+        window.rootViewController = nil
+        window.windowScene = nil
+        previousKey?.makeKey()
+        return image
     }
 
     private func wideStream(in controller: UIViewController) -> MessageStreamController? {
