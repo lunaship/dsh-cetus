@@ -2421,13 +2421,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting for you"
+            "value" : "Waiting for approval"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "等你处理"
+            "value" : "等你批准"
           }
         }
       }

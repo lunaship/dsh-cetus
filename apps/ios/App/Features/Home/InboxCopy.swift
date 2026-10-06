@@ -121,7 +121,7 @@ enum InboxText: String, Equatable, Sendable {
         case .searching: "Searching…"
         case .waitingApproval: "Waiting for approval"
         case .waitingAnswer: "Waiting for your answer"
-        case .waiting: "Waiting for you"
+        case .waiting: "Waiting for approval"
         case .running: "Running"
         case .done: "Done"
         case .interrupted: "Interrupted"
@@ -238,7 +238,7 @@ struct InboxCopy {
         switch status {
         case .waitingApproval: text(.waitingApproval)
         case .waitingAnswer: text(.waitingAnswer)
-        case .waiting: text(.waiting)
+        case .waiting: text(.waitingApproval)
         case .done: text(.done)
         case .stopped(let reason): stop(reason)
         }
