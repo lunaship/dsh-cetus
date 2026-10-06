@@ -68,6 +68,85 @@ struct HostStoreContractTests {
         #expect(try store.allKeys().count == 2)
     }
 
+    @Test func saveReplacesSameFingerprintWithoutAddingHost() async throws {
+        let (hostStore, store, file) = try await savedSample()
+        let original = try #require(await hostStore.all().first)
+        var again = original
+        again.hostId = "local-new-attempt"
+        again.name = "换过局域网地址"
+        again.primaryUrl = "https://192.168.10.42:18640"
+        again.certFingerprint = "SHA256: " + String(repeating: "A1:B2:C3:D4:", count: 8).dropLast()
+
+        try await hostStore.save(host: again, token: "tok-new")
+
+        let hosts = await hostStore.all()
+        #expect(hosts.count == 1)
+        #expect(hosts[0].hostId == original.hostId)
+        #expect(hosts[0].name == "换过局域网地址")
+        #expect(hosts[0].primaryUrl == again.primaryUrl)
+        #expect(await hostStore.token(for: original.hostId) == "tok-new")
+        #expect(await hostStore.get(hostId: "local-new-attempt") == nil)
+        #expect(!jsonText(at: file).contains("local-new-attempt"))
+        #expect(try store.allKeys().allSatisfy { !$0.contains("local-new-attempt") })
+    }
+
+    @Test func saveReplacesSamePluginHostIdWhenCertificateChanges() async throws {
+        let (hostStore, _, _) = try await savedSample(pluginHostId: "dsh-computer")
+        let original = try #require(await hostStore.all().first)
+        let other = PairedHost(
+            hostId: "other-computer",
+            name: "另一台",
+            primaryUrl: "https://10.0.0.8:18640",
+            certFingerprint: String(repeating: "b", count: 64),
+            pairedAt: original.pairedAt,
+            pluginHostId: "dsh-other"
+        )
+        try await hostStore.save(host: other, token: "tok-other")
+
+        var rotated = original
+        rotated.hostId = "local-after-rotation"
+        rotated.certFingerprint = String(repeating: "c", count: 64)
+        rotated.pluginHostId = " dsh-computer "
+        rotated.name = "换证后的同一台"
+        try await hostStore.save(host: rotated, token: "tok-rotated")
+
+        let hosts = await hostStore.all()
+        #expect(hosts.count == 2)
+        let kept = try #require(hosts.first { $0.pluginHostId == "dsh-computer" })
+        #expect(kept.hostId == original.hostId)
+        #expect(kept.certFingerprint == String(repeating: "c", count: 64))
+        #expect(kept.name == "换证后的同一台")
+        #expect(await hostStore.token(for: original.hostId) == "tok-rotated")
+        #expect(await hostStore.get(hostId: "other-computer")?.name == "另一台")
+        #expect(await hostStore.token(for: "other-computer") == "tok-other")
+    }
+
+    @Test func failedSaveKeepsPreviousHostAndToken() async throws {
+        let directory = tempDirectory()
+        let file = directory.appendingPathComponent("hosts.json")
+        let secure = InMemorySecureStore()
+        let failing = FailWritesSecureStore(inner: secure, failAfter: 1)
+        let hostStore = HostStore(fileURL: file, secureStore: failing)
+        let original = sampleHost()
+        try await hostStore.save(host: original, token: "tok-old")
+
+        var again = original
+        again.hostId = "local-failed-attempt"
+        again.name = "不该写进去"
+        again.primaryUrl = "https://192.168.10.99:18640"
+        do {
+            try await hostStore.save(host: again, token: "tok-new")
+            Issue.record("第二次保存应当失败")
+        } catch {}
+
+        #expect(await hostStore.all() == [original])
+        #expect(await hostStore.token(for: original.hostId) == "tok-old")
+        #expect(await hostStore.get(hostId: "local-failed-attempt") == nil)
+        let reopened = HostStore(fileURL: file, secureStore: secure)
+        #expect(await reopened.all() == [original])
+        #expect(await reopened.token(for: original.hostId) == "tok-old")
+    }
+
     @Test func deleteRemovesBothSidesAndIsIdempotent() async throws {
         let dir = tempDirectory()
         let file = dir.appendingPathComponent("hosts.json")
@@ -246,6 +325,17 @@ struct HostStoreContractTests {
 
     // MARK: - 助手
 
+    private func savedSample(pluginHostId: String? = nil) async throws -> (HostStore, InMemorySecureStore, URL) {
+        let directory = tempDirectory()
+        let file = directory.appendingPathComponent("hosts.json")
+        let store = InMemorySecureStore()
+        let hostStore = HostStore(fileURL: file, secureStore: store)
+        var host = sampleHost()
+        host.pluginHostId = pluginHostId
+        try await hostStore.save(host: host, token: "tok-1")
+        return (hostStore, store, file)
+    }
+
     private func sampleHost() -> PairedHost {
         PairedHost(
             hostId: "dsh-test-host",
@@ -303,6 +393,40 @@ private final class DropReadsSecureStore: SecureStore, @unchecked Sendable {
     }
 
     func setData(_ data: Data, forKey key: String) throws {
+        try inner.setData(data, forKey: key)
+    }
+
+    func removeData(forKey key: String) throws {
+        try inner.removeData(forKey: key)
+    }
+
+    func allKeys() throws -> [String] {
+        try inner.allKeys()
+    }
+}
+
+/// 前几次写入成功，之后抛错。用来验证替换同一台电脑失败时，旧 token 和记录都留着。
+private final class FailWritesSecureStore: SecureStore, @unchecked Sendable {
+    private let inner: SecureStore
+    private let lock = NSLock()
+    private var remaining: Int
+
+    init(inner: SecureStore, failAfter: Int) {
+        self.inner = inner
+        self.remaining = failAfter
+    }
+
+    func data(forKey key: String) throws -> Data? {
+        try inner.data(forKey: key)
+    }
+
+    func setData(_ data: Data, forKey key: String) throws {
+        let allowed = lock.withLock { () -> Bool in
+            if remaining == 0 { return false }
+            remaining -= 1
+            return true
+        }
+        guard allowed else { throw CocoaError(.fileWriteUnknown) }
         try inner.setData(data, forKey: key)
     }
 
