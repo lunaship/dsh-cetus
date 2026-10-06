@@ -124,6 +124,9 @@ jobs:
             -only-testing:DeepLinksTests/TrajectoryTests \
             -only-testing:DeepLinksTests/NewTaskTests \
             -only-testing:DeepLinksTests/ChatSheetTests \
+            -only-testing:DeepLinksTests/QuestionRawJSONTests \
+            -only-testing:DeepLinksTests/QuestionNavigationTests \
+            -only-testing:DeepLinksTests/ChatControlsServiceTests \
             -only-testing:DeepLinksTests/IntralineDiffContractTests \
             -only-testing:DeepLinksTests/ReviewTests \
             -only-testing:DeepLinksTests/SettingsTests \
