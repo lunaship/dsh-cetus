@@ -1,8 +1,8 @@
 # DeepLinks iOS 续作执行单（从 I4.8 收尾到上架）
 
-> 版本：v1（2026-10-05）。放入仓库：`docs/ios/CONTINUE.md`，并在 `docs/ios/PLAN.md` 顶部加一行链接。
-> 基线：`ios/main` @ `39ce9d4`（I4.7 已合并）；`main` @ `3ff06c5`；开着的 PR：#114（I4.8 iPad）。
-> 本文是 `docs/ios/PLAN.md`（v1.3）的**续作执行单**：只写还没做的事、做的顺序和验收标准。规则、红线、设计约束仍以 PLAN 第 2、3 节和 `apps/ios/AGENTS.md` 为准；两者冲突时以 PLAN 为准，并在 PR 中指出。
+> 版本：v1.1（2026-10-06）。放入仓库：`docs/ios/CONTINUE.md`。本轮收尾以桌面 `DeepLinks-收尾方案.md` 为准；与本文旧顺序冲突时以收尾方案和 PLAN v1.4 为准。
+> 2026-10-06 起点：`origin/main` @ `b1054fa0`（已包含 `origin/ios/main` @ `b5b796ee`，另有一次 `push/` 依赖更新）。没有开着的 PR。
+> 本文是 `docs/ios/PLAN.md`（v1.4）的**续作执行单**。阶段 A 已完成的子项仍以 PLAN 第 11 节为准。规则、红线、设计约束以 PLAN 第 2、3 节和 `apps/ios/AGENTS.md` 为准。
 
 ---
 
@@ -95,16 +95,13 @@
 - 公式渲染的 `style-src 'unsafe-inline'`：评估能否改为 hash 或 nonce；不能则在 `PRIVACY.md` / 安全说明中写明理由。
 - `PrivacyInfo.xcprivacy`：对照目前用到的 API 补全理由。
 
-### A5 维护者真机验证（**停下**）
+### A5 真机验证改到收尾 G7（不再挡住阶段 5）
 
-由 agent 准备好，维护者执行：
+`apps/ios/docs/device-check.md` 已写好，但 2026-10-06 收尾方案把真机点按、付费签名和线上送达整段放到 G7。开发过程不要求维护者安装 App、提供截图或开通 Apple 账号。
 
-1. agent 写 `apps/ios/docs/device-check.md`：免费 Apple ID 安装步骤、每一项检查的操作与预期结果、结果记录表。检查项：
-   - I3.9 局域网冒烟：配对、会话列表、打开会话看到流式输出、发消息、处理一次审批、回答一次提问。
-   - I1.5b：10 个关键页面在真机上的玻璃可读性（浅色、深色、降低透明度各看一遍），与 `apps/ios/docs/design/` 并排比较。
-   - 历史遗留：本地网络权限被拒后的提示、Wi-Fi ↔ 蜂窝切换、卸载重装后 Keychain 不残留。
-   - 深色主按钮色：确认 `#4C66E6` 或改为其他候选。
-2. 维护者执行后把结果填进表格。agent 根据结果开修复 PR，全部修完后才能进入阶段 5。
+- 允许编写、扩展并运行自动化 XCUITest、单测和截图工作流。
+- 真机结果留空。G6 再把安装说明换成最终构建，并标明「自动验证覆盖的部分」和「仍需真机的部分」。
+- 未完成 A5 不再阻止 G4 远程实现。远程仍须先完成 G4.0 本地传输验证。
 
 ---
 
@@ -119,21 +116,13 @@ RFC 0001 已定为“**一流一 WSS**”：每条流单独一条 WebSocket，�
 - 按 RFC 0001 实现控制帧、会合密钥、MAC（绑定 App 生成的 nonce 和时间戳；`sid` 由中继分配，不进 MAC）。
 - 跑通 `testdata/dlp1/` 全部向量（与 JS / Go / Kotlin 同一份）；模糊测试：随机输入不崩溃。
 
-### I5.2 Spike：方案 A（**停下**）
+### I5.2 / 收尾 G4.0：先做本地传输验证
 
-1. `NWListener` 只监听 `127.0.0.1:<随机端口>`；每接受一条 TCP 连接，用 `URLSessionWebSocketTask` 开一条 DLP/1 流，双向搬字节；任意一端关闭即关闭另一端。
-2. App 把远程主机当成 `https://127.0.0.1:<端口>`，内层 TLS 与证书固定完全复用 I3.4 / I3.5 的代码；`Host` 头和 SNI 处理在 PR 中写明。
-3. 回环端口要防止同机其他 App 连接：每条 TCP 连接的第一个请求必须带本次随机生成的密钥（与 I4.6 预览代理同一做法），不对就断开。
-4. 验收：经官方中继连上隔离 host，完成一次 `GET /dsh-link/mobile/bootstrap`，SSE 订阅 60 秒不断；同时打开 5 条流（SSE + 并发请求）互不阻塞。
-5. 只有方案 A 走不通时才做方案 B（SwiftNIO），并写明原因。
+文档结论仍是方案 A，但回环鉴权不能照搬预览代理的 URL 密钥：内层是 TLS，桥在转发前看不到 HTTP 路径。G4.0 用本地 `relay/`、隔离插件和测试证书证明鉴权、双层钉扎、关闭压缩、有界背压、关闭释放和连接预算。记录进 `docs/ios/I5.2-spike.md`。
 
-### I5.3 远程首配与日常连接
-
-按 PLAN I5.3 原文：经中继首配一律 pending；`bootstrap.remote` 的对象 / `null` / 缺键三种语义；中继错误码只提示不删凭据。
-
-### I5.4 选路接入中继
-
-按 PLAN I5.4：主地址 → Tailscale → 中继。A1 的 UI 测试增加 `testRelayFallback`（假中继：`relay/` 的 Go 实现在 CI 本地起一个）。真机验收（五次 Wi-Fi ↔ 蜂窝切换）写进 `device-check.md`，由维护者执行（**停下**）。
+- 不连 `relay.dshlinks.com`，不改线上中继。
+- 找不到系统 API 能在转发内层 TLS 之前完成的鉴权，或触发 spike 四条失败条件：停止 G4.1 / G4.2，提交证据，不自行改 SwiftNIO。
+- 通过之后才做 G4.1（回环桥、连接池、统一接入）和 G4.2（首配、bootstrap 三态、选路）。真机蜂窝切换留在 G7。
 
 ---
 
@@ -141,9 +130,11 @@ RFC 0001 已定为“**一流一 WSS**”：每条流单独一条 WebSocket，�
 
 网关与插件部分不依赖 iOS 代码，可在阶段 A 完成后就开始。
 
-### I6.1 RFC 0002 安全审查（**停下**）
+### I6.1 / I6.2 与收尾 G5
 
-RFC 已锁定：HPKE base 模式、X25519 / HKDF-SHA256 / ChaCha20-Poly1305，`sealed` 为 JSON 对象，附加数据 `dlpush/1 token|` 与 `dlpush/1 content|` 分离。维护者审查通过后再写代码。
+RFC 已锁定：HPKE base 模式、X25519 / HKDF-SHA256 / ChaCha20-Poly1305，`sealed` 为 JSON 对象，附加数据 `dlpush/1 token|` 与 `dlpush/1 content|` 分离。网关本地测试已在 I6.2 合入。插件出口和 iOS 接入仍未做。
+
+安全审查是 G5 合并进 `main` 之前的条件，不是写代码之前的停点，也不放到 G7。实现和自动验证完成后，把 RFC、接口、数据流和测试交给维护者审查；审查通过后由维护者合并。待审期间可以继续用本地假 APNs 做不依赖该合并的验证。不部署网关，不读取真实 `.p8`。
 
 ### I6.2 网关（`push/`，Go，对 `main`）
 
@@ -209,11 +200,7 @@ agent 准备：
 
 | 时间点 | 事项 |
 |---|---|
-| 阶段 A 开始前 | 合并 #114；确认本执行单 |
-| A5 | 真机执行 `device-check.md`；定深色主按钮色 |
-| I5.2 | 确认方案 A spike 结论 |
-| I5.4 | 真机 Wi-Fi ↔ 蜂窝切换验收 |
-| I6.1 / I6.3 | RFC 0002 与插件推送 PR 安全审查；生成网关 HPKE 密钥对 |
-| 阶段 8 | 真机验收清单 |
-| 阶段 9 | 付费开通、`.p8`、网关上线、TestFlight 与审核 |
-| 全程 | 合并 `ios/main → main` 和所有对 `main` 的 PR |
+| 收尾 G4.0 失败时 | 决定是否离开方案 A；通过则不必再确认 |
+| 收尾 G5 合并前 | 安全审查 RFC 0002 与插件推送出口；不需要真机或真实 APNs |
+| 收尾 G7 | 真机执行更新后的 `device-check.md`；定深色主按钮色；Wi-Fi ↔ 蜂窝；付费开通、`.p8`、网关上线、TestFlight |
+| 全程 | 合并对 `main` 的 PR，以及之后的 `ios/main → main` |

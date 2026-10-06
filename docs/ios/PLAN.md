@@ -1,6 +1,7 @@
 # DeepLinks iOS：从 0 到 1 执行方案
 
-> 状态：已采纳 v1.3（2026-10-03）。续作执行单：[`docs/ios/CONTINUE.md`](CONTINUE.md)。
+> 状态：已采纳 v1.4（2026-10-06）。续作执行单：[`docs/ios/CONTINUE.md`](CONTINUE.md)。本轮收尾以桌面 `DeepLinks-收尾方案.md`（2026-10-06 修订）为准，本文只同步执行边界。
+> v1.4 变更：改名延期，本轮继续用 DeepLinks / dsh-links。A5 真机检查改到收尾 G7，不再挡住阶段 5；允许自动化模拟器验证。方案 A 先做 G4.0 本地传输验证，不连官方中继。推送仍须合并前安全审查；对 `main` 的 PR 与 `ios/main → main` 只由维护者合并。
 > v1.3 变更：`sealed` 定为 JSON 对象；附加数据前缀改为 `dlpush/1 token|` 与 `dlpush/1 content|` 做域分离；I6.2 测试向量路径改为 `testdata/push/hpke/` 与 `testdata/push/content/`。
 > v1.2 变更：HPKE 算法组合定为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305 并规定测试向量；补 7.6 对话默认；设计稿去掉“输入配对码”；RFC 0002 先留在 `ios/main`，阶段 6 随插件 PR 一起进 main。
 > v1.1 变更：I1.5 改为 HTML 设计稿（I1.5a 已完成）+ 模拟器截图验收（I1.5b）；决策栏按钮改为实色；深色 BrandFill 暂定 `#4C66E6`；推送网关部署到维护者的香港服务器；新增执行规则第 11 条（agent 无法本地编译 iOS）。
@@ -93,10 +94,11 @@
 8. **双语**：所有文案进 String Catalog（`Localizable.xcstrings`），简体中文与英文同时提交。
 9. **进度记录**：每合并一个 PR，在本文第 11 节追加一行（子项、PR、结论或偏差）。
 10. **不发布**：不改版本号、不打 tag、不建 Release，只在 CHANGELOG“未发布（main）”下记一行。
-11. **编译环境**：云端 agent 运行在 Linux，没有 Xcode，无法本地编译、测试或截图 iOS 代码。
-    - 以 `ci-ios.yml`（macOS runner）的结果作为唯一门禁；CI 不绿不合并，不得在 PR 里声称“本地已通过”。
+11. **编译环境**：有 Xcode 的机器可以记录本地构建与测试，但不能代替本轮约定的 CI 门禁；没有 Xcode 就不得写「本地已通过」。
+    - 以 `ci-ios.yml`（macOS runner）的结果作为合并门禁；CI 不绿不合并。
     - 每次 push 后等待 CI 结果再继续；失败时读 CI 日志修复，计入第 5 条的 3 次上限。
-    - 需要真机或交互调试的事项，写进 PR 的“需维护者在 Mac 上验证”清单，然后停下。
+    - 真机点按、付费签名、线上中继和网关部署仍由维护者在收尾 G7 做。自动化 XCUITest、单测和截图工作流可以继续，不因缺真机停住。
+12. **收尾顺序（2026-10-06）**：G1 电脑面板 → G2 首页 → G3 目标胶囊 → G4.0 本地传输验证 → G4.1 → G4.2 → G5 推送 → G6 恢复与性能。G4.0 未证明方案 A，就停止依赖它的远程实现，不自行改 SwiftNIO。G5 的 RFC 与插件出口在合并进 `main` 前做安全审查。
 
 ---
 
@@ -537,24 +539,17 @@ Figma 无法由 agent 操作，改为两步：
 - 跑通 `testdata/dlp1/` 的全部向量（与 JS / Go / Kotlin 同一份）。
 - 模糊测试：随机字节输入不崩溃。
 
-### I5.2 Spike：选定实现方案（停下等结论）
+### I5.2 Spike：方案 A，先做收尾 G4.0
 
-两种方案，先各做最小验证：
+RFC 0001 不支持一条 WSS 上多路复用。方案 A 因此是连接池：每条回环 TCP 对应一条外层 WSS。文档结论见 `docs/ios/I5.2-spike.md`。回环鉴权、背压、TLS 和关闭语义还没实测，不能据此宣布成立。
 
-**方案 A：本地回环桥（优先尝试）**
+**G4.0（先做）**：只用本地 `relay/`、隔离插件和测试证书。证明鉴权可在转发内层 TLS 之前完成、双层指纹、外层压缩关闭、背压有界、关闭释放和连接预算。不连 `relay.dshlinks.com`。
 
-- 外层：`URLSessionWebSocketTask` 连中继（WSS，外层 TLS 由系统处理，可选外层指纹）。
-- 桥：`NWListener` 在 `127.0.0.1:<随机端口>` 监听；每来一条 TCP 连接，就开一条 DLP/1 流，把字节原样双向搬运。
-- 内层 TLS：**交给 URLSession 自己做**——App 把远程主机当成 `https://127.0.0.1:<端口>`，证书固定逻辑（I3.4）完全复用。
-- 优点：不引入 SwiftNIO；HTTP、SSE、证书固定代码局域网与远程共用一套。
-- 待核实：RFC 0001 是否支持一条 WSS 上多条并发流；不支持时需要连接池或改为方案 B。
+失败条件沿用 spike 文档的四条。任一成立，或找不到可行的回环鉴权：停止 I5.3 / I5.4，把证据交给维护者。不自行引入 SwiftNIO。
 
-**方案 B：SwiftNIO 双层管道**
+**方案 B（仅维护者决定后）**：SwiftNIO 双层管道，自写最小 HTTP 与 SSE，不能复用 URLSession。
 
-- 一条 NIO 管道：外层 TLS（NIOTransportServices）→ WebSocket 帧 → DLP/1 帧 → 内层 TLS（NIOSSL，固定指纹）→ HTTP/1.1 编解码。
-- 需要自己写一个最小 HTTP 客户端与 SSE 解析，不能复用 URLSession。
-
-**Spike 验收**：手机经官方中继连上隔离 host，完成一次 `GET /dsh-link/mobile/bootstrap` 与一次 SSE 订阅 60 秒不断。PR 写明选 A 还是 B 及理由，停下等维护者确认。
+通过 G4.0 之后才做 I5.3 / I5.4，对应收尾 G4.1 / G4.2，仍只连本地中继。真机蜂窝切换留在 G7。
 
 ### I5.3 远程首配与日常连接
 
@@ -848,7 +843,7 @@ RFC 必须写清以下内容：
 | A3.3 / A3.4 | #145 | 模型与提供方设置。接入 settings、agent-presets、llm-models、balance、providers。保存只替换响应返回的 namespace，并带 expectedRevision；`reasoningEffort` 只在用户明确选择时发送。API 密钥只留页面状态，成功或重新加载后清空。余额提醒留在本机，请求按 5 分钟节流。会话模型接口需要 sessionId，设置页用全局 llm-models。squash `7d3b99e9`。真机未测。 |
 | A3.6 / A3.7 / A3.8 / A3.11 | #146 | 多题、目标与历史翻页。提问按插件原始 questions 保序提交，本地 questionsJSON 不进入请求编码。目标编辑、暂停、恢复、清除使用现有 goal 接口和 id/revision；失败不改本地阶段或文字。更早历史用 `beforeSeq`，失败保留消息和游标。iOS 构建、单测、端到端通过。截图比较两次失败但分别落在未改动的轨迹页和新任务页，判定为既有基线抖动；Node 的同头失败是既有 diagnostics 计时波动，另一次同头成功。squash `58059e26`。真机未测。 |
 | A4 | #143 | SSE 退避、公式 CSP 与隐私清单。iOS 仍用 initial × 2^(n−1)，封顶后再乘 0.8–1.2；Android 是 1.5 / 3 / 6 / 15 秒阶梯再乘 0.7–1.3，两边故意保持不同。公式页保留 `style-src 'unsafe-inline'`，因为 KaTeX 与 Mermaid 的运行时样式不能预先 hash，也没有 nonce。PrivacyInfo 只保留已证实的 UserDefaults；`ProcessInfo.systemUptime` 不作为启动时间 API 登记。squash `ee4f68b0`。 |
-| A5 | — | 已写 `apps/ios/docs/device-check.md`。等待维护者用免费 Apple ID 安装 `58059e26`，完成局域网冒烟、10 页玻璃可读性、权限被拒、网络切换、卸载重装和深色 BrandFill 选择。未完成前不进入阶段 5。 |
+| A5 | — | 已写 `apps/ios/docs/device-check.md`。2026-10-06 收尾方案把真机点按改到 G7：不再要求先完成真机才进入阶段 5。自动化模拟器验证可以继续。清单里的提交号 `58059e26` 已过期，G6 再换成最终构建。 |
 | I6.2 | #159 | 本地推送网关。HPKE、内容加密、内存限流和假 APNs HTTP/2 都在 push/ 内测试。gofmt、vet、race 和 10 秒 FuzzPushBody 通过。CI 先按多个包调用 fuzz，已改为逐个目标。squash 81e6f179。不部署，不读取真实 APNs 密钥，也不改插件或 iOS App。 |
 | I5.1 | #157 | DLP/1 帧编解码。控制帧、数据分块、签名和 HMAC 读取同一份 testdata/dlp1/vectors.json。iOS 构建、单测、端到端、截图比较通过。squash 2ee82887。不打开网络，也不改中继。 |
 | I8 | #154 | 离开前台时遮住页面。inactive 与 background 覆盖当前内容；截图测试不经过根页面。第一次截图比较失败在未改动的轨迹页，重跑通过。iOS 构建、单测、端到端通过。squash 846c2288。真机未测。 |
@@ -959,7 +954,8 @@ RFC 必须写清以下内容：
 | 阶段 0 | 确认 I0.1 结论；装好 Xcode、XcodeGen；免费 Apple ID 登录；iPhone 开开发者模式 |
 | 阶段 1 | 审核 4 份文档；在 iPhone 上全屏看 I1.5a 设计稿；定深色 BrandFill 色值 |
 | 阶段 2 | I1.5b：对照模拟器截图，真机抽查玻璃可读性；（可选）把 Mac 注册为 self-hosted runner |
-| 阶段 5 | 确认 DLP/1 spike 选 A 还是 B |
-| 阶段 6 | 审核 RFC 0002 与插件推送 PR；生成网关 HPKE 密钥对 |
+| 收尾 G4.0 之后 | 若本地传输验证失败，决定是否离开方案 A；通过则不必再选 B |
+| 阶段 6 / 收尾 G5 | 合并前安全审查 RFC 0002 与插件推送出口；生成网关 HPKE 密钥对仍在部署时 |
+| 收尾 G7 | 按 `apps/ios/docs/device-check.md` 做真机、线上送达和分发；结果留空，开发过程不催填 |
 | 阶段 9 | 开通开发者账号；建 App ID 与能力；生成 `.p8` 并离线备份；部署网关；建 App Store Connect 记录；提交 TestFlight 与审核 |
 | 全程 | 合并 `ios/main → main`；处理所有“停下等人”的点 |
