@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -134,8 +135,29 @@ func newAPNSSender() (apns.Sender, error) {
 		KeyID:   os.Getenv("APNS_KEY_ID"),
 		TeamID:  os.Getenv("APNS_TEAM_ID"),
 	}
-	host := os.Getenv("APNS_HOST") // empty → api.push.apple.com; set "fake" for tests
-	return apns.NewTokenSender(pk, os.Getenv("APNS_TEAM_ID"), os.Getenv("APNS_BUNDLE_ID"), host), nil
+	host := os.Getenv("APNS_HOST") // empty → api.push.apple.com
+	sender := apns.NewTokenSender(pk, os.Getenv("APNS_TEAM_ID"), os.Getenv("APNS_BUNDLE_ID"), host)
+	if err := configureFakeAPNs(sender, os.Getenv("DLPUSH_FAKE_APNS_URL")); err != nil {
+		return nil, err
+	}
+	return sender, nil
+}
+
+func configureFakeAPNs(sender *apns.TokenSender, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("DLPUSH_FAKE_APNS_URL must be an HTTP or HTTPS URL")
+	}
+	host := parsed.Hostname()
+	if parsed.Scheme == "http" && host != "127.0.0.1" && host != "localhost" && host != "::1" {
+		return fmt.Errorf("plaintext fake APNs must stay on localhost")
+	}
+	sender.Host = parsed.Host
+	sender.SetTestClient(&http.Client{Timeout: 10 * time.Second}, parsed.Scheme)
+	return nil
 }
 
 func envOr(k, d string) string {

@@ -23,3 +23,5 @@
 1. Go 生成固定密钥与 nonce 的正例；插件与 iOS NSE 共用。
 2. 域分离负例：用 `dlpush/1 token|`+deviceId 作 aad 解密必须失败。
 3. 另含 `ts` 过期与 tag 损坏用例（期望失败 / 通用文案路径）。
+
+`test/push-chain.test.mjs` 用这里的内容向量和 `../hpke/` 的 token 向量，在本机跑通插件、网关和假 APNs。它只证明密文被原样转发且日志不含密钥或密文。iOS NSE 仍只有解密失败时的通用文案；没有真实 APNs、真机或网关部署。
