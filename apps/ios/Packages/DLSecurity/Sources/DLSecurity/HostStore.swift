@@ -104,8 +104,10 @@ public actor HostStore {
     /// 同一台电脑的本地记录。两边都有插件 hostId 时只认它；
     /// 否则按证书指纹；指纹无效时才按本地 hostId。指纹格式与 I3.4 一致（64 位十六进制）。
     public func existingHost(certFingerprint: String, hostId: String, pluginHostId: String? = nil) -> PairedHost? {
-        if let pluginHostId = Self.nonempty(pluginHostId) {
-            return hosts.first { Self.nonempty($0.pluginHostId) == pluginHostId }
+        if let pluginHostId = Self.nonempty(pluginHostId),
+            let match = hosts.first(where: { Self.nonempty($0.pluginHostId) == pluginHostId })
+        {
+            return match
         }
         let fingerprint = CertificateFingerprint.normalize(certFingerprint)
         if CertificateFingerprint.isValid(fingerprint),

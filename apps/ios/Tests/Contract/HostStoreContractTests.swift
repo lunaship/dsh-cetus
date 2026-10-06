@@ -75,7 +75,9 @@ struct HostStoreContractTests {
         again.hostId = "local-new-attempt"
         again.name = "换过局域网地址"
         again.primaryUrl = "https://192.168.10.42:18640"
-        again.certFingerprint = "SHA256: " + String(repeating: "A1:B2:C3:D4:", count: 8).dropLast()
+        again.certFingerprint = original.certFingerprint.uppercased().enumerated().map { index, character in
+            index.isMultiple(of: 2) && index > 0 ? ":\(character)" : String(character)
+        }.joined()
 
         try await hostStore.save(host: again, token: "tok-new")
 
@@ -125,10 +127,11 @@ struct HostStoreContractTests {
         let directory = tempDirectory()
         let file = directory.appendingPathComponent("hosts.json")
         let secure = InMemorySecureStore()
-        let failing = FailWritesSecureStore(inner: secure, failAfter: 1)
-        let hostStore = HostStore(fileURL: file, secureStore: failing)
+        let failing = FailWritesSecureStore(inner: secure, failAfter: 0)
+        let hostStore = HostStore(fileURL: file, secureStore: secure)
         let original = sampleHost()
         try await hostStore.save(host: original, token: "tok-old")
+        await hostStore.replaceSecureStore(failing)
 
         var again = original
         again.hostId = "local-failed-attempt"
@@ -297,7 +300,7 @@ struct HostStoreContractTests {
             name: "工作室电脑",
             primaryUrl: primaryUrl,
             tailnetUrl: "https://studio.tail1234.ts.net:18640",
-            certFingerprint: "sha256/" + String(repeating: "a1b2c3d4", count: 8),
+            certFingerprint: String(repeating: "ab", count: 32).lowercased(),
             remote: DeviceRemoteInfo(
                 endpoint: "wss://relay.example/ws",
                 routeId: "cm91dGU",
@@ -342,7 +345,7 @@ struct HostStoreContractTests {
             name: "工作室电脑",
             primaryUrl: "https://192.168.10.17:18640",
             tailnetUrl: "https://studio.tail1234.ts.net:18640",
-            certFingerprint: "sha256/" + String(repeating: "a1b2c3d4", count: 8),
+            certFingerprint: String(repeating: "ab", count: 32).lowercased(),
             remote: DeviceRemoteInfo(
                 endpoint: "wss://relay.example/ws",
                 routeId: "cm91dGU",
