@@ -24,32 +24,26 @@ protocol SettingsAccountServing: Sendable {
     func diagnostics() async throws -> DiagnosticsReport
 }
 
-/// POST /dsh-link/mobile/revoke 只带合同里的 deviceId 或 name，并且只指向本机。
+/// POST /dsh-link/mobile/revoke 只带设备列表确认过的本机 deviceId，不按 name 吊销。
 enum SelfRevokeBody: Equatable, Sendable {
     case device(String)
-    case name(String)
 
     var encoded: RevokeRequestBody {
         switch self {
-        case .device(let id): RevokeRequestBody(deviceId: id, name: nil)
-        case .name(let name): RevokeRequestBody(deviceId: nil, name: name)
+        case .device(let id): RevokeRequestBody(deviceId: id)
         }
     }
 }
 
 struct RevokeRequestBody: Encodable, Equatable, Sendable {
-    var deviceId: String?
-    var name: String?
+    var deviceId: String
 }
 
-/// 优先用设备列表确认过的本机 deviceId。没有时才用配对时记下的手机名。
-/// 不传电脑名、本机别名或其他设备标识。
-func selfRevokeBody(deviceID: String?, pairedPhoneName: String?) -> SelfRevokeBody? {
+/// 只有设备列表给出唯一、非空的本机 deviceId 才能吊销。不使用手机名回退。
+func selfRevokeBody(deviceID: String?) -> SelfRevokeBody? {
     let id = deviceID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    if !id.isEmpty { return .device(id) }
-    let name = pairedPhoneName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    if !name.isEmpty { return .name(name) }
-    return nil
+    guard !id.isEmpty else { return nil }
+    return .device(id)
 }
 
 /// 设备列表里找本机。名字去空白后全等；同名不止一台时不猜。

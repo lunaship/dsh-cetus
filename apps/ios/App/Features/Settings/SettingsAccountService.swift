@@ -41,19 +41,13 @@ struct SettingsAccountService: SettingsAccountServing, Sendable {
     }
 
     func unpair() async -> ComputerUnpairOutcome {
-        let body: SelfRevokeBody?
+        let resolved: SelfRevokeResolution
         do {
-            body = try await resolveSelf()
+            resolved = try await resolveSelf()
         } catch {
             return .kept(.transport)
         }
-        guard let body else { return .kept(.unavailable) }
-        let http: HostClient
-        do {
-            http = try await client()
-        } catch {
-            return .kept(.transport)
-        }
+        guard case .ready(let body, let http) = resolved else { return .kept(.unavailable) }
         do {
             _ = try await http.post(
                 RevokeResponse.self, path: "/dsh-link/mobile/revoke", json: body.encoded)
@@ -73,26 +67,20 @@ struct SettingsAccountService: SettingsAccountServing, Sendable {
         return try await http.get(DiagnosticsReport.self, path: "/dsh-link/mobile/diagnostics")
     }
 
-    private func resolveSelf() async throws -> SelfRevokeBody? {
-        guard let saved = phoneName(),
-            let named = selfRevokeBody(deviceID: nil, pairedPhoneName: saved)
-        else { return nil }
-        let http: HostClient
-        do {
-            http = try await client()
-        } catch {
-            return named
+    private func resolveSelf() async throws -> SelfRevokeResolution {
+        guard let saved = phoneName()?.trimmingCharacters(in: .whitespacesAndNewlines), !saved.isEmpty else {
+            return .unavailable
         }
-        let devices: DevicesResponse
-        do {
-            devices = try await http.get(DevicesResponse.self, path: "/dsh-link/mobile/devices")
-        } catch {
-            return named
-        }
-        guard let id = selfDeviceID(in: devices.devices ?? [], pairedPhoneName: saved) else {
-            return named
-        }
-        return .device(id)
+        let http = try await client()
+        let devices = try await http.get(DevicesResponse.self, path: "/dsh-link/mobile/devices")
+        guard let body = selfRevokeBody(deviceID: selfDeviceID(in: devices.devices ?? [], pairedPhoneName: saved))
+        else { return .unavailable }
+        return .ready(body, http)
+    }
+
+    private enum SelfRevokeResolution {
+        case unavailable
+        case ready(SelfRevokeBody, HostClient)
     }
 
     private func delete(_ success: ComputerUnpairOutcome) async -> ComputerUnpairOutcome {

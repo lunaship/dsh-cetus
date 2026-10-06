@@ -6132,11 +6132,32 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "MetricKit 把上次诊断留在这台手机上。不会上传。" } }
       }
     },
+    "settings.diagnosticsUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Diagnostics are unavailable on this computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这台电脑暂时不能诊断。" } }
+      }
+    },
     "settings.exportCrash" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Export" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导出" } }
+      }
+    },
+    "settings.renameFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t rename this computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有改成这台电脑的名字。" } }
+      }
+    },
+    "settings.unpairFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t unpair. The saved credential was kept." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有解除配对，本机凭证仍保留。" } }
       }
     }
   },

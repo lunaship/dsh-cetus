@@ -100,16 +100,18 @@ struct SettingsDetailPage: View {
                     TextField(copy.text(.renameComputer), text: $computerName)
                     Button(copy.text(.renameComputer)) { Task { await renameComputer(copy) } }
                         .disabled(busy || computerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button(copy.text(.replaceComputer)) {}
+                    Button(copy.text(.unpair), role: .destructive) { Task { await unpair(copy) } }
+                        .disabled(busy || unpaired)
+                    if let notice {
+                        Text(notice)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     Button(copy.text(.renameComputer)) {}
-                }
-                Button(copy.text(.replaceComputer)) {}
-                Button(copy.text(.unpair), role: .destructive) { Task { await unpair(copy) } }
-                    .disabled(busy || account == nil || unpaired)
-                if let notice {
-                    Text(notice)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Button(copy.text(.replaceComputer)) {}
+                    Button(copy.text(.unpair), role: .destructive) {}
                 }
             case .diagnostics:
                 ForEach(displayedChecks, id: \.id) { check in
@@ -175,9 +177,10 @@ struct SettingsDetailPage: View {
                     ShareLink(item: crashExport.text, preview: SharePreview(copy.text(.crash))) {
                         Label(copy.text(.exportCrash), systemImage: "square.and.arrow.up")
                     }
-                } else {
+                } else if crashReport != nil {
                     Button(copy.text(.exportCrash)) { exportCrash(copy) }
-                        .disabled(crashReport == nil)
+                } else {
+                    Button(copy.text(.exportCrash)) {}
                 }
             }
         }
