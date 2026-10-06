@@ -11,7 +11,7 @@ let package = Package(
         .target(name: "DLRemote"),
         .testTarget(
             name: "DLRemoteTests",
-            dependencies: ["DLRemote"]
-        )
+            dependencies: ["DLRemote"],
+        ),
     ]
 )

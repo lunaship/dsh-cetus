@@ -26,18 +26,35 @@ struct DlpVectorTests {
     private struct Outputs: Decodable {
         var hostPub: String
         var routeId: String
-        var T_register: String
-        var sig_register: String
-        var T_accept: String
-        var sig_accept: String
+        var registerTranscript: String
+        var registerSignature: String
+        var acceptTranscript: String
+        var acceptSignature: String
         var deviceRelayKey: String
-        var T_client_device: String
-        var mac_device: String
+        var deviceTranscript: String
+        var deviceMac: String
         var bootstrapId: String
         var bootstrapKey: String
-        var T_client_bootstrap: String
-        var mac_bootstrap: String
+        var bootstrapTranscript: String
+        var bootstrapMac: String
         var b64u: B64
+
+        private enum CodingKeys: String, CodingKey {
+            case hostPub
+            case routeId
+            case registerTranscript = "T_register"
+            case registerSignature = "sig_register"
+            case acceptTranscript = "T_accept"
+            case acceptSignature = "sig_accept"
+            case deviceRelayKey
+            case deviceTranscript = "T_client_device"
+            case deviceMac = "mac_device"
+            case bootstrapId
+            case bootstrapKey
+            case bootstrapTranscript = "T_client_bootstrap"
+            case bootstrapMac = "mac_bootstrap"
+            case b64u
+        }
     }
 
     private struct B64: Decodable {
@@ -53,15 +70,15 @@ struct DlpVectorTests {
         let route = try DlpCrypto.routeId(hostPub: pub)
         #expect(hex(route) == file.outputs.routeId)
         let register = try DlpCrypto.registerTranscript(challenge: hex(file.inputs.ch), hostPub: pub)
-        #expect(hex(register) == file.outputs.T_register)
+        #expect(hex(register) == file.outputs.registerTranscript)
         let registerSig = try DlpCrypto.sign(seed: seed, transcript: register)
-        #expect(hex(registerSig) == file.outputs.sig_register)
+        #expect(hex(registerSig) == file.outputs.registerSignature)
         #expect(DlpCrypto.verify(publicKey: pub, transcript: register, signature: registerSig))
         let accept = try DlpCrypto.acceptTranscript(
             challenge: hex(file.inputs.ch), hostPub: pub, sid: hex(file.inputs.sid))
-        #expect(hex(accept) == file.outputs.T_accept)
+        #expect(hex(accept) == file.outputs.acceptTranscript)
         let acceptSig = try DlpCrypto.sign(seed: seed, transcript: accept)
-        #expect(hex(acceptSig) == file.outputs.sig_accept)
+        #expect(hex(acceptSig) == file.outputs.acceptSignature)
         #expect(DlpCrypto.verify(publicKey: pub, transcript: accept, signature: acceptSig))
     }
 
@@ -74,8 +91,8 @@ struct DlpVectorTests {
         let deviceTranscript = try DlpCrypto.clientTranscript(
             route: route, kind: .device, key: handle, timestamp: file.inputs.ts, nonce: hex(file.inputs.nonce)
         )
-        #expect(hex(deviceTranscript) == file.outputs.T_client_device)
-        #expect(hex(try DlpCrypto.clientMac(key: deviceKey, transcript: deviceTranscript)) == file.outputs.mac_device)
+        #expect(hex(deviceTranscript) == file.outputs.deviceTranscript)
+        #expect(hex(try DlpCrypto.clientMac(key: deviceKey, transcript: deviceTranscript)) == file.outputs.deviceMac)
 
         let bootstrap = try DlpCrypto.bootstrapKeys(seed: hex(file.inputs.bootstrapSeed), route: route)
         #expect(bootstrap.bootstrapId.count == 16)
@@ -89,9 +106,9 @@ struct DlpVectorTests {
             timestamp: file.inputs.ts,
             nonce: hex(file.inputs.nonce)
         )
-        #expect(hex(bootstrapTranscript) == file.outputs.T_client_bootstrap)
+        #expect(hex(bootstrapTranscript) == file.outputs.bootstrapTranscript)
         let bootstrapMac = try DlpCrypto.clientMac(key: bootstrap.bootstrapKey, transcript: bootstrapTranscript)
-        #expect(hex(bootstrapMac) == file.outputs.mac_bootstrap)
+        #expect(hex(bootstrapMac) == file.outputs.bootstrapMac)
     }
 
     @Test func base64URLMatchesSharedVectorsAndRejectsInexactInput() throws {
@@ -135,7 +152,9 @@ struct DlpVectorTests {
 
     private func load() throws -> VectorFile {
         let bundle = Bundle(for: DlpVectorBundleToken.self)
-        let url = bundle.url(forResource: "vectors", withExtension: "json", subdirectory: "dlp1")
+        let nested = bundle.url(
+            forResource: "vectors", withExtension: "json", subdirectory: "dlp1")
+        let url = nested
             ?? bundle.url(forResource: "vectors", withExtension: "json")
         guard let url else { throw DlpCrypto.Failure.invalidLength("vectors") }
         return try JSONDecoder().decode(VectorFile.self, from: Data(contentsOf: url))

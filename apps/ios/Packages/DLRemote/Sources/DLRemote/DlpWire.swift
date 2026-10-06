@@ -116,7 +116,7 @@ public enum DlpWire {
     /// Sanitize a peer error code before logging: length and alphabet only.
     public static func safeCode(_ value: String?) -> String {
         guard let value, (1...32).contains(value.count),
-              value.unicodeScalars.allSatisfy({ ("A"..."Z").contains($0) || $0 == "_" })
+            value.unicodeScalars.allSatisfy({ ("A"..."Z").contains($0) || $0 == "_" })
         else { return "UNKNOWN" }
         return value
     }

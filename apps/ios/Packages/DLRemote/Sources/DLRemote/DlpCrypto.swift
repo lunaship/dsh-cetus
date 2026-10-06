@@ -45,7 +45,8 @@ public enum DlpCrypto {
     public static func base64URLDecode(_ value: String, expectedLength: Int? = nil) throws -> Data {
         let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
         guard !value.isEmpty || expectedLength == 0,
-              value.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            value.unicodeScalars.allSatisfy({ allowed.contains($0) })
+        else {
             throw Failure.invalidBase64URL
         }
         var padded = value.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
@@ -72,7 +73,8 @@ public enum DlpCrypto {
 
     public static func verify(publicKey: Data, transcript: Data, signature: Data) -> Bool {
         guard publicKey.count == 32, signature.count == 64,
-              let key = try? Curve25519.Signing.PublicKey(rawRepresentation: publicKey) else {
+            let key = try? Curve25519.Signing.PublicKey(rawRepresentation: publicKey)
+        else {
             return false
         }
         return key.isValidSignature(signature, for: transcript)

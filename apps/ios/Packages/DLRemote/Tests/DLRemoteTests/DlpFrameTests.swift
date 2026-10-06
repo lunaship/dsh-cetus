@@ -27,13 +27,13 @@ struct DlpFrameTests {
             s([91, 93]),
             s([110, 117, 108, 108]),
             s([49]),
-            s([34,116,101,120,116,34]),
-            s([123,34,116,34,58,34,97,34,44,34,116,34,58,34,98,34,125]),
-            s([123,34,120,34,58,123,34,97,34,58,49,44,34,97,34,58,50,125,125]),
-            s([123,34,111,107,34,58,116,114,117,101,125,32,123]),
-            s([123,34,98,97,100,34,58,48,49,125]),
-            s([123,34,111,112,101,110,34,58,125]),
-            s([123,34,117,34,58,34,92,117,68,56,48,48,34,125]),
+            s([34, 116, 101, 120, 116, 34]),
+            s([123, 34, 116, 34, 58, 34, 97, 34, 44, 34, 116, 34, 58, 34, 98, 34, 125]),
+            s([123, 34, 120, 34, 58, 123, 34, 97, 34, 58, 49, 44, 34, 97, 34, 58, 50, 125, 125]),
+            s([123, 34, 111, 107, 34, 58, 116, 114, 117, 101, 125, 32, 123]),
+            s([123, 34, 98, 97, 100, 34, 58, 48, 49, 125]),
+            s([123, 34, 111, 112, 101, 110, 34, 58, 125]),
+            s([123, 34, 117, 34, 58, 34, 92, 117, 68, 56, 48, 48, 34, 125]),
         ]
         for text in rejected {
             #expect(DlpWire.parseControlFrame(text) == nil)
@@ -45,7 +45,7 @@ struct DlpFrameTests {
         badUTF8.append(0xff)
         badUTF8.append(contentsOf: [0x22, 0x7d])
         #expect(DlpWire.parseControlFrame(badUTF8) == nil)
-        let truncated = Data((s([123,34,116,34,58,34,112,105,110,103])).utf8)
+        let truncated = Data((s([123, 34, 116, 34, 58, 34, 112, 105, 110, 103])).utf8)
         #expect(DlpWire.parseControlFrame(truncated) == nil)
     }
 
@@ -55,7 +55,7 @@ struct DlpFrameTests {
             97, 34, 58, 116, 114, 117, 101, 125, 93, 125,
         ])
         let parsed = DlpWire.parseControlFrame(raw)
-        #expect(parsed?[s([97])]?.string == s([123,34,97,34,58,49,125]))
+        #expect(parsed?[s([97])]?.string == s([123, 34, 97, 34, 58, 49, 125]))
         #expect(parsed?[s([98])] != nil)
     }
 
@@ -98,7 +98,7 @@ struct DlpFrameTests {
             _ = DlpWire.isValidDataMessage(bytes)
             _ = DlpWire.safeCode(String(data: bytes, encoding: .utf8))
         }
-        let duplicate = Data((s([123,34,107,34,58,49,44,34,107,34,58,50,125])).utf8)
+        let duplicate = Data((s([123, 34, 107, 34, 58, 49, 44, 34, 107, 34, 58, 50, 125])).utf8)
         #expect(DlpWire.parseControlFrame(duplicate) == nil)
         #expect(!DlpCrypto.safeEqual(Data([1, 2, 3]), Data([1, 2, 4])))
         #expect(DlpCrypto.safeEqual(Data([1, 2, 3]), Data([1, 2, 3])))
