@@ -1,3 +1,4 @@
+import DLCore
 import DLNet
 import DLSecurity
 import SwiftUI
@@ -6,9 +7,20 @@ import UIKit
 @MainActor
 struct RootView: View {
     let pairing: PairingFlowModel
+    var screenshots = false
     @State private var selectedHostId: String?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        content
+            .overlay {
+                if PrivacyCover.covers(visibility, screenshots: screenshots) {
+                    Rectangle().fill(.background).ignoresSafeArea()
+                }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
         if let selectedHostId {
             InboxFlowView(
                 hostID: selectedHostId,
@@ -18,6 +30,14 @@ struct RootView: View {
             .id(selectedHostId)
         } else {
             PairingFlowView(model: pairing, onPaired: { selectedHostId = $0 })
+        }
+    }
+
+    private var visibility: AppVisibility {
+        switch scenePhase {
+        case .active: .active
+        case .background: .background
+        default: .inactive
         }
     }
 }
