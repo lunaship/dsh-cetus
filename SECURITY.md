@@ -55,6 +55,14 @@ This repository cannot enforce those steps. A pairing code sent over an unpinned
 
 On the host, enable「配对需本机确认」so an unexpected device still needs a click on this computer.
 
+## iOS formula renderer
+
+The formula and Mermaid page (`apps/ios/App/Resources/Math/shell.html`) keeps `style-src deeplinks-asset: 'unsafe-inline'`. A hash or nonce cannot replace it.
+
+KaTeX 0.18.4 writes presentation styles while laying out each formula. `katex.min.js` assigns element `style` properties (height, width, margins, borders, and error color) from the formula metrics, and its MathML path calls `setAttribute("style", ...)` with values such as a computed border width. Those strings change with the formula, so they are not known when the bundled page is built. A CSP hash only matches a complete `<style>` element present in the page source; it does not authorize later style attributes. A nonce would have to be attached to every style node KaTeX creates, which the bundled library does not do.
+
+The rest of the page stays closed: `default-src 'none'`, scripts only from the app-defined `deeplinks-asset:` scheme, no network, images, frames, objects, or forms. The web view is non-persistent, navigation leaves that scheme only when cancelled, and KaTeX is called with `trust: false`. The inline-style exception is limited to layout generated inside that locked page.
+
 ## Source and APK trust
 
 - The public repository opens the `dsh-links` plugin, the DLP/1 relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The plugin is distributed from this repository (installed as a git source); installing it pulls only the plugin's declared package files, not `relay/` or `apps/android/`.

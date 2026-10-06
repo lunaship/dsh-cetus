@@ -41,6 +41,7 @@ iOS 追加：
 - 中继错误码只提示，不据此删凭据
 - NSE / Share 扩展不联网、不读设备 token
 - WKWebView 渲染不可信内容：非持久存储、禁文件、CSP 只放行随包资源；预览页只放行本机回环代理
+- 公式 / Mermaid 的 `shell.html` 保留 `style-src 'unsafe-inline'`。KaTeX 按渲染结果写运行时 `style` 属性（例如错误色、括号阴影、`\fcolorbox` 边框），Mermaid 也会创建 `style` 元素并调用 `insertRule`。这些样式依赖公式或图的内容，不能事先算出 hash；页面没有服务端 nonce。改掉会让公式和图丢掉布局。其余源仍只放行 `deeplinks-asset:`，不联网
 - 网络图片默认不自动加载
 - 不引入第三方统计 / 崩溃 SDK；崩溃只用 MetricKit，本机查看、用户导出
 - **不复制** lody-ios 或其他 AGPL / GPL 源码；新依赖在 PR 写明许可证

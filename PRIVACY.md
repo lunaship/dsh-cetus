@@ -39,6 +39,14 @@ Token 与 HostStore 被排除在云备份和设备迁移之外（`allowBackup=fa
 | 网络 | 连接本机 DSH 插件。 |
 | 图片 | 通过系统文档选择器授权单个内容 URI 发送图片，不申请全局存储权限。 |
 
+## iOS 隐私清单
+
+`apps/ios/App/PrivacyInfo.xcprivacy` 只登记生产代码里能指认的“需说明理由的 API”：
+
+- `UserDefaults`（`CA92.1`）：本机保存“局域网说明页已经展示过”（`LocalNetworkPermissionGate`）和收件箱偏好（`InboxModel`）。不跨 App 读取，也不放设备标识。
+
+没有新增类别。`RouteSelector` 用 `ProcessInfo.processInfo.systemUptime` 计算直连缓存的 30 秒剩余时间，但 Apple 的启动时间清单只覆盖 `mach_absolute_time` 和读取启动时间的 `sysctl`，不覆盖这个 API，所以不登记。生产代码也没有读取文件创建/修改时间、可用磁盘容量或 `activeInputModes`。`UIPasteboard` 只在用户复制消息或代码时写入，不属于这几类 API。
+
 ## 删除数据
 
 - 清除 App 数据或卸载 App 会删除手机本地主机列表、Token 和设置。
