@@ -20,7 +20,7 @@ let package = Package(
         .testTarget(
             name: "DLSecurityTests",
             dependencies: ["DLSecurity"],
-            path: "Tests"
-        )
+            path: "Tests",
+        ),
     ]
 )
