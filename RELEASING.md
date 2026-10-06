@@ -23,6 +23,16 @@ GitHub `lunaship/dsh-links` = **插件源码、DLP/1 中继源码（`relay/`）�
 - [ ] 校验和与 `shasum -a 256` 输出一致。
 - [ ] 更新 `docs/COMPATIBILITY.md` 记录新组合。
 
+## iOS 发版核对
+
+版本号沿用 `apps/ios/project.yml` 的 `MARKETING_VERSION` 与 `CURRENT_PROJECT_VERSION`。本节只是核对清单；付费签名、TestFlight 上传和 App Store 提交仍由维护者执行。
+
+- [ ] `ios/main` 的 iOS 构建、单测、截图比较、端到端都通过。截图基线只由专用重录工作流生成。
+- [ ] 用付费 Apple Developer 团队做正式签名；免费开发签名不能代替 TestFlight 或 App Store 包。
+- [ ] 真机核对局域网冷启动、前后台切换、网络切换、远程首配、审批、提问、推送、Live Activity 和吊销。
+- [ ] 创建 tag `ios-v<version>`，上传 TestFlight，说明附版本号、最低 iOS 版本、bundle id 和已知限制。
+- [ ] App Store 描述可以写兼容 DeepSeek Harness，但标题和图标不使用对方商标。
+
 ## 对外口径
 
 - **Beta / Android only / Trusted LAN / 远程连接（DLP/1）实验性、默认关闭**；DSH 基线见 `docs/COMPATIBILITY.md`。
