@@ -40,7 +40,7 @@ struct SharePickerSheet: View {
         HStack(alignment: .top, spacing: 12) {
             if record.kind == .image {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(DLColor.secondaryFill)
+                    .fill(DLColor.fill)
                     .frame(width: 52, height: 52)
                     .accessibilityLabel(copy.text(.imageNote))
             }
