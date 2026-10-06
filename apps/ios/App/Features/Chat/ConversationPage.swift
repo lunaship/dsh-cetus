@@ -213,6 +213,9 @@ struct ConversationPage: View {
         column(copy)
             .modifier(
                 ComposerInset(on: composerOn) {
+                    if showsStatusSlot {
+                        ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
+                    }
                     if activeQuestion != nil, !staticSnapshot {
                         questionChoices(copy)
                         questionNavigator(copy)
@@ -259,10 +262,7 @@ struct ConversationPage: View {
 
     private func column(_ copy: ConversationCopy) -> some View {
         VStack(spacing: 0) {
-            if showsStatusSlot {
-                ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
-            }
-            if model.loadFailed && (!showsStatusSlot || model.status.kind != .disconnected) {
+            if model.loadFailed && model.status.kind != .disconnected {
                 DLBanner(copy.text(.loadFailed), systemImage: "wifi.exclamationmark", iconIsError: true)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)

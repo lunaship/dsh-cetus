@@ -34,6 +34,9 @@ public struct DLStatusSlot: View {
     public var body: some View {
         if systemImage != nil {
             VStack(alignment: .leading, spacing: 0) {
+                if isExpanded, let expandedContent {
+                    expandedContent.padding(12)
+                }
                 if let onToggle {
                     Button(action: onToggle) { summary }
                         .buttonStyle(.plain)
@@ -41,11 +44,10 @@ public struct DLStatusSlot: View {
                 } else {
                     summary
                 }
-                if isExpanded, let expandedContent {
-                    expandedContent.padding(12)
-                }
             }
-            .background(DLColor.groupedBackground)
+            .background(DLColor.groupedBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
         } else {
             summary.background(DLColor.groupedBackground)
         }
