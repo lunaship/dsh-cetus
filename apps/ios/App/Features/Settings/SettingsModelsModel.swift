@@ -64,7 +64,7 @@ final class SettingsModelsModel {
     func saveReasoningEffort(_ effort: String) async {
         let trimmed = effort.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let provider = state.defaults.modelProvider, let model = state.defaults.model,
-            catalogContains(provider: provider, model: model)
+            effortChoices(provider: provider, model: model).contains(trimmed)
         else {
             state.error = .rejected("unknown-model")
             return
@@ -191,9 +191,15 @@ final class SettingsModelsModel {
     }
 
     private func catalogContains(provider: String, model: String) -> Bool {
-        state.modelGroups.contains { group in
-            group.provider == provider && (group.models ?? []).contains { $0.id == model }
-        }
+        modelOption(provider: provider, model: model) != nil
+    }
+
+    private func effortChoices(provider: String, model: String) -> [String] {
+        modelOption(provider: provider, model: model)?.reasoningEfforts ?? []
+    }
+
+    private func modelOption(provider: String, model: String) -> SessionModelOption? {
+        state.modelGroups.first { $0.provider == provider }?.models?.first { $0.id == model }
     }
 
     private func save(_ ns: String, _ patch: [String: String]) async {

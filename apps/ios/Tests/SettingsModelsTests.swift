@@ -92,6 +92,8 @@ import Testing
         await model.saveDefaultModel(provider: "openai", model: "gpt")
         #expect(await script.updates == [Update("agent-default-model", ["provider": "openai", "model": "gpt"], nil)])
         #expect(model.state.defaults.reasoningEffort == nil)
+        await model.saveReasoningEffort("missing")
+        #expect(model.state.error == .rejected("unknown-model"))
         await model.saveReasoningEffort("high")
         #expect(
             await script.updates
@@ -126,6 +128,10 @@ import Testing
         #expect(await script.credentials == [("openai", "sk-new")])
         #expect(model.state.apiKey == "")
         #expect(model.displayedKey == "")
+        model.state.apiKey = "OPENAI_API_KEY=sk-new"
+        await model.replaceCredential(provider: "openai")
+        #expect(model.state.error == .invalidKey)
+        #expect(await script.credentials == [("openai", "sk-new")])
     }
 
     @Test func addRejectsProvidersOutsideTheCatalog() async {
@@ -308,7 +314,7 @@ private func namespace(_ ns: String, _ values: [String: String], revision: Int) 
 private func group(_ provider: String, _ id: String) -> SessionModelGroup {
     SessionModelGroup(
         provider: provider, providerName: provider,
-        models: [SessionModelOption(id: id, defaultEffort: "high")])
+        models: [SessionModelOption(id: id, reasoningEfforts: ["high"], defaultEffort: "high")])
 }
 
 private func directory(writable: Bool) -> ProvidersResponse {

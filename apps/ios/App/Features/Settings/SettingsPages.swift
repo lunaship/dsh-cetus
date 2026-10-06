@@ -98,6 +98,7 @@ struct SettingsDetailPage: View {
     @State private var presetID: String?
     @State private var modelID = ""
     @State private var effortID: String?
+    @State private var apiKey = ""
     @Environment(\.locale) private var locale
 
     var body: some View {
