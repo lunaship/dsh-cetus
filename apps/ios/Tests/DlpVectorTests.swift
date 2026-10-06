@@ -157,8 +157,8 @@ struct DlpVectorTests {
             withExtension: "json",
             subdirectory: "dlp1"
         )
-        let url = nested
-            ?? bundle.url(forResource: "vectors", withExtension: "json")
+        let flat = bundle.url(forResource: "vectors", withExtension: "json")
+        let url = nested ?? flat
         guard let url else { throw DlpCrypto.Failure.invalidLength("vectors") }
         return try JSONDecoder().decode(VectorFile.self, from: Data(contentsOf: url))
     }
