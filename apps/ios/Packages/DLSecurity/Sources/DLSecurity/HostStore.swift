@@ -75,7 +75,7 @@ public actor HostStore {
     private var hosts: [PairedHost]
 
     /// 只给合同测试替换后续写入使用的存储。已加载的主机和正式凭据保持不动。
-    func replaceSecureStore(_ secureStore: SecureStore) {
+    public func replaceSecureStore(_ secureStore: SecureStore) {
         self.secureStore = secureStore
     }
 
