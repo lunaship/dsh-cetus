@@ -72,7 +72,10 @@ struct ConversationPage: View {
     @State private var confirmFull = false
     @State private var showCamera = false
     @State private var showPhotos = false
+    @State private var showDocuments = false
     @State private var photo: PhotosPickerItem?
+    @State private var attachments: [PromptImage] = []
+    @State private var attachmentNotice: ChatText?
     @State private var selectedText = ""
     @State private var permission = PermissionPreset.workspaceWrite
     @State private var modelRowsLive: [ModelRow] = []
@@ -166,6 +169,20 @@ struct ConversationPage: View {
                 }
                 .photosPicker(isPresented: $showPhotos, selection: $photo, matching: .images)
                 .sheet(isPresented: $showCamera) { CameraCapture() }
+                .sheet(isPresented: $showDocuments) {
+                    DocumentFilePicker { urls in
+                        acceptFiles(urls)
+                    }
+                }
+                .alert(
+                    copy.text(attachmentNotice ?? .attachUnsupported),
+                    isPresented: Binding(
+                        get: { attachmentNotice != nil },
+                        set: { if !$0 { attachmentNotice = nil } }
+                    )
+                ) {
+                    Button(copy.text(.cancel), role: .cancel) { attachmentNotice = nil }
+                }
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
                 .onChange(of: sheet) { _, item in
@@ -282,6 +299,10 @@ struct ConversationPage: View {
             showPhotos = false
             return .handled
         }
+        if showDocuments {
+            showDocuments = false
+            return .handled
+        }
         if showChanges {
             showChanges = false
             return .handled
@@ -324,14 +345,16 @@ struct ConversationPage: View {
     private func send(_ copy: ConversationCopy) async {
         _ = copy
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !staticSnapshot else { return }
+        let images = attachments
+        guard !text.isEmpty || !images.isEmpty, !staticSnapshot else { return }
         if isDangerPermissionCommand(text) {
             confirmFull = true
             return
         }
         do {
-            try await model.serviceSend(text)
+            try await model.serviceSend(text, images: images)
             draft = ""
+            attachments = []
             if let draftDirectory {
                 ComposerDraftStore(directory: draftDirectory).save(hostID: model.hostID, text: "")
             }
@@ -386,6 +409,10 @@ struct ConversationPage: View {
                 onPhotos: {
                     sheet = nil
                     showPhotos = true
+                },
+                onFiles: {
+                    sheet = nil
+                    showDocuments = true
                 })
         case .usage:
             UsageSheet(
@@ -419,6 +446,17 @@ struct ConversationPage: View {
         default:
             break
         }
+    }
+
+    private func acceptFiles(_ urls: [URL]) {
+        let files = urls.map { url -> Result<PickedPromptFile, PromptFileReadFailure> in
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            return readPromptFile(at: url)
+        }
+        let accepted = acceptPromptFiles(files, existing: attachments)
+        attachments = accepted.images
+        attachmentNotice = accepted.rejection.map(attachmentNoticeKey)
     }
 
     private func pickSlash(_ trigger: String, copy: ConversationCopy) {
@@ -557,4 +595,13 @@ private struct ComposerInset<Bar: View>: ViewModifier {
         deleted: session?.lastResult?.deleted,
         stoppedReason: session?.stoppedReason,
         awaitingInput: session?.awaitingInput == true)
+}
+
+private func attachmentNoticeKey(_ rejection: PromptAttachmentRejection) -> ChatText {
+    switch rejection {
+    case .unsupported: .attachUnsupported
+    case .tooLarge: .attachTooLarge
+    case .limit: .attachLimit
+    case .unreadable: .attachUnreadable
+    }
 }

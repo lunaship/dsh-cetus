@@ -90,6 +90,36 @@ import Testing
         #expect(!model.approvalsSubmittable)
     }
 
+    @Test func fileSourceSendsImageAndRejectsOtherFiles() async throws {
+        #expect(!promptImageCroppingAvailable)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let service = RecordingPromptService()
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session",
+            service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+        let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00])
+        let image = try #require(
+            promptImage(from: classifyPromptAttachment(bytes: png, declaredMediaType: "image/png", existingCount: 0)))
+        try await model.serviceSend("", images: [image])
+        let sent = await service.sent
+        #expect(sent.count == 1)
+        #expect(sent[0].text.isEmpty)
+        #expect(sent[0].images == [image])
+
+        let text = Data("notes".utf8)
+        #expect(
+            classifyPromptAttachment(bytes: text, declaredMediaType: "text/plain", existingCount: 0)
+                == .rejected(.unsupported))
+        let encoded = try JSONDecoder().decode(
+            ProbePrompt.self, from: encodePromptRequest(text: "hello", mode: "queue", images: []))
+        #expect(encoded.images == nil)
+        #expect(await service.sent.count == 1)
+    }
+
     @Test func subtitleAndActivity() {
         let zh = ConversationCopy(locale: Locale(identifier: "zh-Hans"))
         let en = ConversationCopy(locale: Locale(identifier: "en"))
@@ -102,6 +132,26 @@ import Testing
 }
 
 private struct IdleConversationService: ConversationServing {}
+
+private actor RecordingPromptService: ConversationServing {
+    private(set) var sent: [(text: String, images: [PromptImage])] = []
+
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
+        _ = sessionID
+        sent.append((text, images))
+    }
+}
+
+private struct ProbePrompt: Decodable {
+    var text: String
+    var mode: String
+    var images: [PromptImage]?
+}
+
+private func promptImage(from decision: PromptAttachmentDecision) -> PromptImage? {
+    if case .image(let image) = decision { return image }
+    return nil
+}
 
 private actor FailingHistory: ConversationServing {
     func history(sessionID: String) async throws -> HistoryResponse {

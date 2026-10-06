@@ -32,7 +32,7 @@ protocol ConversationServing: Sendable {
     func resume(after seq: Int) async
     func setPhase(_ phase: AppPhase) async
     func stop() async
-    func sendPrompt(sessionID: String, text: String) async throws
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws
     func submitQuestion(sessionID: String, rpcID: String, answer: String) async throws
     func models(sessionID: String) async throws -> SessionModelsResponse
@@ -64,8 +64,8 @@ extension ConversationServing {
     func resume(after seq: Int) async { _ = seq }
     func setPhase(_ phase: AppPhase) async { _ = phase }
     func stop() async {}
-    func sendPrompt(sessionID: String, text: String) async throws {
-        _ = (sessionID, text)
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
+        _ = (sessionID, text, images)
         throw ConversationServiceError.offline
     }
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws {
@@ -477,8 +477,8 @@ final class ConversationModel {
         }
     }
 
-    func serviceSend(_ text: String) async throws {
-        try await service.sendPrompt(sessionID: sessionID, text: text)
+    func serviceSend(_ text: String, images: [PromptImage] = []) async throws {
+        try await service.sendPrompt(sessionID: sessionID, text: text, images: images)
     }
 
     func serviceApproval(id: String, outcome: String) async throws {
