@@ -63,7 +63,7 @@ import Testing
         #expect(form.index == 0)
         _ = form.move(.next)
         #expect(form.move(.skip) == nil)
-        #expect(form.answerBody?.answers.map(.id) == ["tone", "note"])
+        #expect(form.answerBody?.answers.map { $0.id } == ["tone", "note"])
         #expect(form.answerBody?.answers[1].selected.isEmpty == true)
         let submitted = form.move(.submit)
         #expect(submitted?.answers.count == 2)
@@ -124,7 +124,7 @@ import Testing
         #expect(calls.contains(.edit("goal", 3, "改目标", 4)))
         #expect(calls.contains(.clear("goal", 3)))
         #expect(calls.contains(.history(12)))
-        #expect(model.messages.map(.id) == ["old", "overlap", "new"])
+        #expect(model.messages.map { $0.id } == ["old", "overlap", "new"])
         #expect(model.messages.first { $0.id == "overlap" }?.text == "旧副本")
         #expect(!model.hasOlder)
     }
@@ -140,7 +140,7 @@ import Testing
             messages: [HistoryMessage(id: "new", role: "user", kind: .user, text: "现在")], hasOlder: true,
             beforeSeq: 12)
         await model.loadOlder()
-        #expect(model.messages.map(.id) == ["new"])
+        #expect(model.messages.map { $0.id } == ["new"])
         #expect(model.testOlderBeforeSeq == 12)
         #expect(model.olderFailed)
     }
