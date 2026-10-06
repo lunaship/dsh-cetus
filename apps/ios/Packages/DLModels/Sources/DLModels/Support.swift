@@ -94,12 +94,12 @@ public struct RawJSONCapture: Sendable {
         var value = try JSONValueParser(data).parseValue(requireComplete: true)
         for key in path {
             if let index = key.intValue {
-                guard case .array(let items) = value, items.indices.contains(index) else {
+                guard case .array(let items, _) = value, items.indices.contains(index) else {
                     throw RawJSONError.missing
                 }
                 value = items[index]
             } else {
-                guard case .object(let fields) = value, let next = fields[key.stringValue] else {
+                guard case .object(let fields, _) = value, let next = fields[key.stringValue] else {
                     throw RawJSONError.missing
                 }
                 value = next
