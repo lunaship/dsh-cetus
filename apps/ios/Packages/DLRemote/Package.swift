@@ -3,11 +3,15 @@ import PackageDescription
 
 let package = Package(
     name: "DLRemote",
-    platforms: [.iOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v14)],
     products: [
         .library(name: "DLRemote", targets: ["DLRemote"])
     ],
     targets: [
-        .target(name: "DLRemote")
+        .target(name: "DLRemote"),
+        .testTarget(
+            name: "DLRemoteTests",
+            dependencies: ["DLRemote"],
+        ),
     ]
 )
