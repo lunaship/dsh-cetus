@@ -81,7 +81,18 @@ public struct NWRemoteTunnelTransport: RemoteTunnelTransport {
     /// 装一个「只认这个叶证书指纹」的 verify block。
     ///
     /// 这完全替换系统校验：不匹配就 `complete(false)`，握手失败，不会回退到 CA。
-    static func installPin(_ options: NWProtocolTLS.Options, expected: String) {
+    ///
+    /// - Parameter onReject: 指纹不符时同步回调一次。
+    ///   **这是必要的**：实测（macOS 探针）`complete(false)` 之后
+    ///   `NWConnection` **不会**进入 `.failed`，也不发任何 state 回调，
+    ///   连接就那样挂着直到调用方超时。若只依赖 `.failed` 判定，
+    ///   「指纹不符」会被伪装成「握手超时」——语义完全错误（前者是硬停止，
+    ///   后者可能被上层当成可重试）。所以拒绝必须在这里显式记下来。
+    static func installPin(
+        _ options: NWProtocolTLS.Options,
+        expected: String,
+        onReject: (@Sendable () -> Void)? = nil
+    ) {
         sec_protocol_options_set_verify_block(
             options.securityProtocolOptions,
             { _, secTrust, complete in
@@ -90,12 +101,16 @@ public struct NWRemoteTunnelTransport: RemoteTunnelTransport {
                     let leaf = chain.first,
                     let leafDER = SecCertificateCopyData(leaf) as Data?
                 else {
+                    onReject?()
                     complete(false)
                     return
                 }
                 switch PinEvaluation.evaluate(leafDER: leafDER, expected: expected) {
-                case .match: complete(true)
-                case .mismatch, .missingPin: complete(false)
+                case .match:
+                    complete(true)
+                case .mismatch, .missingPin:
+                    onReject?()
+                    complete(false)
                 }
             },
             DispatchQueue(label: "dev.deeplinks.remote.verify")
