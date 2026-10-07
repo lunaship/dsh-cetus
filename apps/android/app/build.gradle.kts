@@ -1,4 +1,6 @@
 import java.io.File
+import java.time.LocalDate
+import java.time.ZoneOffset
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -50,6 +52,38 @@ val releaseSigningReady = releaseSigningPresent == 4
 val allowUnsignedRelease =
     providers.gradleProperty("allowUnsignedRelease").orNull == "true"
 
+// ---------- 内部构建元数据（方案 §4 C00） ----------
+// 手机同步合同版本，与 docs/MOBILE_SYNC_CONTRACT.md / scripts/build-metadata.mjs 保持一致。
+val DSH_CONTRACT_VERSION = 1
+
+/**
+ * 短提交 SHA；工作树脏时带 `-dirty`。任何一步失败都回退 `unknown`，
+ * 不让 CI 或离线构建因为元数据采集不到而失败。
+ */
+fun dshBuildCommit(project: org.gradle.api.Project): String {
+    val sha =
+        try {
+            project.providers.exec {
+                commandLine("git", "rev-parse", "--short=8", "HEAD")
+            }.standardOutput.asText.get().trim()
+        } catch (_: Exception) {
+            ""
+        }
+    if (sha.isEmpty()) return "unknown"
+    val dirty =
+        try {
+            project.providers.exec {
+                commandLine("git", "status", "--porcelain")
+            }.standardOutput.asText.get().trim().isNotEmpty()
+        } catch (_: Exception) {
+            false
+        }
+    return if (dirty) "$sha-dirty" else sha
+}
+
+/** 构建日期（UTC，yyyy-MM-dd）。 */
+fun dshBuildDate(): String = LocalDate.now(ZoneOffset.UTC).toString()
+
 android {
     namespace = "dev.deeplinks"
     compileSdk = 37
@@ -58,9 +92,15 @@ android {
         applicationId = "dev.deeplinks"
         minSdk = 26
         targetSdk = 36
+        // 营销版本与版本号保持原样，由维护者按发布阶段处理（方案 §4）。
         versionCode = 39
         versionName = "0.5.0-beta.31"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 内部构建元数据（方案 §4 C00）：让一张截图能对应到具体提交。
+        // 值来自 git 与 Gradle 变体，不写死；缺 git 时回退 unknown。
+        buildConfigField("String", "BUILD_COMMIT", "\"${dshBuildCommit(project)}\"")
+        buildConfigField("String", "BUILD_DATE", "\"${dshBuildDate()}\"")
+        buildConfigField("String", "BUILD_CONTRACT_VERSION", "\"$DSH_CONTRACT_VERSION\"")
     }
 
     signingConfigs {

@@ -103,7 +103,7 @@ fun completionNoticeText(
         notice.kind == CompletionNoticeKind.Stopped -> labels.taskStopped
         else -> labels.taskDone
     }
-    val title = pattern.format(sessionTitle.ifBlank { "DeepLinks" })
+    val title = pattern.format(sessionTitle.ifBlank { "cetus" })
     val publicText = if (duration != null) {
         labels.publicWithDuration.format(status, duration)
     } else {

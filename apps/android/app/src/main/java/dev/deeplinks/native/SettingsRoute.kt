@@ -762,7 +762,7 @@ internal fun NotificationSettings() {
                 onClick = {
                     openReleasePage(
                         notifyContext,
-                        "https://github.com/lunaship/dsh-links/blob/main/docs/android-background.md",
+                        "https://github.com/lunaship/dsh-cetus/blob/main/docs/android-background.md",
                     )
                 },
             )
@@ -802,8 +802,19 @@ internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Uni
     }
     DshListSection(footer = s.unofficialNotice) {
         DshListRow(
-            title = "DeepLinks",
+            title = "cetus",
             subtitle = s.aboutVersion.replace("%s", BuildConfig.VERSION_NAME),
+            icon = InfoOutline16,
+        )
+        // 内部构建元数据（方案 §4 C00）：只在这里显示，不进日常首页。
+        DshListRow(
+            title = s.buildCommit,
+            subtitle = "${BuildConfig.BUILD_COMMIT} · ${BuildConfig.BUILD_DATE}",
+            icon = InfoOutline16,
+        )
+        DshListRow(
+            title = s.buildContractVersion,
+            subtitle = BuildConfig.BUILD_CONTRACT_VERSION,
             icon = InfoOutline16,
         )
         DshSwitchRow(

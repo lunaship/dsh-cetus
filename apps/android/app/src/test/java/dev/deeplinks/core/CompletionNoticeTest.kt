@@ -18,8 +18,8 @@ class CompletionNoticeTest {
         statusFailed = "失败",
         statusStopped = "已停止",
         bodyWithDuration = "%1\$s · 耗时 %2\$s",
-        publicWithDuration = "DeepLinks · %1\$s · %2\$s",
-        publicStatus = "DeepLinks · %s",
+        publicWithDuration = "cetus · %1\$s · %2\$s",
+        publicStatus = "cetus · %s",
         duration = { "${it / 60_000}m" },
     )
 
@@ -36,7 +36,7 @@ class CompletionNoticeTest {
         val text = completionNoticeText("日报", notice, labels)
         assertEquals("定时任务「日报」已完成", text.title)
         assertEquals("已完成 · 耗时 0m", text.body)
-        assertEquals("DeepLinks · 已完成 · 0m", text.publicText)
+        assertEquals("cetus · 已完成 · 0m", text.publicText)
         assertNull(text.expanded)
     }
 
@@ -46,7 +46,7 @@ class CompletionNoticeTest {
         assertEquals(CompletionNoticeKind.Failed, failed.kind)
         assertNull(failed.durationMs)
         assertEquals("定时任务「日报」失败", completionNoticeText("日报", failed, labels).title)
-        assertEquals("DeepLinks · 失败", completionNoticeText("日报", failed, labels).publicText)
+        assertEquals("cetus · 失败", completionNoticeText("日报", failed, labels).publicText)
 
         val stopped = decide(origin = "schedule", state = "stopped", durationMs = 120_000)
         assertEquals(CompletionNoticeKind.Stopped, stopped.kind)

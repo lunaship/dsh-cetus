@@ -598,6 +598,10 @@ class DshStrings(private val values: Map<String, String>) {
     val paletteSelectModel: String get() = t("paletteSelectModel")
     val unofficialNotice: String get() = t("unofficialNotice")
     val aboutVersion: String get() = t("aboutVersion")
+
+    /** 内部构建元数据（方案 §4 C00），只在关于页显示。 */
+    val buildCommit: String get() = t("buildCommit")
+    val buildContractVersion: String get() = t("buildContractVersion")
     val openSourceLicense: String get() = t("openSourceLicense")
     val thirdPartyNotices: String get() = t("thirdPartyNotices")
     val legalLoadFailed: String get() = t("legalLoadFailed")

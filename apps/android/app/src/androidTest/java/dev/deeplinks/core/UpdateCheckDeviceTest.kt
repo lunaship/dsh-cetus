@@ -41,7 +41,7 @@ class UpdateCheckDeviceTest {
             )
             val recorded = checkNotNull(server.takeRequest(5, TimeUnit.SECONDS))
             assertEquals("application/vnd.github+json", recorded.headers["Accept"])
-            assertTrue(recorded.headers["User-Agent"].orEmpty().startsWith("DeepLinks-Android/0.5.0-beta.23"))
+            assertTrue(recorded.headers["User-Agent"].orEmpty().startsWith("cetus-Android/0.5.0-beta.23"))
             assertEquals(null, recorded.headers["Authorization"])
             assertEquals("app-v0.5.0-beta.98", UpdateCheckPrefs.cachedNewer(context)?.tagName)
         } finally {

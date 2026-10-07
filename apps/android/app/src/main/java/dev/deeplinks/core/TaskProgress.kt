@@ -51,7 +51,7 @@ internal data class TaskProgressState(
     val startedAtMs: Long? = null,
 ) {
     fun snapshot(nowMs: Long): TaskProgressSnapshot = TaskProgressSnapshot(
-        title = title.ifBlank { "DeepLinks" },
+        title = title.ifBlank { "cetus" },
         phase = when {
             completed -> TaskMonitorPhase.Completed
             awaitingApproval -> TaskMonitorPhase.AwaitingApproval

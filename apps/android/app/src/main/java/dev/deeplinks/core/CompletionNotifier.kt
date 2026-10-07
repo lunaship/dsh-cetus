@@ -28,7 +28,7 @@ fun notifySessionCompletion(
     }
     val publicNotification = NotificationCompat.Builder(context, "dsh_tasks")
         .setSmallIcon(R.drawable.ic_stat_dsh)
-        .setContentTitle("DeepLinks")
+        .setContentTitle("cetus")
         .setContentText(text.publicText)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .build()

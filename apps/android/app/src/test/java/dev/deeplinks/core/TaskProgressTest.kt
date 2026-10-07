@@ -13,7 +13,7 @@ class TaskProgressTest {
         completed = "已完成",
         step = "第 %d 步",
         elapsed = "已用 %s",
-        publicText = "DeepLinks · 任务执行中",
+        publicText = "cetus · 任务执行中",
     )
 
     @Test
@@ -26,7 +26,7 @@ class TaskProgressTest {
         assertEquals("执行中 · 第 3 步 · 已用 1.2s", content.text)
         assertTrue(content.indeterminate)
         assertEquals(0, content.progress)
-        assertEquals("DeepLinks · 任务执行中", content.publicText)
+        assertEquals("cetus · 任务执行中", content.publicText)
     }
 
     @Test

@@ -116,7 +116,7 @@ internal fun shareConversationAsImage(
                 if (turns.isEmpty()) {
                     onError(L.shareConversationEmpty)
                 } else {
-                    val bitmap: Bitmap = ShareCardRenderer.render(title, turns, dark, "DeepLinks")
+                    val bitmap: Bitmap = ShareCardRenderer.render(title, turns, dark, "cetus")
                     try {
                         ShareCardRenderer.sharePng(context, bitmap, title, L.shareConversationImage)
                     } finally {
