@@ -1,3 +1,4 @@
+import DLCore
 import DLModels
 import DLSecurity
 import SwiftUI
@@ -192,7 +193,11 @@ struct SettingsDetailPage: View {
                 Text(copy.text(.historyEmpty))
                     .foregroundStyle(.secondary)
             case .about:
-                LabeledContent(copy.text(.version), value: copy.text(.versionValue))
+                LabeledContent(copy.text(.version), value: buildInfo.versionLine)
+                LabeledContent(copy.text(.buildCommit), value: buildInfo.commit)
+                LabeledContent(copy.text(.buildDate), value: buildInfo.date)
+                LabeledContent(copy.text(.buildConfiguration), value: buildInfo.configuration)
+                LabeledContent(copy.text(.buildContractVersion), value: buildInfo.contractVersion)
                 NavigationLink(copy.text(.legal), value: SettingsPage.legal)
                 Text(copy.text(.licenses))
                     .foregroundStyle(.secondary)
@@ -350,6 +355,9 @@ struct SettingsDetailPage: View {
         DiagnosticCheck(id: "tls.cert", status: .warn, code: "TLS_CERT_EXPIRING"),
         DiagnosticCheck(id: "remote.relay", status: .skip, code: "REMOTE_DISABLED"),
     ]
+
+    /// 内部构建元数据（方案 §4 C00）。只在「关于」页展示，不进首页。
+    private let buildInfo = BuildInfo.from()
 
     @ViewBuilder private func defaultsSection(_ copy: SettingsCopy) -> some View {
         if let models {
@@ -634,6 +642,10 @@ enum SettingsText: String {
     case historyEmpty
     case version
     case versionValue
+    case buildCommit
+    case buildDate
+    case buildConfiguration
+    case buildContractVersion
     case licenses
     case computer
     case lan
@@ -723,6 +735,10 @@ enum SettingsText: String {
         case .historyEmpty: "No archived sessions on this phone."
         case .version: "Version"
         case .versionValue: "1.0"
+        case .buildCommit: "Build"
+        case .buildDate: "Built"
+        case .buildConfiguration: "Configuration"
+        case .buildContractVersion: "Contract"
         case .licenses: "Open source licenses"
         case .computer: "This computer"
         case .lan: "Local network"

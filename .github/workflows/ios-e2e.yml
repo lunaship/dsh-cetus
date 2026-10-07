@@ -109,9 +109,9 @@ jobs:
             local destination
             destination=$(SIMULATOR_DEVICE_NAME="$device" sh scripts/simulator-destination.sh)
             xcodebuild \
-              -scheme DeepLinks \
+              -scheme Cetus \
               -destination "$destination" \
-              -only-testing:DeepLinksUITests/E2ELaunchTests \
+              -only-testing:CetusUITests/E2ELaunchTests \
               -resultBundlePath "$result" \
               test \
               CODE_SIGNING_ALLOWED=NO \

@@ -2,7 +2,7 @@ import DLCore
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @Suite struct PromptAttachmentTests {
     @Test func documentImageKeepsOriginalBytesWithoutCropping() throws {

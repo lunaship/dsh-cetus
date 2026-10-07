@@ -1,7 +1,7 @@
 import DLModels
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @Suite struct SettingsTests {
     @Test func clipboardKeepsCodesAndNumbers() {

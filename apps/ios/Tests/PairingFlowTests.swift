@@ -3,7 +3,7 @@ import DLSecurity
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @MainActor @Suite(.serialized)
 struct PairingFlowTests {

@@ -4,7 +4,7 @@ import DLSecurity
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @MainActor @Suite struct ConversationFlowTests {
     @Test func snapshotThenHistoryReplacesWholePage() async throws {

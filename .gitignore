@@ -5,6 +5,8 @@ node_modules/
 .swiftpm/
 xcuserdata/
 DerivedData/
+# 构建元数据生成物（由 scripts/build-metadata.mjs 生成，CI 构建前现生成）
+apps/ios/BuildMetadata.xcconfig
 .idea/
 *.iml
 .vscode/

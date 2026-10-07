@@ -47,7 +47,7 @@ struct RootView: View {
     }
 }
 
-final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+final class CetusAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -99,8 +99,8 @@ final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate, UNUserNotific
 }
 
 @main @MainActor
-struct DeepLinksApp: App {
-    @UIApplicationDelegateAdaptor(DeepLinksAppDelegate.self) private var delegate
+struct CetusApp: App {
+    @UIApplicationDelegateAdaptor(CetusAppDelegate.self) private var delegate
     @State private var pairing: PairingFlowModel
 
     init() {

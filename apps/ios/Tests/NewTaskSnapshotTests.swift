@@ -5,7 +5,7 @@ import SwiftUI
 import UIKit
 import XCTest
 
-@testable import DeepLinks
+@testable import Cetus
 
 @MainActor final class NewTaskSnapshotTests: XCTestCase {
     nonisolated override func invokeTest() {

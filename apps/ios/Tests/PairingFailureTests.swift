@@ -2,7 +2,7 @@ import DLNet
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 struct PairingFailureTests {
     @Test func everyErrorHasThreeSuggestionsAndStableReason() {

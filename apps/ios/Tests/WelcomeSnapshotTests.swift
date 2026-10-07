@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 import XCTest
 
-@testable import DeepLinks
+@testable import Cetus
 
 final class WelcomeSnapshotTests: XCTestCase {
     /// Task-local. `setUp` returns before the test method, so it cannot hold record mode.

@@ -94,7 +94,7 @@ enum ShareText: String {
 
     var fallback: String {
         switch self {
-        case .title: "Send to DeepLinks"
+        case .title: "Send to cetus"
         case .sendTo: "Send to"
         case .newTask: "New task"
         case .newTaskDetail: "Start in the current workspace"

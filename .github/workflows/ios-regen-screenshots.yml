@@ -44,11 +44,11 @@ jobs:
           set +e
           # App-hosted tests only receive TEST_RUNNER_* (prefix stripped). Tests read RECORD_SNAPSHOTS.
           RECORD_SNAPSHOTS=1 TEST_RUNNER_RECORD_SNAPSHOTS=1 xcodebuild \
-            -scheme DeepLinks \
+            -scheme Cetus \
             -destination "$DEST" \
-            -skip-testing:DeepLinksTests/ModelsLoadTests \
-            -skip-testing:DeepLinksTests/TokenUsageTests \
-            -skip-testing:DeepLinksTests/DemoFixturesTests \
+            -skip-testing:CetusTests/ModelsLoadTests \
+            -skip-testing:CetusTests/TokenUsageTests \
+            -skip-testing:CetusTests/DemoFixturesTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

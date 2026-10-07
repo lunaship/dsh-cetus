@@ -3,7 +3,7 @@ import DLModels
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @MainActor @Suite(.serialized) struct InboxFlowTests {
     private actor EmptyInboxService: InboxServing {}

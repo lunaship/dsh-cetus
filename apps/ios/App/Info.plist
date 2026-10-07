@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>DeepLinks</string>
+	<string>cetus</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -31,6 +31,14 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>DLBuildCommit</key>
+	<string>$(DLBuildCommit)</string>
+	<key>DLBuildConfiguration</key>
+	<string>$(DLBuildConfiguration)</string>
+	<key>DLBuildContractVersion</key>
+	<string>$(DLBuildContractVersion)</string>
+	<key>DLBuildDate</key>
+	<string>$(DLBuildDate)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>

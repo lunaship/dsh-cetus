@@ -2,6 +2,8 @@
 
 > v4 页面编号 → iOS 实现 → 与 Android 的差异 → 截图测试名。
 > 以 `docs/ios/PLAN.md` 为准；与 `docs/design/` PNG 冲突时以 PLAN 为准，见文末「冲突清单」。
+> **优先级（2026-10-07 P01）**：`docs/redesign-v4/PLAN.md`（信息架构与合同数值）→ `docs/REBRAND_CETUS.md`（命名）→ `docs/ios/PLAN.md` → 本文件 → `visual-rules-ios.md` → PNG（只定布局层级）。
+> 界面显示名一律小写 `cetus`。**凡不在本表内的新入口，先补合同再实现。**
 
 截图测试命名约定：`Snapshot_<pageId>_<scene>_<appearance>_<locale>`，例如 `Snapshot_2_1_inbox_light_zh`。基线只由 `ios-regen-screenshots.yml` 生成。
 
@@ -50,12 +52,12 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 
 | v4 | 页面 | iOS 页面 / 组件 / API | 与 Android 差异 | 截图测试 |
 |---|---|---|---|---|
-| 2.1 | 首页 | 居中电脑名；待处理跨工作区置顶；工作区文件夹默认 3 条；空工作区可新建；底栏搜索 /「新任务」 | 与 Android 同口径；置顶会话不在文件夹重复 | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading` |
+| 2.1 | 首页（工作区文件夹） | 顶栏居中电脑名 + 连接状态（无品牌大标题）；待处理跨工作区置顶；工作区文件夹默认 3 条，缩进会话只显示一行标题；空工作区可新建；底栏搜索 /「新任务」 | 与 Android 同口径；置顶会话不在文件夹重复 | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading` |
 | 2.2 | 空态 | `DLEmptyState` +「从一件事开始」三行 | — | `Snapshot_2_2_empty_*`、`Snapshot_2_2_workspace` |
 | 2.3 | 离线 | 顶 `DLBanner` + 重试 / 诊断；批准按钮禁用 | — | `Snapshot_2_3_offline_*` |
 | 2.4 | 搜索 | `.searchable(text:tokens:)`；工作区 token；`.searchSuggestions` | 工作区用 token | `Snapshot_2_4_search_*`、`Snapshot_2_4_suggestions`、`Snapshot_2_4_empty`、`Snapshot_2_4_degraded` |
-| 2.5 | 电脑与工作区 | 右上角「更多」保留电脑切换；设置和已归档也在其中 | 不再使用标题菜单；首页不提供添加工作区 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived` |
-| 2.6 | 长按 / 左滑 | 会话菜单只留删除并二次确认；工作区长按可新建或删除，删除也二次确认 | 首页不再提供归档、分叉和重命名 | `Snapshot_2_6_delete` |
+| 2.5 | 更多 | 右上「更多」：电脑切换 / 设置 / 已归档 | **不再有**列出全部工作区的菜单；首页不提供添加工作区 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived` |
+| 2.6 | 长按 | 会话菜单只留删除并二次确认；工作区长按可新建或删除，删除也二次确认 | 不做左滑归档；首页不做归档、分叉和重命名 | `Snapshot_2_6_delete` |
 
 ## 3.x 新任务
 
@@ -72,8 +74,8 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 |---|---|---|---|---|
 | 4.1 | 运行中 | `UICollectionView` 消息流；系统导航栏 + `.navigationSubtitle`；diff 角标 + ⋯ `Menu`（同一 `ToolbarItemGroup`）。输入区 `DLComposerView` 留给 I4.3c | 本项不做输入区 | `Snapshot_4_1_running_*`、`Snapshot_4_1_unconfirmed`、`Snapshot_4_1_image` |
 | 4.2 | 轮尾 | 改动卡（最多 3 行 + 查看全部）→ 元信息 → 复制 / 重新生成 / 分享 → chip | 查看全部不进入改动页 | `Snapshot_4_2_tail_*` |
-| 4.3 | 待审批 | 对话页底部 `DLComposerView` 切到决策：状态行、问题、命令块、拒绝 / 允许一次；消息流约 42% | 只处理手机接管的最新一条。加号、模型、权限、麦克风没有本项数据，不画 | `Snapshot_4_3_approval_*` |
-| 4.4 | 回答问题 | 同一玻璃容器切到提问。多题翻页和跳过还没接 | 只显示最新一条未终态提问 | `Snapshot_4_4_question_light_zh` |
+| 4.3 | 待审批 | 对话页底部 `DLComposerView` 切到决策：状态行、问题、命令块、拒绝 / 允许一次；消息流淡化 **≈42%（合同数值，不得私改）** | 只处理手机接管的最新一条。加号、模型、权限、麦克风没有本项数据，不画 | `Snapshot_4_3_approval_*` |
+| 4.4 | 回答问题 | 同一玻璃容器切到提问：单选 / 多选 +「自己写答案」+ 上一题 / 下一题 / 提交（**单一决策面板**） | 只显示最新一条未终态提问 | `Snapshot_4_4_question_light_zh` |
 | 4.5 / 4.8 | 状态槽 | 输入区上沿一行胶囊；目标点击向上展开；优先级断线 > 待处理 > 目标 > 预览，一次只显示一个 | 无玻璃；更高优先级出现时收起目标 | `Snapshot_4_5_status_*`、`Snapshot_4_8_status_*` |
 | 4.6 | 工具过程 | `DLProcessLine` 展开细线步骤 | — | `Snapshot_4_6_process_*` |
 | 4.7 | 轨迹 | push `TrajectoryPage`：搜索、筛选 chip、按轮分组，组头右侧时间次要色 | 改动 / 文件 / 子代理 / 用量 / 预览等菜单项目标页留给后续项 | `Snapshot_4_7_trace_light_zh` |
@@ -130,8 +132,8 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 |---|---|---|---|---|
 | 8.1–8.2 | 通知 | 分类 + NSE；锁屏不显示内容；无通知栏批准 | 多 Live Activity | `Snapshot_8_1_notification_*` |
 | 8.3 | 分享进来 | 分享扩展 → `SharePickerSheet`；只预填不发送 | — | `Snapshot_8_3_share_in_*` |
-| 8.4 | Live Activity 锁屏 | Widget；状态 / 步数 / 计时 | Android 无 | `Snapshot_8_4_live_activity_*` |
-| 8.5 | 灵动岛 | 收起 / 展开；「需要审批 · 在 App 中处理」 | Android 无 | `Snapshot_8_5_island_*` |
+| 8.4 | Live Activity 锁屏 | Widget；状态 / 步数 / 计时 | Android 无。**iPhone 13 只验收这一项** | `Snapshot_8_4_live_activity_*` |
+| 8.5 | 灵动岛 | 收起 / 展开；「需要审批 · 在 App 中处理」 | Android 无。**iPhone 13 无灵动岛：必须另用支持设备或模拟器验收，不得写这台已通过** | `Snapshot_8_5_island_*` |
 
 ## 组件对照（附录 A.2）
 
@@ -149,11 +151,24 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 
 ## 冲突清单（设计稿 PNG vs PLAN，以 PLAN 为准）
 
-| 位置 | 设计稿 | PLAN / 仓库决定 | 处理 |
-|---|---|---|---|
-| 1.2 欢迎、1.3 扫码 | ~~曾有「输入配对码」~~；v1.2 设计稿已去掉 | 1.4 不做（#64） | **已对齐**（#73 替换设计稿） |
-| 4.3 / 4.4 决策栏按钮 | 实色填充（与 README 一致） | 附录 B：玻璃容器内用 `.bordered` / `.borderedProminent`，不叠玻璃 | 按 PLAN / 设计 README |
-| 2.1「允许一次」 | `.bordered` + tint | 同屏唯一 BrandFill 给「新任务」 | 一致，按此实现 |
-| 7.6 对话默认 | 设计稿未单独出图（入口在 7.1） | PLAN v1.2 已补规格 | 按 PLAN 实现；截图名 `Snapshot_7_6_*` |
+> 2026-10-07 P01：下表按方案 §2.2 的 9 个冲突重写。**PNG 与生成脚本一律不改**，作为历史参考保留；PNG 里的旧品牌名属于允许保留旧名的位置（`docs/REBRAND_CETUS.md` §9）。
+
+| # | 位置 | 设计稿 / 历史文字 | 合同决定 | 处理 |
+|---|---|---|---|---|
+| 1 | 2.1 首页 | 原 PNG 三分区：等你处理 / 进行中 / 最近 | 采用 2026-10-05 / 10-06 用户确认的**工作区文件夹 + 待处理置顶**；不恢复三分区 | **已对齐**：本表 2.1 与 `docs/ios/PLAN.md` I4.2 已按文件夹口径；PNG 只作参考 |
+| 2 | 2.1 顶栏 | PNG 有大品牌标题 | 首页优先显示**当前电脑 + 连接状态**；品牌只用于 1.1 / 1.2 / 关于 | **已对齐**：G2 已去掉大标题 |
+| 3 | 4.3 淡化 | PNG 与 `docs/design/README.md` 写「对话内容淡化到 42%」 | **42% 是合同数值**（PLAN.md P01.4），先做可读性实验；妨碍审查则改为决策区强化 + 局部弱化，**先改合同再改实现** | **按 42% 保留**，实验结论出来前不改数值 |
+| 4 | 4.4 提问 | PNG 把选项与「自己写答案」画在同一决策容器 | 整合成**单一决策面板**（说明 + 单选 / 多选 + 自由输入 + 翻页 + 提交） | **已对齐**：I4.3c 已写明 |
+| 5 | 4.x 品牌按钮 | 视觉文档既说「最多一个」又保留「本屏没有品牌实心按钮」 | **每状态一个主动作**：空闲发送 / 运行停止 / 待审批允许一次 / 待回答下一题或提交 | **已对齐**：`visual-rules-ios.md` §7；遗留说法已清除 |
+| 6 | 5.7 / 7.7 / 2.1 等 | PNG 有示例数字（`¥42.10`、`46%`、`+148 −37`） | **真实数据存在才显示**；缺失显示说明或省略，**不填演示值**；Demo fixture 例外且可区分 | **已对齐**：`visual-rules-ios.md` §7、`docs/ios/PLAN.md` 附录 E.1 |
+| 7 | 8.5 灵动岛 | PNG 有灵动岛状态 | **iPhone 13 只验收 8.4 锁屏 Live Activity**；8.5 须另用支持设备 / 模拟器，**不写这台已通过** | **已对齐**：本表 8.5 与 `docs/ios/PLAN.md` I7.1；8.5 状态 = 未验收 |
+| 8 | 全局品牌 | 原稿所有 `DeepLinks` | 设计合同与演示文案统一**小写 `cetus`**；**用户工作区名与真实历史文本不批量改写** | **已对齐**：`docs/REBRAND_CETUS.md`；本表与 PLAN 显示名已改 |
+| 9 | 2.1 PNG 信息架构 | 原 2.1 PNG 作为首页最终稿 | 原 2.1 PNG **仅作系统控件气质 / 文字层级参考**，不再作为首页最终稿；PNG 与生成脚本不改 | **已对齐**：见第 1 行 |
+| — | 1.2 欢迎、1.3 扫码 | ~~曾有「输入配对码」~~；v1.2 设计稿已去掉 | 1.4 不做（#64） | **已对齐**（#73 替换设计稿） |
+| — | 4.3 / 4.4 决策栏按钮 | 实色填充（与 README 一致） | 附录 B：玻璃容器内用 `.bordered` / `.borderedProminent`，不叠玻璃 | 按 PLAN / 设计 README |
+| — | 2.1「允许一次」 | `.bordered` + tint | 同屏唯一 BrandFill 给「新任务」 | 一致，按此实现 |
+| — | 7.6 对话默认 | 设计稿未单独出图（入口在 7.1） | PLAN v1.2 已补规格 | 按 PLAN 实现；截图名 `Snapshot_7_6_*` |
+
+**已知文档矛盾（P01 报告，不猜测）**：`apps/ios/docs/design/README.md`「设计决定」第 1 条仍写「首页大标题 + 副标题」与旧品牌名。它是**历史设计稿的说明文件**（对应 I1.5a），按冲突 9「PNG 与生成脚本不改」**本次不修改**；其首页信息架构口径已作废，以本表与 `docs/ios/PLAN.md` I4.2 为准。
 
 其他：设计稿需要的数据若插件没有，按「删掉该元素」处理，在对应实现 PR 里写明。

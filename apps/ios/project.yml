@@ -1,4 +1,4 @@
-name: DeepLinks
+name: Cetus
 options:
   bundleIdPrefix: dev.deeplinks.ios
   deploymentTarget:
@@ -13,6 +13,13 @@ options:
 configs:
   Debug: debug
   Release: release
+# 构建元数据（方案 §4 C00）：scripts/build-metadata.mjs 生成的 xcconfig 提供
+# DLBuildCommit / DLBuildDate / DLBuildConfiguration / DLBuildContractVersion，
+# Info.plist 用 $(...) 引用后在「关于」页展示（不在首页）。构建前必须先生成：
+#   node scripts/build-metadata.mjs --platform ios
+configFiles:
+  Debug: BuildMetadata.xcconfig
+  Release: BuildMetadata.xcconfig
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -38,7 +45,7 @@ packages:
     url: https://github.com/pointfreeco/swift-snapshot-testing
     from: "1.18.0"
 targets:
-  DeepLinks:
+  Cetus:
     type: application
     platform: iOS
     sources:
@@ -67,11 +74,11 @@ targets:
       - package: DLUI
     settings:
       base:
-        PRODUCT_NAME: DeepLinks
+        PRODUCT_NAME: Cetus
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: App/Info.plist
-        CODE_SIGN_ENTITLEMENTS: App/DeepLinks.entitlements
+        CODE_SIGN_ENTITLEMENTS: App/Cetus.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
   NotificationService:
@@ -127,7 +134,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Extensions/Share/Share.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
-  DeepLinksTests:
+  CetusTests:
     type: bundle.unit-test
     platform: iOS
     sources:
@@ -137,7 +144,7 @@ targets:
       - path: Tests/Fixtures
         buildPhase: resources
     dependencies:
-      - target: DeepLinks
+      - target: Cetus
       - package: DLModels
       - package: DLCore
       - package: DLSecurity
@@ -148,44 +155,44 @@ targets:
         product: SnapshotTesting
     settings:
       base:
-        PRODUCT_NAME: DeepLinksTests
+        PRODUCT_NAME: CetusTests
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.tests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DeepLinks.app/DeepLinks"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Cetus.app/Cetus"
         BUNDLE_LOADER: "$(TEST_HOST)"
-  DeepLinksUITests:
+  CetusUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: DeepLinksUITests
+      - path: CetusUITests
       - path: App/PerformanceFixtureConstants.swift
       - path: App/PerformanceFileSecureStore.swift
     dependencies:
-      - target: DeepLinks
+      - target: Cetus
       - package: DLCore
       - package: DLModels
       - package: DLSecurity
     settings:
       base:
-        PRODUCT_NAME: DeepLinksUITests
+        PRODUCT_NAME: CetusUITests
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.uitests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
-  DeepLinks:
+  Cetus:
     build:
       targets:
-        DeepLinks: all
+        Cetus: all
         NotificationService: all
         LiveActivity: all
         Share: all
     test:
       targets:
-        - DeepLinksTests
-        - DeepLinksUITests
-  DeepLinksPerformance:
+        - CetusTests
+        - CetusUITests
+  CetusPerformance:
     build:
       targets:
-        DeepLinks: all
+        Cetus: all
         NotificationService: all
         LiveActivity: all
         Share: all
@@ -196,7 +203,7 @@ schemes:
         PERFORMANCE_QR_PATH: $(PERFORMANCE_QR_PATH)
         PERFORMANCE_APPEND_STORAGE: $(PERFORMANCE_APPEND_STORAGE)
       targets:
-        - DeepLinksUITests
+        - CetusUITests
     run:
       config: Debug
     archive:

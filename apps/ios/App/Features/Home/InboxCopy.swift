@@ -112,7 +112,7 @@ enum InboxText: String, Equatable, Sendable {
 
     var fallback: String {
         switch self {
-        case .brand: "DeepLinks"
+        case .brand: "cetus"
         case .settings: "Settings"
         case .filter: "Filter"
         case .filterAll: "All"

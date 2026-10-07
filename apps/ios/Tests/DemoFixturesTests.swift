@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import DeepLinks
+@testable import Cetus
 
 struct DemoFixturesTests {
     @Test func bundledSceneDataMatchesScreenshotCopy() throws {

@@ -2,7 +2,7 @@ import DLNet
 import DLSecurity
 import Foundation
 
-@testable import DeepLinks
+@testable import Cetus
 
 /// Shared by snapshots and pairing tests. Contains no live address, token, or camera capture.
 enum PairingFixtures {

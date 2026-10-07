@@ -104,9 +104,9 @@ jobs:
           mkdir -p "$PERFORMANCE_FIXTURE" "$PERFORMANCE_APPEND_STORAGE"
           DEST=$(sh scripts/simulator-destination.sh)
           xcodebuild \
-            -scheme DeepLinksPerformance \
+            -scheme CetusPerformance \
             -destination "$DEST" \
-            -only-testing:DeepLinksUITests/PerformanceLaunchTests \
+            -only-testing:CetusUITests/PerformanceLaunchTests \
             -resultBundlePath "$RUNNER_TEMP/performance/raw.xcresult" \
             test
           xcrun xcresulttool export metrics \

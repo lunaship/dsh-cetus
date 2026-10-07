@@ -2,7 +2,7 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-struct DeepLinksActivityAttributes: ActivityAttributes {
+struct CetusActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var phase: String
         var step: Int
@@ -15,9 +15,9 @@ struct DeepLinksActivityAttributes: ActivityAttributes {
     var hostRef: String
 }
 
-struct DeepLinksLiveActivity: Widget {
+struct CetusLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: DeepLinksActivityAttributes.self) { context in
+        ActivityConfiguration(for: CetusActivityAttributes.self) { context in
             LiveActivityLockView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -36,7 +36,7 @@ struct DeepLinksLiveActivity: Widget {
 }
 
 private struct LiveActivityLockView: View {
-    var context: ActivityViewContext<DeepLinksActivityAttributes>
+    var context: ActivityViewContext<CetusActivityAttributes>
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -60,6 +60,6 @@ private func statusText(_ phase: String) -> String {
 @main
 struct LiveActivityBundle: WidgetBundle {
     var body: some Widget {
-        DeepLinksLiveActivity()
+        CetusLiveActivity()
     }
 }

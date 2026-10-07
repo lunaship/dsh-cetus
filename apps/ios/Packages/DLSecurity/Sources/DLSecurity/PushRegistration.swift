@@ -25,7 +25,7 @@ public struct PushNotificationPayload: Equatable, Sendable {
 }
 
 public enum PushContent {
-    public static let generic = "DeepLinks 有新的任务动态"
+    public static let generic = "cetus 有新的任务动态"
     public static let maxAge: TimeInterval = 15 * 60
 
     public static func open(ciphertext: String, key: Data, deviceID: String, now: Date = Date()) -> String {

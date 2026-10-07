@@ -65,8 +65,10 @@ iOS 追加：
 
 在有 Xcode 的 macOS / CI 上：
 
+- 生成构建元数据（**必须在 `xcodegen generate` 之前**，否则 xcodegen 报
+  `Invalid config file "BuildMetadata.xcconfig"`）：`node ../../scripts/build-metadata.mjs --platform ios`
 - 生成工程：`xcodegen generate`
-- 构建：`xcodebuild -scheme DeepLinks -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
+- 构建：`xcodebuild -scheme Cetus -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
 - 单测：`xcodebuild … test`
 - 截图校验：由 `ci-ios.yml` / `ios-screenshot.yml` 跑
 - 合同 / 向量：与仓库根 `testdata/` 对齐的包内测试

@@ -2,7 +2,7 @@ import DLNet
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 struct PairingPhotoDecoderTests {
     private func fixture(_ name: String) throws -> Data {

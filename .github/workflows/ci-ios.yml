@@ -49,6 +49,10 @@ jobs:
       - name: Check formatting
         run: swift-format lint --strict --recursive --configuration .swift-format .
 
+      - name: Generate build metadata
+        working-directory: ${{ github.workspace }}
+        run: node scripts/build-metadata.mjs --platform ios
+
       - name: Generate project
         run: xcodegen generate
 
@@ -57,7 +61,7 @@ jobs:
           set -eu
           for config in Debug Release; do
             xcodebuild \
-              -scheme DeepLinks \
+              -scheme Cetus \
               -destination 'generic/platform=iOS Simulator' \
               -configuration "$config" \
               build \
@@ -81,6 +85,10 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Generate build metadata
+        working-directory: ${{ github.workspace }}
+        run: node scripts/build-metadata.mjs --platform ios
+
       - name: Generate project
         run: xcodegen generate
 
@@ -89,55 +97,55 @@ jobs:
           set -eu
           DEST=$(sh scripts/simulator-destination.sh)
           xcodebuild \
-            -scheme DeepLinks \
+            -scheme Cetus \
             -destination "$DEST" \
-            -only-testing:DeepLinksTests/ModelsLoadTests \
-            -only-testing:DeepLinksTests/TokenUsageTests \
-            -only-testing:DeepLinksTests/DemoFixturesTests \
-            -only-testing:DeepLinksTests/ContextInjectionContractTests \
-            -only-testing:DeepLinksTests/MobileModelsContractTests \
-            -only-testing:DeepLinksTests/MobileContractFixturesTests \
-            -only-testing:DeepLinksTests/HostStoreContractTests \
-            -only-testing:DeepLinksTests/TLSFingerprintContractTests \
-            -only-testing:DeepLinksTests/SSEClientContractTests \
-            -only-testing:DeepLinksTests/HostClientContractTests \
-            -only-testing:DeepLinksTests/RequestStateContractTests \
-            -only-testing:DeepLinksTests/RouteSelectorContractTests \
-            -only-testing:DeepLinksTests/PairingContractTests \
-            -only-testing:DeepLinksTests/PairingFlowTests \
-            -only-testing:DeepLinksTests/PairingFailureTests \
-            -only-testing:DeepLinksTests/PairingPhotoDecoderTests \
-            -only-testing:DeepLinksTests/InboxCatalogTests \
-            -only-testing:DeepLinksTests/InboxFlowTests \
-            -only-testing:DeepLinksTests/TranscriptTests \
-            -only-testing:DeepLinksTests/TranscriptSnapshotTests \
-            -only-testing:DeepLinksTests/ConversationFlowTests \
-            -only-testing:DeepLinksTests/PromptAttachmentTests \
-            -only-testing:DeepLinksTests/ShareInboxTests \
-            -only-testing:DeepLinksTests/LiveActivityTests \
-            -only-testing:DeepLinksTests/PrivacyCoverTests \
-            -only-testing:DeepLinksTests/DlpFrameTests \
-            -only-testing:DeepLinksTests/DlpVectorTests \
-            -only-testing:DeepLinksTests/RemoteHTTP1WireTests \
-            -only-testing:DeepLinksTests/RemoteInnerTLSTests \
-            -only-testing:DeepLinksTests/ConversationStatusTests \
-            -only-testing:DeepLinksTests/ConversationStatusFlowTests \
-            -only-testing:DeepLinksTests/PhoneDecisionTests \
-            -only-testing:DeepLinksTests/TrajectoryTests \
-            -only-testing:DeepLinksTests/NewTaskTests \
-            -only-testing:DeepLinksTests/ChatSheetTests \
-            -only-testing:DeepLinksTests/QuestionRawJSONTests \
-            -only-testing:DeepLinksTests/QuestionNavigationTests \
-            -only-testing:DeepLinksTests/ChatControlsServiceTests \
-            -only-testing:DeepLinksTests/IntralineDiffContractTests \
-            -only-testing:DeepLinksTests/ReviewTests \
-            -only-testing:DeepLinksTests/SettingsTests \
-            -only-testing:DeepLinksTests/SettingsAccountTests \
-            -only-testing:DeepLinksTests/SettingsModelsTests \
-            -only-testing:DeepLinksTests/WideLayoutTests \
-            -only-testing:DeepLinksTests/PreviewProxyTests \
-            -only-testing:DeepLinksTests/PushOpenRouteTests \
-            -only-testing:DeepLinksTests/PushRegistrationWireTests \
+            -only-testing:CetusTests/ModelsLoadTests \
+            -only-testing:CetusTests/TokenUsageTests \
+            -only-testing:CetusTests/DemoFixturesTests \
+            -only-testing:CetusTests/ContextInjectionContractTests \
+            -only-testing:CetusTests/MobileModelsContractTests \
+            -only-testing:CetusTests/MobileContractFixturesTests \
+            -only-testing:CetusTests/HostStoreContractTests \
+            -only-testing:CetusTests/TLSFingerprintContractTests \
+            -only-testing:CetusTests/SSEClientContractTests \
+            -only-testing:CetusTests/HostClientContractTests \
+            -only-testing:CetusTests/RequestStateContractTests \
+            -only-testing:CetusTests/RouteSelectorContractTests \
+            -only-testing:CetusTests/PairingContractTests \
+            -only-testing:CetusTests/PairingFlowTests \
+            -only-testing:CetusTests/PairingFailureTests \
+            -only-testing:CetusTests/PairingPhotoDecoderTests \
+            -only-testing:CetusTests/InboxCatalogTests \
+            -only-testing:CetusTests/InboxFlowTests \
+            -only-testing:CetusTests/TranscriptTests \
+            -only-testing:CetusTests/TranscriptSnapshotTests \
+            -only-testing:CetusTests/ConversationFlowTests \
+            -only-testing:CetusTests/PromptAttachmentTests \
+            -only-testing:CetusTests/ShareInboxTests \
+            -only-testing:CetusTests/LiveActivityTests \
+            -only-testing:CetusTests/PrivacyCoverTests \
+            -only-testing:CetusTests/DlpFrameTests \
+            -only-testing:CetusTests/DlpVectorTests \
+            -only-testing:CetusTests/RemoteHTTP1WireTests \
+            -only-testing:CetusTests/RemoteInnerTLSTests \
+            -only-testing:CetusTests/ConversationStatusTests \
+            -only-testing:CetusTests/ConversationStatusFlowTests \
+            -only-testing:CetusTests/PhoneDecisionTests \
+            -only-testing:CetusTests/TrajectoryTests \
+            -only-testing:CetusTests/NewTaskTests \
+            -only-testing:CetusTests/ChatSheetTests \
+            -only-testing:CetusTests/QuestionRawJSONTests \
+            -only-testing:CetusTests/QuestionNavigationTests \
+            -only-testing:CetusTests/ChatControlsServiceTests \
+            -only-testing:CetusTests/IntralineDiffContractTests \
+            -only-testing:CetusTests/ReviewTests \
+            -only-testing:CetusTests/SettingsTests \
+            -only-testing:CetusTests/SettingsAccountTests \
+            -only-testing:CetusTests/SettingsModelsTests \
+            -only-testing:CetusTests/WideLayoutTests \
+            -only-testing:CetusTests/PreviewProxyTests \
+            -only-testing:CetusTests/PushOpenRouteTests \
+            -only-testing:CetusTests/PushRegistrationWireTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
@@ -168,6 +176,10 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Generate build metadata
+        working-directory: ${{ github.workspace }}
+        run: node scripts/build-metadata.mjs --platform ios
+
       - name: Generate project
         run: xcodegen generate
 
@@ -176,11 +188,11 @@ jobs:
           set -eu
           DEST=$(sh scripts/simulator-destination.sh)
           xcodebuild \
-            -scheme DeepLinks \
+            -scheme Cetus \
             -destination "$DEST" \
-            -skip-testing:DeepLinksTests/ModelsLoadTests \
-            -skip-testing:DeepLinksTests/TokenUsageTests \
-            -skip-testing:DeepLinksTests/DemoFixturesTests \
+            -skip-testing:CetusTests/ModelsLoadTests \
+            -skip-testing:CetusTests/TokenUsageTests \
+            -skip-testing:CetusTests/DemoFixturesTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

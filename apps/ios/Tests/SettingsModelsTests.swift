@@ -2,7 +2,7 @@ import DLModels
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @MainActor @Suite struct SettingsModelsTests {
     @Test func loadKeepsServerValuesAndClearsTheKey() async {

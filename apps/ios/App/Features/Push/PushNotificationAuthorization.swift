@@ -7,7 +7,7 @@ enum APNsBuild {
     static var enabled: Bool {
         guard
             let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision")
-                ?? Bundle.main.url(forResource: "DeepLinks", withExtension: "entitlements"),
+                ?? Bundle.main.url(forResource: "Cetus", withExtension: "entitlements"),
             let data = try? Data(contentsOf: url),
             let text = String(data: data, encoding: .ascii) ?? String(data: data, encoding: .utf8)
         else { return false }

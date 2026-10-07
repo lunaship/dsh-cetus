@@ -1,6 +1,6 @@
 import XCTest
 
-/// Measures the real DeepLinks process. Unit tests render inside the test host and are not cold starts.
+/// Measures the real cetus process. Unit tests render inside the test host and are not cold starts.
 final class PerformanceLaunchTests: XCTestCase {
     private let hostName = "性能电脑"
     private let sessionTitle = "性能会话"

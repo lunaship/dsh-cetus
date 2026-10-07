@@ -178,7 +178,7 @@ final class E2ELaunchTests: XCTestCase {
         wait(for: [done], timeout: waitLimit)
     }
 
-    /// Inbox is the DeepLinks title plus a session row. Rows do not publish sessionId.
+    /// Inbox is the cetus title plus a session row. Rows do not publish sessionId.
     private func waitForInbox(_ app: XCUIApplication) throws -> XCUIElement {
         let row = app.staticTexts[sessionTitle]
         _ = try waitUntilExists(row)

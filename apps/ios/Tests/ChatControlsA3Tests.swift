@@ -4,7 +4,7 @@ import DLSecurity
 import Foundation
 import Testing
 
-@testable import DeepLinks
+@testable import Cetus
 
 @Suite struct QuestionRawJSONTests {
     @Test func roundTripKeepsUnknownFieldsOrderAndNull() throws {
