@@ -57,7 +57,13 @@ struct ConversationFlowView: View {
                 initialValue: ConversationModel(
                     hostID: hostID, sessionID: sessionID, seed: seed,
                     service: ConversationLiveService(
-                        hostID: hostID, backgroundTasks: SystemBackgroundTasks()), box: .live()))
+                        hostID: hostID,
+                        store: PerformanceLaunchFixture.isRequested
+                            || PerformanceLaunchFixture.unsignedStorage != nil
+                            ? PerformanceLaunchFixture.hostStore() : HostStore(),
+                        backgroundTasks: SystemBackgroundTasks()),
+                    box: PerformanceLaunchFixture.isRequested
+                        ? PerformanceLaunchFixture.snapshotBox() : .live()))
         }
     }
 

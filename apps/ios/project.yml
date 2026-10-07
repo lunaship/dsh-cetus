@@ -148,8 +148,13 @@ targets:
     platform: iOS
     sources:
       - path: DeepLinksUITests
+      - path: App/PerformanceFixtureConstants.swift
+      - path: App/PerformanceFileSecureStore.swift
     dependencies:
       - target: DeepLinks
+      - package: DLCore
+      - package: DLModels
+      - package: DLSecurity
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.uitests
@@ -165,6 +170,21 @@ schemes:
     test:
       targets:
         - DeepLinksTests
+        - DeepLinksUITests
+  DeepLinksPerformance:
+    build:
+      targets:
+        DeepLinks: all
+        NotificationService: all
+        LiveActivity: all
+        Share: all
+    test:
+      environmentVariables:
+        PERFORMANCE_FIXTURE: /tmp/dsh-performance-fixture
+        PERFORMANCE_CONTROL_URL: $(PERFORMANCE_CONTROL_URL)
+        PERFORMANCE_QR_PATH: $(PERFORMANCE_QR_PATH)
+        PERFORMANCE_APPEND_STORAGE: $(PERFORMANCE_APPEND_STORAGE)
+      targets:
         - DeepLinksUITests
     run:
       config: Debug

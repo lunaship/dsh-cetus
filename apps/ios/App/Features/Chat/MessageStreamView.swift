@@ -104,6 +104,7 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         section.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 16, trailing: 0)
         collectionView = UICollectionView(
             frame: view.bounds, collectionViewLayout: UICollectionViewCompositionalLayout(section: section))
+        collectionView.accessibilityIdentifier = "message-stream"
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         collectionView.backgroundColor = .systemBackground
         collectionView.keyboardDismissMode = .interactive

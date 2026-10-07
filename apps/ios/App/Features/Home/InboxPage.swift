@@ -1,6 +1,7 @@
 import DLCore
 import DLModels
 import DLNet
+import DLSecurity
 import DLUI
 import SwiftUI
 
@@ -24,8 +25,15 @@ struct InboxFlowView: View {
             _model = State(
                 initialValue: InboxModel(
                     hostID: hostID,
-                    service: InboxLiveService(hostID: hostID, backgroundTasks: SystemBackgroundTasks()),
-                    cache: InboxDiskCache()))
+                    service: InboxLiveService(
+                        hostID: hostID,
+                        store: PerformanceLaunchFixture.isRequested
+                            || PerformanceLaunchFixture.unsignedStorage != nil
+                            ? PerformanceLaunchFixture.hostStore() : HostStore(),
+                        backgroundTasks: SystemBackgroundTasks()),
+                    cache: PerformanceLaunchFixture.isRequested
+                        ? InboxDiskCache(directory: PerformanceLaunchFixture.inboxDirectory())
+                        : InboxDiskCache()))
         }
     }
 

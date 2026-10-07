@@ -36,6 +36,7 @@ struct MessageRowView: View {
             Text(bubble.text)
                 .font(DLFont.body)
                 .foregroundStyle(DLColor.label)
+                .accessibilityIdentifier(bubble.id)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Color(uiColor: .secondarySystemFill), in: ConcentricRectangle())
@@ -46,8 +47,9 @@ struct MessageRowView: View {
 
     private func assistant(_ block: AssistantBlock) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(parseMarkdown(block.markdown).enumerated()), id: \.offset) { _, block in
-                markdown(block)
+            ForEach(Array(parseMarkdown(block.markdown).enumerated()), id: \.offset) { offset, parsed in
+                markdown(parsed)
+                    .accessibilityIdentifier(offset == 0 ? block.id : "")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
