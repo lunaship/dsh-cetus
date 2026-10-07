@@ -2,8 +2,9 @@
 
 This is the single compatibility reference for the public `dsh-links`
 repository (plugin plus Relay under `relay/`).
-Android source is in `apps/android/`. iOS source is on `ios/main` under
-`apps/ios/`; the push gateway is specified in `docs/rfc/0002-push-gateway.md`
+Android source is in `apps/android/`. iOS source is under `apps/ios/`
+(developed on `ios/main`, merged into `main` by the `ios/main` integration in
+PR #184); the push gateway is specified in `docs/rfc/0002-push-gateway.md`
 and is not deployed. Update this file when a source baseline, tag, release,
 or verified combination changes.
 
@@ -17,9 +18,9 @@ published. Per-change details live in `CHANGELOG.md`.
 |---|---|---|
 | DSH | `0.1.7-alpha.1` (npm `alpha`) | Upstream dependency |
 | Plugin `dsh-links` | package `0.1.0-beta.19` on `main` | Distributed from this repository as a git source (npm publishing removed 2026-09-30). Latest pushed tag: `v0.1.0-beta.18`; `v0.1.0-beta.19` is not tagged yet |
-| Android `apps/android/` | `versionName 0.5.0-beta.27` on `main` | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.27` (versionCode 35, SHA-256 `3022c5a5b25aa05c9e1e597b7a40dfcb54e50ab72aa57cc8a115bc1e583f3223`), built from `0f0fd75` — the revision the `app-v0.5.0-beta.27` tag points at. `0.5.0-beta.24`–`0.5.0-beta.26` were never published; their changes ship in `0.5.0-beta.27`. `CI - Android` (unit tests, lint, screenshot validation, `assembleDebug`, emulator smoke) is green on `0f0fd75`; real-device acceptance for this build is still pending |
+| Android `apps/android/` | `versionName 0.5.0-beta.31` / `versionCode 39` on `main` | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.27` (versionCode 35, SHA-256 `3022c5a5b25aa05c9e1e597b7a40dfcb54e50ab72aa57cc8a115bc1e583f3223`), built from `0f0fd75` — the revision the `app-v0.5.0-beta.27` tag points at. `0.5.0-beta.24`–`0.5.0-beta.26` were never published; their changes ship in `0.5.0-beta.27`. `CI - Android` (unit tests, lint, screenshot validation, `assembleDebug`, emulator smoke) is green on `0f0fd75`; real-device acceptance for this build is still pending |
 | Relay (`relay/`) | `dlp-relay` (DLP/1) from `main`; DLR/1 server removed | Official instance `wss://relay.dshlinks.com/ws`; self-hosting in `relay/README.md` |
-| iOS `apps/ios/` | placeholder `MARKETING_VERSION` `1.0` / `CURRENT_PROJECT_VERSION` `1` on `ios/main`; bundle id `dev.deeplinks.ios.debug` | 未发布 / 阶段 9 前不宣称真 APNs 已验证。没有 TestFlight 构建，没有 App Store 记录，没有 `ios-v*` tag。占位版本不是发布版本 |
+| iOS `apps/ios/` | placeholder `MARKETING_VERSION` `1.0` / `CURRENT_PROJECT_VERSION` `1` on `main` (iOS source merged from `ios/main`, PR #184); bundle id `dev.deeplinks.ios.debug` | 未发布 / 阶段 9 前不宣称真 APNs 已验证。没有 TestFlight 构建，没有 App Store 记录，没有 `ios-v*` tag。占位版本不是发布版本 |
 | Push gateway (`push/`, DLPUSH/1) | local implementation and tests in `push/`; RFC draft `docs/rfc/0002-push-gateway.md` | 未发布 / 阶段 9 前不宣称真 APNs 已验证。没有官方网关部署，没有生产域名。真实 APNs 送达留到阶段 9 |
 
 ## Capability: dev server preview
@@ -208,7 +209,8 @@ them.
   user. It is not a supported Beta path and carries no project compatibility
   promise.
 - **Not supported:** direct public exposure of plugin port `18640`, or frp.
-- **Not shipped:** the iOS client on `ios/main` and the DLPUSH/1 push gateway.
+- **Not shipped:** the iOS client under `apps/ios/` (source merged from `ios/main`
+  into `main`) and the DLPUSH/1 push gateway.
   未发布 / 阶段 9 前不宣称真 APNs 已验证。没有 TestFlight 链接，没有 App Store
   记录，也没有已部署的推送域名。国区备案不绑以后的海外上架。
 
