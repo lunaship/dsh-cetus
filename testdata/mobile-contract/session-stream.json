@@ -40,6 +40,9 @@
         "events": {
           "host": true
         },
+        "push": {
+          "v": 1
+        },
         "preview": {
           "v": 1,
           "detect": 1

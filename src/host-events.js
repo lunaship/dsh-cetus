@@ -101,6 +101,7 @@ function eventsAfter(buffer, seq, lastEventId) {
 export function createHostEventHub({
   listSessions,
   terminalReason = null,
+  onEvents = null,
   setIntervalFn = setInterval,
   clearIntervalFn = clearInterval,
   pollMs = 5_000,
@@ -209,6 +210,9 @@ export function createHostEventHub({
       }
       previous = next
       for (const event of stamped) writeAll(hostEventFrame(event))
+      if (stamped.length > 0 && onEvents) {
+        try { await onEvents(stamped) } catch {}
+      }
       return { polled: true, emitted: stamped.length }
     } finally {
       inflight = false

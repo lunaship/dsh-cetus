@@ -73,6 +73,7 @@ test("能力声明 diagnostics v1，旧字段仍在", () => {
   const caps = pluginCapabilities()
   assert.deepEqual(caps.diagnostics, { v: 1 })
   assert.equal(caps.protocol, 2)
+  assert.deepEqual(caps.push, { v: 1 })
   assert.equal(pluginCapabilities({ changes: true }).diagnostics.v, 1)
   assert.equal(caps.files.changes, undefined)
 })

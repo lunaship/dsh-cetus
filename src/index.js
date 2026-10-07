@@ -58,6 +58,7 @@ import { applyMobileSessionSafety, handleMobileApi } from "./mobile-api.js"
 import { hostDiagnosticsSource, runDiagnostics } from "./diagnostics.js"
 import { deriveStoppedReason } from "./mobile-session-activity.js"
 import { createHostEventHub, handleHostEvents } from "./host-events.js"
+import { createPushSink, publicPush } from "./push-sink.js"
 
 export const name = "dsh-links"
 export const inject = ["webServer", "typertGateway"]
@@ -209,6 +210,7 @@ export function publicDevice(device) {
     replacing: pending && Array.isArray(device.replaces) && device.replaces.length > 0,
     pendingExpiresAt: pending ? (device.pendingExpiresAt ?? null) : null,
     pairedFrom: pending ? displayRemoteAddress(device.pairedFrom) : "",
+    push: publicPush(device.push),
   }
 }
 
@@ -1170,6 +1172,7 @@ function dropDevice(state, rt, device, exceptReq) {
   closeSseForDevice(rt, device.deviceId)
   closeRequestsForDevice(rt, device.deviceId, exceptReq)
   rt.workspaceApprovals.dropDevice(device.deviceId)
+  rt.push?.dropDevice(device)
   // 远程流一并关掉（RFC §6.5）：设备记录已删，新 client_open 会得到 UNKNOWN_KEY
   rt.remote?.agent?.dropDevice(device.deviceId)
 }
@@ -1646,6 +1649,20 @@ export function apply(ctx, config) {
     }),
     web.register({
       kind: "exact",
+      path: "/dsh-link/push/disable",
+      handler: async (req, res) => {
+        const body = await readLoopbackPost(req, res)
+        if (!body) return
+        const deviceId = String(body.deviceId ?? "").trim()
+        const device = (state.devices ?? []).find((item) => item.deviceId === deviceId)
+        if (!device) return json(res, 404, { error: "设备不存在" })
+        const result = await runMobileDeviceMutation(rt, state, device, () => rt.push.unregister(device))
+        if (mobileMutationWasRevoked(result)) return respondDeviceRevoked(res)
+        json(res, result.status, result.body)
+      },
+    }),
+    web.register({
+      kind: "exact",
       path: "/dsh-link/devices",
       handler: (req, res) => {
         if (!requireLoopbackSameOrigin(req, res)) return
@@ -1829,6 +1846,20 @@ export function apply(ctx, config) {
       const history = await callLocalRpc(targetPort, "session.history", { sessionId, maxMessages: 8 })
       return deriveStoppedReason(history?.events)
     },
+    onEvents: (events) => Promise.all(events.map((event) => rt.push?.notify(event))),
+  })
+  rt.push = createPushSink({
+    state,
+    stateFile,
+    saveState,
+    isDeviceAuthorized,
+    hasForegroundSse(deviceId) {
+      for (const writers of rt.sessionStreams.values()) {
+        for (const conn of writers) if (conn.deviceId === deviceId) return true
+      }
+      return false
+    },
+    logger: ctx.logger,
   })
   const requestHandler = async (req, res) => {
     try {

@@ -44,6 +44,17 @@ to `role`). It is additive: `role` keeps its old values and `PLUGIN_PROTOCOL`
 stays `2`. Android builds that know the field render from it; older builds
 ignore it and keep the text heuristics.
 
+## Capability: encrypted background push
+
+Unreleased plugin source declares `capabilities.push = { v: 1 }` and serves
+`POST` and `DELETE /dsh-link/mobile/push/register`. The plugin stores the
+registration only for the authenticated device. Public device views expose
+`push.enabled` and never expose the gateway, key identifier, sealed token,
+content key, or ciphertext. `PLUGIN_PROTOCOL` stays `2`. Package and APK
+version numbers are unchanged. Builds that do not know the field ignore it.
+The gateway remains undeployed, and this declaration does not claim real APNs
+delivery.
+
 ## Capability: host session events
 
 Unreleased plugin source on `main` declares `capabilities.events = { host: true }`
