@@ -118,10 +118,10 @@ RFC 0001 已定为“**一流一 WSS**”：每条流单独一条 WebSocket，�
 
 ### I5.2 / 收尾 G4.0：先做本地传输验证
 
-G4.0 已实测并停止：系统 URLSession 会绕过 `127.0.0.0/8` 的代理，也没有可插入现有 `HostClient` 路径的 TLS 前鉴权层。非回环 CONNECT 不能代替要求的回环地址。证据见 `docs/ios/I5.2-spike.md`。
+G4.0 原结论已复核作废：它测的是「URLSession 绕过回环代理」，而 RFC 0001 §6.1 把授权放在电脑端的端口登记表，手机端不需要 TLS 前鉴权层。iOS 侧改用 `URLProtocol` 接管传输。非回环 CONNECT 不能代替要求的回环地址。证据见 `docs/ios/I5.2-spike.md`。
 
 - 不连 `relay.dshlinks.com`，不改线上中继。
-- 找不到系统 API 能在转发内层 TLS 之前完成的鉴权，或触发 spike 四条失败条件：停止 G4.1 / G4.2，提交证据，不自行改 SwiftNIO。
+- 触发 spike 四条失败条件：停止 G4.1 / G4.2，提交证据，不自行改 SwiftNIO。
 - 通过之后才做 G4.1（回环桥、连接池、统一接入）和 G4.2（首配、bootstrap 三态、选路）。真机蜂窝切换留在 G7。
 
 ---
