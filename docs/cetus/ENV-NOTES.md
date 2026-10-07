@@ -42,9 +42,52 @@ xcodebuild -scheme DeepLinks \
 **已确认与本轮改动无关**：在 `origin/main` 的干净 worktree 上执行同样的测试命令，
 出现完全相同的错误。
 
-**状态**：iOS 单元测试在本机需另行解决（例如固定 `ARCHS=arm64`、调整 CI runner
-架构，或改用可用的 x86_64 依赖缓存）。**尚未在本机跑通**，因此本轮 iOS 改动的
-验证依据是 build + swift-format lint，测试证据以 CI 为准。
+**状态**：`xcodebuild test` 走 app 测试 target 时本机仍失败（架构切片问题）。
+不过 **Swift Package 自身的单测可以用 iOS Simulator destination 跑通** ——
+这是 app-rebrand 在 B4 期间实测的修正结论：
+
+```sh
+# macOS 宿主跑不通（'HPKE' is only available in macOS 14.0+，包只声明 .iOS(.v26)）
+swift test
+# 指定 iOS Simulator destination 可以跑通
+xcodebuild -scheme DLSecurity -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+# → TEST SUCCEEDED 8/8
+```
+
+所以本机验证 iOS 改动的可行组合是：**app 用 build（CI 命令）+ swift-format lint，
+包级逻辑用 iOS destination 单测**。app 测试 target 的完整测试证据以 CI 为准。
+
+## 磁盘空间（会导致构建莫名失败）
+
+**根卷 `/` 容量紧张**（228Gi，实际可用一度只剩 235Mi）。
+`xcodebuild` 已实测因 `No space left on device` 失败 —— 这类失败**看起来像代码问题，其实是磁盘**。
+
+Xcode 的 `DerivedData` 会持续累积多个项目的副本（本次清理前 5.6G，其中
+`ModuleCache.noindex` 1.8G + `SDKExplicitPrecompiledModules` 876M + 4 个历史
+`DeepLinks-*` / `Cetus-*` 目录）。清理后 `/` 从 235Mi 恢复到 4.4Gi。
+
+```sh
+du -sh ~/Library/Developer/Xcode/DerivedData          # 看占用
+# 删掉非当前项目的目录（保留正在用的那个）
+rm -rf ~/Library/Developer/Xcode/DerivedData/DeepLinks-* \
+       ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex \
+       ~/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules
+```
+
+**排查提示**：构建失败时除了看错误信息，也 `df -h /` 确认磁盘余量。
+
+**补充（app-rebrand 实测的更精确位置）**：那次 `No space left on device` 发生在写
+**测试结果 bundle** 到 `/var/folders/...` 时，而 `/var/folders` 属于
+`/System/Volumes/Data`（与 `/` 是两个不同的卷）。所以：
+
+```sh
+df -h /                                   # 系统卷
+df -h /var/folders                        # Data 卷（测试结果 bundle 写这里）
+```
+
+只清 `~/Library/Developer/Xcode/DerivedData` **不一定**能救回 Data 卷。
+另外 `swift test` / `swift build` 会在 `apps/ios/Packages/*/.build` 留下产物（本次 81M+），
+可以用 `rm -rf apps/ios/Packages/*/.build` 清理。
 
 ## swift-format
 
@@ -90,3 +133,30 @@ $ANDROID_HOME/emulator/emulator -avd cetus_test \
 | iOS build Debug+Release（CI 命令） | ✅ BUILD SUCCEEDED |
 | iOS `xcodebuild test` | ⚠️ 本机环境问题，见上 |
 | `swift-format lint --strict` | ✅ 通过 |
+
+## e2e-arch-smoke 的间歇性失败（已定性）
+
+`node scripts/e2e-arch-smoke.mjs` 偶发失败，模式为：
+`/dsh-link/mobile/bootstrap|sessions|llm-models|workspaces` 返回 `undefined`
+（不是超时，是 mobile API 端点没起来）。
+
+**已定性为间歇性，不是代码回归。** Lead 取证过程：
+
+| 运行 | 条件 | 结果 |
+|---|---|---|
+| 1–3 | 主工作树，自动选端口，load 3.4–6.4 | **27/32，同一组 5 项失败**（确定性） |
+| 4 | worktree `d5cb2419` + 已修脚本 | 34/35（mobile API 全过） |
+| 5 | worktree `3e6068ff` + 已修脚本 | 34/35（mobile API 全过） |
+| 6 | 主工作树 + 显式 `WEB_PORT=3081 MOBILE_PORT=18641` | **35/35** |
+| 7–9 | 主工作树，自动端口，load ~5 | **35/35 × 3 次** |
+
+结论：
+- **不是 B8（3e6068ff）引入的** —— 干净 worktree 上 mobile API 全过
+- **不是磁盘/端口占用** —— 已排除；18640 被 desktop host 占用属正常，脚本用随机端口
+- 根因是 loopback RPC（`callLocalRpc("session.list")`）的既有脆弱性 +
+  `mobile-api.js` catch-all 曾把错误吞进 `console.error`（**已由 task-9 修为走宿主 logger**，
+  现在排障能看到真因）
+- 失败模式会成组出现（一类端点全挂），不要误判为单点回归
+
+**跑这个脚本时**：先 `uptime`，低负载下连跑 2–3 次取一致结果；
+若失败，看 scratch 目录里的 `host.log`（修 logger 后真因可见）。
