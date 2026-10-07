@@ -61,6 +61,7 @@ jobs:
         run: brew install xcodegen
 
       - name: Generate build metadata
+        working-directory: ${{ github.workspace }}
         run: node scripts/build-metadata.mjs --platform ios
       - name: Generate project
         working-directory: apps/ios
