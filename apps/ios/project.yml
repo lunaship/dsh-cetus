@@ -142,6 +142,7 @@ targets:
       - package: DLCore
       - package: DLSecurity
       - package: DLNet
+      - package: DLRemote
       - package: DLUI
       - package: SnapshotTesting
         product: SnapshotTesting
