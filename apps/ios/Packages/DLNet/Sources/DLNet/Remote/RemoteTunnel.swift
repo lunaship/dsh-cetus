@@ -108,3 +108,19 @@ public protocol TunnelByteChannel: Sendable {
     /// 关闭通道（幂等），并连同底下的回环桥一起关。
     func close() async
 }
+
+/// 需要「先拿到响应头、再持续读正文」的长连接通道（SSE）。
+///
+/// 单独一个协议而不是塞进 `TunnelByteChannel`：一次性请求（`RemoteTunnelProtocol`）
+/// 不需要头信号，不该被强制实现。
+///
+/// 为什么需要它：这条通道的读循环只能有**一个**消费者。行泵负责驱动
+/// `HTTP1StreamParser`，解析出头之后回吐给 `open(_:)`，让它能在正文开始前
+/// 拿到状态码（`SSEClient` 靠它判定 401 终止 / 非 2xx 重试）。
+/// 如果两处各读一半，字节就会被瓜分。
+public protocol StreamingTunnelByteChannel: TunnelByteChannel {
+    /// 登记响应头回调。行泵解析出头后通过 `publishHead` 触发。
+    func onHead(_ handler: @escaping @Sendable (HTTP1StreamParser.Head) -> Void)
+    /// 由行泵调用：把解析出的响应头交给等待方。
+    func publishHead(_ head: HTTP1StreamParser.Head)
+}

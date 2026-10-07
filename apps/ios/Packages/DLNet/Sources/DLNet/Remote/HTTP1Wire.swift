@@ -9,6 +9,18 @@ public enum HTTP1Wire {
     /// 行尾固定 CRLF（RFC 9112）。
     static let crlf = "\r\n"
 
+    /// 连接的用途决定 `Connection` 头。
+    public enum ConnectionMode: Sendable, Equatable {
+        /// 一次性请求：读完响应即收手。
+        case close
+        /// 长连接流（SSE）：**不得发 `Connection: close`**。
+        ///
+        /// RFC 0001 §4.2 的 keep-alive 合同：插件的 JSON / SSE 响应都不得带
+        /// `connection: close`，服务端空闲上限 65 秒，由客户端先放手。
+        /// SSE 靠这条长连接持续推事件（插件每 15 秒一条 `: keepalive`）。
+        case keepAlive
+    }
+
     /// 把 `URLRequest` 组装成 origin-form 的 HTTP/1.1 请求字节。
     ///
     /// - origin-form 只带 path + query（隧道内没有代理语义，不需要 absolute-form）。
@@ -16,7 +28,11 @@ public enum HTTP1Wire {
     /// - `Content-Length` 由 body 决定；无 body 的 GET / DELETE 不发 `Content-Length`。
     /// - 逐跳头（`Connection`、`Transfer-Encoding` 等）不转发：隧道是一条裸字节流，
     ///   由本实现自己决定连接生命周期。
-    public static func requestData(for request: URLRequest) throws -> Data {
+    /// - SSE 必须传 `.keepAlive`，否则会把长连接声明成一次性连接。
+    public static func requestData(
+        for request: URLRequest,
+        mode: ConnectionMode = .close
+    ) throws -> Data {
         guard let url = request.url else { throw RemoteTunnelError.protocolViolation }
         let method = (request.httpMethod ?? "GET").uppercased()
         let body = request.httpBody ?? request.httpBodyStream.flatMap(readAll)
@@ -36,10 +52,16 @@ public enum HTTP1Wire {
             head += "Content-Length: " + String(body.count) + crlf
         }
 
-        // 不接受压缩：响应要按字节交给调用方解析，且 URLProtocol 不做透明解压。
+        // 不接受压缩：响应要按字节交给调用方解析，且这里不做透明解压。
         head += "Accept-Encoding: identity" + crlf
-        // 隧道每条流一条连接，等价于 close 语义；不带 keep-alive。
-        head += "Connection: close" + crlf
+        switch mode {
+        case .close:
+            // 一次性请求：读完响应就收手。
+            head += "Connection: close" + crlf
+        case .keepAlive:
+            // SSE：必须保持长连接（RFC §4.2 keep-alive 合同）。
+            head += "Connection: keep-alive" + crlf
+        }
         head += crlf
 
         var data = Data(head.utf8)

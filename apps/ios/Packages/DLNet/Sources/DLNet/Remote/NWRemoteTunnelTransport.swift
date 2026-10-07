@@ -69,7 +69,7 @@ public struct NWRemoteTunnelTransport: RemoteTunnelTransport {
         over tunnel: any RemoteTunnel,
         host: String,
         expectedFingerprint: String?
-    ) async throws -> any TunnelByteChannel {
+    ) async throws -> any StreamingTunnelByteChannel {
         let pin = CertificateFingerprint.normalize(expectedFingerprint)
         guard CertificateFingerprint.isValid(pin) else {
             // 没有合法指纹：不允许建立内层 TLS，也不能回退系统 PKI。

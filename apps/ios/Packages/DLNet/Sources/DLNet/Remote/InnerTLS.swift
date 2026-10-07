@@ -13,7 +13,7 @@ import os
 /// 证书校验把 `sec_protocol_options_set_verify_block` **完全替换**成
 /// 「叶证书 SHA-256 == 配对时记录的指纹」，判定走 `PinEvaluation`（复用，不重写算法）。
 /// 指纹缺失或非法一律 fail-closed，不回退系统 PKI。
-final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
+final class InnerTLSChannel: StreamingTunnelByteChannel, @unchecked Sendable {
     /// 握手超时。
     static let handshakeTimeout: TimeInterval = 10
 
@@ -29,6 +29,8 @@ final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
     private let rejection: RejectionFlag
     /// TLS 握手是否已就绪（由 `stateUpdateHandler` 置位）。
     private let handshakeReady = ReadinessFlag()
+    /// 流式请求（SSE）的响应头回调；由行泵解析出头后调用。
+    private let headHandler = OSAllocatedUnfairLock<(@Sendable (HTTP1StreamParser.Head) -> Void)?>(initialState: nil)
 
     /// TLS 解密后的明文字节（HTTP/1.1 直接读这里）。
     let incoming: AsyncThrowingStream<Data, any Error>
@@ -188,6 +190,17 @@ final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
     func write(_ bytes: Data) async throws {
         guard !isClosed else { throw RemoteTunnelError.cancelled }
         try await LoopbackTunnelBridge.send(bytes, to: connection)
+    }
+
+    /// 登记响应头回调（见 `StreamingTunnelByteChannel`）。
+    func onHead(_ handler: @escaping @Sendable (HTTP1StreamParser.Head) -> Void) {
+        headHandler.withLock { $0 = handler }
+    }
+
+    /// 由行泵调用：把解析出的响应头交给 `open(_:)`。
+    func publishHead(_ head: HTTP1StreamParser.Head) {
+        let handler = headHandler.withLock { $0 }
+        handler?(head)
     }
 
     func close() async {
