@@ -138,3 +138,36 @@ Android 侧无需额外步骤。**建议维护者合入前在 GitHub Actions 跑
 
 教训：插件源码若以 `link:` 方式被运行中 host 加载，提交 = 部署。改 source = 真实执行。
 **任何后续对这两个文件的修改，必须先在假目录演练，并请求 Lead 解冻。**
+
+---
+
+## CI 状态（main = 637a55da）
+
+| Workflow | 结果 |
+|---|---|
+| CI（插件 + Android 构建/lint） | ✅ success |
+| CI iOS e2e | ✅ success（修 workflow 后通过） |
+| CI iOS build | ✅ success |
+| CI iOS unit tests | ✅ success |
+| CI iOS screenshot check | ⚠️ failure —— **基线过期**，见下 |
+| CI - Android (validateDebugScreenshotTest) | ⚠️ failure —— **基线过期**，见下 |
+
+### 基线过期是改名的必然结果，不是回归
+
+失败的 5 个 Android 用例（`WelcomeLightZh/DarkEn`、`SettingsAboutDarkEn`、
+`NewTaskSheetsLightZh/DarkEn`）与 iOS 的 `InboxSnapshotTests` 等，
+都是**画面里含品牌文案**的截图。基线 PNG 仍渲染旧品牌 → 必然不匹配。
+
+- **iOS unit tests 与 iOS build 均 success** → 不是代码回归
+- 已按方案 §19.2 用**指定的 CI** 重新生成基线（不本地生成、不提交占位图）：
+  - `regen-screenshots.yml`（Linux）→ Android 基线
+  - `ios-regen-screenshots.yml`（macOS）→ iOS 基线
+- 重新生成后需人工核对：确认差异**只**是品牌文案，没有意外的布局/样式变化
+
+### 修复过的 CI 问题
+
+`project.yml` 的 `configFiles` 引用 `BuildMetadata.xcconfig`，而该文件是生成物且不入库。
+首次只修了 `ci-ios.yml`，推送后 `ios-e2e.yml` 仍 failure → 补齐
+`ios-e2e.yml` / `ios-regen-screenshots.yml` / `ios-performance.yml` 三个 workflow 的生成步骤。
+用 YAML 解析确认 6 个 job 站点顺序均为 `Generate build metadata` < `Generate project`，
+并在干净树（`git archive HEAD`）实测旧顺序失败、新顺序通过。
