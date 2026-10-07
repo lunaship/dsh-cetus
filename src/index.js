@@ -9,15 +9,16 @@
  */
 import { createAwaitingInput } from "./awaiting-input.js"
 import { createServer as createHttpsServer } from "node:https"
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { homedir, hostname, networkInterfaces } from "node:os"
+import { hostname, networkInterfaces } from "node:os"
 import { randomBytes } from "node:crypto"
 import { gzipSync } from "node:zlib"
 import z from "@deepseek-ai/schemastery"
 import QRCode from "qrcode"
 
 import { createPreviewService, rejectUpgrade, matchPreviewPath } from "./preview-proxy.js"
+import { StateMigrationError, resolveStateDir } from "./state-migration.js"
 import { createPreviewDetector, publicDetections, refreshPreviewDetections, DETECT_HISTORY_MESSAGES } from "./preview-detect.js"
 import { workspaceChangesService } from "./workspace-changes.js"
 import { resolveSessionLogPath, sessionDirFor } from "./session-log-path.js"
@@ -72,7 +73,7 @@ export const Config = z.object({
   autoApprove: z.boolean().default(true),
   /** 配对码有效期（秒） */
   pairingTtlSeconds: z.natural().default(600),
-  /** 状态目录（默认 ~/.dsh/dsh-links） */
+  /** 状态目录（默认 ~/.dsh/dsh-cetus；旧的 ~/.dsh/dsh-links 会在首次启动时校验后迁移） */
   stateDir: z.string().default(""),
   /** 请求日志（排查用） */
   debug: z.boolean().default(false),
@@ -103,38 +104,53 @@ const SETTINGS_WRITE_ALLOWLIST = {
   "agent-default-model": ["provider", "model", "reasoningEffort"],
 }
 
-const DEFAULT_STATE_DIR = join(homedir(), ".dsh", "dsh-links")
-const LEGACY_STATE_DIRS = [
-  join(homedir(), ".dsh", "dsh-deepharness"),
-  join(homedir(), ".dsh", "dshlinks"),
-]
-
-/** 一次性迁移：旧状态目录 → ~/.dsh/dsh-links，已配对设备免重扫。 */
-function ensureStateDir(config) {
-  const dir = config.stateDir?.trim() || DEFAULT_STATE_DIR
-  if (!config.stateDir?.trim()) {
-    const newState = join(dir, "state.json")
-    if (!existsSync(newState)) {
-      for (const legacyDir of LEGACY_STATE_DIRS) {
-        const legacyState = join(legacyDir, "state.json")
-        if (!existsSync(legacyState)) continue
-        mkdirSync(dir, { recursive: true, mode: 0o700 })
-        try {
-          cpSync(legacyDir, dir, { recursive: true })
-        } catch {
-          writeFileSync(newState, readFileSync(legacyState), { mode: 0o600 })
-        }
-        break
-      }
-    }
+/**
+ * state 目录解析与迁移（方案 §22.3）。
+ *
+ * 原来的实现是"新目录没有 state.json 就整体 cpSync 旧目录"：没有校验、没有冲突检测、
+ * 没有原子性、没有幂等保护，而且**旧目录里缺 tls.json 时会静默生成一把新证书**——
+ * 那会让已配对手机全部掉线（App 按 TLS 指纹钉死）。真实逻辑现在在
+ * ./state-migration.js 里，这里只做集成。
+ *
+ * 失败语义（方案 §22.3 第 2/6 条）：迁移失败**抛错**，交由宿主感知。
+ * state 解析发生在任何服务注册之前（见 apply()），所以抛错 = 后续代码不执行 =
+ * 不可能出现"半迁移身份"去注册 Relay 把用户主机顶掉。
+ *
+ * @param {object} config 插件配置
+ * @param {object} [logger] 宿主 logger（可选；只用于记录迁移事件）
+ * @returns {string} 最终生效的 state 目录
+ */
+function ensureStateDir(config, logger = null) {
+  const resolved = resolveStateDir(config, {
+    // 只打目录、设备数、指纹前缀；绝不打印密钥/token（红线 8）。
+    log: (level, message, detail) => {
+      const line = detail ? `${message} ${JSON.stringify(detail)}` : message
+      if (level === "error") logger?.error?.(`dsh-cetus: ${line}`)
+      else logger?.info?.(`dsh-cetus: ${line}`)
+    },
+  })
+  if (!resolved.ready) {
+    const err = resolved.error
+    // 给用户可操作的诊断：哪个目录、哪一步、原数据在哪、怎么恢复。
+    const parts = [`state 目录迁移失败（${err?.code ?? "unknown"}）：${err?.message ?? err}`]
+    if (err?.sourcePath) parts.push(`原数据保留在：${err.sourcePath}`)
+    if (err?.targetPath) parts.push(`目标目录：${err.targetPath}`)
+    if (err?.remedy) parts.push(`处理建议：${err.remedy}`)
+    parts.push("插件不会启动，也不会创建新的空身份；修好后重启即可。")
+    throw new StateMigrationError(err?.code ?? "migration-failed", parts.join("\n"), {
+      sourcePath: err?.sourcePath,
+      targetPath: err?.targetPath,
+      remedy: err?.remedy,
+    })
   }
-  mkdirSync(dir, { recursive: true, mode: 0o700 })
-  try { chmodSync(dir, 0o700) } catch {}
-  return dir
+  if (resolved.migrated) {
+    logger?.info?.(`dsh-cetus: state 已迁移到 ${resolved.dir}（源目录保留为备份）`)
+  }
+  return resolved.dir
 }
 
-function statePathOf(config) {
-  return join(ensureStateDir(config), "state.json")
+function statePathOf(config, logger = null) {
+  return join(ensureStateDir(config, logger), "state.json")
 }
 
 function loadState(file) {
@@ -1333,7 +1349,7 @@ export function apply(ctx, config) {
     })
   }
   const targetPort = web.port
-  const stateFile = statePathOf(config)
+  const stateFile = statePathOf(config, ctx.logger)
   const state = loadState(stateFile)
   hydratePairing(state)
   if (!state.deviceId) state.deviceId = `dsh-${randomBytes(8).toString("hex")}`
@@ -1977,7 +1993,7 @@ export function apply(ctx, config) {
   let pollTimer
   let keepAliveTimer
   let muxBridge = null
-  const ready = loadOrCreateTls(ensureStateDir(config)).then((tls) => {
+  const ready = loadOrCreateTls(ensureStateDir(config, ctx.logger)).then((tls) => {
     tlsHolder.fingerprint = tls.fingerprint
     tlsHolder.cert = tls.cert
     proxy = createHttpsServer({ key: tls.key, cert: tls.cert, minVersion: "TLSv1.2" }, requestHandler)
