@@ -118,6 +118,18 @@ final class PushRegistrationTests: XCTestCase {
                 recipientKey: key, info: PushCrypto.tokenInfo, aad: PushCrypto.tokenAAD(kid: item.kid)))
     }
 
+    func testNotificationTapRoutesWithoutApproving() {
+        let request = PushPayloadReader.openRequest(in: [
+            "deviceId": " device-7 ",
+            "sessionId": "sess-9",
+            "action": "approve",
+            "e": "ciphertext",
+        ])
+        XCTAssertEqual(request, PushOpenRequest(deviceID: "device-7", sessionID: "sess-9"))
+        XCTAssertNil(PushPayloadReader.openRequest(in: ["deviceId": "device-7"]))
+        XCTAssertNil(PushPayloadReader.openRequest(in: ["deviceId": " ", "sessionId": "sess-9"]))
+    }
+
     func testContentKeyLivesOnlyInSecureStore() throws {
         let store = InMemorySecureStore()
         let keys = PushKeyStore(store: store)

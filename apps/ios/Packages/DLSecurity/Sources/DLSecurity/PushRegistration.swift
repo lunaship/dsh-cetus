@@ -69,7 +69,26 @@ public enum PushNotificationCategory {
     public static let openAction = "dlpush.open.action"
 }
 
+public struct PushOpenRequest: Equatable, Sendable {
+    public var deviceID: String
+    public var sessionID: String
+
+    public init(deviceID: String, sessionID: String) {
+        self.deviceID = deviceID
+        self.sessionID = sessionID
+    }
+}
+
 public enum PushPayloadReader {
+    /// Notification taps carry only routing identifiers. They never approve and
+    /// never expose the encrypted body to navigation.
+    public static func openRequest(in userInfo: [AnyHashable: Any]) -> PushOpenRequest? {
+        guard let deviceID = string("deviceId", in: userInfo),
+            let sessionID = string("sessionId", in: userInfo)
+        else { return nil }
+        return PushOpenRequest(deviceID: deviceID, sessionID: sessionID)
+    }
+
     public static func ciphertext(in userInfo: [AnyHashable: Any]) -> String {
         if let value = userInfo["e"] as? String, !value.isEmpty { return value }
         if let value = userInfo["ct"] as? String, !value.isEmpty { return value }
@@ -77,6 +96,12 @@ public enum PushPayloadReader {
     }
 
     public static func deviceID(in userInfo: [AnyHashable: Any]) -> String {
-        userInfo["deviceId"] as? String ?? ""
+        string("deviceId", in: userInfo) ?? ""
+    }
+
+    private static func string(_ key: String, in userInfo: [AnyHashable: Any]) -> String? {
+        guard let value = userInfo[key] as? String else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

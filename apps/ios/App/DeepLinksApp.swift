@@ -47,7 +47,7 @@ struct RootView: View {
     }
 }
 
-final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate {
+final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -62,7 +62,25 @@ final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate {
             intentIdentifiers: [],
             options: [])
         UNUserNotificationCenter.current().setNotificationCategories([category])
+        UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        defer { completionHandler() }
+        guard
+            response.actionIdentifier == UNNotificationDefaultActionIdentifier
+                || response.actionIdentifier == PushNotificationCategory.openAction,
+            let request = PushPayloadReader.openRequest(in: response.notification.request.content.userInfo)
+        else { return }
+        NotificationCenter.default.post(
+            name: .deepLinksOpenPush,
+            object: nil,
+            userInfo: ["deviceId": request.deviceID, "sessionId": request.sessionID])
     }
 
     func application(
@@ -116,6 +134,10 @@ struct DeepLinksApp: App {
 /// Debug-only stand-in for a successful scan. Release builds compile this reader out.
 /// The launch argument and the environment are both accepted: the UI-test host and the
 /// app process do not always see the same environment.
+extension Notification.Name {
+    static let deepLinksOpenPush = Notification.Name("dev.deeplinks.ios.open-push")
+}
+
 enum DebugE2EQRLaunch {
     static let argument = "-e2eQRPayload"
     static let environmentKey = "E2E_QR_PAYLOAD"

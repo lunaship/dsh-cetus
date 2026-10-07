@@ -43,6 +43,12 @@ struct InboxFlowView: View {
             .onChange(of: model.missingHost) { _, missing in
                 if missing { onMissing() }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .deepLinksOpenPush)) { notification in
+                guard let info = notification.userInfo,
+                    let request = PushPayloadReader.openRequest(in: info)
+                else { return }
+                Task { await model.openPush(deviceID: request.deviceID, sessionID: request.sessionID) }
+            }
             .onChange(of: scenePhase) { _, phase in
                 let mapped: AppPhase =
                     switch phase {
