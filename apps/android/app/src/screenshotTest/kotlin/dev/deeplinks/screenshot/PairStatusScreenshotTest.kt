@@ -26,14 +26,14 @@ private const val NOW = 1_760_000_000_000L
 @Preview(name = "pair waiting light zh", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun PairWaitingLightZh() = ShotFrame(dark = false, english = false) {
-    PairWaitingScreen(computerName = "Helios 的 MacBook Pro", deviceName = "Pixel 9 Pro", viaRemote = false, onCancel = {})
+    PairWaitingScreen(computerName = "我的 MacBook Pro", deviceName = "Pixel 9 Pro", viaRemote = false, onCancel = {})
 }
 
 @PreviewTest
 @Preview(name = "pair waiting dark en", showBackground = true, widthDp = 412, heightDp = 760)
 @Composable
 internal fun PairWaitingDarkEn() = ShotFrame(dark = true, english = true) {
-    PairWaitingScreen(computerName = "Helios's MacBook Pro", deviceName = "Pixel 9 Pro", viaRemote = true, onCancel = {})
+    PairWaitingScreen(computerName = "My MacBook Pro", deviceName = "Pixel 9 Pro", viaRemote = true, onCancel = {})
 }
 
 @PreviewTest
@@ -51,8 +51,8 @@ internal fun PairFailedDarkEn() = ShotFrame(dark = true, english = true) {
 }
 
 private fun shareSessions(en: Boolean) = listOf(
-    MobileSession("a", if (en) "Polish approval state sync" else "完善审批状态同步", NOW - 60_000, running = true, blank = false, cwd = "/Users/helios/dsh-links", agentPreset = null),
-    MobileSession("b", if (en) "Fix relay reconnect" else "修复中继重连", NOW - 3 * 3_600_000, running = false, blank = false, cwd = "/Users/helios/relay", agentPreset = null),
+    MobileSession("a", if (en) "Polish approval state sync" else "完善审批状态同步", NOW - 60_000, running = true, blank = false, cwd = "/Users/me/dsh-links", agentPreset = null),
+    MobileSession("b", if (en) "Fix relay reconnect" else "修复中继重连", NOW - 3 * 3_600_000, running = false, blank = false, cwd = "/Users/me/relay", agentPreset = null),
     MobileSession("c", "", NOW - 26 * 3_600_000, running = false, blank = false, cwd = null, agentPreset = null),
     MobileSession("d", "hidden", NOW, running = true, blank = false, cwd = null, agentPreset = null, origin = "subagent"),
 )

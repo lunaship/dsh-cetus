@@ -2,10 +2,9 @@ package dev.deeplinks.core.remote
 
 import dev.deeplinks.core.Host
 import dev.deeplinks.core.HostHttp
+import dev.deeplinks.core.TestServerIdentity
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.security.KeyStore
-import java.security.MessageDigest
 import java.util.Collections
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -13,7 +12,6 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import okhttp3.Request
-import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLParameters
 import javax.net.ssl.SSLSocket
@@ -134,16 +132,10 @@ class WebSocketTunnelSocketFactoryTest {
 
     @Test
     fun `pinned inner TLS handshake and HTTP request pass through WSS tunnel`() {
-        val password = "dlp1-test".toCharArray()
-        val keyStore = KeyStore.getInstance("PKCS12")
-        val p12 = javaClass.getResourceAsStream("/dlp1-test-server.p12")!!
-        p12.use { keyStore.load(it, password) }
-        val keyManagers = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(keyStore, password) }
-        val serverContext = SSLContext.getInstance("TLS").apply { init(keyManagers.keyManagers, null, null) }
+        val keyStore = TestServerIdentity.keyStore()
+        val serverContext = TestServerIdentity.serverContext(keyStore)
         val tlsServer = serverContext.serverSocketFactory.createServerSocket(0) as SSLServerSocket
-        val certificate = keyStore.getCertificate(keyStore.aliases().nextElement())
-        val pin = MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
-            .joinToString("") { "%02x".format(it) }
+        val pin = TestServerIdentity.pin(keyStore)
         val trustManager = dev.deeplinks.core.PinnedSsl.pinnedTrustManager(pin)
         val clientContext = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trustManager), null) }
         val requestSeen = CountDownLatch(1)
@@ -295,15 +287,9 @@ class WebSocketTunnelSocketFactoryTest {
     }
 
     private fun remoteTunnelHarness(): RemoteTunnelHarness {
-        val password = "dlp1-test".toCharArray()
-        val keyStore = KeyStore.getInstance("PKCS12")
-        javaClass.getResourceAsStream("/dlp1-test-server.p12")!!.use { keyStore.load(it, password) }
-        val keyManagers = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-            .apply { init(keyStore, password) }
-        val serverContext = SSLContext.getInstance("TLS").apply { init(keyManagers.keyManagers, null, null) }
-        val certificate = keyStore.getCertificate(keyStore.aliases().nextElement())
-        val pin = MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
-            .joinToString("") { "%02x".format(it) }
+        val keyStore = TestServerIdentity.keyStore()
+        val serverContext = TestServerIdentity.serverContext(keyStore)
+        val pin = TestServerIdentity.pin(keyStore)
 
         val tlsServer = serverContext.serverSocketFactory.createServerSocket(0) as SSLServerSocket
         val peers = Collections.synchronizedList(mutableListOf<Socket>())
