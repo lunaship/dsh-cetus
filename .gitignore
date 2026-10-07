@@ -1,5 +1,10 @@
 node_modules/
 .DS_Store
+
+# Swift Package Manager / Xcode 本地状态（各包下自动生成，不入库）
+.swiftpm/
+xcuserdata/
+DerivedData/
 .idea/
 *.iml
 .vscode/

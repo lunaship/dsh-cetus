@@ -33,8 +33,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -44,6 +42,8 @@
 	<string>Used to scan the pairing QR code on your computer.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Used to connect to DeepSeek Harness on your computer.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
