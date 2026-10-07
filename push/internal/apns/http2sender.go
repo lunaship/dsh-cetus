@@ -67,6 +67,9 @@ func (s *TokenSender) Send(ctx context.Context, req Request) (Result, error) {
 		httpReq.Header.Set("apns-expiration", fmt.Sprintf("%d", time.Now().Add(req.Expiration).Unix()))
 	}
 	client := s.client
+	if client == nil && s.scheme == "http" {
+		client = &http.Client{Timeout: 10 * time.Second}
+	}
 	if client == nil {
 		client = &http.Client{
 			Timeout: 10 * time.Second,
