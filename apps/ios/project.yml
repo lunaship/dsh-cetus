@@ -67,6 +67,7 @@ targets:
       - package: DLUI
     settings:
       base:
+        PRODUCT_NAME: DeepLinks
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: App/Info.plist
@@ -81,8 +82,13 @@ targets:
         excludes:
           - Info.plist
       - path: Packages/DLSecurity/Sources/DLSecurity/PushRegistration.swift
+      - path: Packages/DLSecurity/Sources/DLSecurity/PushCrypto.swift
+      - path: Packages/DLSecurity/Sources/DLSecurity/PushKeyStore.swift
+      - path: Packages/DLSecurity/Sources/DLSecurity/SecureStore.swift
+      - path: Packages/DLSecurity/Sources/DLSecurity/KeychainStore.swift
     settings:
       base:
+        PRODUCT_NAME: NotificationService
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.notification-service
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/NotificationService/Info.plist
@@ -97,6 +103,7 @@ targets:
           - Info.plist
     settings:
       base:
+        PRODUCT_NAME: LiveActivity
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.live-activity
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/LiveActivity/Info.plist
@@ -113,6 +120,7 @@ targets:
       - path: Packages/DLCore/Sources/DLCore/PromptAttachment.swift
     settings:
       base:
+        PRODUCT_NAME: Share
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.share
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/Share/Info.plist
@@ -139,6 +147,7 @@ targets:
         product: SnapshotTesting
     settings:
       base:
+        PRODUCT_NAME: DeepLinksTests
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DeepLinks.app/DeepLinks"
@@ -157,6 +166,7 @@ targets:
       - package: DLSecurity
     settings:
       base:
+        PRODUCT_NAME: DeepLinksUITests
         PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.uitests
         GENERATE_INFOPLIST_FILE: YES
 schemes:

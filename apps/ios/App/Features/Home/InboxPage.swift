@@ -43,6 +43,12 @@ struct InboxFlowView: View {
             .onChange(of: model.missingHost) { _, missing in
                 if missing { onMissing() }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .deepLinksOpenPush)) { notification in
+                guard let info = notification.userInfo,
+                    let request = PushPayloadReader.openRequest(in: info)
+                else { return }
+                Task { await model.openPush(deviceID: request.deviceID, sessionID: request.sessionID) }
+            }
             .onChange(of: scenePhase) { _, phase in
                 let mapped: AppPhase =
                     switch phase {
@@ -584,6 +590,7 @@ struct InboxPage: View {
         case .approval: copy.text(.approvalFailed)
         case .search: copy.text(.searchFailed)
         case .delete: copy.text(.deleteFailed)
+        case .pushMissing: copy.text(.pushMissing)
         }
     }
 
@@ -786,7 +793,9 @@ struct InboxDestinationPage: View {
                 computerName: model.computerName.isEmpty ? model.hostID : model.computerName,
                 computerAddress: model.hostID,
                 online: model.link.isOnline,
-                models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)))
+                models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)),
+                push: PushSettingsRegistration(
+                    hostID: model.hostID, pushVersion: model.pushVersion, pairedDeviceID: model.pairedDeviceID))
         case .computer:
             later(copy.text(.computers), copy.text(.laterComputer))
         case .diagnostics:

@@ -107,6 +107,7 @@ enum InboxText: String, Equatable, Sendable {
     case renameFailed
     case approvalFailed
     case deleteFailed
+    case pushMissing
     case shareBody
 
     var fallback: String {
@@ -217,6 +218,7 @@ enum InboxText: String, Equatable, Sendable {
         case .renameFailed: "Couldn't rename"
         case .approvalFailed: "Couldn't send the decision"
         case .deleteFailed: "Couldn't delete"
+        case .pushMissing: "That task is no longer on this computer."
         case .shareBody: "%@\n%@"
         }
     }

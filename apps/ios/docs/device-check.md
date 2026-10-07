@@ -116,7 +116,7 @@ D17 只看现有静态界面或系统预览，不要求真实推送。8.5 灵动
 
 - 自动验证覆盖：隔离假主机上的配对、收件箱、流式、发送、审批、提问、断线恢复、吊销回欢迎页；iPhone 17 Pro 与 iPad Pro 13 英寸模拟器上的真实搜索、输入和键盘顶起；离线合同测试中的证书错误、凭据保留、消息去重、插件重启快照恢复。
 - 仍需真机：系统权限、网络切换、卸载重装、辅助功能、玻璃可读性、VoiceOver、冷启动与滚动体感、真实 APNs、付费签名、线上送达和持续使用。
-- 性能：固定为 GitHub `macos-26`、Xcode 26.6、iPhone 17 Pro、iOS 26.5。有效运行目前只有 [37567029292](https://github.com/lunaship/dsh-links/actions/runs/37567029292)。[37565422504](https://github.com/lunaship/dsh-links/actions/runs/37565422504) 的 92 秒冷启动和 [37568471279](https://github.com/lunaship/dsh-links/actions/runs/37568471279) 的 15 秒冷启动都来自模拟器自动化会话停顿，保留原始结果但不计入基线。没有 3 次有效运行前，不建立基线，也不宣称性能合格。
+- 性能：固定为 GitHub `macos-26`、Xcode 26.6、iPhone 17 Pro、iOS 26.5。有效运行目前只有旧提交上的 [37567029292](https://github.com/lunaship/dsh-links/actions/runs/37567029292)。[37565422504](https://github.com/lunaship/dsh-links/actions/runs/37565422504) 的 92 秒冷启动、[37568471279](https://github.com/lunaship/dsh-links/actions/runs/37568471279) 的 15 秒冷启动，以及 `0d57fa34` 上 [37571586925](https://github.com/lunaship/dsh-links/actions/runs/37571586925) 的 47.83 秒和 [37572670405](https://github.com/lunaship/dsh-links/actions/runs/37572670405) 的 33.83 秒冷启动，都来自模拟器自动化会话停顿。原始结果保留，但不计入基线。没有 3 次有效运行前，不建立基线，也不宣称性能合格。
 
 ## G7 空白结果
 

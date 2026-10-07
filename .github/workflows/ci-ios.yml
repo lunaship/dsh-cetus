@@ -134,9 +134,21 @@ jobs:
             -only-testing:DeepLinksTests/SettingsModelsTests \
             -only-testing:DeepLinksTests/WideLayoutTests \
             -only-testing:DeepLinksTests/PreviewProxyTests \
+            -only-testing:DeepLinksTests/PushOpenRouteTests \
+            -only-testing:DeepLinksTests/PushRegistrationWireTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+          (
+            cd Packages/DLSecurity
+            xcodebuild \
+              -scheme DLSecurity \
+              -destination "$DEST" \
+              -only-testing:DLSecurityTests/PushRegistrationTests \
+              test \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO
+          )
 
   screenshots:
     name: iOS screenshot check
