@@ -61,7 +61,7 @@ final class PerformanceLaunchTests: XCTestCase {
             throw XCTSkip("PERFORMANCE_CONTROL_URL is required")
         }
         let path = try qrPath()
-        post(control, "/control/restart", [:])
+        guard post(control, "/control/restart", [:]) else { return }
         try waitForFreshQR(path)
         let app = XCUIApplication()
         let storage = appendStorageDirectory()
@@ -149,28 +149,36 @@ final class PerformanceLaunchTests: XCTestCase {
         }
     }
 
-    private func post(_ control: URL, _ path: String, _ body: [String: Any]) {
+    @discardableResult
+    private func post(_ control: URL, _ path: String, _ body: [String: Any]) -> Bool {
         let raw = control.absoluteString
         let base = raw.hasSuffix("/") ? String(raw.dropLast()) : raw
         guard let url = URL(string: base + path) else {
             XCTFail("control URL cannot take " + path)
-            return
+            return false
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         let done = expectation(description: "POST " + path)
+        let accepted = AtomicFlag()
         URLSession.shared.dataTask(with: request) { data, response, error in
             let status = (response as? HTTPURLResponse)?.statusCode ?? -1
             let text = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            if error == nil, (200..<300).contains(status) { accepted.set() }
             try? "\(path) status=\(status) error=\(error?.localizedDescription ?? "") body=\(text)\n"
                 .write(
                     to: URL(fileURLWithPath: "/tmp/dsh-performance-control.log"),
                     atomically: false, encoding: .utf8)
             done.fulfill()
         }.resume()
-        wait(for: [done], timeout: 10)
+        let result = XCTWaiter.wait(for: [done], timeout: 30)
+        if result != .completed || !accepted.value {
+            XCTFail("POST \(path) failed")
+            return false
+        }
+        return true
     }
 
     private func launchOnMain(_ app: XCUIApplication) {
@@ -191,5 +199,22 @@ final class PerformanceLaunchTests: XCTestCase {
         let directory = URL(fileURLWithPath: raw, isDirectory: true)
         try await PerformanceFixtureWriter.prepare(at: directory)
         return directory
+    }
+}
+
+private final class AtomicFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored = false
+
+    func set() {
+        lock.lock()
+        stored = true
+        lock.unlock()
+    }
+
+    var value: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
     }
 }
