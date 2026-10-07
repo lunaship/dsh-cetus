@@ -1,11 +1,12 @@
 /**
  * Summarize XCTest performance CSV files exported by `xcresulttool export metrics`.
  *
- * This records every sample and its median. It intentionally does not compare
- * against a baseline until three valid CI runs have established one.
+ * The baseline is the slowest median among three valid CI runs. A metric fails
+ * only when its current-run median is more than 20% slower than that baseline.
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 function cells(line) {
   const values = []
@@ -41,6 +42,43 @@ function median(values) {
   const middle = Math.floor(sorted.length / 2)
   if (sorted.length % 2 === 1) return sorted[middle]
   return (sorted[middle - 1] + sorted[middle]) / 2
+}
+
+export function loadBaseline(path = new URL("./ios-performance-baseline.json", import.meta.url)) {
+  const baseline = JSON.parse(readFileSync(path, "utf8"))
+  if (!Array.isArray(baseline.metrics) || baseline.metrics.length === 0) {
+    throw new Error("performance baseline must contain metrics")
+  }
+  return baseline
+}
+
+export function compareWithBaseline(tests, baseline) {
+  const regressions = []
+  for (const expected of baseline.metrics) {
+    const test = tests.find((item) => item.testIdentifier === expected.testIdentifier)
+    const metric = test?.metrics.find((item) => item.name === expected.name)
+    if (!metric || !Number.isFinite(metric.median) || !Number.isFinite(expected.baseline) || expected.baseline <= 0) {
+      regressions.push({
+        testIdentifier: expected.testIdentifier,
+        name: expected.name,
+        reason: "missing metric or baseline",
+      })
+      continue
+    }
+    const ratio = metric.median / expected.baseline
+    metric.reviewBaseline = expected.baseline
+    metric.ratioToBaseline = ratio
+    if (ratio > 1.2) {
+      regressions.push({
+        testIdentifier: expected.testIdentifier,
+        name: expected.name,
+        median: metric.median,
+        baseline: expected.baseline,
+        ratio,
+      })
+    }
+  }
+  return regressions
 }
 
 export function summarizeMetrics(directory) {
@@ -87,11 +125,17 @@ if (import.meta.url === new URL(process.argv[1], "file:").href) {
     console.error("usage: ios-performance-summary.mjs <metrics-directory> <summary.json>")
     process.exit(2)
   }
+  const baseline = loadBaseline(join(dirname(fileURLToPath(import.meta.url)), "ios-performance-baseline.json"))
+  const tests = summarizeMetrics(directory)
+  const regressions = compareWithBaseline(tests, baseline)
   const summary = {
     generatedAt: new Date().toISOString(),
     source: directory,
-    baselineEstablished: false,
-    tests: summarizeMetrics(directory),
+    baselineEstablished: true,
+    baselineCommit: baseline.commit,
+    regressionLimit: 1.2,
+    regressions,
+    tests,
   }
   writeFileSync(output, JSON.stringify(summary, null, 2) + "\n")
   for (const test of summary.tests) {
@@ -100,8 +144,14 @@ if (import.meta.url === new URL(process.argv[1], "file:").href) {
         test.testIdentifier + " | " + metric.name
         + " | samples=" + metric.samples.length
         + " | median=" + metric.median
-        + " | average=" + metric.average,
+        + " | baseline=" + metric.reviewBaseline
+        + " | ratio=" + metric.ratioToBaseline,
       )
     }
+  }
+  if (regressions.length > 0) {
+    console.error("performance regression exceeds 20%")
+    for (const regression of regressions) console.error(JSON.stringify(regression))
+    process.exit(1)
   }
 }

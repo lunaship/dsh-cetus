@@ -1,0 +1,94 @@
+{
+  "commit": "0d57fa34499df3655c292389881c47e44a91d7a0",
+  "environment": {
+    "xcode": "Xcode 26.6 Build version 17F113",
+    "runnerClass": "GitHub Actions macos-26",
+    "device": "iPhone 17 Pro",
+    "runtime": "iOS 26.5"
+  },
+  "cache": "Cached inbox fixture is prepared before app.launch(); cold-start measures first responsive frame.",
+  "warmup": "XCTest records five iterations after its own warmup for each metric.",
+  "reset": "Each launch uses the redirected fixture and storage; append preparation happens outside measured time.",
+  "runs": [
+    {
+      "id": 37581754062,
+      "url": "https://github.com/lunaship/dsh-links/actions/runs/37581754062",
+      "runner": "GitHub Actions 1000005764",
+      "medians": {
+        "PerformanceLaunchTests/testColdStartShowsCachedInbox()|Duration (ApplicationFirstFramePresentationResponsive)": 5.401667042,
+        "PerformanceLaunchTests/testThreeThousandMessageAppend()|Clock Monotonic Time": 1.2574858260000001,
+        "PerformanceLaunchTests/testThreeThousandMessageScroll()|Clock Monotonic Time": 6.83816409,
+        "PerformanceLaunchTests/testThreeThousandMessageScroll()|Duration (Scroll_Deceleration)": 2.304077083
+      }
+    },
+    {
+      "id": 37584446599,
+      "url": "https://github.com/lunaship/dsh-links/actions/runs/37584446599",
+      "runner": "GitHub Actions 1000005769",
+      "medians": {
+        "PerformanceLaunchTests/testColdStartShowsCachedInbox()|Duration (ApplicationFirstFramePresentationResponsive)": 4.420373625,
+        "PerformanceLaunchTests/testThreeThousandMessageAppend()|Clock Monotonic Time": 1.145516671,
+        "PerformanceLaunchTests/testThreeThousandMessageScroll()|Clock Monotonic Time": 6.002643417000001,
+        "PerformanceLaunchTests/testThreeThousandMessageScroll()|Duration (Scroll_Deceleration)": 2.299518083
+      }
+    },
+    {
+      "id": 37585727603,
+      "url": "https://github.com/lunaship/dsh-links/actions/runs/37585727603",
+      "runner": "GitHub Actions 1000005784",
+      "medians": {
+        "PerformanceLaunchTests/testColdStartShowsCachedInbox()|Duration (ApplicationFirstFramePresentationResponsive)": 4.394893291000001,
+        "PerformanceLaunchTests/testThreeThousandMessageAppend()|Clock Monotonic Time": 1.115198893,
+        "PerformanceLaunchTests/testThreeThousandMessageScroll()|Clock Monotonic Time": 5.674458015,
+        "PerformanceLaunchTests/testThreeThousandMessageScroll()|Duration (Scroll_Deceleration)": 2.316860209
+      }
+    }
+  ],
+  "invalidRuns": [
+    {
+      "id": 37583308121,
+      "url": "https://github.com/lunaship/dsh-links/actions/runs/37583308121",
+      "reason": "Scroll ended away from the target message."
+    },
+    {
+      "id": 37571586925,
+      "url": "https://github.com/lunaship/dsh-links/actions/runs/37571586925",
+      "reason": "Simulator automation stalled; cold start reached 47.83 seconds."
+    },
+    {
+      "id": 37572670405,
+      "url": "https://github.com/lunaship/dsh-links/actions/runs/37572670405",
+      "reason": "Simulator automation stalled; cold start reached 33.83 seconds."
+    }
+  ],
+  "metrics": [
+    {
+      "testIdentifier": "PerformanceLaunchTests/testColdStartShowsCachedInbox()",
+      "name": "Duration (ApplicationFirstFramePresentationResponsive)",
+      "unit": "seconds",
+      "baseline": 5.401667042,
+      "source": "slowest median among the three valid runs"
+    },
+    {
+      "testIdentifier": "PerformanceLaunchTests/testThreeThousandMessageAppend()",
+      "name": "Clock Monotonic Time",
+      "unit": "seconds",
+      "baseline": 1.2574858260000001,
+      "source": "slowest median among the three valid runs"
+    },
+    {
+      "testIdentifier": "PerformanceLaunchTests/testThreeThousandMessageScroll()",
+      "name": "Clock Monotonic Time",
+      "unit": "seconds",
+      "baseline": 6.83816409,
+      "source": "slowest median among the three valid runs"
+    },
+    {
+      "testIdentifier": "PerformanceLaunchTests/testThreeThousandMessageScroll()",
+      "name": "Duration (Scroll_Deceleration)",
+      "unit": "seconds",
+      "baseline": 2.316860209,
+      "source": "slowest median among the three valid runs"
+    }
+  ]
+}
