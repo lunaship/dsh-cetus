@@ -10,7 +10,7 @@ const root = dirname(fileURLToPath(import.meta.url))
 const panel = readFileSync(join(root, "src", "panel.js"), "utf8")
 
 const header = `/**
- * dsh-links 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
+ * dsh-cetus 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
  * 单模块：createPanelModule —— 「手机连接」面板（src/panel.js）
  * Android 使用原生 UI；本插件只提供桌面端连接面板。
  */
@@ -18,7 +18,7 @@ const header = `/**
 
 const boot = `
 window.__ModuleLoader__.load({
-  id: 'dsh-links',
+  id: 'dsh-cetus',
   factory: (require) => {
     const panel = createPanelModule(require)
     const module = { exports: {} }

@@ -1,5 +1,5 @@
 /**
- * dsh-links — 服务端面（host face）
+ * dsh-cetus — 服务端面（host face）
  *
  * 一个插件完成"手机端使用 dsh"：
  *   1. 在主 web 服务上注册 /dsh-link/* 路由（仅回环同源），给网页界面提供二维码与配对管理；
@@ -60,7 +60,7 @@ import { deriveStoppedReason } from "./mobile-session-activity.js"
 import { createHostEventHub, handleHostEvents } from "./host-events.js"
 import { createPushSink, publicPush } from "./push-sink.js"
 
-export const name = "dsh-links"
+export const name = "dsh-cetus"
 export const inject = ["webServer", "typertGateway"]
 
 export const Config = z.object({
@@ -143,12 +143,12 @@ function loadState(file) {
   try {
     raw = readFileSync(file, "utf8")
   } catch (err) {
-    throw new Error(`dsh-links: 无法读取 state.json: ${err?.message ?? err}`)
+    throw new Error(`dsh-cetus: 无法读取 state.json: ${err?.message ?? err}`)
   }
   try {
     return JSON.parse(raw)
   } catch {
-    throw new Error(`dsh-links: state.json 已损坏，拒绝静默清空已配对设备 (${file})`)
+    throw new Error(`dsh-cetus: state.json 已损坏，拒绝静默清空已配对设备 (${file})`)
   }
 }
 
@@ -626,7 +626,7 @@ async function qrPng(res, config, state, certFingerprint, remote) {
     res.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" })
     res.end(buf)
   } catch (err) {
-    console.error(`dsh-links: qr.png: ${err?.message ?? err}`)
+    console.error(`dsh-cetus: qr.png: ${err?.message ?? err}`)
     json(res, 500, { error: "failed to render qr" })
   }
 }
@@ -770,7 +770,7 @@ async function handlePair(req, res, config, state, stateFile, rt, logger, origin
   for (const old of replacedDevices) await rt.deviceMutations.drain(old.deviceId)
   if (replacedIds.length) {
     logger?.info(
-      `dsh-links: device replace device=${replacedIds.map((id) => String(id).slice(0, 8)).join(",")} new=${deviceId.slice(0, 8)}`,
+      `dsh-cetus: device replace device=${replacedIds.map((id) => String(id).slice(0, 8)).join(",")} new=${deviceId.slice(0, 8)}`,
     )
   }
   const remote = rt.remote?.deviceRemote(device) ?? null
@@ -1358,11 +1358,11 @@ export function apply(ctx, config) {
   // 留着只是多一份落盘秘密。设备记录不动（旧云端设备在面板上标「旧远程配对」，由用户决定吊销）。
   if (state.relay) {
     delete state.relay
-    ctx.logger.info("dsh-links: 旧版中继（DLR/1）已下线，已清除遗留接入配置")
+    ctx.logger.info("dsh-cetus: 旧版中继（DLR/1）已下线，已清除遗留接入配置")
   }
   saveState(stateFile, state)
   sweepExpiredPending(state, stateFile, rt)
-  if (migrated) ctx.logger.info("dsh-links: 已为旧设备补发 deviceId")
+  if (migrated) ctx.logger.info("dsh-cetus: 已为旧设备补发 deviceId")
 
   const fp = () => tlsHolder.fingerprint
   // 启动就绪状态：TLS 异步加载/生成完成且 HTTPS 端口真正 listen 之后才允许
@@ -1515,7 +1515,7 @@ export function apply(ctx, config) {
         if (!targetName && !targetId) return json(res, 400, { error: "缺少设备名或 deviceId" })
         const result = await revokeDeviceEntry(state, stateFile, rt, { name: targetName, deviceId: targetId })
         if (result.status === 200) {
-          ctx.logger.info(`dsh-links: device revoke device=${String(result.body?.deviceId ?? targetId).slice(0, 8)}`)
+          ctx.logger.info(`dsh-cetus: device revoke device=${String(result.body?.deviceId ?? targetId).slice(0, 8)}`)
         }
         json(res, result.status, result.body)
       },
@@ -1530,7 +1530,7 @@ export function apply(ctx, config) {
         if (!body) return
         const result = await revokeAllDevices(state, stateFile, rt)
         if (result.status === 200) {
-          ctx.logger.info(`dsh-links: device revoke-all removed=${result.body?.removed ?? 0}`)
+          ctx.logger.info(`dsh-cetus: device revoke-all removed=${result.body?.removed ?? 0}`)
         }
         json(res, result.status, result.body)
       },
@@ -1547,7 +1547,7 @@ export function apply(ctx, config) {
         const result = await activatePendingDevice(state, stateFile, rt, body.deviceId)
         if (result.status === 200 && result.body?.replacedDeviceIds?.length) {
           ctx.logger.info(
-            `dsh-links: device replace approve device=${String(result.body.deviceId).slice(0, 8)} replaced=${result.body.replacedDeviceIds.map((x) => String(x).slice(0, 8)).join(",")}`,
+            `dsh-cetus: device replace approve device=${String(result.body.deviceId).slice(0, 8)} replaced=${result.body.replacedDeviceIds.map((x) => String(x).slice(0, 8)).join(",")}`,
           )
         }
         json(res, result.status, result.body)
@@ -1571,9 +1571,9 @@ export function apply(ctx, config) {
         const result = await approveQueuedWorkspace(rt.workspaceApprovals, body.requestId, (path) =>
           callLocalRpc(targetPort, "workspace.create", { path }))
         if (result.deviceId) {
-          ctx.logger.info(`dsh-links: workspace approve device=${String(result.deviceId).slice(0, 8)}`)
+          ctx.logger.info(`dsh-cetus: workspace approve device=${String(result.deviceId).slice(0, 8)}`)
         } else if (result.error) {
-          ctx.logger.warn(`dsh-links: workspace approve: ${result.error?.message ?? result.error}`)
+          ctx.logger.warn(`dsh-cetus: workspace approve: ${result.error?.message ?? result.error}`)
         }
         json(res, result.status, result.body)
       },
@@ -1586,7 +1586,7 @@ export function apply(ctx, config) {
         if (!body) return
         const result = rejectQueuedWorkspace(rt.workspaceApprovals, body.requestId)
         if (result.status === 200) {
-          ctx.logger.info(`dsh-links: workspace reject request=${String(body.requestId).trim().slice(0, 8)}`)
+          ctx.logger.info(`dsh-cetus: workspace reject request=${String(body.requestId).trim().slice(0, 8)}`)
         }
         json(res, result.status, result.body)
       },
@@ -1616,7 +1616,7 @@ export function apply(ctx, config) {
         if (req.method !== "GET") return json(res, 405, { error: "method not allowed" })
         if (readiness.phase !== "ready") return proxyPending(res)
         const report = await runDiagnostics(diagnosticsSource(null), { scope: "panel" })
-        ctx.logger.info(`dsh-links: diagnostics scope=panel ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
+        ctx.logger.info(`dsh-cetus: diagnostics scope=panel ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
         json(res, 200, report)
       },
     }),
@@ -1747,15 +1747,15 @@ export function apply(ctx, config) {
     const sessionId = req?.agent?.session?.id
     const writers = sessionId ? rt.sessionStreams.get(sessionId) : null
     if (!writers || writers.size === 0) {
-      ctx.logger.info(`dsh-links: approval/request passthrough（无手机订阅）session=${String(sessionId ?? "?").slice(0, 8)} tool=${req?.toolName ?? req?.name ?? "?"}`)
+      ctx.logger.info(`dsh-cetus: approval/request passthrough（无手机订阅）session=${String(sessionId ?? "?").slice(0, 8)} tool=${req?.toolName ?? req?.name ?? "?"}`)
       return next()
     }
     const id = findApprovalId(req)
     if (!id) {
-      ctx.logger.info(`dsh-links: approval/request passthrough（无法解析审批 id）session=${String(sessionId ?? "?").slice(0, 8)} callId=${req?.callId ?? "无"} reqId=${req?.id ?? "无"} tool=${req?.toolName ?? req?.name ?? "?"}`)
+      ctx.logger.info(`dsh-cetus: approval/request passthrough（无法解析审批 id）session=${String(sessionId ?? "?").slice(0, 8)} callId=${req?.callId ?? "无"} reqId=${req?.id ?? "无"} tool=${req?.toolName ?? req?.name ?? "?"}`)
       return next()
     }
-    ctx.logger.info(`dsh-links: approval/request 接管 session=${String(sessionId).slice(0, 8)} id=${String(id).slice(0, 24)} callId=${req?.callId ?? "无"} tool=${req?.toolName ?? req?.name ?? "?"}`)
+    ctx.logger.info(`dsh-cetus: approval/request 接管 session=${String(sessionId).slice(0, 8)} id=${String(id).slice(0, 24)} callId=${req?.callId ?? "无"} tool=${req?.toolName ?? req?.name ?? "?"}`)
     return new Promise((resolve) => {
       const rec = {
         id,
@@ -1816,7 +1816,7 @@ export function apply(ctx, config) {
       req.signal?.addEventListener("abort", rec.onAbort, { once: true })
       const body = JSON.stringify({ rpcId, sessionId, questions })
       writeSse(new Set(targets), `event: question\ndata: ${body}\n\n`)
-      ctx.logger.info(`dsh-links: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${rpcId.slice(0, 8)}`)
+      ctx.logger.info(`dsh-cetus: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${rpcId.slice(0, 8)}`)
     })
   }), { prepend: true })
 
@@ -1887,7 +1887,7 @@ export function apply(ctx, config) {
       }
       const device = authorize(req, state, stateFile)
       if (config.debug) {
-        ctx.logger.info(`dsh-links: ${req.method} ${pathname} → ${device ? `device:${device.deviceId}` : "denied"}`)
+        ctx.logger.info(`dsh-cetus: ${req.method} ${pathname} → ${device ? `device:${device.deviceId}` : "denied"}`)
       }
       if (!device) {
         return json(res, 401, { error: "缺少或无效的连接 token" })
@@ -1940,10 +1940,10 @@ export function apply(ctx, config) {
             })
             if (mobileMutationWasRevoked(result)) return respondDeviceRevoked(res)
             if (result.missing) return json(res, 404, { error: "会话不存在" })
-            ctx.logger.info(`dsh-links: permission preset → ${preset} session=${String(sessionId).slice(0, 8)} device=${String(device.deviceId).slice(0, 8)}`)
+            ctx.logger.info(`dsh-cetus: permission preset → ${preset} session=${String(sessionId).slice(0, 8)} device=${String(device.deviceId).slice(0, 8)}`)
             return json(res, 200, { ok: true, preset, approval: spec.approval, sandbox: spec.sandbox })
           } catch (err) {
-            ctx.logger.warn(`dsh-links: permission update: ${err?.message ?? err}`)
+            ctx.logger.warn(`dsh-cetus: permission update: ${err?.message ?? err}`)
             return json(res, 500, { error: "permission update failed" })
           }
         }
@@ -1967,7 +1967,7 @@ export function apply(ctx, config) {
       }
       return json(res, 404, { error: "not found" })
     } catch (err) {
-      ctx.logger.warn(`dsh-links: proxy request error: ${err?.message ?? err}`)
+      ctx.logger.warn(`dsh-cetus: proxy request error: ${err?.message ?? err}`)
       if (!res.headersSent) json(res, 500, { error: "proxy error" })
       else res.destroy()
     }
@@ -1982,7 +1982,7 @@ export function apply(ctx, config) {
     tlsHolder.cert = tls.cert
     proxy = createHttpsServer({ key: tls.key, cert: tls.cert, minVersion: "TLSv1.2" }, requestHandler)
     proxy.on("error", (err) => {
-      ctx.logger.warn(`dsh-links: proxy error: ${err?.message ?? err}`)
+      ctx.logger.warn(`dsh-cetus: proxy error: ${err?.message ?? err}`)
     })
     proxy.on("upgrade", (req, socket, head) => {
       socket.on("error", () => {})
@@ -2023,8 +2023,8 @@ export function apply(ctx, config) {
     return new Promise((resolve, reject) => {
       proxy.once("error", reject)
       proxy.listen(config.port, "0.0.0.0", () => {
-        ctx.logger.info(`dsh-links: 手机接入代理已启动，https 端口 ${config.port}（指纹 ${tls.fingerprint.slice(0, 12)}…）`)
-        for (const u of lanUrls(config).urls) ctx.logger.info(`dsh-links: 可访问地址 ${u}`)
+        ctx.logger.info(`dsh-cetus: 手机接入代理已启动，https 端口 ${config.port}（指纹 ${tls.fingerprint.slice(0, 12)}…）`)
+        for (const u of lanUrls(config).urls) ctx.logger.info(`dsh-cetus: 可访问地址 ${u}`)
         remote.start().catch(() => {})
         muxBridge = startMuxQuestionBridge({
           targetPort,
@@ -2042,7 +2042,7 @@ export function apply(ctx, config) {
   }).catch((err) => {
     readiness.phase = "failed"
     readiness.error = String(err?.message ?? err)
-    ctx.logger.warn(`dsh-links: 手机接入代理启动失败（${readiness.error}），配对面板保持不可用`)
+    ctx.logger.warn(`dsh-cetus: 手机接入代理启动失败（${readiness.error}），配对面板保持不可用`)
     throw err
   })
   // 宿主未必 await 该 promise：挂 no-op catch 避免 unhandled rejection；宿主自行处理 ready 不受影响。
@@ -2079,7 +2079,7 @@ export function apply(ctx, config) {
       try { proxy?.closeAllConnections?.() } catch {}
       try { proxy?.close() } catch {}
     },
-    "dsh-links: proxy + routes",
+    "dsh-cetus: proxy + routes",
   )
 
   return ready

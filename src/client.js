@@ -1,10 +1,10 @@
 /**
- * dsh-links 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
+ * dsh-cetus 客户端面（src/client.js，由 build-client.mjs 生成，勿手改）
  * 单模块：createPanelModule —— 「手机连接」面板（src/panel.js）
  * Android 使用原生 UI；本插件只提供桌面端连接面板。
  */
 /**
- * dsh-links 客户端面 · 面板模块（作为 createPanelModule 工厂被主模块组合调用）
+ * dsh-cetus 客户端面 · 面板模块（作为 createPanelModule 工厂被主模块组合调用）
  * 「手机连接」：一张连接码（局域网 + 远程）、远程连接（DLP/1）、已配对手机。
  *
  * 版式跟随 DSH 设置页：扁平行 + 0.5px 分隔线，不套卡片；颜色全部取宿主的 --dsw-alias-* 变量
@@ -904,7 +904,7 @@ const createPanelModule = (require) => {
 
   function DshLinkSettingsSection() {
     return h(React.Fragment, null,
-      h('style', { 'data-plugin': 'dsh-links' }, STYLE),
+      h('style', { 'data-plugin': 'dsh-cetus' }, STYLE),
       h('div', { className: 'dl-settings dl-root' }, h(Panel, { active: true })),
     )
   }
@@ -918,15 +918,15 @@ const createPanelModule = (require) => {
             ctx.slots.register(
               {
                 name: 'settings.section',
-                id: 'dsh-links',
+                id: 'dsh-cetus',
                 order: 25,
                 label: () => '手机连接',
-                locale: 'dsh-links',
+                locale: 'dsh-cetus',
               },
               () => h(DshLinkSettingsSection, {}),
             ),
         ),
-      'dsh-links: settings.section',
+      'dsh-cetus: settings.section',
     )
   }
 
@@ -934,7 +934,7 @@ const createPanelModule = (require) => {
 }
 
 window.__ModuleLoader__.load({
-  id: 'dsh-links',
+  id: 'dsh-cetus',
   factory: (require) => {
     const panel = createPanelModule(require)
     const module = { exports: {} }

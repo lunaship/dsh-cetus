@@ -1,5 +1,5 @@
 {
-  "name": "dsh-links",
+  "name": "dsh-cetus",
   "version": "0.1.0-beta.19",
   "description": "DSH 手机插件：局域网配对 + 设备管理 + 18640 接入代理 + 手机 API（纯后端，无页面布局注入）",
   "type": "module",
@@ -12,11 +12,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lunaship/dsh-links.git"
+    "url": "git+https://github.com/lunaship/dsh-cetus.git"
   },
-  "homepage": "https://github.com/lunaship/dsh-links#readme",
+  "homepage": "https://github.com/lunaship/dsh-cetus#readme",
   "bugs": {
-    "url": "https://github.com/lunaship/dsh-links/issues"
+    "url": "https://github.com/lunaship/dsh-cetus/issues"
   },
   "keywords": [
     "deepseek-harness",
