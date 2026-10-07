@@ -1,14 +1,15 @@
-# DeepLinks iOS：从 0 到 1 执行方案
+# cetus iOS：从 0 到 1 执行方案
 
-> 状态：已采纳 v1.4（2026-10-06）。续作执行单：[`docs/ios/CONTINUE.md`](CONTINUE.md)。本轮收尾以桌面 `DeepLinks-收尾方案.md`（2026-10-06 修订）为准，本文只同步执行边界。
-> v1.4 变更：改名延期，本轮继续用 DeepLinks / dsh-links。A5 真机检查改到收尾 G7，不再挡住阶段 5；允许自动化模拟器验证。方案 A 先做 G4.0 本地传输验证，不连官方中继。推送仍须合并前安全审查；对 `main` 的 PR 与 `ios/main → main` 只由维护者合并。
+> 状态：已采纳 v1.5（2026-10-07）。续作执行单：[`docs/ios/CONTINUE.md`](CONTINUE.md)。
+> v1.5 变更（P01 设计合同）：**改名不再延期** —— 命名以 [`docs/REBRAND_CETUS.md`](../REBRAND_CETUS.md) 为准，界面显示名一律小写 `cetus`（v1.4 的「本轮继续用 DeepLinks」作废）。消解 9 个设计冲突：I4.2 首页改为**工作区文件夹 + 等你处理置顶**（原「大标题 + 三组收件箱」作废）、I4.3c 明确**单一决策面板与每状态一个主动作**、42% 淡化登记为**合同数值**且先做可读性实验、**示例数字不填演示值**、**iPhone 13 只验收 8.4 锁屏 Live Activity，灵动岛另用支持设备**。合同正文见 [`docs/redesign-v4/PLAN.md`](../redesign-v4/PLAN.md) 2026-10-07 P01 节。
+> v1.4 变更：~~改名延期，本轮继续用 DeepLinks / dsh-links~~（**已被 v1.5 取代**）。A5 真机检查改到收尾 G7，不再挡住阶段 5；允许自动化模拟器验证。方案 A 先做 G4.0 本地传输验证，不连官方中继。推送仍须合并前安全审查；对 `main` 的 PR 与 `ios/main → main` 只由维护者合并。
 > v1.3 变更：`sealed` 定为 JSON 对象；附加数据前缀改为 `dlpush/1 token|` 与 `dlpush/1 content|` 做域分离；I6.2 测试向量路径改为 `testdata/push/hpke/` 与 `testdata/push/content/`。
 > v1.2 变更：HPKE 算法组合定为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305 并规定测试向量；补 7.6 对话默认；设计稿去掉“输入配对码”；RFC 0002 先留在 `ios/main`，阶段 6 随插件 PR 一起进 main。
 > v1.1 变更：I1.5 改为 HTML 设计稿（I1.5a 已完成）+ 模拟器截图验收（I1.5b）；决策栏按钮改为实色；深色 BrandFill 暂定 `#4C66E6`；推送网关部署到维护者的香港服务器；新增执行规则第 11 条（agent 无法本地编译 iOS）。
 > 写给两类读者：维护者（做决定、付费、审核）和执行 PR 的 agent（按编号领取）。
-> 基线：`lunaship/dsh-links` main @ `7b9c164`（v4 重设计已合入）。
+> 基线：`lunaship/dsh-cetus` cetus/main（原 `lunaship/dsh-links` main @ `7b9c164`，v4 重设计已合入）。
 > 页面编号（1.x–8.x）与 `docs/redesign-v4/design-v4.html` 一一对应；iOS 子项编号用 `I<阶段>.<序号>`。
-> iOS 设计稿：`apps/ios/docs/design/`（PNG + `README.md`），与本文冲突时以本文为准并在 PR 中指出。
+> iOS 设计稿：`apps/ios/docs/design/`（PNG + `README.md`）。**PNG 只定布局与层级，禁止取色、禁止按像素复刻**；与本文冲突时以本文为准并在 PR 中指出。**2.1 PNG 的三分区首页已作废**，该 PNG 只作系统控件气质与文字层级参考（见 I4.2）。
 > 续作执行单（I4.8 收尾之后）：[`docs/ios/CONTINUE.md`](CONTINUE.md)。规则与红线仍以本文为准。
 
 ---
@@ -36,6 +37,7 @@
 - 附录 B：玻璃使用规则
 - 附录 C：iOS 要实现的手机 API 清单
 - 附录 D：维护者需要亲自完成的事项清单
+- 附录 E：P01 设计合同（iOS 落点）
 
 ---
 
@@ -91,6 +93,8 @@
 5. **失败处理**：同一个门禁连续修 3 次仍失败，停下汇报；不绕过门禁、不删测试、不调高预算。
 6. **截图基线**：只允许由 CI 工作流 `ios-regen-screenshots.yml` 生成；禁止提交本地生成的基线。PR 描述附“新基线 ↔ 页面编号”对照表。
 7. **合同先行**：凡是改手机 API，先改 `docs/MOBILE_SYNC_CONTRACT.md` 与 `docs/COMPATIBILITY.md`，再写代码；插件新能力在 `src/protocol-caps.js` 声明，App 只在声明时显示入口。
+7.1 **设计合同先行（P01，2026-10-07）**：凡是改信息架构、主动作规则、淡化数值或新增入口，**先改合同再改实现**：先改 `docs/redesign-v4/PLAN.md`（信息架构与合同数值）或 `apps/ios/docs/visual-rules-ios.md`（视觉取值），再动代码。**不偷偷改数值**——合同与实现不一致时，先问合同该不该改，而不是先改代码再补文档。凡不在 `page-mapping.md` 内的新入口，先补合同再实现。
+7.2 **示例数字**：统计 / 余额 / 进度 / 计数一律来自真实接口，缺失显示说明或省略，**不填演示值**；Demo fixture 例外且必须与生产数据源可区分（见附录 E.1）。
 8. **双语**：所有文案进 String Catalog（`Localizable.xcstrings`），简体中文与英文同时提交。
 9. **进度记录**：每合并一个 PR，在本文第 11 节追加一行（子项、PR、结论或偏差）。
 10. **不发布**：不改版本号、不打 tag、不建 Release，只在 CHANGELOG“未发布（main）”下记一行。
@@ -428,21 +432,26 @@ Figma 无法由 agent 操作，改为两步：
 - 1.6 配对失败：标题 + 原因 + 三条建议 + “返回”。
 - 1.4 输入配对码：不做（沿用 v4 决定）。
 
-### I4.2 首页收件箱（2.1–2.6）
+### I4.2 首页（2.1–2.6）
+
+> **2026-10-07 P01 修订（先改合同，再改实现）。** 本节原先写的是「大标题 DeepLinks + 三组收件箱（等你处理 / 进行中 / 最近）」。该信息架构**已作废**：`docs/redesign-v4/PLAN.md` 2026-10-05 / 2026-10-06 记录了用户确认的**工作区文件夹首页**，收尾 G2 已按新口径调整 iOS 首页并合并（#165 / `4ec0f7a6`）。本节改写为当前合同；下面「已实现偏差」列出与老文字的差异。
 
 - 2.1：
-  - `NavigationStack` + 大标题“DeepLinks”；`.navigationSubtitle` 显示“● 电脑名 · 在线 / 离线 / 远程”；`toolbarTitleMenu` 放 2.5 的电脑与工作区菜单；右上设置。
-  - 列表 plain 样式，三组：等你处理 / 进行中 / 最近，组头吸顶带计数。
-  - 行结构（`DLInboxRow`）：第一行 footnote 次要色“● 工作区 · 状态”，右侧时间；第二行标题（body 中粗）；第三行预览（最多 2 行，次要色）；“等你处理”且手机可处理时，显示“拒绝”（`.bordered`）与“允许一次”（`.bordered` + accent tint）。
-  - 状态点只给“等你处理”（wait）与“进行中”（accent）。
+  - `NavigationStack`；**顶栏居中显示当前电脑名 + 连接状态**（`.navigationSubtitle` 显示“● 电脑名 · 在线 / 离线 / 远程”）。**不放品牌大标题**：品牌只出现在 1.1 启动、1.2 欢迎与关于页。
+  - 列表 plain 样式。**「等你处理」跨工作区置顶**（跨工作区，所以保留工作区名，行内可直接 拒绝 / 允许一次 / 回答）；其余会话按**工作区文件夹**缩进，文件夹内**不重复**这些待处理会话。
+  - 组头吸顶带计数；每个文件夹默认 3 条（`HOME_FOLDER_PREVIEW_ROWS`），超出显示「显示全部 N 个 / 收起」；收起后仍显示待处理 / 运行计数。
+  - 分组以电脑注册表的 `sessionIds` 为准，注册表未就绪才按 cwd 回退；同名工作区显示必要父路径；未归属进「未分组」；没发过消息的空会话不上首页。
+  - 行结构（`DLInboxRow`）：**普通会话只显示一行标题**；“等你处理”且手机可处理时，显示“拒绝”（`.bordered`）与“允许一次”（`.bordered` + accent tint）。
   - 底部工具栏：左“筛选”`Menu`，中搜索（`DefaultToolbarItem(kind: .search, placement: .bottomBar)`），右“新任务”（唯一品牌实心按钮）。
   - `.refreshable` 下拉刷新。
 - 2.2 空态：`DLEmptyState` + “从一件事开始”三条普通行。
 - 2.3 离线：列表顶部 `DLBanner`（中性底，只有图标红色）+ “重试 / 连接诊断”；列表保留最后状态，批准按钮禁用。
 - 2.4 搜索：`.searchable(text:tokens:)`，工作区作为 token；`.searchSuggestions` 显示最近搜索；结果分“标题匹配 / 内容匹配”，命中词 accent 色。
-- 2.5 电脑与工作区：`toolbarTitleMenu` 内两组：“电脑”（当前电脑 + 状态，进入 7.2）、“工作区”（单选 + 添加工作区 + 已归档）。
-- 2.6 长按：`contextMenu`：重命名 / 分叉为新会话 / 分享对话 / 归档 / 删除（`.destructive`，二次确认）。
-- 左滑：`swipeActions(edge: .trailing)`：归档（灰）、删除（红，二次确认）。**审批不提供滑动。**
+- 2.5 电脑与工作区：**不再有**单独列出全部工作区的「电脑与工作区」菜单。右上「更多」只保留**电脑切换、设置、已归档**。**首页不再提供「添加工作区」入口**：新增工作区只从新任务流程申请或选择，电脑仍负责批准工作区访问（2026-10-06 G2）。
+- 2.6 长按：会话 `contextMenu` 只留**删除**（`.destructive`，二次确认）；长按工作区是「在这里新建 / 删除工作区」，删除仍需确认。
+- **删除左滑归档**：归档 / 删除不走 `swipeActions`，只走长按菜单（与 Android R3.2 一致）。**审批不提供滑动。**
+
+**已实现偏差（#165 / `4ec0f7a6`，见第 11 节 G2）**：Android「更多」里的设置 / 已归档在 iOS 保留；iOS 普通会话只显示一行标题；iOS 不再有「添加工作区」行。上一段老文字里的「重命名 / 分叉 / 分享 / 归档」已从会话长按菜单移除。
 
 ### I4.3 对话（4.1–4.9），拆 4 个 PR
 
@@ -466,12 +475,16 @@ Figma 无法由 agent 操作，改为两步：
 
 **I4.3c 输入区与决策栏**
 
+> **2026-10-07 P01 修订**：本节是「单一决策面板」与「主动作」两条合同的 iOS 落点。
+
 - `DLComposerView`（UIKit）：贴 `keyboardLayoutGuide`；结构：附件缩略图（输入框上方）→ 输入框 → 下方一行（“+”、模型 · 推理 chip、权限 chip、发送 / 停止 / 麦克风）。
 - 外层一个玻璃容器（`UIGlassEffect`，或 SwiftUI `GlassEffectContainer` 包装，以 spike 结论为准）；发送键用品牌色实心。
 - 草稿按主机落盘；发送途中被系统回收的消息回来后回填，不自动重发。
-- `DLDecisionBar`：与输入区同一个容器，用形变动画（`glassEffectID` / UIKit 对应动画）切换；内容：状态行 + 问题 + 命令块（实色底等宽）+ 按钮（左“拒绝”灰色填充 `.bordered`，右“允许一次”`.borderedProminent` + BrandFill；决策栏本身是玻璃，内部元素一律实色，不叠玻璃）；对话内容在决策栏出现时降到约 42% 不透明度；提问：单选 / 多选 / 自己写答案，“上一题 / 跳过（仅可选题）/ 下一题”。
+- **主动作规则（每状态只有一个主要动作）**：空闲 = 发送；运行中 = 停止；待审批 = 允许一次（次动作：拒绝）；待回答 = 下一题（中间题）/ 提交（最后一题）（次动作：上一题；**只有可选题**才有「跳过」）。**顶部 / 底部不得同时存在两个语义不清的发送按钮。**
+- **`DLDecisionBar` 是单一决策面板**：审批与提问用**同一个容器**，`glassEffectID` 形变切换。内容：状态行 + 问题 + 命令块（实色底等宽）+ 选项 / 自由输入 + 按钮（左“拒绝”灰色填充 `.bordered`，右“允许一次”`.borderedProminent` + BrandFill；决策栏本身是玻璃，内部元素一律实色，不叠玻璃）。
+- **提问整合在一处**：说明 + 单选 / 多选 + **「自己写答案」** + 上一题 / 下一题 / 提交。无选项题直接显示编辑器；有选项且允许自定义时才出现自由输入。选项值与显示文案分开，提交真实值；未知题型给安全说明，不默默提交空数组。每题草稿按 `(hostID, sessionID, rpcID, questionID/index)` 保存，翻页恢复选择与自由文本。普通消息草稿与回答草稿**彻底分离**。
 - 只处理手机能处理的最新一条（与 Android R3.1c 规则一致）；批准时 `.sensoryFeedback(.success)`。
-- 消息流在决策栏出现时整体降低不透明度（content layer dim），与 4.3 一致。
+- **消息流淡化（合同数值）**：决策栏出现时消息流降到**约 42% 不透明度**。这是 `docs/redesign-v4/PLAN.md` P01.4 登记的**合同数值，实现不得私自调整**。执行顺序：先做可读性与辅助功能实验（VoiceOver 阅读顺序、降低透明度、增强对比度、最大辅助字号）；**若妨碍审查上下文**（弱化覆盖了命令与必要上下文，或 VoiceOver 读到「不可用」但仍可点击的操作），则改为**决策区层级强化 + 局部弱化**，且**必须先把新数值与新规则写进合同再改实现**。无论哪条，弱化都不能覆盖命令块、权限边界与必要上下文；读完之前保留拒绝入口。
 
 **I4.3d 轨迹与菜单**
 
@@ -613,7 +626,7 @@ RFC 必须写清以下内容：
 - 插件：`ct = AES-256-GCM(K, nonce=随机 12 字节, aad="dlpush/1 content|" + deviceId, plaintext=JSON)`。
 - 附加数据的域分离：token 封装用 `"dlpush/1 token|"`，内容加密用 `"dlpush/1 content|"`，两者前缀不同，不得共用同一个构造函数；两端各有一条负例测试：用另一种前缀解密必须失败。
 - 明文 JSON：`{ v:1, type: "approval"|"question"|"completed"|"failed"|"stopped", sessionId, title, tool?, ts }`。`tool` 只给审批，且锁屏不显示。
-- NSE：解密成功 → 替换标题与正文；`ts` 超过 15 分钟的视为过期，显示通用文案；解密失败 → 显示通用文案“DeepLinks 有新的任务动态”。
+- NSE：解密成功 → 替换标题与正文；`ts` 超过 15 分钟的视为过期，显示通用文案；解密失败 → 显示通用文案“cetus 有新的任务动态”。
 
 **网关接口**
 
@@ -625,7 +638,7 @@ RFC 必须写清以下内容：
 **APNs 请求（网关构造）**
 
 - `alert`：`apns-push-type: alert`，`apns-priority: 10`（审批、提问）/ `5`（完成），`apns-collapse-id`，`apns-expiration`；payload：
-  `{"aps":{"alert":{"title":"DeepLinks","body":"有新的任务动态"},"mutable-content":1,"thread-id":"<会话哈希>","interruption-level":"time-sensitive"},"e":"<ct base64>","k":"<kid>"}`
+  `{"aps":{"alert":{"title":"cetus","body":"有新的任务动态"},"mutable-content":1,"thread-id":"<会话哈希>","interruption-level":"time-sensitive"},"e":"<ct base64>","k":"<kid>"}`
   （`time-sensitive` 只给审批与提问，需要 App 开 Time Sensitive Notifications 能力。）
 - `la-*`：`apns-push-type: liveactivity`，topic `<bundleId>.push-type.liveactivity`；content-state 只含 `{state, step, startedAt, waitingCount, sessionRef}`，`sessionRef` 是不透明序号，标题由 Widget 从 App Group 本地查。
 
@@ -674,7 +687,7 @@ RFC 必须写清以下内容：
 - 设置 7.4：总开关默认关；打开前一页说明“通知会经过官方推送网关转发，内容端到端加密，网关看不到”。
 - 通知分类：`approval`、`question`、`completed`、`failed`；只有“打开”动作，不提供在通知上直接批准。
 - 点击：打开对应会话；会话不在本机列表时先刷新再打开，找不到就停在首页并提示。
-- 锁屏隐私：`hiddenPreviewsBodyPlaceholder` 设为“DeepLinks · 有新的任务动态”。
+- 锁屏隐私：`hiddenPreviewsBodyPlaceholder` 设为“cetus · 有新的任务动态”。
 - NSE（`Extensions/NotificationService`）：读共享 Keychain 里的 `K` → 解密 → 改写标题正文；不联网；内存与耗时控制在系统限制内。
 
 ### I6.5 推送测试（不需要付费）
@@ -700,11 +713,18 @@ RFC 必须写清以下内容：
 ### I7.1 Live Activity（Widget extension）
 
 - `ActivityAttributes`：静态部分 `{hostRef}`；content-state `{state, step, startedAt, waitingCount, sessionRef}`。
-- 锁屏：会话名（从 App Group 本地查 `sessionRef`）、状态、第几步、计时器（`Text(timerInterval:)`）。
-- 灵动岛：收起时左图标、右状态；展开时显示“需要审批 · 在 App 中处理”。
+- 锁屏（8.4）：会话名（从 App Group 本地查 `sessionRef`）、状态、第几步、计时器（`Text(timerInterval:)`）。
+- 灵动岛（8.5）：收起时左图标、右状态；展开时显示“需要审批 · 在 App 中处理”。
 - 生命周期：App 在前台时本地更新；离开 App 后由插件 → 网关推送更新（`la-update`）；全部结束后结束活动，锁屏保留 60 秒。
 - 远程启动（`la-start`，push-to-start token）：只在出现审批 / 提问且没有现成活动时使用。
 - 设置 7.4 有 Live Activity 开关；关掉时结束所有活动并注销 push-to-start token。
+
+**验收设备边界（P01 冲突 7，必须遵守）**
+
+- 当前连接的真机是 **iPhone 13**，**没有灵动岛**。**iPhone 13 只用于验收锁屏 Live Activity（8.4）。**
+- **8.5 灵动岛必须另用支持灵动岛的设备或模拟器验收。**
+- **不得在验收记录里写「iPhone 13 已通过灵动岛」**，也不得把 8.5 的结论挂在这台机上。在支持设备验收之前，8.5 的状态记为**未验收**，不写通过。
+- 设备型号与系统版本如需改动，按 `apps/ios/docs/visual-rules-ios.md` §10 报维护者批准。
 
 ### I7.2 分享扩展（8.3）
 
@@ -748,7 +768,7 @@ RFC 必须写清以下内容：
 
 ### I9.3 App Store Connect
 
-1. 新建 App 记录：名称“DeepLinks”（**名称与副标题不出现 DeepSeek**），主语言简体中文，加英文。
+1. 新建 App 记录：名称“cetus”（**名称与副标题不出现 DeepSeek**），主语言简体中文，加英文。
 2. 隐私营养标签：如实填写（不收集数据；推送 token 仅用于发送通知）。
 3. 出口合规：在问卷中如实回答（使用系统 HTTPS 与 CryptoKit 标准算法）；结论以问卷结果为准，必要时在 `Info.plist` 设置 `ITSAppUsesNonExemptEncryption`。
 4. 隐私政策 URL：指向仓库 `PRIVACY.md` 的网页版本。
@@ -851,6 +871,8 @@ RFC 必须写清以下内容：
 | I7.1 | #152 | 本地 Live Activity。扩展显示会话标题、状态、步骤和计时；审批优先于提问，关闭或结束后不显示。远程启动和推送更新仍依赖阶段 6 网关，本次未做。iOS 构建、单测、端到端、截图比较通过。squash 617c925e。真机未测。 |
 | I7.2 | #150 | 分享进来。扩展只把一份文本或图片写进 App Group，再用 `deeplinks://share/<id>` 唤起 App；不联网、不读 Keychain。选择页提供新任务和最近 6 个会话，选择后只预填输入框，不发送。最近会话快照只含标题。iOS 构建、单测、端到端、截图比较通过。squash `11b135ff`。真机未测。 |
 | I7.3 | #148 | 前后台发送。前台 SSE、进后台立即断开、回前台按已提交游标重连沿用现有实现。对话与收件箱的一次 HTTP 写若未完成且 App 已在后台，只申请一个短后台任务，结束后关闭；不做保活，不用 `BGContinuedProcessingTask`。失败仍保留草稿且不自动重发。iOS 构建、单测、端到端通过。截图比较两次失败，分别落在未改动的轨迹页和新任务页，判定为既有基线抖动。squash `b670295e`。真机未测。 |
+| P01 | 文档（无代码） | 设计合同定稿，消解方案 §2.2 的 9 个冲突。改动：`docs/redesign-v4/PLAN.md` 新增 2026-10-07 P01 节（首页合同 + 9 条收敛决定 + 合同更新顺序）；`docs/redesign-v4/design-v4.html` 加「iOS 平台登记」并改标题为 cetus；本文升 v1.5（I4.2 首页改为工作区文件夹、I4.3c 明确单一决策面板与每状态一个主动作、42% 登记为合同数值、附录 E、I7.1 验收设备边界）；`apps/ios/docs/page-mapping.md` 冲突清单；`apps/ios/docs/visual-rules-ios.md` 加优先级节；新增 `docs/REBRAND_CETUS.md`（命名合同 / legacy 白名单 / 旧客户端范围 / 发布顺序 / 回滚限制）。**未改代码、未改 PNG 与生成脚本。** 发现的矛盾见下。 |
+| P01-矛盾 | — | ① 本文 v1.4 写「改名延期，本轮继续用 DeepLinks / dsh-links」，与方案 §21.1 用户已确定 `cetus` 矛盾 → 已按 v1.5 改为 `cetus`。② I4.2 原文写「大标题 DeepLinks + 三组（等你处理 / 进行中 / 最近）」，与 PLAN.md 2026-10-05 / 2026-10-06 用户确认的文件夹首页矛盾，也与 `page-mapping.md` 已写的文件夹口径矛盾 → 已改写。③ `apps/ios/docs/design/README.md`「设计决定」第 1 条仍写大标题首页与旧品牌名，属**历史设计稿说明**，按 P01 冲突 9 不改写，只在本文登记其信息架构作废。④ v1.4 称「D3.4 收尾方案」时 `page-mapping.md` 2.5 已写「不再使用标题菜单」，但本文 I4.2 仍写 `toolbarTitleMenu` → 已对齐。 |
 
 
 ### 收尾（G1–G6）交付状态
@@ -885,12 +907,12 @@ RFC 必须写清以下内容：
 | 1.4 | 输入配对码 | 不做 | 同 Android |
 | 1.5 | 等电脑批准 | push 页面，轮询 | — |
 | 1.6 | 配对失败 | push 页面 | — |
-| 2.1 | 首页收件箱 | `NavigationStack` + plain `List` + 底部工具栏 | 无 FAB；搜索在底部 |
-| 2.2 | 空态 | `ContentUnavailableView` | — |
+| 2.1 | 首页（工作区文件夹） | `NavigationStack` + plain `List` + 底部工具栏 | 无 FAB；搜索在底部；不放品牌大标题 |
+| 2.2 | 空态 | `ContentUnavailableView` / `DLEmptyState` | — |
 | 2.3 | 离线 | 内容层 `DLBanner` | — |
 | 2.4 | 搜索 | `.searchable` + token + 建议 | 工作区用 token |
-| 2.5 | 电脑与工作区 | `toolbarTitleMenu` | 菜单代替弹层 |
-| 2.6 | 长按 | `contextMenu` + 左滑 | 多左滑 |
+| 2.5 | 更多 | 右上「更多」：电脑切换 / 设置 / 已归档 | **不再有**列出全部工作区的菜单，**不再有**添加工作区行 |
+| 2.6 | 长按 | `contextMenu`：会话只留删除；工作区可新建 / 删除 | 不做左滑归档 |
 | 3.1–3.4 | 新任务 | 草稿态对话页 + `.sheet` | — |
 | 4.1–4.2 | 对话 | `UICollectionView` + 系统导航栏 | — |
 | 4.3–4.4 | 审批 / 提问 | `DLDecisionBar` 玻璃形变 | — |
@@ -977,3 +999,41 @@ RFC 必须写清以下内容：
 | 收尾 G7 | 按 `apps/ios/docs/device-check.md` 做真机、线上送达和分发；结果留空，开发过程不催填 |
 | 阶段 9 | 开通开发者账号；建 App ID 与能力；生成 `.p8` 并离线备份；部署网关；建 App Store Connect 记录；提交 TestFlight 与审核 |
 | 全程 | 合并 `ios/main → main`；处理所有“停下等人”的点 |
+
+---
+
+## 附录 E：P01 设计合同（iOS 落点）
+
+> 来源：桌面方案 `Cetus-整体改造方案-2026-10-07.md` §2、§21。全文见 [`docs/redesign-v4/PLAN.md`](../redesign-v4/PLAN.md) 2026-10-07 P01 节与 [`docs/REBRAND_CETUS.md`](../REBRAND_CETUS.md)。
+> 本附录只列 **iOS 侧要做什么**，不重复合同正文。
+
+| # | 冲突 | iOS 落点 | 状态 |
+|---|---|---|---|
+| 1 | 首页收件箱 vs 工作区文件夹 | I4.2 已改写为文件夹首页 + 等你处理置顶；G2 #165 已合并 | **合同已更新，实现已对齐** |
+| 2 | 大品牌标题 vs 居中电脑标题 | 首页不放品牌大标题（I4.2）；品牌只在 1.1 启动 / 1.2 欢迎 / 关于 | **合同已更新，实现已对齐** |
+| 3 | 全屏内容淡到 42% | I4.3c 登记 42% 为合同数值 + 实验前置条件 | **合同已更新；实验待做** |
+| 4 | 问题选项 vs「自己写答案」 | I4.3c 单一决策面板；提问整合在一处 | **合同已更新；自由输入已实现，翻页 / 跳过见 A3.6** |
+| 5 | 对话页品牌按钮规则 | I4.3c 主动作表（空闲发送 / 运行停止 / 待审批允许一次 / 待回答下一题或提交） | **合同已更新** |
+| 6 | 示例数字 | 统计 / 余额 / 进度 / 计数只用真实接口；缺失显示说明或省略 | **合同已更新；见附录 E.1** |
+| 7 | 灵动岛与测试设备 | I7.1 验收设备边界：iPhone 13 只验收 8.4 | **合同已更新；8.5 未验收** |
+| 8 | 名称 | 显示名小写 `cetus`；见 `docs/REBRAND_CETUS.md` | **合同已建立**，实现由 B4 执行 |
+| 9 | 首页旧 PNG | 2.1 PNG 只作控件气质 / 文字层级参考；PNG 与生成脚本不改 | **合同已更新** |
+
+### E.1 示例数字（冲突 6）的 iOS 具体规则
+
+- 统计、余额、进度、计数、百分比**一律来自真实接口**；缺失时显示中性说明（如「暂无数据」/「还没读到」）或**直接省略该元素**。
+- **不填**编造的演示数字。PNG 里的余额 `¥42.10`、上下文 `46%`、`+148 −37` 只是版式示意，不是数据契约。
+- 进度条 / 进度环**无真实进度时不画 0%**，改为不显示。
+- 例外：**演示模式（Demo）** 的 fixture 可以是有意构造的假数据——它是产品功能（App 审核需要，见 1.2「先看看演示」），不是伪装成真实数据的占位。Demo 入口独立，**不得混进生产数据源**。
+- 截图基线里若出现数字，必须能追溯到 fixture 或真实接口，不能是随手写的。
+
+### E.2 优先级（冲突时按此顺序）
+
+1. `docs/redesign-v4/PLAN.md`（2026-10-07 P01 节）→ 信息架构与合同数值
+2. `docs/REBRAND_CETUS.md` → 命名与 legacy 白名单
+3. `docs/ios/PLAN.md`（本文）→ iOS 平台做法与执行边界
+4. `apps/ios/docs/page-mapping.md` → 页面 / 组件 / 截图名映射
+5. `apps/ios/docs/visual-rules-ios.md` → 视觉取值
+6. 设计稿 PNG → **只定布局与层级**，禁止取色、禁止按像素复刻
+
+**先改合同，再改实现。** 新增入口凡不在页面映射内，先补合同再实现。
