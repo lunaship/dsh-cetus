@@ -1,11 +1,13 @@
+import DLModels
 import DLNet
 import DLSecurity
 import Foundation
 import Network
 import Testing
 
-/// I3.7：时钟、探测与路径事件全部注入；不开端口、不 sleep、不访问真实 UserDefaults。
-/// Android 的 REMOTE TTL、远程/蜂窝捷径、clockOffset 用例属于阶段 5，不在这里翻译。
+/// I3.7 / I5.4：时钟、探测与路径事件全部注入；不开端口、不 sleep、不访问真实 UserDefaults。
+/// **不连中继**：relay 只是传入的 `RemoteTarget` 值，本文件没有任何网络调用，也不碰 `relay.dshlinks.com`。
+/// Android 的蜂窝捷径、clockOffset 用例仍属于后续子项，不在这里翻译。
 /// `host without remote never probes` 是布尔 order 旧重载；本项按候选地址重载探测所有直连。
 /// `unknown lan capability keeps probing` / `lan capable true probes` 在本项均对应普通候选探测，
 /// 不增加阶段 5 的 lanCapable 参数。PairClient.firstReachable 的竞速留给首配，不用于日常顺序选路。
@@ -79,6 +81,26 @@ struct RouteSelectorContractTests {
     @MainActor
     private final class ExplanationStorage: LocalNetworkPermissionStorage {
         var hasShownExplanation = false
+    }
+
+    /// 中继目标只做值传递，本文件里没有任何东西会去连它（不碰 relay.dshlinks.com）。
+    private static let relayTarget = RemoteTarget(
+        endpoint: "wss://relay.example.invalid:8443", routeId: "route-1", deviceHandle: "handle-1")
+
+    /// 远程能力齐全的已配对电脑（e / r / h 三个路由字段）。
+    private static func hostWithRemote(
+        primary: String = RouteSelectorContractTests.primary,
+        tailnet: String? = RouteSelectorContractTests.tailnet,
+        remote: DeviceRemoteInfo? = DeviceRemoteInfo(
+            endpoint: "wss://relay.example.invalid:8443",
+            routeId: "route-1",
+            deviceHandle: "handle-1",
+            relayKey: "k-1",
+            outerCertificatePin: "pin-1")
+    ) -> PairedHost {
+        PairedHost(
+            hostId: "k", name: "host", primaryUrl: primary, tailnetUrl: tailnet, certFingerprint: "", remote: remote,
+            pairedAt: 0)
     }
 
     @Test("Android: LAN reachable picks LAN first and caches it for 30 seconds")
@@ -356,5 +378,278 @@ struct RouteSelectorContractTests {
         #expect(
             !LocalNetworkPermissionGate.isDenialInferred(
                 error: NWError.dns(-65570), for: Self.tailnet, unsatisfiedReason: .localNetworkDenied))
+    }
+
+    // MARK: - I5.4 中继档（RFC 0001 §7.2 / §5.7 / §7.4）
+
+    @Test("§7.2 顺序：直连任一候选成功就走直连，绝不回落中继")
+    func directSuccessNeverFallsBackToRelay() async {
+        for reachable in [Self.primary, Self.tailnet] {
+            let clock = TestClock()
+            let selector = RouteSelector(clock: { clock.now() })
+            let probe = Probe(reachable: [reachable])
+            let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+            let result = await selector.select(
+                key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+            #expect(result == .direct(reachable))
+            #expect(await selector.lanAddress(key: "k") == reachable)
+            #expect(await selector.isRelaying(key: "k") == false)
+            #expect(await selector.relayTarget(key: "k") == nil)
+            #expect(await selector.lastRoute(key: "k") == nil, "选路不等于实际成功，lastRoute 只在 noteSuccess 后才有值")
+        }
+    }
+
+    @Test("§7.2 第 5 条：直连全失败且主机有远程能力 → 中继档，并带上 route / handle")
+    func bothDirectFailThenRelay() async {
+        let selector = RouteSelector()
+        let probe = Probe()
+        let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+        #expect(relay == Self.relayTarget)
+        let result = await selector.select(
+            key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+        #expect(result == .relay(Self.relayTarget))
+        // 三个路由字段原样透传；会合密钥 / 外层指纹不进选路结果。
+        #expect(result.relayTarget?.routeId == "route-1")
+        #expect(result.relayTarget?.deviceHandle == "handle-1")
+        #expect(await selector.isRelaying(key: "k"))
+        #expect(await selector.relayTarget(key: "k") == Self.relayTarget)
+        #expect(await selector.lanAddress(key: "k") == nil, "中继档不是直连地址，lanAddress 必须为 nil")
+        #expect(await probe.seen == Self.candidates)
+    }
+
+    @Test("§7.2 第 5 条：没有远程能力时不返回中继，仍是 noDirectAvailable")
+    func noRemoteCapabilityStaysOffRelay() async {
+        let selector = RouteSelector()
+        let probe = Probe()
+        #expect(RouteSelector.relayTarget(for: Self.hostWithRemote(remote: nil)) == nil)
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: nil, probe: { await probe.call($0) })
+                == .noDirectAvailable)
+        #expect(await selector.isRelaying(key: "k") == false)
+        #expect(await selector.relayTarget(key: "k") == nil)
+        #expect(await selector.lanAddress(key: "k") == nil)
+        // 中继档也没有负缓存：下一次直连恢复就立刻选直连。
+        await probe.setReachable([Self.primary])
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: nil, probe: { await probe.call($0) })
+                == .direct(Self.primary))
+    }
+
+    @Test("§7.2 第 2 条：中继档 15 秒到期即重探，direct 的 30 秒 TTL 不适用于它")
+    func relayDecisionExpiresAtFifteenSeconds() async {
+        let clock = TestClock()
+        let selector = RouteSelector(clock: { clock.now() })
+        let probe = Probe()
+        let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .relay(Self.relayTarget))
+        #expect(await probe.seen == Self.candidates)
+        clock.advance(14.999)
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .relay(Self.relayTarget))
+        #expect(await probe.seen == Self.candidates, "15 秒内命中中继缓存，不再探测")
+        clock.advance(0.001)
+        #expect(await selector.isRelaying(key: "k") == false, "中继缓存到期")
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .relay(Self.relayTarget))
+        #expect(await probe.seen == Self.candidates + Self.candidates, "到期后重探全部直连候选")
+        // 对照：直连档在 15 秒时仍然有效（否则用户会被 15 秒一次地反复探测）。
+        await probe.setReachable([Self.primary])
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .direct(Self.primary))
+        clock.advance(15)
+        #expect(await selector.lanAddress(key: "k") == Self.primary)
+    }
+
+    @Test("§7.2 第 2 条：中继真的连上后 noteSuccess(.relay) 按 15 秒续期，lastRoute 记中继")
+    func relayNoteSuccessRenewsForFifteenSeconds() async {
+        let clock = TestClock()
+        let selector = RouteSelector(clock: { clock.now() })
+        await selector.noteSuccess(key: "k", selection: .relay(Self.relayTarget))
+        #expect(await selector.lastRoute(key: "k") == .relay(Self.relayTarget))
+        #expect(await selector.isRelaying(key: "k"))
+        clock.advance(14)
+        await selector.noteSuccess(key: "k")  // 不传结果 = 沿用仍有效的中继档并续期
+        clock.advance(14)
+        #expect(await selector.isRelaying(key: "k"))
+        clock.advance(1)
+        #expect(await selector.isRelaying(key: "k") == false)
+        // 已过期的档不得复活；noDirectAvailable 永远不写缓存。
+        await selector.noteSuccess(key: "k")
+        #expect(await selector.isRelaying(key: "k") == false)
+        await selector.noteSuccess(key: "k", selection: .noDirectAvailable)
+        #expect(await selector.isRelaying(key: "k") == false)
+        #expect(await selector.lastRoute(key: "k") == .relay(Self.relayTarget), "lastRoute 是历史展示值，不被 TTL 抹掉")
+    }
+
+    @Test("§7.2.6：网络变化同时作废中继档")
+    func networkChangeInvalidatesRelayDecision() async {
+        let selector = RouteSelector()
+        let probe = Probe()
+        let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+        for key in ["a", "b"] {
+            _ = await selector.select(
+                key: key, candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+        }
+        #expect(await selector.isRelaying(key: "a"))
+        #expect(await selector.isRelaying(key: "b"))
+        await selector.onNetworkChanged()
+        #expect(await selector.isRelaying(key: "a") == false)
+        #expect(await selector.isRelaying(key: "b") == false)
+        #expect(await selector.relayTarget(key: "a") == nil)
+        // 换网后直连恢复：立即回到直连，不用等 15 秒。
+        await probe.setReachable([Self.tailnet])
+        #expect(
+            await selector.select(key: "a", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .direct(Self.tailnet))
+        #expect(await selector.isRelaying(key: "a") == false)
+    }
+
+    @Test("§7.4：relay 档下 DEVICE_LIMIT 只退避重试 —— 不切路、不清缓存、不 forget")
+    func deviceLimitOnRelayDoesNotForget() async {
+        let clock = TestClock()
+        let selector = RouteSelector(clock: { clock.now() })
+        let probe = Probe()
+        let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .relay(Self.relayTarget))
+        let before = await probe.seen
+
+        for code in ["DEVICE_LIMIT", "SERVER_BUSY", "RATE_LIMITED"] {
+            let disposition = RelayRouteDisposition(relayCode: code)
+            #expect(disposition == .backoff, "\(code)")
+            #expect(!disposition.allowsPathSwitch, "\(code) 是「这条路暂时满了」，不能换路")
+            #expect(!disposition.allowsCredentialChange, "\(code) 不得删凭据")
+            #expect(!disposition.invalidatesCachedRoute, "\(code) 不得清选路缓存")
+            #expect(disposition.isUntrustedAdvisory, "\(code) 中继转来的码只能提示")
+        }
+
+        // App 按上面的判定做事：退避重试期间什么都不动。
+        #expect(await selector.isRelaying(key: "k"), "缓存还在，路还是中继")
+        #expect(await selector.lanAddress(key: "k") == nil)
+        #expect(
+            await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+                == .relay(Self.relayTarget))
+        #expect(await probe.seen == before, "没有 forget，就不该重新探测 —— 也不会被赶回直连")
+        #expect(await selector.lastRoute(key: "k") == nil, "拒绝不是成功，不写 lastRoute")
+    }
+
+    @Test("§7.4：UNKNOWN_KEY / BAD_MAC 只提示，不删凭据、不清缓存、不切路")
+    func unknownKeyAndBadMacAreAdvisoryOnly() async {
+        let selector = RouteSelector()
+        let probe = Probe()
+        let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+        _ = await selector.select(key: "k", candidates: Self.candidates, relay: relay, probe: { await probe.call($0) })
+        let before = await probe.seen
+        for code in ["UNKNOWN_KEY", "BAD_MAC", " unknown_key "] {
+            let disposition = RelayRouteDisposition(relayCode: code)
+            #expect(disposition == .rePair, "\(code)")
+            #expect(!disposition.allowsCredentialChange, "\(code) 只提示「重新扫码」，不删凭据")
+            #expect(!disposition.allowsPathSwitch, "\(code) 不换路重试")
+            #expect(!disposition.invalidatesCachedRoute, "\(code) 不清选路缓存")
+        }
+        #expect(await selector.isRelaying(key: "k"))
+        #expect(await probe.seen == before)
+    }
+
+    @Test("§5.7 表：九类 code 的解析与未知码兜底（未知一律按不可信处理）")
+    func relayCodeMapping() {
+        #expect(RelayRouteDisposition(relayCode: "DEVICE_LIMIT") == .backoff)
+        #expect(RelayRouteDisposition(relayCode: "SERVER_BUSY") == .backoff)
+        #expect(RelayRouteDisposition(relayCode: "RATE_LIMITED") == .backoff)
+        #expect(RelayRouteDisposition(relayCode: "UNKNOWN_KEY") == .rePair)
+        #expect(RelayRouteDisposition(relayCode: "BAD_MAC") == .rePair)
+        #expect(RelayRouteDisposition(relayCode: "LOCAL_UNAVAILABLE") == .localUnavailable)
+        #expect(RelayRouteDisposition(relayCode: "ROUTE_OFFLINE") == .hostOffline)
+        #expect(RelayRouteDisposition(relayCode: "OPEN_TIMEOUT") == .relayUnreachable)
+        for code in ["", "  ", "CLOCK_SKEW", "REPLAY", "PROTOCOL_ERROR", "SOMETHING_NEW"] {
+            #expect(RelayRouteDisposition(relayCode: code) == .unknown, "\(code)")
+        }
+        // §7.4：无论哪个中继 code，都不得删改本机凭据；只有内层 TLS 的明确答复（hardStop）可以。
+        for code in [
+            "DEVICE_LIMIT", "SERVER_BUSY", "RATE_LIMITED", "UNKNOWN_KEY", "BAD_MAC", "LOCAL_UNAVAILABLE",
+            "ROUTE_OFFLINE", "OPEN_TIMEOUT", "", "WHATEVER",
+        ] {
+            #expect(!RelayRouteDisposition(relayCode: code).allowsCredentialChange, "\(code)")
+        }
+        #expect(RelayRouteDisposition.hardStop.allowsCredentialChange)
+        #expect(!RelayRouteDisposition.hardStop.isUntrustedAdvisory)
+        // 只有「电脑离线」允许清缓存，其余中继码都不许。
+        #expect(RelayRouteDisposition.hostOffline.invalidatesCachedRoute)
+        #expect(!RelayRouteDisposition.unknown.invalidatesCachedRoute)
+        #expect(!RelayRouteDisposition.rePair.invalidatesCachedRoute)
+    }
+
+    @Test("RemoteTarget：只取 e / r / h，缺一即无中继；密钥字段不进选路结果")
+    func remoteTargetOmitsSecretsAndRequiresAllRouteFields() {
+        #expect(RemoteTarget(remote: nil) == nil)
+        #expect(RemoteTarget(remote: DeviceRemoteInfo()) == nil)
+        let full = DeviceRemoteInfo(
+            endpoint: "wss://relay.example.invalid:8443", routeId: "route-1", deviceHandle: "handle-1",
+            relayKey: "k-1", outerCertificatePin: "pin-1")
+        #expect(RemoteTarget(remote: full) == Self.relayTarget)
+        #expect(RemoteTarget(remote: DeviceRemoteInfo(endpoint: " ", routeId: "r", deviceHandle: "h")) == nil)
+        #expect(RemoteTarget(remote: DeviceRemoteInfo(endpoint: "e", routeId: "\t", deviceHandle: "h")) == nil)
+        #expect(RemoteTarget(remote: DeviceRemoteInfo(endpoint: "e", routeId: "r", deviceHandle: "  ")) == nil)
+        // 只有密钥、没有路由字段 → 仍然不是可用的中继目标。
+        #expect(RemoteTarget(remote: DeviceRemoteInfo(relayKey: "k-1", outerCertificatePin: "pin-1")) == nil)
+        // 全空白 Trim 后逐字段判断。
+        #expect(
+            RemoteTarget(remote: DeviceRemoteInfo(endpoint: " wss://e ", routeId: " r ", deviceHandle: " h "))
+                == RemoteTarget(endpoint: "wss://e", routeId: "r", deviceHandle: "h"))
+        // PairedHost 侧的取值路径与 RouteSelection 的便捷取值一致。
+        let host = Self.hostWithRemote()
+        #expect(RouteSelector.relayTarget(for: host) == Self.relayTarget)
+        #expect(RouteSelection.relay(Self.relayTarget).relayTarget == Self.relayTarget)
+        #expect(RouteSelection.relay(Self.relayTarget).isRelay)
+        #expect(RouteSelection.direct(Self.primary).relayTarget == nil)
+        #expect(RouteSelection.direct(Self.primary).directAddress == Self.primary)
+        #expect(RouteSelection.noDirectAvailable.directAddress == nil)
+    }
+
+    @Test("单飞同样适用于中继档：同 key 并发只探测一轮")
+    func concurrentSelectionsShareRelayFallbackProbe() async {
+        let selector = RouteSelector()
+        let latch = ProbeLatch()
+        let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+        await withTaskGroup(of: RouteSelection.self) { group in
+            for _ in 0..<8 {
+                group.addTask {
+                    await selector.select(
+                        key: "k", candidates: Self.candidates, relay: relay, probe: { _ in await latch.call() })
+                }
+            }
+            await latch.waitForStart()
+            await latch.release()
+            for await result in group { #expect(result == .relay(Self.relayTarget)) }
+        }
+        #expect(await latch.calls == 1)
+        #expect(await selector.isRelaying(key: "k"))
+    }
+
+    @Test("§7.2 第 7 条：建立阶段失败 in-flight 时换网/forget，中继档也不得回填缓存")
+    func relayDecisionNotCachedWhenInvalidatedDuringProbe() async {
+        for networkChange in [true, false] {
+            let selector = RouteSelector()
+            let latch = ProbeLatch()
+            let relay = RouteSelector.relayTarget(for: Self.hostWithRemote())
+            let selection = Task {
+                await selector.select(key: "k", candidates: Self.candidates, relay: relay) { _ in
+                    await latch.call()
+                }
+            }
+            await latch.waitForStart()
+            if networkChange { await selector.onNetworkChanged() } else { await selector.forget(key: "k") }
+            await latch.release()
+            // 这一次仍然返回中继（结果有效），但旧代的中继决策不能落进新代的缓存。
+            #expect(await selection.value == .relay(Self.relayTarget))
+            #expect(await selector.isRelaying(key: "k") == false)
+            #expect(await selector.relayTarget(key: "k") == nil)
+        }
     }
 }
