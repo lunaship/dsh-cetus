@@ -30,6 +30,11 @@ struct RootView: View {
             .id(selectedHostId)
         } else {
             PairingFlowView(model: pairing, onPaired: { selectedHostId = $0 })
+                .task {
+                    if selectedHostId == nil, let host = pairing.pairedHost {
+                        selectedHostId = host.hostId
+                    }
+                }
         }
     }
 
@@ -52,8 +57,13 @@ struct DeepLinksApp: App {
         // UI tests also set XCTestConfigurationFilePath, but they pass -e2eQRPayload and must stay live.
         let testing = environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil
         let endToEnd = DebugE2EQRLaunch.isRequested
+        let performance = PerformanceLaunchFixture.isRequested
         let model = PairingFlowModel(
-            services: testing && !endToEnd ? .offline : .live(store: HostStore()),
+            services: testing && !endToEnd && !performance
+                ? .offline
+                : .live(
+                    store: performance || PerformanceLaunchFixture.unsignedStorage != nil
+                        ? PerformanceLaunchFixture.hostStore() : HostStore()),
             gate: LocalNetworkPermissionGate(), deviceName: UIDevice.current.name)
         #if DEBUG
             // Same entry as a successful scan. Runs before restore(), which will not overwrite it.
