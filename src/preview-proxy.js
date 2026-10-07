@@ -294,7 +294,7 @@ export function createPreviewService(options) {
         item.expiresAt = at + PREVIEW_TTL_MS
       }
       save()
-      logger?.info?.(`dsh-links: preview approve port=${n}`)
+      logger?.info?.(`dsh-cetus: preview approve port=${n}`)
       return { status: 200, body: { ok: true, preview: panelPreview(item) } }
     },
     revoke(previewId) {
@@ -304,7 +304,7 @@ export function createPreviewService(options) {
       const [item] = state.previews.splice(index, 1)
       registry.disconnect(id)
       save()
-      logger?.info?.(`dsh-links: preview revoke port=${item.port}`)
+      logger?.info?.(`dsh-cetus: preview revoke port=${item.port}`)
       return { status: 200, body: { ok: true } }
     },
     handleHttp(req, res) {

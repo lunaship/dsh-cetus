@@ -136,7 +136,7 @@ export function createRemoteRuntime({ state, save, pluginPort, isLocalReady, isR
     const previous = state.remote?.enabled ? state.remote.endpoint : ""
     enableRemote(state, { endpoint: normalized, outerPin: pin })
     save()
-    logger.info(`dsh-links: remote enable host=${endpointHost(normalized)}${previous && previous !== normalized ? " (switched)" : ""}`)
+    logger.info(`dsh-cetus: remote enable host=${endpointHost(normalized)}${previous && previous !== normalized ? " (switched)" : ""}`)
     // 超时不算失败：Agent 会继续按退避重连，面板轮询状态即可
     await settleWithin(start(), ENABLE_WAIT_MS)
     return status()
@@ -145,7 +145,7 @@ export function createRemoteRuntime({ state, save, pluginPort, isLocalReady, isR
   async function disable() {
     if (disableRemote(state)) save()
     await stop()
-    logger.info("dsh-links: remote disable")
+    logger.info("dsh-cetus: remote disable")
     return status()
   }
 
@@ -153,7 +153,7 @@ export function createRemoteRuntime({ state, save, pluginPort, isLocalReady, isR
   async function resetIdentity() {
     if (!resetRemoteIdentity(state)) return null
     save()
-    logger.info("dsh-links: remote identity reset")
+    logger.info("dsh-cetus: remote identity reset")
     if (remoteEnabled(state)) await settleWithin(start(), ENABLE_WAIT_MS)
     else await stop()
     return status()

@@ -313,7 +313,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
       const source = typeof diagnosticsSource === "function" ? diagnosticsSource(device) : null
       if (!source) return json(res, 503, { error: "diagnostics_unavailable" })
       const report = await runDiagnostics(source, { scope: "mobile" })
-      logger?.info?.(`dsh-links: diagnostics scope=mobile ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
+      logger?.info?.(`dsh-cetus: diagnostics scope=mobile ${report.checks.map((item) => `${item.id}=${item.status}`).join(" ")}`)
       return json(res, 200, report)
     }
     if (req.method === "GET" && pathname === "/dsh-link/mobile/bootstrap") {
@@ -622,7 +622,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         deviceId: device.deviceId,
       }, req)
       if (result.status === 200 && logger) {
-        logger.info(`dsh-links: device revoke device=${String(result.body?.deviceId ?? body.deviceId ?? "").slice(0, 8)}`)
+        logger.info(`dsh-cetus: device revoke device=${String(result.body?.deviceId ?? body.deviceId ?? "").slice(0, 8)}`)
       }
       return json(res, result.status, result.body)
     }
@@ -869,7 +869,7 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
         return json(res, 200, { ok: true, seq: coords.seq, index: coords.index, ...diff })
       } catch (err) {
         if (controller.signal.aborted) return
-        logger?.warn?.(`dsh-links: changes diff: ${err?.message ?? err}`)
+        logger?.warn?.(`dsh-cetus: changes diff: ${err?.message ?? err}`)
         return json(res, 500, { error: "读取改动对比失败" })
       } finally {
         res.off("close", onClose)
@@ -1025,7 +1025,9 @@ export async function handleMobileApi(req, res, targetPort, state, stateFile, de
 
     return json(res, 404, { error: "mobile endpoint not found" })
   } catch (error) {
-    console.error(`dsh-links: mobile API error: ${error?.message ?? error}`)
+    // 走宿主 logger（不是 console.error）：这里 catch-all 兜住手机 API 的全部未预期异常，
+    // 宿主日志缺失就无从排障。logger 由 src/index.js 以 ctx.logger 传入。
+    logger?.warn?.(`dsh-cetus: mobile API error: ${error?.message ?? error}`)
     // 主机运行时对被占用的会话拒绝 resume：给手机端可读的 409，而不是笼统的 502。
     if (/SessionAlreadyOwnedError|already owned by an active write handle/i.test(String(error?.message ?? error))) {
       return json(res, 409, {

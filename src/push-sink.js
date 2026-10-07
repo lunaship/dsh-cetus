@@ -83,7 +83,7 @@ export function createPushSink({
   const queues = new Map()
 
   function log(deviceId, status, reason) {
-    logger?.info?.("dsh-links: push device=" + String(deviceId).slice(0, 8) + " status=" + status + " reason=" + reason)
+    logger?.info?.("dsh-cetus: push device=" + String(deviceId).slice(0, 8) + " status=" + status + " reason=" + reason)
   }
 
   function registration(device) {

@@ -161,7 +161,7 @@ export function handleMuxFrame(frame, rt, logger, requestPoll) {
       questions: payload.questions ?? [],
     })
     writeSse(writers, `event: question\ndata: ${body}\n\n`)
-    logger?.info?.(`dsh-links: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${String(frame.rpcId).slice(0, 8)}`)
+    logger?.info?.(`dsh-cetus: question → mobile session=${String(sessionId).slice(0, 8)} rpc=${String(frame.rpcId).slice(0, 8)}`)
   } else {
     const body = JSON.stringify({
       rpcId: payload.questionRpcId ?? frame.rpcId,
@@ -219,7 +219,7 @@ export function startMuxQuestionBridge({ targetPort, rt, logger, requestPoll }) 
       ws.addEventListener("open", () => {
         opened = true
         clearTimeout(handshakeTimer)
-        logger?.info?.(`dsh-links: mux 桥已连接（WebSocket ${muxPath}）`)
+        logger?.info?.(`dsh-cetus: mux 桥已连接（WebSocket ${muxPath}）`)
         if (muxPath === "/api/remote.mux") {
           try {
             ws.send(JSON.stringify({
@@ -275,7 +275,7 @@ export function startMuxQuestionBridge({ targetPort, rt, logger, requestPoll }) 
             res.resume()
             return
           }
-          logger?.info?.("dsh-links: mux 桥已连接（SSE）")
+          logger?.info?.("dsh-cetus: mux 桥已连接（SSE）")
           let buf = ""
           res.on("data", (chunk) => {
             buf += chunk.toString("utf8")
@@ -308,7 +308,7 @@ export function startMuxQuestionBridge({ targetPort, rt, logger, requestPoll }) 
         everConnected = true
       } catch (err) {
         if (!stopped) {
-          logger?.warn?.(`dsh-links: mux 桥（${useWs ? "ws " + muxPath : "sse"}）：${err?.message ?? err}`)
+          logger?.warn?.(`dsh-cetus: mux 桥（${useWs ? "ws " + muxPath : "sse"}）：${err?.message ?? err}`)
           if (!everConnected) {
             if (useWs && muxPath === "/api/remote.mux") muxPath = "/api/events.mux"
             else if (typeof globalThis.WebSocket === "function") useWs = !useWs
