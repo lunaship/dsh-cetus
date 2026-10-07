@@ -118,6 +118,8 @@ jobs:
             -only-testing:DeepLinksTests/PrivacyCoverTests \
             -only-testing:DeepLinksTests/DlpFrameTests \
             -only-testing:DeepLinksTests/DlpVectorTests \
+            -only-testing:DeepLinksTests/RemoteHTTP1WireTests \
+            -only-testing:DeepLinksTests/RemoteInnerTLSTests \
             -only-testing:DeepLinksTests/ConversationStatusTests \
             -only-testing:DeepLinksTests/ConversationStatusFlowTests \
             -only-testing:DeepLinksTests/PhoneDecisionTests \
