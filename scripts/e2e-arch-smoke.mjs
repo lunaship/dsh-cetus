@@ -1,5 +1,5 @@
 /**
- * dsh-links e2e architecture smoke.
+ * dsh-cetus e2e architecture smoke.
  *
  * Boots a second DSH web host on scratch ports with the plugin's stateDir redirected
  * to a per-run scratch directory, then walks the architecture end to end:
@@ -15,10 +15,17 @@
  * regression; the deterministic unit-level counterpart lives in
  * test/readiness.test.mjs and runs under `npm test`).
  *
+ * Plugin-load rule (2026-10-08 hardening): a missing / unloadable profile bundle is
+ * NOT a boot crash — the launcher logs `skipping profile bundle "<name>"` and brings
+ * the web host up anyway. The plugin's routes are then simply absent, so a naive
+ * readiness poll would 404 for the full 90s deadline and report a misleading
+ * "pair-info never reached a ready 200". A 404 on the plugin's own mount point is
+ * therefore treated as an immediate hard failure that names the real cause.
+ *
  * Read-only with respect to the operator's profile: no workspace register/create,
  * no device revoke, no prompt submission. Plugin state lives entirely in scratch,
- * and the script asserts the operator's ~/.dsh/dsh-links/state.json is not given
- * the smoke device — the isolation rule recorded in docs/COMPATIBILITY.md
+ * and the script asserts the operator's real state file is not given the smoke
+ * device — the isolation rule recorded in docs/COMPATIBILITY.md
  * ("Smoke-isolation warning").
  *
  * Usage:
@@ -26,8 +33,14 @@
  *   WEB_PORT=3081 MOBILE_PORT=18641 node scripts/e2e-arch-smoke.mjs   # fixed ports
  *
  * Exits non-zero if any check fails. Requires the `dsh` launcher on PATH and the
- * `web` profile (with dsh-links linked) already installed. An empty session store
+ * `web` profile (with dsh-cetus linked) already installed. An empty session store
  * is not a failure: SSE/model checks report a SKIP with the reason instead.
+ *
+ * NOTE on the `web` profile: it exists solely as the scratch/second host for this
+ * e2e smoke, and since the plugin rename it links `dsh-cetus` (not `dsh-links`).
+ * Its profile root is ~/.dsh/profiles/web; the plugin bundle name there must match
+ * package.json's `name` in this repo, or the launcher silently skips the bundle
+ * (see the plugin-load rule above) and every /dsh-link/* check fails.
  */
 import { spawn, execFileSync } from "node:child_process"
 import { connect as tlsConnect } from "node:tls"
@@ -89,7 +102,7 @@ const WEB_PORT = Number(process.env.WEB_PORT ?? 0) || (await freePort())
 const MOBILE_PORT = Number(process.env.MOBILE_PORT ?? 0) || (await freePort())
 
 // Per-run scratch directory: two concurrent runs can never share state.
-const SCRATCH = mkdtempSync(join(tmpdir(), "dsh-links-smoke-"))
+const SCRATCH = mkdtempSync(join(tmpdir(), "dsh-cetus-smoke-"))
 const STATE_DIR = join(SCRATCH, "state")
 const PATCH_FILE = join(SCRATCH, "patch.yml")
 const LOG_FILE = join(SCRATCH, "host.log")
@@ -98,7 +111,16 @@ const LOG_FILE = join(SCRATCH, "host.log")
 // device. A raw hash is not a stable proof — a live host legitimately rewrites
 // this file whenever a real phone polls (device lastSeenAt) — so assert identity
 // ownership instead: the smoke device exists in scratch and nowhere in real state.
-const REAL_STATE = join(homedir(), ".dsh", "dsh-links", "state.json")
+//
+// The real state dir was renamed dsh-links -> dsh-cetus (plan §22.3). The migrator
+// COPIES to the canonical dir and deliberately keeps the source dir as a protected
+// rollback point, so both paths can hold real operator data depending on whether
+// the migration has run yet. Probe canonical-first and fall back to the prior dir:
+// picking one hard-coded path would silently stop protecting user data on the
+// other side of the migration.
+const STATE_DIR_CANONICAL = join(homedir(), ".dsh", "dsh-cetus", "state.json")
+const STATE_DIR_PRIOR = join(homedir(), ".dsh", "dsh-links", "state.json")
+const REAL_STATE = existsSync(STATE_DIR_CANONICAL) ? STATE_DIR_CANONICAL : STATE_DIR_PRIOR
 function readText(p) {
   return existsSync(p) ? readFileSync(p, "utf8") : ""
 }
@@ -110,18 +132,18 @@ const realStateHashBefore = hashFile(REAL_STATE)
 // ---------- plugin-path proof ----------
 // The launcher resolves the plugin from the web profile's node_modules link;
 // it must point back at this working copy, not a globally installed copy.
-const PROFILE_PLUGIN = join(homedir(), ".dsh", "profiles", "web", "node_modules", "dsh-links")
+const PROFILE_PLUGIN = join(homedir(), ".dsh", "profiles", "web", "node_modules", "dsh-cetus")
 let profilePluginReal = null
 try { profilePluginReal = realpathSync(PROFILE_PLUGIN) } catch {}
-record("web profile resolves dsh-links to this repo", profilePluginReal === REAL_ROOT,
-  profilePluginReal ? `loaded from ${profilePluginReal}` : "profile link missing (is the web profile installed?)")
+record("web profile resolves dsh-cetus to this repo", profilePluginReal === REAL_ROOT,
+  profilePluginReal ? `loaded from ${profilePluginReal}` : "profile link missing (is the web profile installed with this repo linked?)")
 
 // ---------- scratch setup ----------
 mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 })
 try { chmodSync(STATE_DIR, 0o700) } catch {}
 writeFileSync(PATCH_FILE, [
   "# one-shot overlay: isolate the plugin's global state dir and move off the live ports",
-  "- id: dsh-links",
+  "- id: dsh-cetus",
   "  config:",
   `    stateDir: ${STATE_DIR}`,
   `    port: ${MOBILE_PORT}`,
@@ -199,6 +221,16 @@ async function waitForReady(timeoutMs = 90_000) {
         if (r.json?.phase === "failed") return { ok: false, reason: "plugin reported proxy failed (phase=failed)" }
         await sleep(1000)
         continue
+      }
+    }
+    if (r.code === 404) {
+      // 路由根本不存在 = 插件没加载。宿主不会崩，只会跳过 bundle 后照常起 Web，
+      // 所以这里必须提前失败并指出真因，不能空等到 deadline。
+      return {
+        ok: false,
+        reason: "plugin not loaded: /dsh-link/* is not registered (the launcher silently skips a "
+          + "profile bundle it cannot resolve). Check that ~/.dsh/profiles/web links dsh-cetus "
+          + "to this repo and that the bundle name matches package.json `name`; see host.log",
       }
     }
     if (r.code === 200 && r.json?.type === "dsh-link") {
