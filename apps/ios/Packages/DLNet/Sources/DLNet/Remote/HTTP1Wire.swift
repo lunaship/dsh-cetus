@@ -172,14 +172,14 @@ public enum HTTP1Wire {
     // MARK: - 工具
 
     /// origin-form：path + query。
-    static func originForm(_ url: URL) -> String {
+    public static func originForm(_ url: URL) -> String {
         var target = url.path.isEmpty ? "/" : url.path
         if let query = url.query, !query.isEmpty { target += "?" + query }
         return target
     }
 
     /// `Host` 头：host + 非默认端口。
-    static func hostHeader(_ url: URL) -> String {
+    public static func hostHeader(_ url: URL) -> String {
         let host = url.host ?? ""
         let port = url.port ?? (url.scheme?.lowercased() == "https" ? 443 : 80)
         let isDefault =

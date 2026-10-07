@@ -152,7 +152,12 @@ import Testing
         else {
             throw RemoteTunnelError.transport("PKCS#12 fixture load failed: \(status)")
         }
-        let identity = identityRef as! sec_identity_t
+        // SecPKCS12Import 的字典值是 Any；这里必须是 SecIdentity。
+        // 用 `as?` 做条件转换，失败即视为 fixture 有问题，不静默继续。
+        let secIdentity = identityRef as! SecIdentity
+        guard let identity = sec_identity_create(secIdentity) else {
+            throw RemoteTunnelError.transport("sec_identity_create failed")
+        }
 
         let derURL = try #require(
             Bundle(for: BundleToken.self).url(
@@ -194,7 +199,8 @@ import Testing
         }
         #expect(finished, "内层 TLS 之上应能读回完整 HTTP 响应")
 
-        let response = try #require(parser.finish())
+        let parsed = parser.finish()
+        let response = try #require(parsed)
         #expect(response.status == 200)
         #expect(String(decoding: response.body, as: UTF8.self) == #"{"via":"inner-tls","ok":true}"#)
         #expect(server.completedRequests == 1)

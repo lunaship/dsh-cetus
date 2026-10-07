@@ -89,7 +89,8 @@ struct RemoteHTTP1WireTests {
         #expect(try parser.push(Data("{\"a\":1".utf8)) == false)
         #expect(try parser.push(Data("}".utf8)) == true)
 
-        let response = try #require(parser.finish())
+        let parsed = parser.finish()
+        let response = try #require(parsed)
         #expect(response.status == 200)
         #expect(response.headers["content-type"] == "application/json")
         #expect(String(decoding: response.body, as: UTF8.self) == #"{"a":1}"#)
@@ -99,7 +100,8 @@ struct RemoteHTTP1WireTests {
         var parser = HTTP1Wire.ResponseParser()
         let raw = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"
         #expect(try parser.push(Data(raw.utf8)) == true)
-        let response = try #require(parser.finish())
+        let parsed = parser.finish()
+        let response = try #require(parsed)
         #expect(response.status == 200)
         #expect(String(decoding: response.body, as: UTF8.self) == "hello world")
     }
@@ -110,7 +112,8 @@ struct RemoteHTTP1WireTests {
         #expect(
             try parser.push(Data("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: 1\n\n".utf8)) == false
         )
-        let response = try #require(parser.finish())
+        let parsed = parser.finish()
+        let response = try #require(parsed)
         #expect(response.status == 200)
         #expect(String(decoding: response.body, as: UTF8.self) == "data: 1\n\n")
     }
@@ -121,7 +124,8 @@ struct RemoteHTTP1WireTests {
         let raw =
             "HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\n\r\n\(body)"
         #expect(try parser.push(Data(raw.utf8)) == true)
-        let response = try #require(parser.finish())
+        let parsed = parser.finish()
+        let response = try #require(parsed)
         #expect(response.status == 403)
         #expect(String(decoding: response.body, as: UTF8.self) == body)
     }
