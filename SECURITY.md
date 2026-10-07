@@ -1,6 +1,6 @@
 # Security
 
-DeepLinks connects a phone to [DeepSeek Harness (dsh)](https://github.com/deepseek-ai) instances that can run tools and execute code on the host machine. Treat a paired device as a privileged remote console.
+Cetus connects a phone to [DeepSeek Harness (dsh)](https://github.com/deepseek-ai) instances that can run tools and execute code on the host machine. Treat a paired device as a privileged remote console.
 
 This public Beta supports **trusted LAN** as the documented product path. Remote access over the DLP/1 relay is **experimental and off by default**: both the plugin and the app only dial out to the relay, the plugin verifies the phone's rendezvous key before it connects its local port, the inner TLS is still pinned to the plugin certificate, and business authorization is still the device token. The relay holds no accounts or secrets. `state.json` (it contains the plugin's remote host key) must never appear in this repository or GitHub Releases.
 
@@ -29,7 +29,7 @@ If you use an intranet-tunnelling product yourself, treat it as an **experimenta
 - Prefer short-lived pairing codes; do not paste tokens into chat logs or screenshots.
 - After uninstalling the app, re-pair by scanning a **fresh** QR from the panel. If the host reports the old device name still exists, the updated official app offers an explicit replace: the same pairing code revokes the stale record and issues a new token (or waits for your panel approval when「配对需本机确认」is on). With an app build that predates this flow, revoke the old record from the panel first — a stale record left by an uninstall is harmless but occupies the name.
 - Leave `allowMobileDangerFullAccess` off unless you specifically need mobile「完全访问」and accept that the paired phone can then run with full host access.
-- Watch the host log for the audit lines `dsh-links: device revoke device=<8>`, `dsh-links: device revoke-all removed=<n>`, `dsh-links: device replace device=<8>[,<8>] new=<8>`, `dsh-links: device replace approve device=<8> replaced=<8>[,<8>]`, and `dsh-links: permission preset -> <preset> session=<8> device=<8>`; they record revocations, replacements, and permission-preset changes (short ids only, never tokens).
+- Watch the host log for the audit lines `dsh-cetus: device revoke device=<8>`, `dsh-cetus: device revoke-all removed=<n>`, `dsh-cetus: device replace device=<8>[,<8>] new=<8>`, `dsh-cetus: device replace approve device=<8> replaced=<8>[,<8>]`, and `dsh-cetus: permission preset -> <preset> session=<8> device=<8>`; they record revocations, replacements, and permission-preset changes (short ids only, never tokens).
 
 ## Do not
 
@@ -65,9 +65,9 @@ The rest of the page stays closed: `default-src 'none'`, scripts only from the a
 
 ## Source and APK trust
 
-- The public repository opens the `dsh-links` plugin, the DLP/1 relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The plugin is distributed from this repository (installed as a git source); installing it pulls only the plugin's declared package files, not `relay/` or `apps/android/`.
-- Do not trust third-party rebuilds or sideloaded APKs that claim to be DeepLinks.
+- The public repository opens the `dsh-cetus` plugin, the DLP/1 relay source under `relay/`, the Android client source under `apps/android/`, and docs (MIT). Install only signed APKs from this project's GitHub Releases; the official signing certificate SHA-256 fingerprint is published in the README. The plugin is distributed from this repository (installed as a git source); installing it pulls only the plugin's declared package files, not `relay/` or `apps/android/`.
+- Do not trust third-party rebuilds or sideloaded APKs that claim to be Cetus.
 
 ## Reporting
 
-If you find a vulnerability in the plugin, docs, or the official APK, open a private report to the maintainer of [`lunaship/dsh-links`](https://github.com/lunaship/dsh-links) (or email the owner listed on the GitHub profile). Please include repro steps and impact; avoid filing public issues for exploitable auth or proxy bypasses until a fix is available.
+If you find a vulnerability in the plugin, docs, or the official APK, open a private report to the maintainer of [`lunaship/dsh-cetus`](https://github.com/lunaship/dsh-cetus) (or email the owner listed on the GitHub profile). Please include repro steps and impact; avoid filing public issues for exploitable auth or proxy bypasses until a fix is available.

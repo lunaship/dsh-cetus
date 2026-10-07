@@ -1,11 +1,11 @@
-# dsh-links — AI 协作规则
+# dsh-cetus — AI 协作规则
 
 DSH 手机插件（本仓插件源码）：局域网配对 + 设备管理 + 18640 接入代理 + 手机 API + 远程连接（DLP/1 Agent，`src/remote/`）。中继服务端（`dlp-relay`）在 `relay/`；Android 源码在 `apps/android/`，随本仓一起发版。旧版 DLR/1（接入码 / Control / 云端二维码）已整体删除，不要恢复。
 
 ## 红线
 
-- 插件 state 默认全局共享（`~/.dsh/dsh-links/state.json`，不分 profile）。任何冒烟/联调必须用 `stateDir` 配置隔离（经 `--patch` 的 `- id: dsh-links, config: {stateDir: ...}` 覆盖），且不得调用设备吊销类操作——2026-09-12 曾因用全局 state 冒烟，teardown 吊销了用户两台真机的配对。
-- 用户的 DSH host 若以 `link:` 方式加载本仓，改完源码必须重启 host 才生效；重启前确认没有并行会话正在该 host 上工作。当前用户的 desktop profile 以 `github:lunaship/dsh-links` 安装，只有推到 main 并在 DSH 里重装后才生效。
+- 插件 state 默认全局共享（`~/.dsh/dsh-cetus/state.json`，不分 profile）。旧的 `~/.dsh/dsh-links/` 会自动迁移到新目录，且源目录**原样保留为备份 / 回滚点**，不要手动删除。任何冒烟/联调必须用 `stateDir` 配置隔离（经 `--patch` 的 `- id: dsh-cetus, config: {stateDir: ...}` 覆盖），且不得调用设备吊销类操作——2026-09-12 曾因用全局 state 冒烟，teardown 吊销了用户两台真机的配对。
+- 用户的 DSH host 若以 `link:` 方式加载本仓，改完源码必须重启 host 才生效；重启前确认没有并行会话正在该 host 上工作。当前用户的 desktop profile 以 `link:/Volumes/Space/Dev/dsh-cetus` 安装（web profile 同样以 `dsh-cetus` 链接本仓，仅用于 e2e 冒烟）；以 `link:` 加载时改完源码重启 host 即生效。
 - 远程联调同样要隔离 `stateDir`，且不要用另一个 profile 的同一份 state 连中继：同一主机密钥后注册者会把前者顶掉（`REPLACED`）。官方中继 `relay.dshlinks.com` 由维护者运营，改动线上中继前先问。
 
 ## 门禁命令

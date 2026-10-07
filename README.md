@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="DeepLinks Logo" />
-  <h1>DeepLinks</h1>
+  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="Cetus Logo" />
+  <h1>Cetus</h1>
   <p><b>DeepSeek Harness 的手机端</b> · 任务收件箱 · 局域网配对 · 原生 Android 与 iOS 工作台</p>
 
   <p>
@@ -16,11 +16,11 @@
   </p>
 
   <p>
-    <a href="https://github.com/lunaship/dsh-links/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-links/ci.yml?style=flat-square&label=plugin%20CI" alt="Plugin CI" /></a>
-    <a href="https://github.com/lunaship/dsh-links/actions/workflows/ci-android.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-links/ci-android.yml?style=flat-square&label=android%20CI" alt="Android CI" /></a>
-    <a href="https://github.com/lunaship/dsh-links/actions/workflows/ci-ios.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-links/ci-ios.yml?style=flat-square&label=ios%20CI" alt="iOS CI" /></a>
-    <a href="https://github.com/lunaship/dsh-links/actions/workflows/ci-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-links/ci-push.yml?style=flat-square&label=push%20CI" alt="Push Gateway CI" /></a>
-    <a href="https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true"><img src="https://img.shields.io/badge/APK-GitHub%20Releases-0D96F6?style=flat-square&logo=github" alt="下载 APK" /></a>
+    <a href="https://github.com/lunaship/dsh-cetus/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-cetus/ci.yml?style=flat-square&label=plugin%20CI" alt="Plugin CI" /></a>
+    <a href="https://github.com/lunaship/dsh-cetus/actions/workflows/ci-android.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-cetus/ci-android.yml?style=flat-square&label=android%20CI" alt="Android CI" /></a>
+    <a href="https://github.com/lunaship/dsh-cetus/actions/workflows/ci-ios.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-cetus/ci-ios.yml?style=flat-square&label=ios%20CI" alt="iOS CI" /></a>
+    <a href="https://github.com/lunaship/dsh-cetus/actions/workflows/ci-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/lunaship/dsh-cetus/ci-push.yml?style=flat-square&label=push%20CI" alt="Push Gateway CI" /></a>
+    <a href="https://github.com/lunaship/dsh-cetus/releases?q=app-v&expanded=true"><img src="https://img.shields.io/badge/APK-GitHub%20Releases-0D96F6?style=flat-square&logo=github" alt="下载 APK" /></a>
   </p>
 </div>
 
@@ -107,7 +107,7 @@
 ---
 
 > [!IMPORTANT]
-> **本项目为独立的社区项目。** DeepLinks 与 DeepSeek 无隶属、授权或背书关系；DeepSeek Harness 的名称与相关标识归各自所有者。问题请在本仓库反馈，不要提交给上游。
+> **本项目为独立的社区项目。** Cetus 与 DeepSeek 无隶属、授权或背书关系；DeepSeek Harness 的名称与相关标识归各自所有者。问题请在本仓库反馈，不要提交给上游。
 >
 > **项目处于公开 Beta。** 正式支持范围是**可信局域网**。出门优先用 Tailscale（零服务器、直连）；中继（DLP/1）是免配置备选，仍为实验性功能。插件、App 与同步协议迭代较快，升级前请看 [`CHANGELOG.md`](CHANGELOG.md) 与 [兼容矩阵](docs/COMPATIBILITY.md)。
 
@@ -125,20 +125,20 @@ iOS 的后台不给常驻 SSE，手机离开 App 后就没有连接；推送网�
 - **端到端加密。** 通知内容用设备独有的 32 字节内容密钥 `K`（AES-256-GCM）在插件侧加密，`K` 只存在手机 Keychain 与插件 state 里；网关拿不到，也伪造不出可被通知扩展解密的通知。
 - **网关看不到 APNs token。** 手机的 device token 用 HPKE（X25519 / HKDF-SHA256 / ChaCha20-Poly1305）封装后才交给网关，插件同样打不开。
 - **无状态。** 网关没有数据库，不存用户数据、不提供注册库、不向电脑下发任何命令；日志只记计数、HTTP 状态、耗时与限流命中，不记密文、token 与明文。
-- **锁屏不泄内容。** 通知栏只提供「打开」，没有批准按钮；解密失败或不新鲜时退回「DeepLinks 有新的任务动态」。
+- **锁屏不泄内容。** 通知栏只提供「打开」，没有批准按钮；解密失败或不新鲜时退回「Cetus 有新的任务动态」。
 
 逐字节协议合同（`POST /v1/push`、`GET /v1/keys`、`GET /healthz`、密钥与字段定义、错误码与红线）见 [`docs/rfc/0002-push-gateway.md`](docs/rfc/0002-push-gateway.md)；网关实现（Go，`cmd/dlpush`）在 [`push/`](push/)，可与官方网关互换自建。
 
 ## 概览
 
-**DeepLinks** 让运行在电脑、家中主机或远程服务器上的 DeepSeek Harness 拥有一个经过配对的原生手机入口。电脑继续运行 DSH、工具与工作区；手机负责看会话、发消息、收实时事件、处理审批与提问。
+**Cetus** 让运行在电脑、家中主机或远程服务器上的 DeepSeek Harness 拥有一个经过配对的原生手机入口。电脑继续运行 DSH、工具与工作区；手机负责看会话、发消息、收实时事件、处理审批与提问。
 
 它不是远程桌面，也不是把 DSH Web 塞进手机浏览器：一个仓库、四个发布物、一条配对信任链。
 
 | 发布物 | 位置 | 作用 | 分发 |
 |---|---|---|---|
-| **DSH 插件** `dsh-links` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-links`，固定版本见 [Releases](https://github.com/lunaship/dsh-links/releases)） |
-| **Android App** | [`apps/android/`](apps/android/) | 扫码配对、原生会话工作台、实时流、审批与提问 | 签名 APK，见 [Releases](https://github.com/lunaship/dsh-links/releases?q=app-v&expanded=true)（`app-v*`） |
+| **DSH 插件** `dsh-cetus` | [`src/`](src/) | 手机 HTTPS 接入代理、配对与设备状态机、电脑端「手机连接」面板 | 本仓 git 源（`github:lunaship/dsh-cetus`，固定版本见 [Releases](https://github.com/lunaship/dsh-cetus/releases)） |
+| **Android App** | [`apps/android/`](apps/android/) | 扫码配对、原生会话工作台、实时流、审批与提问 | 签名 APK，见 [Releases](https://github.com/lunaship/dsh-cetus/releases?q=app-v&expanded=true)（`app-v*`） |
 | **iOS App** | [`apps/ios/`](apps/ios/) | 同上的原生 iOS 客户端（SwiftUI，iOS 26+），另含通知扩展与 Live Activity | 源码公开；需自行用 Xcode 签名构建，官方构建待发布 |
 | **Relay** | [`relay/`](relay/) | 远程连接的哑管道中继（DLP/1，`cmd/dlp-relay`），只拼接两条 WSS | 源码公开；可用官方中继或自建，无需接入码 |
 | **Push Gateway** | [`push/`](push/) | 无状态推送网关（DLPUSH/1，`cmd/dlpush`），只把端到端加密的通知密文转给 APNs | 源码公开；官方网关或自建，默认关闭 |
@@ -213,7 +213,7 @@ flowchart LR
 
     subgraph Computer ["运行 DSH 的电脑"]
         direction TB
-        Plugin["dsh-links 插件<br/>手机 API · 配对与设备状态机"]
+        Plugin["dsh-cetus 插件<br/>手机 API · 配对与设备状态机"]
         Panel["「手机连接」面板<br/>仅本机回环"]
         Host["DSH Host<br/>会话 · 工具 · 工作区"]
     end
@@ -241,7 +241,7 @@ flowchart LR
 ## 目录结构
 
 ```text
-dsh-links/
+dsh-cetus/
 ├── src/                          # DSH 插件
 │   ├── index.js                  # 入口：路由注册、配对 / 设备状态机、Runtime 装配
 │   ├── mobile-api.js             # 手机 HTTPS API 唯一实现（/dsh-link/mobile/*）
@@ -279,11 +279,11 @@ dsh-links/
 1. **在运行 DSH 的电脑上安装插件**，并启动 DSH Web：
 
    ```bash
-   dsh plugin --profile web add github:lunaship/dsh-links
+   dsh plugin --profile web add github:lunaship/dsh-cetus
    dsh web
    ```
 
-   上面装的是 `main`（当前 Beta 源）。要固定版本，在地址后加 [Releases](https://github.com/lunaship/dsh-links/releases) 里的插件 tag，例如 `#v0.1.0-beta.18`；插件与 App 的配套关系见 [兼容矩阵](docs/COMPATIBILITY.md)。
+   上面装的是 `main`（当前 Beta 源）。要固定版本，在地址后加 [Releases](https://github.com/lunaship/dsh-cetus/releases) 里的插件 tag，例如 `#v0.1.0-beta.18`；插件与 App 的配套关系见 [兼容矩阵](docs/COMPATIBILITY.md)。
 
 2. **配对**：打开 DSH Web 设置 →「手机连接」，用 App「扫描二维码」或「从相册识别」（选择一张含连接二维码的截图）完成配对。
 
@@ -314,10 +314,10 @@ npm run prepack        # 生成面板 client.js + 全量测试
 npm test               # 仅跑 node:test 套件
 ```
 
-开发期可直接挂本地目录：`dsh plugin --profile web add /path/to/dsh-links`。改完源码需**重启 host** 才生效。
+开发期可直接挂本地目录：`dsh plugin --profile web add /path/to/dsh-cetus`。改完源码需**重启 host** 才生效。
 
 > [!WARNING]
-> 插件 state 默认全局共享（`~/.dsh/dsh-links/state.json`，不分 profile）。任何冒烟或联调都必须通过 `stateDir` 配置隔离，且不得调用吊销类操作——否则会吊销你真实手机的配对。
+> 插件 state 默认全局共享（`~/.dsh/dsh-cetus/state.json`，不分 profile）。旧的 `~/.dsh/dsh-links/` 会在升级后**自动迁移**，且源目录**原样保留为备份 / 回滚点**，无需手动处理。任何冒烟或联调都必须通过 `stateDir` 配置隔离，且不得调用吊销类操作——否则会吊销你真实手机的配对。
 
 ### Android App
 
@@ -334,9 +334,11 @@ debug 变体的包名带 `.debug` 后缀，与签名 release 共存、互不覆�
 
 ```bash
 cd apps/ios
-xcodegen generate        # project.yml → DeepLinks.xcodeproj（.xcodeproj 不入库）
-xcodebuild -scheme DeepLinks -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
-xcodebuild -scheme DeepLinks -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+# 先生成构建元数据（project.yml 用 configFiles 引用，缺文件会让 xcodegen 报错）
+node ../../scripts/build-metadata.mjs --platform ios
+xcodegen generate        # project.yml → Cetus.xcodeproj（.xcodeproj 不入库）
+xcodebuild -scheme Cetus -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild -scheme Cetus -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
 截图基线**只允许**由 `.github/workflows/ios-regen-screenshots.yml` 在 CI 上重录，禁止提交本地基线；改 UI 后先触发该 workflow，再把新基线随 PR 提交。约束与目录契约见 [`apps/ios/AGENTS.md`](apps/ios/AGENTS.md)，页面对照见 [`apps/ios/docs/page-mapping.md`](apps/ios/docs/page-mapping.md)。
@@ -404,9 +406,9 @@ SHA-256: 38f71adf8b67d81042c99a3ec0dfdafb4303dd31e3fc491068ccd534cb482a47
 
 ## License
 
-DeepLinks 以 [MIT](LICENSE) 许可发布。
+Cetus 以 [MIT](LICENSE) 许可发布。
 
-「DeepLinks」名称、logo 与应用图标**不在** MIT 授权范围内；第三方 fork 请更换名称、图标与 `applicationId` 后再分发。随包的第三方库与资源保留各自许可，见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 与 [`apps/android/THIRD_PARTY_NOTICES.md`](apps/android/THIRD_PARTY_NOTICES.md)。
+「Cetus」名称、logo 与应用图标**不在** MIT 授权范围内；第三方 fork 请更换名称、图标与 `applicationId` 后再分发。随包的第三方库与资源保留各自许可，见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 与 [`apps/android/THIRD_PARTY_NOTICES.md`](apps/android/THIRD_PARTY_NOTICES.md)。
 
 ---
 

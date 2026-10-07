@@ -1,6 +1,6 @@
-# DeepLinks compatibility matrix
+# Cetus compatibility matrix
 
-This is the single compatibility reference for the public `dsh-links`
+This is the single compatibility reference for the public `dsh-cetus`
 repository (plugin plus Relay under `relay/`).
 Android source is in `apps/android/`. iOS source is under `apps/ios/`
 (developed on `ios/main`, merged into `main` by the `ios/main` integration in
@@ -17,11 +17,54 @@ published. Per-change details live in `CHANGELOG.md`.
 | Component | Source baseline | Published / released status |
 |---|---|---|
 | DSH | `0.1.7-alpha.1` (npm `alpha`) | Upstream dependency |
-| Plugin `dsh-links` | package `0.1.0-beta.19` on `main` | Distributed from this repository as a git source (npm publishing removed 2026-09-30). Latest pushed tag: `v0.1.0-beta.18`; `v0.1.0-beta.19` is not tagged yet |
+| Plugin `dsh-cetus` | package `0.1.0-beta.19` on `main` | Distributed from this repository as a git source (npm publishing removed 2026-09-30). Latest pushed tag: `v0.1.0-beta.18`; `v0.1.0-beta.19` is not tagged yet |
 | Android `apps/android/` | `versionName 0.5.0-beta.31` / `versionCode 39` on `main` | Latest signed APK on GitHub Releases: `app-v0.5.0-beta.27` (versionCode 35, SHA-256 `3022c5a5b25aa05c9e1e597b7a40dfcb54e50ab72aa57cc8a115bc1e583f3223`), built from `0f0fd75` — the revision the `app-v0.5.0-beta.27` tag points at. `0.5.0-beta.24`–`0.5.0-beta.26` were never published; their changes ship in `0.5.0-beta.27`. `CI - Android` (unit tests, lint, screenshot validation, `assembleDebug`, emulator smoke) is green on `0f0fd75`; real-device acceptance for this build is still pending |
 | Relay (`relay/`) | `dlp-relay` (DLP/1) from `main`; DLR/1 server removed | Official instance `wss://relay.dshlinks.com/ws`; self-hosting in `relay/README.md` |
 | iOS `apps/ios/` | placeholder `MARKETING_VERSION` `1.0` / `CURRENT_PROJECT_VERSION` `1` on `main` (iOS source merged from `ios/main`, PR #184); bundle id `dev.deeplinks.ios.debug` | 未发布 / 阶段 9 前不宣称真 APNs 已验证。没有 TestFlight 构建，没有 App Store 记录，没有 `ios-v*` tag。占位版本不是发布版本 |
 | Push gateway (`push/`, DLPUSH/1) | local implementation and tests in `push/`; RFC draft `docs/rfc/0002-push-gateway.md` | 未发布 / 阶段 9 前不宣称真 APNs 已验证。没有官方网关部署，没有生产域名。真实 APNs 送达留到阶段 9 |
+
+## Build metadata: marketing version vs build number
+
+The two platforms do **not** share a version number, and the marketing version
+alone cannot identify a build. Since 2026-10-08 (plan §4 C00) both clients embed
+**internal** build metadata and show it on the About / diagnostics page only —
+never on the daily home screen.
+
+| Field | iOS | Android |
+|---|---|---|
+| Short commit SHA | `DLBuildCommit` (Info.plist) | `BuildConfig.BUILD_COMMIT` |
+| Build date (UTC) | `DLBuildDate` | `BuildConfig.BUILD_DATE` |
+| Configuration | `DLBuildConfiguration` | `BuildConfig.BUILD_TYPE` |
+| Contract version | `DLBuildContractVersion` | `BuildConfig.BUILD_CONTRACT_VERSION` |
+| Marketing version | `MARKETING_VERSION` (`1.0`, placeholder) | `versionName` (`0.5.0-beta.31`) |
+| Build number | `CURRENT_PROJECT_VERSION` (`1`) | `versionCode` (`39`) |
+
+Rules:
+
+- The commit SHA gets a `-dirty` suffix when the working tree has uncommitted
+  changes. A screenshot taken from a dirty tree still cannot be traced to a
+  commit — record the dirty state as-is rather than hiding it.
+- Metadata generation never changes `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`,
+  `versionCode`, or `versionName`. Those stay maintainer-owned (plan §4).
+- iOS source of truth is `apps/ios/BuildMetadata.xcconfig`, written by
+  `node scripts/build-metadata.mjs --platform ios` before `xcodegen generate`.
+  Android reads `git` directly in `app/build.gradle.kts`.
+- `BUILD_CONTRACT_VERSION` tracks the payload `version` in
+  `docs/MOBILE_SYNC_CONTRACT.md` (currently `1`).
+
+Known combination in the field (from the 2026-10-07 device inspection):
+
+| Device | Package id | Version | Build metadata |
+|---|---|---|---|
+| Xiaomi 24129PN74C (Android 17) | `dev.deeplinks` | `0.5.0-beta.31` (39) | **未知** — installed before metadata existed |
+| iPhone 13 (iOS 27.0.1) | `dev.deeplinks.ios.debug` | `1.0` (1) | **未知** — placeholder; no commit recoverable |
+
+Real-device acceptance evidence must be taken from a low-load window and must record
+`uptime` alongside the result: parallel builds on this machine push the load average
+to 8–17 on 10 cores, and timeout-bound gates produce false failures there. A failure
+that reproduces stably is a real bug; a one-off failure under load is not evidence.
+See `docs/cetus/BASELINE.md` for the recorded baseline.
+
 
 ## Capability: dev server preview
 
@@ -217,10 +260,12 @@ them.
 ## Smoke-isolation warning (plugin state is global by default)
 
 The plugin stores pairing, device, and remote identity (host key) state in
-`~/.dsh/dsh-links/state.json` **globally** — not per DSH profile — and
-migrates legacy dirs into it. Any profile that loads the plugin (including a
-throwaway smoke profile) therefore shares devices, the remote host key, and the
-workspace-facing pairing surface with the operator's real setup:
+`~/.dsh/dsh-cetus/state.json` **globally** — not per DSH profile — and
+migrates legacy dirs into it (including `~/.dsh/dsh-links/`, which is kept as a
+protected backup / rollback point rather than deleted). Any profile that loads
+the plugin (including a throwaway smoke profile) therefore shares devices, the
+remote host key, and the workspace-facing pairing surface with the operator's
+real setup:
 
 - Revoking devices or clicking teardown actions in a smoke host revokes the
   real phones too; phone pairings cannot be restored from disk (tokens are

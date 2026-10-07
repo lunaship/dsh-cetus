@@ -1,6 +1,6 @@
 # 远端连接路线（实验性）
 
-扫码中的地址或手动填写的地址可以指向家中电脑或远程服务器上运行的 DSH。`dsh-links` 当前正式支持的是可信局域网 Android Beta。本页说明插件内置的「远程连接」（DLP/1 中继，实验性），以及两种由你自己管理的跨网络路径。
+扫码中的地址或手动填写的地址可以指向家中电脑或远程服务器上运行的 DSH。`dsh-cetus` 当前正式支持的是可信局域网 Android Beta。本页说明插件内置的「远程连接」（DLP/1 中继，实验性），以及两种由你自己管理的跨网络路径。
 
 | 方式 | 适合什么 | 公网入口 | 手机怎么加 |
 |---|---|---|---|
@@ -24,9 +24,9 @@
 
 ```bash
 cloudflared tunnel login
-cloudflared tunnel create dsh-links
-cloudflared tunnel route dns dsh-links dsh.example.com
-cloudflared tunnel run dsh-links
+cloudflared tunnel create dsh-cetus
+cloudflared tunnel route dns dsh-cetus dsh.example.com
+cloudflared tunnel run dsh-cetus
 ```
 
 配置 Tunnel 时，只发布 18640 的手机 API；绝不要一并发布 DSH Web 管理台 3080。
@@ -61,4 +61,4 @@ Android App 当前不会执行 Cloudflare Access 的网页登录，也不会携�
 
 需要 App 与插件都是 2026-09-29 之后的版本（DLP/1）；旧 App 扫新码只会走局域网。自建中继见 `relay/` 与 `docs/rfc/0001-dlp1-remote-pipe.md` §14。
 
-旧版 DeepLinks Relay（DLR/1，接入码 + 云端二维码）已下线：插件启动时清除遗留接入配置，旧的「· 云」设备在面板上标为「旧版云端配对，已停用」，可直接吊销。
+旧版 Cetus Relay（DLR/1，接入码 + 云端二维码）已下线：插件启动时清除遗留接入配置，旧的「· 云」设备在面板上标为「旧版云端配对，已停用」，可直接吊销。

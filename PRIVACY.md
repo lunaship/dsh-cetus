@@ -1,6 +1,6 @@
 # Privacy
 
-DeepLinks Beta 的数据与权限说明。这不是 Google Play 数据安全表；它说明这款高权限 App 在手机上做什么。
+Cetus Beta 的数据与权限说明。这不是 Google Play 数据安全表；它说明这款高权限 App 在手机上做什么。
 
 ## 我们不收集什么
 

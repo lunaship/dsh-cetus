@@ -79,7 +79,20 @@ export function movableEntries(dir) {
   return out.sort()
 }
 
-/** 迁移记录只写这些字段，绝不含密钥/token。 */
+/**
+ * 迁移记录只写这些字段，**绝不含密钥/token**。
+ *
+ * 为什么 `tlsFingerprint` 可以写、而 `privKey` / `remote.hostKey` 不可以：
+ *   - TLS 指纹（SHA-256）是**公开身份**，不是秘密。它本来就要给手机看（App 按指纹钉死证书，
+ *     配对二维码与面板都展示它），写进迁移记录不扩大暴露面，却能让人一眼核对
+ *     "迁移前后是不是同一台电脑"，是排查身份错乱的关键证据。
+ *   - 私钥（tls.json 的 key）、远程主机密钥（remote.hostKey / keySeed）、设备 token、
+ *     推送 token 是**凭据**：拿到即可冒充本机连中继 / 推消息。它们没有任何排查价值，
+ *     只应在 state 目录内以 0600 存在。
+ *
+ * 所以：以后要往这里加字段，先问"这个值给攻击者有没有用"。有用 = 不要加。
+ * 有 test/state-migration.test.mjs 的用例守着这条（含全部失败路径）。
+ */
 function publicRecord(record) {
   return {
     migrationVersion: record.migrationVersion,

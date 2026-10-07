@@ -1,4 +1,4 @@
-# dsh-links 架构总览
+# dsh-cetus 架构总览
 
 一个仓库、三个发布物、一条配对信任链。本文是目录契约与数据流的地图；
 字段级契约看 [MOBILE_SYNC_CONTRACT.md](MOBILE_SYNC_CONTRACT.md)，
@@ -8,7 +8,7 @@
 
 | 发布物 | 位置 | 工具链 | 作用 |
 |---|---|---|---|
-| DSH 插件 `dsh-links` | `src/`（根 package.json） | Node ≥ 20 | 手机 HTTPS 接入代理、配对/设备状态机、回环「手机连接」面板 |
+| DSH 插件 `dsh-cetus` | `src/`（根 package.json） | Node ≥ 20 | 手机 HTTPS 接入代理、配对/设备状态机、回环「手机连接」面板 |
 | 中继 `dlp-relay` | `relay/` | Go 1.25 | 远程连接的哑管道（DLP/1）：只拼接电脑与手机各自向外建立的 WSS，无状态、无账号 |
 | Android App | `apps/android/` | Kotlin / Compose | 手机端原生客户端：配对入口、会话工作台、实时流与审批 |
 
@@ -26,7 +26,7 @@
 └───────────────▲──────────────────────────────────────┘
                 │ HTTPS + 设备 token（局域网直连；或经中继的内层 TLS）
 ┌───────────────┴──────────────────────────────────────┐
-│ dsh-links 插件（src/）                                │
+│ dsh-cetus 插件（src/）                                │
 │   mobile-api.js  手机 API（/dsh-link/mobile/*）       │
 │   index.js       路由注册、配对/吊销状态机、回环 RPC   │
 │   panel.js       面板唯一源码（client.js 由它生成）   │
