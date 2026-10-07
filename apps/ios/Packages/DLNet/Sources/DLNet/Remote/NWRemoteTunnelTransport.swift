@@ -183,7 +183,8 @@ public struct NWRemoteTunnelTransport: RemoteTunnelTransport {
                             continuation.resume(throwing: NWRemoteTunnel.mapNWError(error))
                             return
                         }
-                        let metadata = context?.protocolMetadata(definition: NWProtocolWebSocket.definition)
+                        let metadata =
+                            context?.protocolMetadata(definition: NWProtocolWebSocket.definition)
                             as? NWProtocolWebSocket.Metadata
                         if let metadata, metadata.opcode == .binary {
                             continuation.resume(throwing: RemoteTunnelError.protocolViolation)

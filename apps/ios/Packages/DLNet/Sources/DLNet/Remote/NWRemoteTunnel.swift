@@ -69,7 +69,8 @@ public final class NWRemoteTunnel: RemoteTunnel, @unchecked Sendable {
                     return
                 }
                 // 只接受二进制帧（RFC §5.4.4）。
-                let opcode = context?.protocolMetadata(definition: NWProtocolWebSocket.definition)
+                let opcode =
+                    context?.protocolMetadata(definition: NWProtocolWebSocket.definition)
                     as? NWProtocolWebSocket.Metadata
                 if let opcode, opcode.opcode == .text {
                     continuation.resume(throwing: RemoteTunnelError.protocolViolation)

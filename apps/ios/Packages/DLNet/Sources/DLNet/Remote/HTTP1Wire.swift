@@ -182,7 +182,8 @@ public enum HTTP1Wire {
     static func hostHeader(_ url: URL) -> String {
         let host = url.host ?? ""
         let port = url.port ?? (url.scheme?.lowercased() == "https" ? 443 : 80)
-        let isDefault = (url.scheme?.lowercased() == "https" && port == 443) || (url.scheme?.lowercased() == "http" && port == 80)
+        let isDefault =
+            (url.scheme?.lowercased() == "https" && port == 443) || (url.scheme?.lowercased() == "http" && port == 80)
         return isDefault ? host : host + ":" + String(port)
     }
 

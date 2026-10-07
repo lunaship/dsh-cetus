@@ -87,7 +87,9 @@ public actor RemoteTunnelPool: RemoteTunnelPooling {
     ///   - host: 用于 SSE 计数与 `Host` 语义的稳定标识（本 PR 为请求的 host）。
     ///   - kind: `short` 计入短请求额度，`sse` 计入每主机 SSE 额度。
     ///   - route: 会合参数。隧道建立失败时立刻归还额度，不留悬挂计数。
-    public func acquire(host: String, kind: RemoteStreamKind, route: RemoteTunnelRoute) async throws -> any RemoteTunnelLease {
+    public func acquire(host: String, kind: RemoteStreamKind, route: RemoteTunnelRoute) async throws
+        -> any RemoteTunnelLease
+    {
         try checkLimits(host: host, kind: kind)
         reserve(host: host, kind: kind)
         do {

@@ -107,7 +107,9 @@ struct RemoteHTTP1WireTests {
     @Test func parsesResponseWithoutContentLengthAtEOF() throws {
         var parser = HTTP1Wire.ResponseParser()
         // 无 Content-Length、非 chunked：读到 EOF 才算完（SSE 常见形态）。
-        #expect(try parser.push(Data("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: 1\n\n".utf8)) == false)
+        #expect(
+            try parser.push(Data("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: 1\n\n".utf8)) == false
+        )
         let response = try #require(parser.finish())
         #expect(response.status == 200)
         #expect(String(decoding: response.body, as: UTF8.self) == "data: 1\n\n")
@@ -116,7 +118,8 @@ struct RemoteHTTP1WireTests {
     @Test func parsesErrorStatusAndBody() throws {
         var parser = HTTP1Wire.ResponseParser()
         let body = #"{"error":"gone","code":"UNKNOWN_KEY"}"#
-        let raw = "HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\n\r\n\(body)"
+        let raw =
+            "HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\n\r\n\(body)"
         #expect(try parser.push(Data(raw.utf8)) == true)
         let response = try #require(parser.finish())
         #expect(response.status == 403)

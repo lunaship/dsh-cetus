@@ -56,7 +56,8 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
 
         // 只绑回环：不接受任何外部连接。
         let parameters = NWParameters.tcp
-        parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: port) ?? .any)
+        parameters.requiredLocalEndpoint = .hostPort(
+            host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: port) ?? .any)
         parameters.allowLocalEndpointReuse = false
         let listener = try NWListener(using: parameters)
         self.listener = listener
@@ -170,7 +171,9 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
     // MARK: - 静态工具
 
     /// 从流里取第一条连接；超时返回 nil。
-    private static func firstConnection(_ stream: AsyncStream<NWConnection>, timeout: TimeInterval) async -> NWConnection? {
+    private static func firstConnection(_ stream: AsyncStream<NWConnection>, timeout: TimeInterval) async
+        -> NWConnection?
+    {
         await withTaskGroup(of: NWConnection?.self) { group in
             group.addTask {
                 var iterator = stream.makeAsyncIterator()
@@ -186,7 +189,9 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
     }
 
     /// 读满 `count` 字节。
-    private static func receiveExactly(_ count: Int, from connection: NWConnection, timeout: TimeInterval) async throws -> Data {
+    private static func receiveExactly(_ count: Int, from connection: NWConnection, timeout: TimeInterval) async throws
+        -> Data
+    {
         try await withThrowingTaskGroup(of: Data.self) { group in
             group.addTask {
                 var collected = Data()
@@ -229,13 +234,15 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
 
     static func send(_ bytes: Data, to connection: NWConnection) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            connection.send(content: bytes, completion: .contentProcessed { error in
-                if let error {
-                    continuation.resume(throwing: NWRemoteTunnel.mapNWError(error))
-                } else {
-                    continuation.resume()
-                }
-            })
+            connection.send(
+                content: bytes,
+                completion: .contentProcessed { error in
+                    if let error {
+                        continuation.resume(throwing: NWRemoteTunnel.mapNWError(error))
+                    } else {
+                        continuation.resume()
+                    }
+                })
         }
     }
 }

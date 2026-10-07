@@ -32,7 +32,8 @@ import Testing
         }
 
         private func readLoop() {
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) {
+                [weak self] data, _, isComplete, error in
                 guard let self else { return }
                 if let data, !data.isEmpty { self.continuation.yield(data) }
                 if let error {
@@ -49,9 +50,11 @@ import Testing
 
         func write(_ bytes: Data) async throws {
             try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
-                connection.send(content: bytes, completion: .contentProcessed { error in
-                    if let error { c.resume(throwing: error) } else { c.resume() }
-                })
+                connection.send(
+                    content: bytes,
+                    completion: .contentProcessed { error in
+                        if let error { c.resume(throwing: error) } else { c.resume() }
+                    })
             }
         }
 
@@ -134,8 +137,9 @@ import Testing
     /// 自签 RSA-2048、CN=127.0.0.1、SAN IP:127.0.0.1。测试里不生成证书，
     /// 避免引入 swiftsyntax/openssl 之外的新依赖，也避免每次跑测试都变指纹。
     static func loadIdentity() throws -> (identity: sec_identity_t, der: Data, fingerprint: String) {
-        let url = try #require(Bundle(for: BundleToken.self).url(
-            forResource: "identity", withExtension: "p12", subdirectory: "inner-tls"))
+        let url = try #require(
+            Bundle(for: BundleToken.self).url(
+                forResource: "identity", withExtension: "p12", subdirectory: "inner-tls"))
         let p12 = try Data(contentsOf: url)
 
         var items: CFArray?
@@ -150,8 +154,9 @@ import Testing
         }
         let identity = identityRef as! sec_identity_t
 
-        let derURL = try #require(Bundle(for: BundleToken.self).url(
-            forResource: "leaf", withExtension: "der", subdirectory: "inner-tls"))
+        let derURL = try #require(
+            Bundle(for: BundleToken.self).url(
+                forResource: "leaf", withExtension: "der", subdirectory: "inner-tls"))
         let der = try Data(contentsOf: derURL)
         return (identity, der, CertificateFingerprint.sha256(der: der))
     }
