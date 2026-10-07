@@ -103,15 +103,22 @@ jobs:
           set -eu
           export E2E_QR_PATH
           export E2E_CONTROL_URL
-          DEST=$(sh scripts/simulator-destination.sh)
-          xcodebuild \
-            -scheme DeepLinks \
-            -destination "$DEST" \
-            -only-testing:DeepLinksUITests \
-            -resultBundlePath "$RUNNER_TEMP/e2e.xcresult" \
-            test \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+          run_ui() {
+            local device="$1"
+            local result="$2"
+            local destination
+            destination=$(SIMULATOR_DEVICE_NAME="$device" sh scripts/simulator-destination.sh)
+            xcodebuild \
+              -scheme DeepLinks \
+              -destination "$destination" \
+              -only-testing:DeepLinksUITests/E2ELaunchTests \
+              -resultBundlePath "$result" \
+              test \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO
+          }
+          run_ui "iPhone 17 Pro" "$RUNNER_TEMP/e2e-iphone.xcresult"
+          run_ui "iPad Pro 13-inch (M5)" "$RUNNER_TEMP/e2e-ipad.xcresult"
 
       - name: Upload e2e diagnostics
         if: failure()
@@ -119,7 +126,8 @@ jobs:
         with:
           name: ios-e2e-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/e2e.xcresult
+            ${{ runner.temp }}/e2e-iphone.xcresult
+            ${{ runner.temp }}/e2e-ipad.xcresult
             ${{ runner.temp }}/e2e-plugin.log
           if-no-files-found: ignore
           retention-days: 14

@@ -30,6 +30,11 @@ struct RootView: View {
             .id(selectedHostId)
         } else {
             PairingFlowView(model: pairing, onPaired: { selectedHostId = $0 })
+                .task {
+                    if selectedHostId == nil, let host = pairing.pairedHost {
+                        selectedHostId = host.hostId
+                    }
+                }
         }
     }
 
@@ -42,8 +47,60 @@ struct RootView: View {
     }
 }
 
+final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        let open = UNNotificationAction(
+            identifier: PushNotificationCategory.openAction,
+            title: "Open",
+            options: [.foreground])
+        let category = UNNotificationCategory(
+            identifier: PushNotificationCategory.identifier,
+            actions: [open],
+            intentIdentifiers: [],
+            options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        defer { completionHandler() }
+        guard
+            response.actionIdentifier == UNNotificationDefaultActionIdentifier
+                || response.actionIdentifier == PushNotificationCategory.openAction,
+            let request = PushPayloadReader.openRequest(in: response.notification.request.content.userInfo)
+        else { return }
+        NotificationCenter.default.post(
+            name: .deepLinksOpenPush,
+            object: nil,
+            userInfo: ["deviceId": request.deviceID, "sessionId": request.sessionID])
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushTokenBridge.shared.didRegister(deviceToken: deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        PushTokenBridge.shared.didFail(error)
+    }
+}
+
 @main @MainActor
 struct DeepLinksApp: App {
+    @UIApplicationDelegateAdaptor(DeepLinksAppDelegate.self) private var delegate
     @State private var pairing: PairingFlowModel
 
     init() {
@@ -52,8 +109,13 @@ struct DeepLinksApp: App {
         // UI tests also set XCTestConfigurationFilePath, but they pass -e2eQRPayload and must stay live.
         let testing = environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil
         let endToEnd = DebugE2EQRLaunch.isRequested
+        let performance = PerformanceLaunchFixture.isRequested
         let model = PairingFlowModel(
-            services: testing && !endToEnd ? .offline : .live(store: HostStore()),
+            services: testing && !endToEnd && !performance
+                ? .offline
+                : .live(
+                    store: performance || PerformanceLaunchFixture.unsignedStorage != nil
+                        ? PerformanceLaunchFixture.hostStore() : HostStore()),
             gate: LocalNetworkPermissionGate(), deviceName: UIDevice.current.name)
         #if DEBUG
             // Same entry as a successful scan. Runs before restore(), which will not overwrite it.
@@ -72,6 +134,10 @@ struct DeepLinksApp: App {
 /// Debug-only stand-in for a successful scan. Release builds compile this reader out.
 /// The launch argument and the environment are both accepted: the UI-test host and the
 /// app process do not always see the same environment.
+extension Notification.Name {
+    static let deepLinksOpenPush = Notification.Name("dev.deeplinks.ios.open-push")
+}
+
 enum DebugE2EQRLaunch {
     static let argument = "-e2eQRPayload"
     static let environmentKey = "E2E_QR_PAYLOAD"

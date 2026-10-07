@@ -11,7 +11,13 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { startE2eHost } from "../scripts/ios-e2e-host.mjs"
-import { SESSION_LOGIN, httpsAgentFor, openSse, proxyRequest } from "../scripts/ios-e2e-fixture.mjs"
+import {
+  SESSION_LOGIN,
+  SESSION_PERFORMANCE,
+  httpsAgentFor,
+  openSse,
+  proxyRequest,
+} from "../scripts/ios-e2e-fixture.mjs"
 
 function postControl(port, path, body, { timeoutMs = 5_000 } = {}) {
   return new Promise((resolve, reject) => {
@@ -154,6 +160,95 @@ test("e2e host：重启后同一端口仍可配对，订阅中的会话能收到
   } finally {
     try { stream?.close() } catch {}
     await host.shutdown()
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})
+
+test("e2e host：性能会话默认关闭，显式打开后可追加第 3001 条", async () => {
+  const scratch = mkdtempSync(join(tmpdir(), "dsh-ios-performance-host-"))
+  const qrPath = join(scratch, "qr.json")
+  const disabled = await startE2eHost({ qrPath, logPath: join(scratch, "disabled.log") })
+  try {
+    const missing = await postControl(disabled.controlPort, "/control/stream", {
+      sessionId: SESSION_PERFORMANCE,
+      text: "追加 3001",
+    })
+    assert.equal(missing.status, 404, missing.text)
+  } finally {
+    await disabled.shutdown()
+  }
+
+  const enabled = await startE2eHost({
+    qrPath,
+    logPath: join(scratch, "enabled.log"),
+    includePerformanceSession: true,
+  })
+  let stream = null
+  let liveTimer = null
+  try {
+    const qr = JSON.parse(readFileSync(qrPath, "utf8"))
+    const agent = httpsAgentFor(enabled.stateDir)
+    const paired = await proxyRequest({
+      agent,
+      proxyPort: enabled.port,
+      path: "/dsh-link/pair",
+      method: "POST",
+      body: { code: qr.pairingCode, deviceName: "performance", requestId: "ios-performance-host-1" },
+    })
+    assert.equal(paired.status, 200, paired.text)
+    const listed = await proxyRequest({
+      agent,
+      proxyPort: enabled.port,
+      token: paired.json.token,
+      path: "/dsh-link/mobile/sessions",
+    })
+    assert.equal(listed.status, 200, listed.text)
+    const row = listed.json?.sessions?.find((item) => item.sessionId === SESSION_PERFORMANCE)
+    assert.equal(row?.title, "性能会话")
+    const history = await proxyRequest({
+      agent,
+      proxyPort: enabled.port,
+      token: paired.json.token,
+      path: '/dsh-link/mobile/sessions/' + SESSION_PERFORMANCE + '/history?maxMessages=50',
+    })
+    assert.equal(history.status, 200, history.text)
+    assert.equal(history.json?.messages?.at(-1)?.text, "固定消息 3000")
+    assert.equal(history.json?.hasMore, true)
+    const cursor = history.json?.maxSeq
+    assert.ok(cursor > 2950)
+    let resolveLive
+    let rejectLive
+    const live = new Promise((resolve, reject) => {
+      resolveLive = resolve
+      rejectLive = reject
+    })
+    liveTimer = setTimeout(() => rejectLive(new Error("性能会话未收到追加文本")), 8_000)
+    stream = openSse({
+      agent,
+      proxyPort: enabled.port,
+      token: paired.json.token,
+      path: '/dsh-link/mobile/sessions/' + SESSION_PERFORMANCE + '/stream?afterSeq=' + cursor,
+      quietMs: 60_000,
+      timeoutMs: 12_000,
+      onFrame(frame) {
+        if (JSON.stringify(frame.data ?? "").includes("追加 3001")) {
+          clearTimeout(liveTimer)
+          resolveLive(frame)
+        }
+      },
+    })
+    const injected = await postControl(enabled.controlPort, "/control/stream", {
+      sessionId: SESSION_PERFORMANCE,
+      text: "追加 3001",
+    })
+    assert.equal(injected.status, 200, injected.text)
+    assert.ok(injected.json?.seq > cursor)
+    const got = await live
+    assert.match(JSON.stringify(got.data), /追加 3001/)
+  } finally {
+    clearTimeout(liveTimer)
+    try { stream?.close() } catch {}
+    await enabled.shutdown()
     rmSync(scratch, { recursive: true, force: true })
   }
 })

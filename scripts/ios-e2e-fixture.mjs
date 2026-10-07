@@ -29,6 +29,8 @@ const SESSION_REPORT = "sess-demo-report"
 const SESSION_STOPPED = "sess-demo-stopped"
 const SESSION_REFACTOR = "sess-demo-refactor"
 const SESSION_ARCHIVED = "sess-demo-archived"
+const SESSION_PERFORMANCE = "sess-performance"
+const PERFORMANCE_MESSAGE_COUNT = 3000
 
 const t = (i) => FIXED_NOW + i * 1000
 /** login 会话末尾有一个未结束的 shell 调用（首页 activity 采样点）。 */
@@ -215,11 +217,36 @@ function oneShotFrame(value) {
   })()
 }
 
-function createFakeGateway({ workspacePath, sessionLogHome } = {}) {
+function performanceEvents() {
+  const events = []
+  for (let index = 1; index <= PERFORMANCE_MESSAGE_COUNT; index += 1) {
+    events.push({
+      seq: index,
+      type: "user/message",
+      time: t(1000 + index),
+      data: { content: [{ type: "text", text: "固定消息 " + index }] },
+    })
+  }
+  return events
+}
+
+function createFakeGateway({ workspacePath, sessionLogHome, includePerformanceSession = false } = {}) {
   const rows = SESSION_ROWS.map((row) => ({
     ...row,
     cwd: row.cwd === "__WORKSPACE__" ? workspacePath : row.cwd,
   }))
+  const eventsBySession = { ...SESSION_EVENTS }
+  if (includePerformanceSession) {
+    eventsBySession[SESSION_PERFORMANCE] = performanceEvents()
+    rows.unshift({
+      sessionId: SESSION_PERFORMANCE,
+      cwd: workspacePath,
+      origin: "user",
+      running: false,
+      updatedAt: t(5000),
+      projections: { asOfSeq: PERFORMANCE_MESSAGE_COUNT, values: { title: "性能会话" } },
+    })
+  }
   /** sessionId → 追加在固定快照之后的事件。fixtures 不读它，所以导出结果不变。 */
   const liveEvents = new Map()
   /** 手机 session.prompt 转过来的正文，按到达顺序保留。 */
@@ -228,7 +255,7 @@ function createFakeGateway({ workspacePath, sessionLogHome } = {}) {
   // 否则缺失会被缓存 10 秒，追加的 chunk 送不到已订阅的手机。fixtures 不传 sessionLogHome，不写盘。
   if (sessionLogHome) {
     for (const row of rows) {
-      const events = SESSION_EVENTS[row.sessionId] ?? []
+      const events = eventsBySession[row.sessionId] ?? []
       const dir = sessionDirFor(row.cwd, row.sessionId, { DSH_HOME: sessionLogHome })
       mkdirSync(dir, { recursive: true })
       const body = events.map((event) => JSON.stringify(event)).join("\n")
@@ -245,13 +272,15 @@ function createFakeGateway({ workspacePath, sessionLogHome } = {}) {
       case "session/page": {
         const request = args?.request ?? {}
         const sessionId = request.address?.sessionId
-        const all = [...(SESSION_EVENTS[sessionId] ?? []), ...(liveEvents.get(sessionId) ?? [])]
+        const all = [...(eventsBySession[sessionId] ?? []), ...(liveEvents.get(sessionId) ?? [])]
         let list = all
         if (Number.isInteger(request.throughSeq)) list = list.filter((e) => e.seq <= request.throughSeq)
         if (Number.isInteger(request.beforeSeq) && request.beforeSeq > 0) list = list.filter((e) => e.seq < request.beforeSeq)
+        const oldestSeq = list[0]?.seq
         if (Number.isInteger(request.maxMessages) && request.maxMessages > 0) list = list.slice(-request.maxMessages)
         const projections = sessionId === SESSION_LOGIN ? loginProjections : null
-        return { records: list.map((event) => ({ event })), hasMore: false, ...(projections ? { projections } : {}) }
+        const hasOlder = list.length > 0 && oldestSeq !== list[0]?.seq
+        return { records: list.map((event) => ({ event })), hasMore: hasOlder, ...(projections ? { projections } : {}) }
       }
       case "session/modelCatalog":
         return structuredClone(MODEL_CATALOG)
@@ -301,11 +330,18 @@ function createFakeGateway({ workspacePath, sessionLogHome } = {}) {
     }
     if (name === "session/follow") {
       const sessionId = request?.args?.request?.address?.sessionId
-      const base = SESSION_EVENTS[sessionId]
+      const base = eventsBySession[sessionId]
       if (!base) throw new Error(`fake gateway: unknown session ${sessionId}`)
       const events = [...base, ...(liveEvents.get(sessionId) ?? [])]
+      const requested = request?.args?.request?.maxMessages
+      const tail = Number.isInteger(requested) && requested > 0 ? events.slice(-requested) : events
       const projections = sessionId === SESSION_LOGIN ? loginProjections : { values: {} }
-      return oneShotFrame({ type: "snapshot", records: events.map((event) => ({ event })), hasMore: false, projections })
+      return oneShotFrame({
+        type: "snapshot",
+        records: tail.map((event) => ({ event })),
+        hasMore: tail.length < events.length,
+        projections,
+      })
     }
     throw new Error(`fake gateway: unexpected stream ${name}`)
   }
@@ -315,13 +351,13 @@ function createFakeGateway({ workspacePath, sessionLogHome } = {}) {
    * seq 缺省时接在该会话当前最大 seq 之后。
    */
   function appendLiveEvent(sessionId, event) {
-    if (!SESSION_EVENTS[sessionId]) {
+    if (!eventsBySession[sessionId]) {
       const err = new Error(`unknown session ${sessionId}`)
       err.code = "unknown-session"
       throw err
     }
     const existing = liveEvents.get(sessionId) ?? []
-    const baseMax = (SESSION_EVENTS[sessionId] ?? []).reduce((max, item) => Math.max(max, item.seq ?? 0), 0)
+    const baseMax = (eventsBySession[sessionId] ?? []).reduce((max, item) => Math.max(max, item.seq ?? 0), 0)
     const liveMax = existing.reduce((max, item) => Math.max(max, item.seq ?? 0), 0)
     const seq = Number.isInteger(event?.seq) ? event.seq : Math.max(baseMax, liveMax) + 1
     const record = {
@@ -357,7 +393,7 @@ function createFakeGateway({ workspacePath, sessionLogHome } = {}) {
       const dir = sessionDirFor(row.cwd, row.sessionId, { DSH_HOME: sessionLogHome })
       mkdirSync(dir, { recursive: true })
       const file = join(dir, "session.jsonl")
-      const lines = [...(SESSION_EVENTS[row.sessionId] ?? []), ...(liveEvents.get(row.sessionId) ?? [])]
+      const lines = [...(eventsBySession[row.sessionId] ?? []), ...(liveEvents.get(row.sessionId) ?? [])]
       writeFileSync(file, lines.map((record) => JSON.stringify(record)).join("\n") + (lines.length ? "\n" : ""))
     }
   }
@@ -595,6 +631,7 @@ export {
   SESSION_ARCHIVED,
   SESSION_EVENTS,
   SESSION_LOGIN,
+  SESSION_PERFORMANCE,
   SESSION_REFACTOR,
   SESSION_REPORT,
   SESSION_ROWS,

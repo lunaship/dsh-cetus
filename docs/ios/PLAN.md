@@ -1,6 +1,7 @@
 # DeepLinks iOS：从 0 到 1 执行方案
 
-> 状态：已采纳 v1.3（2026-10-03）。续作执行单：[`docs/ios/CONTINUE.md`](CONTINUE.md)。
+> 状态：已采纳 v1.4（2026-10-06）。续作执行单：[`docs/ios/CONTINUE.md`](CONTINUE.md)。本轮收尾以桌面 `DeepLinks-收尾方案.md`（2026-10-06 修订）为准，本文只同步执行边界。
+> v1.4 变更：改名延期，本轮继续用 DeepLinks / dsh-links。A5 真机检查改到收尾 G7，不再挡住阶段 5；允许自动化模拟器验证。方案 A 先做 G4.0 本地传输验证，不连官方中继。推送仍须合并前安全审查；对 `main` 的 PR 与 `ios/main → main` 只由维护者合并。
 > v1.3 变更：`sealed` 定为 JSON 对象；附加数据前缀改为 `dlpush/1 token|` 与 `dlpush/1 content|` 做域分离；I6.2 测试向量路径改为 `testdata/push/hpke/` 与 `testdata/push/content/`。
 > v1.2 变更：HPKE 算法组合定为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305 并规定测试向量；补 7.6 对话默认；设计稿去掉“输入配对码”；RFC 0002 先留在 `ios/main`，阶段 6 随插件 PR 一起进 main。
 > v1.1 变更：I1.5 改为 HTML 设计稿（I1.5a 已完成）+ 模拟器截图验收（I1.5b）；决策栏按钮改为实色；深色 BrandFill 暂定 `#4C66E6`；推送网关部署到维护者的香港服务器；新增执行规则第 11 条（agent 无法本地编译 iOS）。
@@ -93,10 +94,11 @@
 8. **双语**：所有文案进 String Catalog（`Localizable.xcstrings`），简体中文与英文同时提交。
 9. **进度记录**：每合并一个 PR，在本文第 11 节追加一行（子项、PR、结论或偏差）。
 10. **不发布**：不改版本号、不打 tag、不建 Release，只在 CHANGELOG“未发布（main）”下记一行。
-11. **编译环境**：云端 agent 运行在 Linux，没有 Xcode，无法本地编译、测试或截图 iOS 代码。
-    - 以 `ci-ios.yml`（macOS runner）的结果作为唯一门禁；CI 不绿不合并，不得在 PR 里声称“本地已通过”。
+11. **编译环境**：有 Xcode 的机器可以记录本地构建与测试，但不能代替本轮约定的 CI 门禁；没有 Xcode 就不得写「本地已通过」。
+    - 以 `ci-ios.yml`（macOS runner）的结果作为合并门禁；CI 不绿不合并。
     - 每次 push 后等待 CI 结果再继续；失败时读 CI 日志修复，计入第 5 条的 3 次上限。
-    - 需要真机或交互调试的事项，写进 PR 的“需维护者在 Mac 上验证”清单，然后停下。
+    - 真机点按、付费签名、线上中继和网关部署仍由维护者在收尾 G7 做。自动化 XCUITest、单测和截图工作流可以继续，不因缺真机停住。
+12. **收尾顺序（2026-10-06）**：G1 电脑面板 → G2 首页 → G3 目标胶囊 → G4.0 本地传输验证 → G4.1 → G4.2 → G5 推送 → G6 恢复与性能。G4.0 未证明方案 A，就停止依赖它的远程实现，不自行改 SwiftNIO。G5 的 RFC 与插件出口在合并进 `main` 前做安全审查。
 
 ---
 
@@ -537,24 +539,17 @@ Figma 无法由 agent 操作，改为两步：
 - 跑通 `testdata/dlp1/` 的全部向量（与 JS / Go / Kotlin 同一份）。
 - 模糊测试：随机字节输入不崩溃。
 
-### I5.2 Spike：选定实现方案（停下等结论）
+### I5.2 Spike：方案 A，先做收尾 G4.0
 
-两种方案，先各做最小验证：
+RFC 0001 不支持一条 WSS 上多路复用。方案 A 因此是连接池：每条回环 TCP 对应一条外层 WSS。G4.0 已证明当前系统 API 不能在 `https://127.0.0.1` 的内层 TLS 前完成鉴权，所以方案 A 停止；证据见 `docs/ios/I5.2-spike.md`。
 
-**方案 A：本地回环桥（优先尝试）**
+**G4.0（先做）**：只用本地 `relay/`、隔离插件和测试证书。证明鉴权可在转发内层 TLS 之前完成、双层指纹、外层压缩关闭、背压有界、关闭释放和连接预算。不连 `relay.dshlinks.com`。
 
-- 外层：`URLSessionWebSocketTask` 连中继（WSS，外层 TLS 由系统处理，可选外层指纹）。
-- 桥：`NWListener` 在 `127.0.0.1:<随机端口>` 监听；每来一条 TCP 连接，就开一条 DLP/1 流，把字节原样双向搬运。
-- 内层 TLS：**交给 URLSession 自己做**——App 把远程主机当成 `https://127.0.0.1:<端口>`，证书固定逻辑（I3.4）完全复用。
-- 优点：不引入 SwiftNIO；HTTP、SSE、证书固定代码局域网与远程共用一套。
-- 待核实：RFC 0001 是否支持一条 WSS 上多条并发流；不支持时需要连接池或改为方案 B。
+失败条件沿用 spike 文档的四条。任一成立，或找不到可行的回环鉴权：停止 I5.3 / I5.4，把证据交给维护者。不自行引入 SwiftNIO。
 
-**方案 B：SwiftNIO 双层管道**
+**方案 B（仅维护者决定后）**：SwiftNIO 双层管道，自写最小 HTTP 与 SSE，不能复用 URLSession。
 
-- 一条 NIO 管道：外层 TLS（NIOTransportServices）→ WebSocket 帧 → DLP/1 帧 → 内层 TLS（NIOSSL，固定指纹）→ HTTP/1.1 编解码。
-- 需要自己写一个最小 HTTP 客户端与 SSE 解析，不能复用 URLSession。
-
-**Spike 验收**：手机经官方中继连上隔离 host，完成一次 `GET /dsh-link/mobile/bootstrap` 与一次 SSE 订阅 60 秒不断。PR 写明选 A 还是 B 及理由，停下等维护者确认。
+通过 G4.0 之后才做 I5.3 / I5.4，对应收尾 G4.1 / G4.2，仍只连本地中继。真机蜂窝切换留在 G7。
 
 ### I5.3 远程首配与日常连接
 
@@ -828,7 +823,7 @@ RFC 必须写清以下内容：
 | I3.6 | #90 | 共享用例 `testdata/request-state-cases.json`（45 条，Android `RequestStateTest` 的 7 个请求状态用例全部翻译，并补充状态表与不回滚用例；快照用 `GET .../requests` 的真实形状），Android 新增测试文件 `RequestStateSharedCasesTest` 和 iOS `RequestStateContractTests` 两端都跑；DLCore `RequestStateReducer`：实时流、重连快照、`GET .../requests`、提交响应走同一组合并函数。偏差：iOS 回填 `questionPayloadJson` 是重新编码（未知字段会丢，原样回传需要 DLModels 增加原始字段）；补回的提问卡不带手机接管标记（照搬 Android 现状）。iOS、Android、插件检查全部通过（Node gates 一次无关的计时偶发失败，重跑通过）。squash `565b712`。 |
 | I3.7 | #91 | 由 Codex（gpt-6.1-sol，high）实现。DLNet 新增三部分：`RouteSelector`（actor，对应 Android 直连选路：主地址 → Tailscale 顺序探测，成功地址缓存 30 秒，网络代变化作废，同一主机同时只探一次，旧探测结果不写回缓存；全部失败返回 `noDirectAvailable`，中继留到阶段 5）、`NetworkPathObserver`（包一层 NWPathMonitor，第一次回调只登记，之后都作废缓存）、`LocalNetworkPermissionGate`（说明页只展示一次，`settingsURL`，按地址判断是否需要说明）；`RouteSelectorContractTests` 14 条。决策（Codex）：Tailscale（100.64/10、fd7a:115c:a1e0::/48、`*.ts.net`）按 VPN 处理，**不算**本地网络，不弹说明页；未解析的普通主机名保守地要求说明页；“权限被拒”只从 `.localNetworkDenied` 或 DNS `-65570` 推断（TN3179）；TTL 用单调时钟。待真机验证：权限被拒、Wi-Fi ↔ 蜂窝切换。squash `e0cf7fe`。 |
 | I3.8 | #92 | 由 Codex（gpt-6.1-sol，high）实现。DLNet `Pairing/` 新增四个文件：`PairingQRPayload`（字段对照 Android `PairingQr.kt` 和插件 `qrPayload`；`remote` 只解析保存）、`PairingClient`（本机时间超过 `expiresAt` 不提交；局域网无指纹拒绝；请求体 `code`/`deviceName`/`via`/`requestId`；按 `urls` 顺序尝试；200 保存凭据；pending 先保存；409 `SAME_NAME` 用同一张码、同一 `requestId` 带 `replace:true` 重发；`tailnetSpare` 照搬 Android）、`PairingApprovalPoller`（每 2 秒请求 `/mobile/sessions`：2xx 批准、403+pending 继续、401 删本条凭据、其他继续；不按本机时间截止）、`PairingTransport`；`PairingContractTests` 22 条。决策（Codex）：**默认不按 `issuedAt` 拒绝**（阈值可注入、默认关闭，以 `expiresAt` 为准）；时效字段写坏报解析错误。评审改动：插件 4xx 明确答复不再换地址重试；缺指纹改为独立错误 `fingerprintRequired`；DLNet `Package.swift` 显式依赖 DLModels（修 iOS 链接错误）。偏差：同一台电脑重新配对会新增本地记录（PLAN 未规定去重，留给阶段 4）。squash `629903a`。 |
-| I4.1 | #93 | 启动与配对页面（1.1–1.6）。先由 Codex 实现：1.1 `UILaunchScreen` 字典加浅 / 深色 Assets 与矢量品牌字标（不用 storyboard）、1.2 欢迎、1.3 扫码与相册识别、1.5 等待与取消、1.6 失败原因。截图比对两次不稳定（`testSameNameAndRename`、`testWelcomeLight`）。收尾由本机 Cursor CLI（grok-4.7-xhigh-fast）：改名截图 `allowsFocus: false` 去掉光标；欢迎页截图 `staticSnapshot` 不跑 `.task`、关动画、主按钮用实心样式，生产路径仍是玻璃且可聚焦；录制从已废弃的 `isRecording` 改为 `withSnapshotTesting`，重录工作流增加 `TEST_RUNNER_RECORD_SNAPSHOTS`，变量才能进入测试进程。CI 重生成两张基线（同名中文浅色、欢迎页浅色）后截图校验通过。Node、Go、DLP、iOS 构建与单测全绿。偏差：配对成功的 hostId 已交给 Root，真实首页留到 I4.2；同电脑去重仍是 I3.8 遗留。squash `50a4d2c`。模拟器检查未做（按 Helios 指示停止安装）。 |
+| I4.1 | #93 | 启动与配对页面（1.1–1.6）。先由 Codex 实现：1.1 `UILaunchScreen` 字典加浅 / 深色 Assets 与矢量品牌字标（不用 storyboard）、1.2 欢迎、1.3 扫码与相册识别、1.5 等待与取消、1.6 失败原因。截图比对两次不稳定（`testSameNameAndRename`、`testWelcomeLight`）。收尾由本机 Cursor CLI（grok-4.7-xhigh-fast）：改名截图 `allowsFocus: false` 去掉光标；欢迎页截图 `staticSnapshot` 不跑 `.task`、关动画、主按钮用实心样式，生产路径仍是玻璃且可聚焦；录制从已废弃的 `isRecording` 改为 `withSnapshotTesting`，重录工作流增加 `TEST_RUNNER_RECORD_SNAPSHOTS`，变量才能进入测试进程。CI 重生成两张基线（同名中文浅色、欢迎页浅色）后截图校验通过。Node、Go、DLP、iOS 构建与单测全绿。偏差：配对成功的 hostId 已交给 Root，真实首页留到 I4.2；同电脑去重仍是 I3.8 遗留。squash `50a4d2c`。模拟器检查未做（按维护者指示停止安装）。 |
 | I4.2 | #94 | 首页收件箱（2.1–2.6）。由本机 Cursor CLI（grok-4.7-xhigh-fast）实现。Root 持有配对 hostId 后进入首页，缺凭据才回欢迎页。列表、搜索、电脑与工作区菜单、长按和左滑接上 HostClient 与 SSE；设置、诊断、新任务、添加工作区、打开会话是占位页。截图第一次 37 张是全黑（首页 `.task` 加上底栏 `.borderedProminent` 把整张图录成透明）。收尾加 `staticSnapshot`：不跑 `.task`、不挂搜索和弹窗、底栏按钮用 `.plain`，生产路径仍会 `start()` 且用 `.borderedProminent`。CI 重生成 37 张基线后截图校验通过。偏差：无请求快照的等待行写「等你处理」（Android 是「等你批准」）；空白会话 24 小时按归一化毫秒过滤；导航副标题圆点是字符串；截图里底栏只有图标；2.5/2.6 与最近搜索截静态同文案；删除与归档都 POST archive，删除另记本地集合；远程只表示 Tailscale。同电脑去重仍是 I3.8 遗留。squash `1cea984`。模拟器检查未做。 |
 | I4.3a | #96 | 消息流与顶栏（4.1、4.2、4.6）。由 Codex（gpt-6.1-sol，high）实现。打开会话先读加密快照，再拉历史尾页，用 afterSeq 接 SSE。截图走 staticSnapshot。UICollectionView，生产路径按帧合并。用户气泡靠右，助手全宽，过程行可展开。Markdown 在 DLCore 自研块级解析；公式和 Mermaid 用随包 KaTeX / Mermaid 的非持久 WKWebView；网络图片默认不加载。顶栏是系统导航栏，diff 角标和省略号在同一个 ToolbarItemGroup。轮尾有改动卡、元信息、复制 / 重新生成 / 分享和建议 chip。截图四轮才稳定：单元格没画出来是全白；代码块无限高度把一行拉成整屏灰底；大字号按普通字号量高导致叠行；集合视图用了整屏高度，贴底把建议 chip 画到页面外。收尾后默认字号 4.2 从顶部排齐，大字号装不下时贴底且 chip 完整。CI 重生成基线后截图校验通过。Node、Go、DLP、iOS 构建与单测全绿（早一次 push 的 diagnostics 计时偶发失败，重跑通过）。偏差：历史不翻更早的 beforeSeq；快照里未结束审批在被历史替换前显示「状态待确认」，不可提交；关键字匹配忽略大小写；高亮用语义色；公式 style-src 含 unsafe-inline；淡入按懒分段；顶栏不用 ToolbarSpacer；降低透明度截图没做。代码块组件基线因去掉无限高度而重录，短代码仍贴内容。120fps 与 Instruments 未做。squash `5bd1b49`。模拟器检查未做。 |
 | I4.3b | #97 | 状态槽（4.5 / 4.8）。对话页在导航栏下复用 `DLStatusSlot`，优先级断线 > 待处理 > 目标 > 预览，一次只显示一个。平时一行，目标点开展开标题、阶段、计划进度和清单；完成项灰字，不加删除线。状态槽用分组底，不加玻璃。内容区用系统 `scrollEdgeEffectStyle(.soft)`。断线不实现发送按钮，发送仍留给 I4.3c 的 HTTP。旧的 4.1 / 4.2 / 4.6 截图显式关掉状态槽。CI 生成 46 张新基线后截图校验通过。Node、Go、DLP、iOS 构建与单测全绿（打开 PR 时 Node diagnostics 计时偶发失败，比对那次通过）。偏差：没有目标完成百分比，进度按计划完成项；已批准预览没有 sessionId，不放进槽；设计稿里的暂停 / 编辑 / 清除和手动重试没做；展开清单最高 280pt。降低透明度截图没做。squash `edcc414`。模拟器检查未做。 |
@@ -848,7 +843,8 @@ RFC 必须写清以下内容：
 | A3.3 / A3.4 | #145 | 模型与提供方设置。接入 settings、agent-presets、llm-models、balance、providers。保存只替换响应返回的 namespace，并带 expectedRevision；`reasoningEffort` 只在用户明确选择时发送。API 密钥只留页面状态，成功或重新加载后清空。余额提醒留在本机，请求按 5 分钟节流。会话模型接口需要 sessionId，设置页用全局 llm-models。squash `7d3b99e9`。真机未测。 |
 | A3.6 / A3.7 / A3.8 / A3.11 | #146 | 多题、目标与历史翻页。提问按插件原始 questions 保序提交，本地 questionsJSON 不进入请求编码。目标编辑、暂停、恢复、清除使用现有 goal 接口和 id/revision；失败不改本地阶段或文字。更早历史用 `beforeSeq`，失败保留消息和游标。iOS 构建、单测、端到端通过。截图比较两次失败但分别落在未改动的轨迹页和新任务页，判定为既有基线抖动；Node 的同头失败是既有 diagnostics 计时波动，另一次同头成功。squash `58059e26`。真机未测。 |
 | A4 | #143 | SSE 退避、公式 CSP 与隐私清单。iOS 仍用 initial × 2^(n−1)，封顶后再乘 0.8–1.2；Android 是 1.5 / 3 / 6 / 15 秒阶梯再乘 0.7–1.3，两边故意保持不同。公式页保留 `style-src 'unsafe-inline'`，因为 KaTeX 与 Mermaid 的运行时样式不能预先 hash，也没有 nonce。PrivacyInfo 只保留已证实的 UserDefaults；`ProcessInfo.systemUptime` 不作为启动时间 API 登记。squash `ee4f68b0`。 |
-| A5 | — | 已写 `apps/ios/docs/device-check.md`。等待维护者用免费 Apple ID 安装 `58059e26`，完成局域网冒烟、10 页玻璃可读性、权限被拒、网络切换、卸载重装和深色 BrandFill 选择。未完成前不进入阶段 5。 |
+| A5 | — | 已写 `apps/ios/docs/device-check.md`。2026-10-06 收尾方案把真机点按改到 G7：不再要求先完成真机才进入阶段 5。自动化模拟器验证可以继续。清单里的提交号 `58059e26` 已过期；G6 只更新覆盖边界，最终安装提交号等门禁完成后再填。 |
+| G6 | #171、#174、#175、#176、#177、#178、#179、#180 | #171 合并提交 `68689f31`：历史后的同一序号或 ID 不再重复追加，断线重试不重放失败写请求。#174 合并提交 `fb627462`：证书变化停止连接并保留凭据。#175 合并提交 `6dc0c7be`：插件重启后按快照序号恢复。#176 合并提交 `3c254676`：增加真实应用冷启动、3000 条滚动和追加场景。#177 合并提交 `0d57fa34`：补 iPhone 与 iPad 的真实搜索、输入和键盘路径。#178 合并提交 `55f53793`：接入默认关闭的推送注册。固定提交 `0d57fa34` 的三次有效性能 CI 为 [37581754062](https://github.com/lunaship/dsh-links/actions/runs/37581754062)、[37584446599](https://github.com/lunaship/dsh-links/actions/runs/37584446599)、[37585727603](https://github.com/lunaship/dsh-links/actions/runs/37585727603)；基线取三次有效运行中较慢的一次中位数，单次中位数超过 20% 失败。[37583308121](https://github.com/lunaship/dsh-links/actions/runs/37583308121) 因滚动结束后离开目标消息而无效；[37571586925](https://github.com/lunaship/dsh-links/actions/runs/37571586925) 与 [37572670405](https://github.com/lunaship/dsh-links/actions/runs/37572670405) 分别出现 47.83 秒和 33.83 秒冷启动，均由模拟器自动化会话停顿引起。原始结果保留但不计入基线。#179 合并提交 `76324192`：把三次有效运行、无效运行与 20% 规则写进 `docs/ios/PLAN.md` 与 `apps/ios/docs/device-check.md`。#180 合并提交 `e260a714`：`scripts/ios-performance-baseline.json` 绑定提交 `0d57fa34` 与环境，`scripts/ios-performance-summary.mjs` 在单指标中位数超出基线 20% 时以非零码退出，PR 门禁的 `iOS performance` 检查即运行该脚本。截图基线抖动三次（`Snapshot_4_7_trace_dark_zh.default`、`dark_en.large`、第三次通过），失败均落在未改动的轨迹页，判定为既有基线抖动，未手改基线。真机未验。 |
 | I6.2 | #159 | 本地推送网关。HPKE、内容加密、内存限流和假 APNs HTTP/2 都在 push/ 内测试。gofmt、vet、race 和 10 秒 FuzzPushBody 通过。CI 先按多个包调用 fuzz，已改为逐个目标。squash 81e6f179。不部署，不读取真实 APNs 密钥，也不改插件或 iOS App。 |
 | I5.1 | #157 | DLP/1 帧编解码。控制帧、数据分块、签名和 HMAC 读取同一份 testdata/dlp1/vectors.json。iOS 构建、单测、端到端、截图比较通过。squash 2ee82887。不打开网络，也不改中继。 |
 | I8 | #154 | 离开前台时遮住页面。inactive 与 background 覆盖当前内容；截图测试不经过根页面。第一次截图比较失败在未改动的轨迹页，重跑通过。iOS 构建、单测、端到端通过。squash 846c2288。真机未测。 |
@@ -857,10 +853,27 @@ RFC 必须写清以下内容：
 | I7.3 | #148 | 前后台发送。前台 SSE、进后台立即断开、回前台按已提交游标重连沿用现有实现。对话与收件箱的一次 HTTP 写若未完成且 App 已在后台，只申请一个短后台任务，结束后关闭；不做保活，不用 `BGContinuedProcessingTask`。失败仍保留草稿且不自动重发。iOS 构建、单测、端到端通过。截图比较两次失败，分别落在未改动的轨迹页和新任务页，判定为既有基线抖动。squash `b670295e`。真机未测。 |
 
 
+### 收尾（G1–G6）交付状态
 
----
+状态用：`待实现 / 实现完成 / 自动验证通过 / PR 待审 / 已合并 / 真机待验 / 阻塞`。`PR 待审` 不等于已合并；缺真机不影响本轮开发与自动验证的完成判定，但不等于发布验收。凭据字段不落库。
 
-## 附录 A：v4 页面 ↔ iOS 组件对照表
+| 任务 | 目标分支 / PR | 最终提交 | 自动验证证据 | 审查 / 合并状态 | 未验项 |
+|---|---|---|---|---|---|
+| G1 电脑面板 | #164（对 main） | `417f4bb4` | Node gates、Go gates、DLP/1 end to end | 已合并（维护者） | 真机待验 |
+| G2 首页分组 | #165（对 ios/main） | `4ec0f7a6` | iOS 构建、单测、截图比较、端到端 | 已合并 | 真机待验 |
+| G3 目标胶囊 | #166（对 ios/main） | `ffeae4f7` | 同上 | 已合并 | 真机待验 |
+| G4.0 本地传输验证 | #168（对 ios/main） | `25ad8605` | 结论：当前系统 API 不能在回环内层 TLS 前完成鉴权 | 已合并（结论文档） | 阻塞（见下） |
+| G4.1 / G4.2 远程连接与选路 | — | — | 无 | 阻塞：依赖 G4.0 成立的方案 A | 停机，不自行引入 SwiftNIO |
+| G5.1 插件出口 | #169、#172（对 main） | `470ad656`、`4a893f84` | 插件 `npm run prepack`、Go gates、DLP/1 end to end | 已合并（维护者安全审查后） | 真机待验；网关未部署 |
+| G5.2 iOS 接入 | #178（对 ios/main） | `55f53793` | iOS 构建、单测、截图比较、端到端、性能 | 已合并 | 真实 APNs / NSE 真机待验 |
+| G5.3 本地链路验证 | #159 网关、#172 链路（对 main）、#178 记录 | `81e6f179`、`4a893f84` | push/ 内 HPKE、密文向量、假 APNs HTTP/2；两端同向量 | 已合并 | 未运行真实 NSE，限制已记录 |
+| G6 恢复与生产路径 | #171、#174、#175、#173、#177 | `68689f31`、`fb627462`、`6dc0c7be`、`0d57fa34` | iOS 构建、单测、端到端、截图比较 | 已合并 | 真机待验 |
+| G6 性能场景 | #176 | `3c254676` | 真实 App 冷启动、3000 条滚动、流式追加 | 已合并 | 真机帧率与持续内存待验 |
+| G6 性能证据 | #179 | `76324192` | 三次有效 CI 运行记录与无效运行说明 | 已合并 | — |
+| G6 性能基线 | #180 | `e260a714` | `iOS performance` 门禁在超过基线 20% 时退出 1；基线绑定 `0d57fa34` | 已合并 | 真机 60 / 120fps 结论仍在 G7 |
+
+保留的既有工作区改动：原始 checkout `/Volumes/Space/Dev/dsh-links`（detached、脏）未清理、未提交；未提交任何本地生成的 `.xcodeproj`、`.build`、`.swiftpm`、`node_modules` 或本地截图基线。临时数据：性能原始结果与失败日志只留在本机 `/tmp`，不进仓库。G7 真机、签名、部署与线上送达全部留空。
+
 
 ### A.1 页面
 
@@ -959,7 +972,8 @@ RFC 必须写清以下内容：
 | 阶段 0 | 确认 I0.1 结论；装好 Xcode、XcodeGen；免费 Apple ID 登录；iPhone 开开发者模式 |
 | 阶段 1 | 审核 4 份文档；在 iPhone 上全屏看 I1.5a 设计稿；定深色 BrandFill 色值 |
 | 阶段 2 | I1.5b：对照模拟器截图，真机抽查玻璃可读性；（可选）把 Mac 注册为 self-hosted runner |
-| 阶段 5 | 确认 DLP/1 spike 选 A 还是 B |
-| 阶段 6 | 审核 RFC 0002 与插件推送 PR；生成网关 HPKE 密钥对 |
+| 收尾 G4.0 之后 | 若本地传输验证失败，决定是否离开方案 A；通过则不必再选 B |
+| 阶段 6 / 收尾 G5 | 合并前安全审查 RFC 0002 与插件推送出口；生成网关 HPKE 密钥对仍在部署时 |
+| 收尾 G7 | 按 `apps/ios/docs/device-check.md` 做真机、线上送达和分发；结果留空，开发过程不催填 |
 | 阶段 9 | 开通开发者账号；建 App ID 与能力；生成 `.p8` 并离线备份；部署网关；建 App Store Connect 记录；提交 TestFlight 与审核 |
 | 全程 | 合并 `ios/main → main`；处理所有“停下等人”的点 |

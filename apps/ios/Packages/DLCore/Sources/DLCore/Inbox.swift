@@ -177,6 +177,31 @@ public func inboxIsUserWorkspace(_ cwd: String?) -> Bool {
     }
 }
 
+/// 同一屏末级同名时逐级补父目录，直到这批名字唯一。
+public func inboxWorkspaceLabels(_ paths: [String]) -> [String: String] {
+    let segments = paths.map { path in
+        inboxNormalizeWorkspacePath(path).split(separator: "/").map(String.init)
+    }
+    var labels: [String: String] = [:]
+    for (index, parts) in segments.enumerated() {
+        guard !parts.isEmpty else {
+            labels[paths[index]] = paths[index]
+            continue
+        }
+        var depth = 1
+        var label = parts.last ?? paths[index]
+        while depth <= parts.count {
+            let candidate = parts.suffix(depth).joined(separator: "/")
+            let duplicated = segments.filter { $0.suffix(depth).joined(separator: "/") == candidate }.count > 1
+            label = candidate
+            if !duplicated { break }
+            depth += 1
+        }
+        labels[paths[index]] = label
+    }
+    return labels
+}
+
 public func inboxWorkspaceName(_ cwd: String?) -> String? {
     guard let cwd else { return nil }
     let trimmed = inboxNormalizeWorkspacePath(cwd)
@@ -214,6 +239,56 @@ public func inboxVisibleSessions(
         }
         return true
     }
+}
+
+/// 2.1：注册表里的工作区都保留，会话只出现一次。注册表未就绪时才按 cwd 回退。
+public struct InboxWorkspaceFolder: Equatable, Sendable {
+    public var path: String?
+    public var sessions: [SessionSummary]
+
+    public init(path: String?, sessions: [SessionSummary]) {
+        self.path = path
+        self.sessions = sessions
+    }
+
+    public var key: String { path.map { "workspace:\($0)" } ?? "ungrouped" }
+    public var awaitingCount: Int { sessions.filter { $0.awaitingInput == true }.count }
+    public var runningCount: Int { sessions.filter { $0.running == true && $0.awaitingInput != true }.count }
+}
+
+public func inboxWorkspaceFolders(
+    sessions: [SessionSummary],
+    workspaces: [String],
+    accounts: [InboxWorkspaceAccount],
+    registryReady: Bool
+) -> [InboxWorkspaceFolder] {
+    var paths: [String] = []
+    var seen = Set<String>()
+    for raw in workspaces {
+        let path = inboxNormalizeWorkspacePath(raw)
+        guard !path.isEmpty, seen.insert(path).inserted else { continue }
+        paths.append(path)
+    }
+    var buckets = Dictionary(uniqueKeysWithValues: paths.map { ($0, [SessionSummary]()) })
+    var ungrouped: [SessionSummary] = []
+    let ordered = sessions.sorted {
+        (inboxSessionMillis($0.updatedAt) ?? 0) > (inboxSessionMillis($1.updatedAt) ?? 0)
+    }
+    var used = Set<String>()
+    for session in ordered {
+        guard let id = nonBlank(session.sessionId), used.insert(id).inserted else { continue }
+        let owner = accounts.first { $0.sessionIDs.contains(id) }.map { inboxNormalizeWorkspacePath($0.path) }
+        let fallback = registryReady ? nil : session.cwd.map(inboxNormalizeWorkspacePath)
+        let key = (owner?.isEmpty == false ? owner : nil) ?? (fallback?.isEmpty == false ? fallback : nil)
+        if let key, buckets[key] != nil {
+            buckets[key, default: []].append(session)
+        } else {
+            ungrouped.append(session)
+        }
+    }
+    var folders = paths.map { InboxWorkspaceFolder(path: $0, sessions: buckets[$0] ?? []) }
+    if !ungrouped.isEmpty { folders.append(InboxWorkspaceFolder(path: nil, sessions: ungrouped)) }
+    return folders
 }
 
 public func inboxSections(_ sessions: [SessionSummary]) -> [InboxSectionGroup] {

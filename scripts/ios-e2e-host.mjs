@@ -39,13 +39,14 @@ const HOOK_WAIT_MS = 20_000
 const BODY_LIMIT = 64 * 1024
 
 function parseArgs(argv) {
-  const out = { qr: "", log: "" }
+  const out = { qr: "", log: "", performance: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === "--qr") out.qr = argv[++i] ?? ""
     else if (arg.startsWith("--qr=")) out.qr = arg.slice("--qr=".length)
     else if (arg === "--log") out.log = argv[++i] ?? ""
     else if (arg.startsWith("--log=")) out.log = arg.slice("--log=".length)
+    else if (arg === "--performance-session") out.performance = true
     else throw new Error(`未知参数 ${arg}`)
   }
   if (!out.qr) throw new Error("缺少 --qr <path>")
@@ -234,7 +235,7 @@ function questionBody() {
 /**
  * @param {{ qrPath: string, logPath?: string }} options
  */
-export async function startE2eHost({ qrPath, logPath = "" } = {}) {
+export async function startE2eHost({ qrPath, logPath = "", includePerformanceSession = false } = {}) {
   if (!qrPath) throw new Error("缺少 qrPath")
   const rootDir = realpathSync(mkdtempSync(join(tmpdir(), "dsh-ios-e2e-")))
   const stateDir = join(rootDir, "state")
@@ -266,7 +267,7 @@ export async function startE2eHost({ qrPath, logPath = "" } = {}) {
 
   const upstream = await startUpstream()
   const upstreamPort = upstream.address().port
-  const gateway = createFakeGateway({ workspacePath, sessionLogHome })
+  const gateway = createFakeGateway({ workspacePath, sessionLogHome, includePerformanceSession })
   const proxyPort = await freePort()
 
   let control = null
@@ -466,7 +467,11 @@ export async function startE2eHost({ qrPath, logPath = "" } = {}) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
-  const host = await startE2eHost({ qrPath: args.qr, logPath: args.log || "" })
+  const host = await startE2eHost({
+    qrPath: args.qr,
+    logPath: args.log || "",
+    includePerformanceSession: args.performance,
+  })
   process.stdout.write(`e2e-host ready port=${host.port} qr=${args.qr}\n`)
   process.stdout.write(`control=http://127.0.0.1:${host.controlPort}\n`)
   let stopping = false

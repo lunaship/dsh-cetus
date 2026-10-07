@@ -169,6 +169,16 @@ import Testing
         #expect(!fade(replaced))
     }
 
+    @Test func replayedSequenceDoesNotDuplicate() {
+        let existing = HistoryMessage(
+            id: "msg-4", seq: 4, role: "user", kind: .user, text: "继续", type: "text")
+        let replayed = StreamFrame(
+            seq: 4, type: "user/message", time: 1, data: .object(["text": .string("继续")]))
+        let messages = reduceTranscript([existing], frames: [replayed, replayed])
+        #expect(messages.count == 1)
+        #expect(messages[0].text == "继续")
+    }
+
     @Test func durableFramesSkipPlainDeltas() {
         #expect(!isDurableFrame(delta("a", seq: 1)))
         #expect(isDurableFrame(blockEnd(seq: 2)))

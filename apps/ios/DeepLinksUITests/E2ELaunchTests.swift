@@ -96,6 +96,39 @@ final class E2ELaunchTests: XCTestCase {
         XCTAssertTrue(welcome.exists)
     }
 
+    func testSearchInputAndKeyboard() throws {
+        let ctx = try launchContext()
+        try continuePastLocalNetworkExplanation(ctx.app)
+        post(ctx.control, "/control/approve-pairing", [:])
+        let inbox = try waitForInbox(ctx.app)
+        let before = inbox.frame
+
+        let search = try waitUntilHittable(searchField(ctx.app))
+        search.tap()
+        search.typeText("登录\n")
+        let match = try waitUntilExists(eitherText(ctx.app, "标题匹配", "Title matches"))
+        XCTAssertTrue(match.exists)
+        XCTAssertTrue(ctx.app.staticTexts[sessionTitle].exists)
+        XCTAssertFalse(ctx.app.staticTexts["整理周报"].exists)
+
+        ctx.app.staticTexts[sessionTitle].firstMatch.tap()
+        _ = try waitUntilExists(ctx.app.navigationBars[sessionTitle])
+        let field = try waitUntilExists(composerField(ctx.app))
+        let resting = field.frame
+        field.tap()
+        let keyboard = ctx.app.keyboards.firstMatch
+        let shown = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true"), object: keyboard)
+        XCTAssertEqual(XCTWaiter.wait(for: [shown], timeout: waitLimit), .completed)
+        let lifted = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "frame.maxY < %f", resting.maxY - 20), object: field)
+        XCTAssertEqual(XCTWaiter.wait(for: [lifted], timeout: waitLimit), .completed)
+        field.typeText("e2e-keyboard")
+        XCTAssertTrue(field.value as? String == "e2e-keyboard")
+        try waitUntilHittable(button(ctx.app, "发送", "Send")).tap()
+        XCTAssertTrue(try waitUntilExists(labeled(ctx.app.staticTexts, "e2e-keyboard")).exists)
+        XCTAssertNotEqual(before, .zero)
+    }
+
     private struct Context {
         let app: XCUIApplication
         let control: URL
@@ -155,6 +188,13 @@ final class E2ELaunchTests: XCTestCase {
     private func openFirstSession(_ app: XCUIApplication) throws {
         try waitForInbox(app).tap()
         _ = try waitUntilExists(app.navigationBars[sessionTitle])
+    }
+
+    private func searchField(_ app: XCUIApplication) -> XCUIElement {
+        let query = "label == %@ OR label == %@ OR placeholderValue == %@ OR placeholderValue == %@"
+        return app.searchFields.matching(
+            NSPredicate(format: query, "搜索", "Search", "搜索", "Search")
+        ).firstMatch
     }
 
     /// Composer is a UITextView with no placeholder or accessibility identifier.
