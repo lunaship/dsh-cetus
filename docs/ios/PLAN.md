@@ -844,7 +844,7 @@ RFC 必须写清以下内容：
 | A3.6 / A3.7 / A3.8 / A3.11 | #146 | 多题、目标与历史翻页。提问按插件原始 questions 保序提交，本地 questionsJSON 不进入请求编码。目标编辑、暂停、恢复、清除使用现有 goal 接口和 id/revision；失败不改本地阶段或文字。更早历史用 `beforeSeq`，失败保留消息和游标。iOS 构建、单测、端到端通过。截图比较两次失败但分别落在未改动的轨迹页和新任务页，判定为既有基线抖动；Node 的同头失败是既有 diagnostics 计时波动，另一次同头成功。squash `58059e26`。真机未测。 |
 | A4 | #143 | SSE 退避、公式 CSP 与隐私清单。iOS 仍用 initial × 2^(n−1)，封顶后再乘 0.8–1.2；Android 是 1.5 / 3 / 6 / 15 秒阶梯再乘 0.7–1.3，两边故意保持不同。公式页保留 `style-src 'unsafe-inline'`，因为 KaTeX 与 Mermaid 的运行时样式不能预先 hash，也没有 nonce。PrivacyInfo 只保留已证实的 UserDefaults；`ProcessInfo.systemUptime` 不作为启动时间 API 登记。squash `ee4f68b0`。 |
 | A5 | — | 已写 `apps/ios/docs/device-check.md`。2026-10-06 收尾方案把真机点按改到 G7：不再要求先完成真机才进入阶段 5。自动化模拟器验证可以继续。清单里的提交号 `58059e26` 已过期；G6 只更新覆盖边界，最终安装提交号等门禁完成后再填。 |
-| G6 | #171、#174、#175、#176、#177、#178 | #171 合并提交 `68689f31`：历史后的同一序号或 ID 不再重复追加，断线重试不重放失败写请求。#174 合并提交 `fb627462`：证书变化停止连接并保留凭据。#175 合并提交 `6dc0c7be`：插件重启后按快照序号恢复。#176 合并提交 `3c254676`：增加真实应用冷启动、3000 条滚动和追加场景。#177 合并提交 `0d57fa34`：补 iPhone 与 iPad 的真实搜索、输入和键盘路径。#178 合并提交 `55f53793`：接入默认关闭的推送注册。固定提交 `0d57fa34` 的三次有效性能 CI 为 [37581754062](https://github.com/lunaship/dsh-links/actions/runs/37581754062)、[37584446599](https://github.com/lunaship/dsh-links/actions/runs/37584446599)、[37585727603](https://github.com/lunaship/dsh-links/actions/runs/37585727603)；基线取三次有效运行中较慢的一次中位数，单次中位数超过 20% 失败。[37583308121](https://github.com/lunaship/dsh-links/actions/runs/37583308121) 因滚动结束后离开目标消息而无效；[37571586925](https://github.com/lunaship/dsh-links/actions/runs/37571586925) 与 [37572670405](https://github.com/lunaship/dsh-links/actions/runs/37572670405) 分别出现 47.83 秒和 33.83 秒冷启动，均由模拟器自动化会话停顿引起。原始结果保留但不计入基线。真机未验。 |
+| G6 | #171、#174、#175、#176、#177、#178、#179、#180 | #171 合并提交 `68689f31`：历史后的同一序号或 ID 不再重复追加，断线重试不重放失败写请求。#174 合并提交 `fb627462`：证书变化停止连接并保留凭据。#175 合并提交 `6dc0c7be`：插件重启后按快照序号恢复。#176 合并提交 `3c254676`：增加真实应用冷启动、3000 条滚动和追加场景。#177 合并提交 `0d57fa34`：补 iPhone 与 iPad 的真实搜索、输入和键盘路径。#178 合并提交 `55f53793`：接入默认关闭的推送注册。固定提交 `0d57fa34` 的三次有效性能 CI 为 [37581754062](https://github.com/lunaship/dsh-links/actions/runs/37581754062)、[37584446599](https://github.com/lunaship/dsh-links/actions/runs/37584446599)、[37585727603](https://github.com/lunaship/dsh-links/actions/runs/37585727603)；基线取三次有效运行中较慢的一次中位数，单次中位数超过 20% 失败。[37583308121](https://github.com/lunaship/dsh-links/actions/runs/37583308121) 因滚动结束后离开目标消息而无效；[37571586925](https://github.com/lunaship/dsh-links/actions/runs/37571586925) 与 [37572670405](https://github.com/lunaship/dsh-links/actions/runs/37572670405) 分别出现 47.83 秒和 33.83 秒冷启动，均由模拟器自动化会话停顿引起。原始结果保留但不计入基线。#179 合并提交 `76324192`：把三次有效运行、无效运行与 20% 规则写进 `docs/ios/PLAN.md` 与 `apps/ios/docs/device-check.md`。#180 合并提交 `e260a714`：`scripts/ios-performance-baseline.json` 绑定提交 `0d57fa34` 与环境，`scripts/ios-performance-summary.mjs` 在单指标中位数超出基线 20% 时以非零码退出，PR 门禁的 `iOS performance` 检查即运行该脚本。截图基线抖动三次（`Snapshot_4_7_trace_dark_zh.default`、`dark_en.large`、第三次通过），失败均落在未改动的轨迹页，判定为既有基线抖动，未手改基线。真机未验。 |
 | I6.2 | #159 | 本地推送网关。HPKE、内容加密、内存限流和假 APNs HTTP/2 都在 push/ 内测试。gofmt、vet、race 和 10 秒 FuzzPushBody 通过。CI 先按多个包调用 fuzz，已改为逐个目标。squash 81e6f179。不部署，不读取真实 APNs 密钥，也不改插件或 iOS App。 |
 | I5.1 | #157 | DLP/1 帧编解码。控制帧、数据分块、签名和 HMAC 读取同一份 testdata/dlp1/vectors.json。iOS 构建、单测、端到端、截图比较通过。squash 2ee82887。不打开网络，也不改中继。 |
 | I8 | #154 | 离开前台时遮住页面。inactive 与 background 覆盖当前内容；截图测试不经过根页面。第一次截图比较失败在未改动的轨迹页，重跑通过。iOS 构建、单测、端到端通过。squash 846c2288。真机未测。 |
@@ -853,10 +853,27 @@ RFC 必须写清以下内容：
 | I7.3 | #148 | 前后台发送。前台 SSE、进后台立即断开、回前台按已提交游标重连沿用现有实现。对话与收件箱的一次 HTTP 写若未完成且 App 已在后台，只申请一个短后台任务，结束后关闭；不做保活，不用 `BGContinuedProcessingTask`。失败仍保留草稿且不自动重发。iOS 构建、单测、端到端通过。截图比较两次失败，分别落在未改动的轨迹页和新任务页，判定为既有基线抖动。squash `b670295e`。真机未测。 |
 
 
+### 收尾（G1–G6）交付状态
 
----
+状态用：`待实现 / 实现完成 / 自动验证通过 / PR 待审 / 已合并 / 真机待验 / 阻塞`。`PR 待审` 不等于已合并；缺真机不影响本轮开发与自动验证的完成判定，但不等于发布验收。凭据字段不落库。
 
-## 附录 A：v4 页面 ↔ iOS 组件对照表
+| 任务 | 目标分支 / PR | 最终提交 | 自动验证证据 | 审查 / 合并状态 | 未验项 |
+|---|---|---|---|---|---|
+| G1 电脑面板 | #164（对 main） | `417f4bb4` | Node gates、Go gates、DLP/1 end to end | 已合并（维护者） | 真机待验 |
+| G2 首页分组 | #165（对 ios/main） | `4ec0f7a6` | iOS 构建、单测、截图比较、端到端 | 已合并 | 真机待验 |
+| G3 目标胶囊 | #166（对 ios/main） | `ffeae4f7` | 同上 | 已合并 | 真机待验 |
+| G4.0 本地传输验证 | #168（对 ios/main） | `25ad8605` | 结论：当前系统 API 不能在回环内层 TLS 前完成鉴权 | 已合并（结论文档） | 阻塞（见下） |
+| G4.1 / G4.2 远程连接与选路 | — | — | 无 | 阻塞：依赖 G4.0 成立的方案 A | 停机，不自行引入 SwiftNIO |
+| G5.1 插件出口 | #169、#172（对 main） | `470ad656`、`4a893f84` | 插件 `npm run prepack`、Go gates、DLP/1 end to end | 已合并（维护者安全审查后） | 真机待验；网关未部署 |
+| G5.2 iOS 接入 | #178（对 ios/main） | `55f53793` | iOS 构建、单测、截图比较、端到端、性能 | 已合并 | 真实 APNs / NSE 真机待验 |
+| G5.3 本地链路验证 | #159 网关、#172 链路（对 main）、#178 记录 | `81e6f179`、`4a893f84` | push/ 内 HPKE、密文向量、假 APNs HTTP/2；两端同向量 | 已合并 | 未运行真实 NSE，限制已记录 |
+| G6 恢复与生产路径 | #171、#174、#175、#173、#177 | `68689f31`、`fb627462`、`6dc0c7be`、`0d57fa34` | iOS 构建、单测、端到端、截图比较 | 已合并 | 真机待验 |
+| G6 性能场景 | #176 | `3c254676` | 真实 App 冷启动、3000 条滚动、流式追加 | 已合并 | 真机帧率与持续内存待验 |
+| G6 性能证据 | #179 | `76324192` | 三次有效 CI 运行记录与无效运行说明 | 已合并 | — |
+| G6 性能基线 | #180 | `e260a714` | `iOS performance` 门禁在超过基线 20% 时退出 1；基线绑定 `0d57fa34` | 已合并 | 真机 60 / 120fps 结论仍在 G7 |
+
+保留的既有工作区改动：原始 checkout `/Volumes/Space/Dev/dsh-links`（detached、脏）未清理、未提交；未提交任何本地生成的 `.xcodeproj`、`.build`、`.swiftpm`、`node_modules` 或本地截图基线。临时数据：性能原始结果与失败日志只留在本机 `/tmp`，不进仓库。G7 真机、签名、部署与线上送达全部留空。
+
 
 ### A.1 页面
 
