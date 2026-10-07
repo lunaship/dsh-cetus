@@ -134,6 +134,8 @@ jobs:
             -only-testing:DeepLinksTests/SettingsModelsTests \
             -only-testing:DeepLinksTests/WideLayoutTests \
             -only-testing:DeepLinksTests/PreviewProxyTests \
+            -only-testing:DeepLinksTests/PushOpenRouteTests \
+            -only-testing:DeepLinksTests/PushRegistrationWireTests \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO

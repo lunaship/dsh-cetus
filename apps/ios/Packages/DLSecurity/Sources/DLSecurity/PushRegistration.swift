@@ -1,97 +1,82 @@
 import CryptoKit
 import Foundation
 
-public struct LocalPushCapabilities: Equatable, Sendable {
-    public var version: Int
-    public var apnsBuildEnabled: Bool
-
-    public init(version: Int = 0, apnsBuildEnabled: Bool = false) {
-        self.version = version
-        self.apnsBuildEnabled = apnsBuildEnabled
-    }
-
-    public var canEnable: Bool { version == 1 && apnsBuildEnabled }
+public enum PushNotificationKind: String, Equatable, Sendable {
+    case approval
+    case question
+    case completed
+    case failed
 }
 
-public enum PushRegistrationState: Equatable, Sendable {
-    case unavailable(String)
-    case disabled
-    case failed(String)
-    case registered
-}
+public struct PushNotificationPayload: Equatable, Sendable {
+    public var kind: PushNotificationKind
+    public var sessionID: String
+    public var title: String
+    public var deviceID: String
+    public var timestamp: Int
 
-public struct PushRegistrationRequest: Equatable, Sendable {
-    public var gateway: String
-    public var kid: String
-    public var tokenEnvelope: String
-    public var contentKey: Data
-    public var prefs: [String: Bool]
-
-    public init(gateway: String, kid: String, tokenEnvelope: String, contentKey: Data, prefs: [String: Bool]) {
-        self.gateway = gateway
-        self.kid = kid
-        self.tokenEnvelope = tokenEnvelope
-        self.contentKey = contentKey
-        self.prefs = prefs
-    }
-}
-
-public struct PushRegistrationController: Sendable {
-    public var capabilities: LocalPushCapabilities
-    public var enabled: Bool
-    public var state: PushRegistrationState
-
-    public init(capabilities: LocalPushCapabilities, enabled: Bool = false) {
-        self.capabilities = capabilities
-        self.enabled = capabilities.canEnable && enabled
-        state =
-            capabilities.canEnable
-            ? (self.enabled ? .registered : .disabled)
-            : .unavailable(capabilities.apnsBuildEnabled ? "主机没有推送能力" : "当前构建没有 APNs")
-    }
-
-    public mutating func setEnabled(_ value: Bool) -> PushRegistrationRequest? {
-        guard capabilities.canEnable else {
-            enabled = false
-            state = .unavailable(capabilities.apnsBuildEnabled ? "主机没有推送能力" : "当前构建没有 APNs")
-            return nil
-        }
-        enabled = value
-        guard value else {
-            state = .disabled
-            return nil
-        }
-        let key = SymmetricKey(size: .bits256)
-        state = .registered
-        return PushRegistrationRequest(
-            gateway: "https://push.dshlinks.com",
-            kid: "local",
-            tokenEnvelope: "local-envelope",
-            contentKey: key.withUnsafeBytes { Data($0) },
-            prefs: ["approval": true, "question": true, "completed": true, "failed": true]
-        )
-    }
-
-    public mutating func registrationFailed(_ message: String) {
-        enabled = false
-        state = .failed(message)
+    public init(kind: PushNotificationKind, sessionID: String, title: String, deviceID: String, timestamp: Int) {
+        self.kind = kind
+        self.sessionID = sessionID
+        self.title = title
+        self.deviceID = deviceID
+        self.timestamp = timestamp
     }
 }
 
 public enum PushContent {
+    public static let generic = "DeepLinks 有新的任务动态"
+    public static let maxAge: TimeInterval = 15 * 60
+
     public static func open(ciphertext: String, key: Data, deviceID: String, now: Date = Date()) -> String {
-        guard let raw = Data(base64Encoded: ciphertext), raw.count > 28 else { return "DeepLinks 有新的任务动态" }
+        openPayload(ciphertext: ciphertext, key: key, deviceID: deviceID, now: now)?.title ?? generic
+    }
+
+    /// The exact function used by the notification extension. It never opens a
+    /// connection and never reads an APNs device token.
+    public static func openPayload(
+        ciphertext: String, key: Data, deviceID: String, now: Date = Date()
+    ) -> PushNotificationPayload? {
+        guard key.count == 32, let raw = Data(base64Encoded: ciphertext), raw.count > 28 else { return nil }
+        let plaintext: Data
         do {
             let box = try AES.GCM.SealedBox(combined: raw)
-            let plaintext = try AES.GCM.open(
-                box, using: SymmetricKey(data: key), authenticating: Data(("dlpush/1 content|" + deviceID).utf8))
-            let object = try JSONSerialization.jsonObject(with: plaintext) as? [String: Any]
-            let ts = object?["ts"] as? Int ?? 0
-            guard abs(now.timeIntervalSince1970 - TimeInterval(ts)) <= 15 * 60 else { return "DeepLinks 有新的任务动态" }
-            return (object?["title"] as? String)?.isEmpty == false
-                ? object?["title"] as? String ?? "DeepLinks 有新的任务动态" : "DeepLinks 有新的任务动态"
+            plaintext = try AES.GCM.open(
+                box, using: SymmetricKey(data: key), authenticating: PushCrypto.contentAAD(deviceID: deviceID))
         } catch {
-            return "DeepLinks 有新的任务动态"
+            return nil
         }
+        guard let object = try? JSONSerialization.jsonObject(with: plaintext) as? [String: Any],
+            let kind = (object["type"] as? String).flatMap(PushNotificationKind.init(rawValue:)),
+            let sessionID = object["sessionId"] as? String, !sessionID.isEmpty,
+            let title = object["title"] as? String, !title.isEmpty,
+            let timestamp = integer(object["ts"])
+        else { return nil }
+        guard abs(now.timeIntervalSince1970 - TimeInterval(timestamp)) <= maxAge else { return nil }
+        return PushNotificationPayload(
+            kind: kind, sessionID: sessionID, title: title, deviceID: deviceID, timestamp: timestamp)
+    }
+
+    private static func integer(_ value: Any?) -> Int? {
+        if let value = value as? Int { return value }
+        if let value = value as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID() { return value.intValue }
+        return nil
+    }
+}
+
+public enum PushNotificationCategory {
+    public static let identifier = "dlpush.open"
+    public static let openAction = "dlpush.open.action"
+}
+
+public enum PushPayloadReader {
+    public static func ciphertext(in userInfo: [AnyHashable: Any]) -> String {
+        if let value = userInfo["e"] as? String, !value.isEmpty { return value }
+        if let value = userInfo["ct"] as? String, !value.isEmpty { return value }
+        return ""
+    }
+
+    public static func deviceID(in userInfo: [AnyHashable: Any]) -> String {
+        userInfo["deviceId"] as? String ?? ""
     }
 }

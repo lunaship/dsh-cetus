@@ -14,4 +14,14 @@ final class PushOpenRouteTests: XCTestCase {
             deviceID: "device-7", sessionID: "sess-9", pairedDeviceID: "device-7", knownSessions: ["sess-9"])
         XCTAssertEqual(route, .session("sess-9"))
     }
+
+    func testMissingSessionRefreshesOnce() {
+        let first = PushOpenRouter.route(
+            deviceID: "device-7", sessionID: "sess-9", pairedDeviceID: "device-7", knownSessions: [])
+        XCTAssertEqual(first, .refresh)
+        let second = PushOpenRouter.route(
+            deviceID: "device-7", sessionID: "sess-9", pairedDeviceID: "device-7", knownSessions: [],
+            refreshed: true)
+        XCTAssertEqual(second, .homeMissing)
+    }
 }

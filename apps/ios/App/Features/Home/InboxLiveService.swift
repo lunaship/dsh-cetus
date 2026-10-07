@@ -267,7 +267,9 @@ actor InboxLiveService: InboxServing {
             workspaces: workspaceList?.workspaces ?? [],
             hostName: bootstrap?.host?.name ?? host.name,
             route: route,
-            eventsEnabled: bootstrap?.capabilities?.events?.host == true)
+            eventsEnabled: bootstrap?.capabilities?.events?.host == true,
+            pushVersion: bootstrap?.capabilities?.push?.v ?? 0,
+            pairedDeviceID: bootstrap?.host?.deviceId)
     }
 
     private func requireClient() throws -> HostClient {

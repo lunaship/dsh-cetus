@@ -584,6 +584,7 @@ struct InboxPage: View {
         case .approval: copy.text(.approvalFailed)
         case .search: copy.text(.searchFailed)
         case .delete: copy.text(.deleteFailed)
+        case .pushMissing: copy.text(.pushMissing)
         }
     }
 
@@ -786,7 +787,9 @@ struct InboxDestinationPage: View {
                 computerName: model.computerName.isEmpty ? model.hostID : model.computerName,
                 computerAddress: model.hostID,
                 online: model.link.isOnline,
-                models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)))
+                models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)),
+                push: PushSettingsRegistration(
+                    hostID: model.hostID, pushVersion: model.pushVersion, pairedDeviceID: model.pairedDeviceID))
         case .computer:
             later(copy.text(.computers), copy.text(.laterComputer))
         case .diagnostics:

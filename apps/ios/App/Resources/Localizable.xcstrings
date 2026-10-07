@@ -6502,6 +6502,20 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep at least one model." } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "至少保留一个模型。" } }
       }
+    },
+    "inbox.pushMissing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That task is no longer on this computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这个任务已经不在这台电脑上。" } }
+      }
+    },
+    "settings.pushFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications could not be registered." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通知没有注册成功。" } }
+      }
     }
   },
 

@@ -30,6 +30,7 @@ enum InboxNotice: Equatable, Sendable {
     case approval
     case search
     case delete
+    case pushMissing
 }
 
 enum InboxDestination: Hashable, Sendable {
@@ -75,6 +76,8 @@ struct InboxPayload: Equatable, Sendable {
     var hostName: String
     var route: InboxRouteKind
     var eventsEnabled: Bool
+    var pushVersion: Int = 0
+    var pairedDeviceID: String?
 }
 
 struct InboxSearchPayload: Equatable, Sendable {
@@ -359,6 +362,8 @@ final class InboxModel {
     var now = Date()
     var calendar = Calendar.current
     var missingHost = false
+    var pushVersion = 0
+    var pairedDeviceID: String?
     var starter = ""
     var sharePrefill: SharePrefill?
     var pendingShare: ShareInboxRecord?
@@ -651,6 +656,35 @@ final class InboxModel {
         path.append(.session(id))
     }
 
+    /// Opens a notification. A missing session refreshes once; if it is still
+    /// absent, navigation returns home and shows a notice. It never approves.
+    func openPush(deviceID: String, sessionID: String) async {
+        let known = Set(sessions.compactMap(\.sessionId))
+        let first = PushOpenRouter.route(
+            deviceID: deviceID, sessionID: sessionID, pairedDeviceID: pairedDeviceID, knownSessions: known)
+        switch first {
+        case .session(let id):
+            path.append(.session(id))
+        case .refresh:
+            await refresh()
+            let refreshed = Set(sessions.compactMap(\.sessionId))
+            let second = PushOpenRouter.route(
+                deviceID: deviceID, sessionID: sessionID, pairedDeviceID: pairedDeviceID,
+                knownSessions: refreshed, refreshed: true)
+            if case .session(let id) = second {
+                path.append(.session(id))
+            } else {
+                path.removeAll()
+                selectedSessionID = nil
+                notice = .pushMissing
+            }
+        case .homeMissing:
+            path.removeAll()
+            selectedSessionID = nil
+            notice = .pushMissing
+        }
+    }
+
     /// Reads one shared item and shows the picker. It does not send.
     func receiveShare(url: URL, store: ShareGroupStore?) {
         guard let id = ShareInbox.id(from: url), let store, let record = store.readRecord(id: id) else { return }
@@ -831,6 +865,8 @@ final class InboxModel {
             workspaces = payload.workspaces
             if !payload.hostName.isEmpty { computerName = payload.hostName }
             link = .online(payload.route)
+            pushVersion = payload.pushVersion
+            pairedDeviceID = payload.pairedDeviceID
             loading = false
             if notice == .unauthorized || notice == .certificate || notice == .load { notice = nil }
             preferences.setLastOnline(now, hostID: hostID)

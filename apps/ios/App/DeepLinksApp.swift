@@ -47,8 +47,42 @@ struct RootView: View {
     }
 }
 
+final class DeepLinksAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        let open = UNNotificationAction(
+            identifier: PushNotificationCategory.openAction,
+            title: "Open",
+            options: [.foreground])
+        let category = UNNotificationCategory(
+            identifier: PushNotificationCategory.identifier,
+            actions: [open],
+            intentIdentifiers: [],
+            options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushTokenBridge.shared.didRegister(deviceToken: deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        PushTokenBridge.shared.didFail(error)
+    }
+}
+
 @main @MainActor
 struct DeepLinksApp: App {
+    @UIApplicationDelegateAdaptor(DeepLinksAppDelegate.self) private var delegate
     @State private var pairing: PairingFlowModel
 
     init() {
