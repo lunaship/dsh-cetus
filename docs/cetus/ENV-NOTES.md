@@ -59,3 +59,34 @@ xcrun swift-format lint --strict --recursive --configuration .swift-format .
 
 SDK 齐全（`~/Library/Android/sdk`，system-image `android-36/google_apis/arm64-v8a`，
 platforms `android-36` / `android-37.0`），但**尚无 AVD**。Android 门禁需要先建 AVD。
+
+## Android 模拟器（已就绪 ✅）
+
+AVD 建在 `/Volumes/Space/Dev/.cetus-avd`（**不能放主目录**，`/` 只剩 6.5GB，
+emulator 需要 7.4GB 建 userdata，会 FATAL 退出）。
+
+```sh
+export ANDROID_HOME=/Users/wuyanzu/Library/Android/sdk
+export ANDROID_AVD_HOME=/Volumes/Space/Dev/.cetus-avd
+$ANDROID_HOME/emulator/emulator -avd cetus_test \
+  -no-snapshot -no-audio -no-boot-anim -gpu swiftshader_indirect &
+```
+
+- AVD：`cetus_test` = system-images;android-36;google_apis;arm64-v8a，device `pixel_7`
+- 启动约 29 秒；`emulator-5554`
+- Gradle 门禁 `assembleDebug + testDebugUnitTest + lintDebug` **BUILD SUCCESSFUL**
+- debug APK 安装成功，launcher 是 `dev.deeplinks.devices.SplashActivity`
+  （**不是** `MainActivity`；Splash 会转到 `dev.deeplinks.native.MainActivity`）
+- debug 包无 FLAG_SECURE，`adb exec-out screencap -p` 可截图
+  → 证据 `docs/cetus/evidence/android-baseline.png`
+
+## 门禁基线（2026-10-08，cetus/main）
+
+| 门禁 | 结果 |
+|---|---|
+| `npm run prepack`（插件） | ✅ 370/370 通过 |
+| relay：gofmt/vet/build/test | ✅ 通过 |
+| Android gradle 三件套 | ✅ BUILD SUCCESSFUL |
+| iOS build Debug+Release（CI 命令） | ✅ BUILD SUCCEEDED |
+| iOS `xcodebuild test` | ⚠️ 本机环境问题，见上 |
+| `swift-format lint --strict` | ✅ 通过 |
