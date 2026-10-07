@@ -46,6 +46,8 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
     private let closed = OSAllocatedUnfairLock<Bool>(initialState: false)
     /// 内层 TLS 栈连过来的那条连接。
     private let peer = OSAllocatedUnfairLock<NWConnection?>(initialState: nil)
+    /// `listen()` 建立的接受流；`acceptAndPump()` 消费它。
+    private let acceptedStream = OSAllocatedUnfairLock<AsyncStream<NWConnection>?>(initialState: nil)
 
     /// - Parameters:
     ///   - tunnel: 已 `ready` 的 DLP/1 隧道。
@@ -61,10 +63,14 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         self.listener = try NWListener(using: parameters)
     }
 
-    /// 启动监听，等内层 TLS 端连上来，然后开始双向对泵。返回监听端口。
+    /// 启动监听并等它进入 `.ready`，返回真实端口。
+    ///
+    /// 与 `acceptAndPump()` 分开是**必要的**：调用方必须先拿到端口、发起 TLS 连接，
+    /// 桥才可能接受到它。合成一个方法会造成「桥等连接、连接等桥」的互等。
     @discardableResult
-    func start() async throws -> UInt16 {
+    func listen() async throws -> UInt16 {
         let accepted = AsyncStream<NWConnection>.makeStream()
+        acceptedStream.withLock { $0 = accepted.stream }
 
         listener.newConnectionHandler = { connection in
             connection.start(queue: self.queue)
@@ -75,8 +81,16 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         // 端口必须等 `.ready` 才有效——构造时读 `listener.port` 会拿到 nil。
         let boundPort = try await Self.waitReady(listener, timeout: Self.acceptTimeout)
         self.port = boundPort
+        return boundPort
+    }
 
-        guard let first = await Self.firstConnection(accepted.stream, timeout: Self.acceptTimeout) else {
+    /// 等内层 TLS 端连上来，然后开始双向对泵。
+    func acceptAndPump() async throws {
+        guard !isClosed else { throw RemoteTunnelError.cancelled }
+        guard let stream = acceptedStream.withLock({ $0 }) else {
+            throw RemoteTunnelError.transport("bridge listen() was not called")
+        }
+        guard let first = await Self.firstConnection(stream, timeout: Self.acceptTimeout) else {
             close()
             throw RemoteTunnelError.transport("bridge did not accept a connection")
         }
@@ -87,7 +101,6 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         peer.withLock { $0 = first }
         pumpDownstream(peer: first)
         pumpUpstream(peer: first)
-        return boundPort
     }
 
     /// 等监听进入 `.ready`，返回实际端口。

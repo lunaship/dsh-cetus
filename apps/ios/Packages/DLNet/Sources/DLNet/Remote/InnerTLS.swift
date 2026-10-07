@@ -52,8 +52,9 @@ final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
         }
 
         let bridge = try LoopbackTunnelBridge(tunnel: tunnel)
-        // 端口在 start() 返回后才有效。
-        let bridgePort = try await bridge.start()
+        // 顺序很重要：先让监听到 ready 拿到端口，再建 TLS 连接，最后才等桥接受。
+        // 若先 `await bridge.start()`（它会等 TLS 端连上来）再建连接，就会永远互等。
+        let bridgePort = try await bridge.listen()
 
         let tlsOptions = NWProtocolTLS.Options()
         NWRemoteTunnelTransport.installPin(tlsOptions, expected: pin)
@@ -66,7 +67,9 @@ final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
             using: parameters)
 
         let channel = InnerTLSChannel(connection: connection, bridge: bridge)
+        // TLS 连接发起后再让桥接受它，并对接双向字节泵。
         do {
+            try await bridge.acceptAndPump()
             try await channel.start()
         } catch {
             await channel.close()
