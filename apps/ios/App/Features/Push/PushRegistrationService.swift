@@ -53,10 +53,10 @@ struct PushRegistrationService: Sendable {
             enabled: true,
             canRegister: true,
             stored: stored,
-            prepared: draft.body)
+            prepared: draft.body,
+            tokenFingerprint: draft.tokenFingerprint)
         switch action {
         case .none:
-            guard stored?.tokenFingerprint == draft.tokenFingerprint else { return .failed(.rejected) }
             return .registered
         case .unregister:
             return await unregister()

@@ -63,6 +63,28 @@ final class PushRegistrationTests: XCTestCase {
                 contentKey: SymmetricKey(data: content), liveActivityToken: " "))
     }
 
+    func testTokenRotationReregisters() throws {
+        let key = PushGatewayKey(kid: "gw-2026-10", publicKey: Data(repeating: 0x11, count: 32))
+        let prefs = PushPreferences(approval: true, question: false, completed: false, failed: false)
+        let first = try XCTUnwrap(
+            PushRegistrar.prepare(
+                token: PushDeviceToken(bytes: Data(repeating: 0xab, count: 32), environment: .sandbox),
+                key: key, prefs: prefs, contentKey: SymmetricKey(data: Data(repeating: 0x42, count: 32))))
+        let rotated = try XCTUnwrap(
+            PushRegistrar.prepare(
+                token: PushDeviceToken(bytes: Data(repeating: 0xcd, count: 32), environment: .sandbox),
+                key: key, prefs: prefs, contentKey: SymmetricKey(data: Data(repeating: 0x24, count: 32))))
+        let stored = PushRegistrationRecord(
+            gateway: first.body.gateway, kid: first.body.kid,
+            sealedFingerprint: PushRegistrar.fingerprint(first.body.sealed),
+            tokenFingerprint: first.tokenFingerprint, prefs: first.body.prefs)
+        let action = PushRegistrationReconciler.action(
+            enabled: true, canRegister: true, stored: stored, prepared: rotated.body,
+            tokenFingerprint: rotated.tokenFingerprint)
+        XCTAssertEqual(action, .register(rotated.body))
+        XCTAssertNotEqual(first.tokenFingerprint, rotated.tokenFingerprint)
+    }
+
     func testSharedContentVectorAndPrefixSeparation() throws {
         let file = try load("content/dlpush-v1-seal-open.json", as: ContentVectorFile.self)
         let item = try XCTUnwrap(file.cases.first)

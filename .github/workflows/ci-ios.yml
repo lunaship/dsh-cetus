@@ -139,13 +139,16 @@ jobs:
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
-          xcodebuild \
-            -scheme DLSecurity \
-            -destination "$DEST" \
-            -only-testing:DLSecurityTests/PushRegistrationTests \
-            test \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+          (
+            cd Packages/DLSecurity
+            xcodebuild \
+              -scheme DLSecurity \
+              -destination "$DEST" \
+              -only-testing:DLSecurityTests/PushRegistrationTests \
+              test \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO
+          )
 
   screenshots:
     name: iOS screenshot check

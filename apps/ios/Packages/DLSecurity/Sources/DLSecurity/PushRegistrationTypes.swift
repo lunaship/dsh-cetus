@@ -143,15 +143,17 @@ public enum PushRegistrationReconciler {
         enabled: Bool,
         canRegister: Bool,
         stored: PushRegistrationRecord?,
-        prepared: PushRegistrationBody?
+        prepared: PushRegistrationBody?,
+        tokenFingerprint: String? = nil
     ) -> PushReconcileAction {
         guard enabled, canRegister, let prepared else {
             return stored == nil ? .none : .unregister
         }
         guard let stored else { return .register(prepared) }
+        let tokenMatches = tokenFingerprint == nil || stored.tokenFingerprint == tokenFingerprint
         if stored.gateway == prepared.gateway, stored.kid == prepared.kid,
             stored.sealedFingerprint == PushRegistrar.fingerprint(prepared.sealed),
-            stored.prefs == prepared.prefs
+            stored.prefs == prepared.prefs, tokenMatches
         {
             return .none
         }
