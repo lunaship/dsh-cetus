@@ -13,31 +13,38 @@ import os
 /// `NWConnection` 总是自己拥有一段 transport，`NWParameters` 没有「无 transport」的构造，
 /// `NWProtocolFramer` 只能塑形真实 transport 的字节、不能当栈底。
 ///
-/// 所以唯一的做法是：在本机 `127.0.0.1` 上暴露一个**真实的裸字节端点**（让系统 TLS 栈
-/// 有东西可连），再把它的字节泵进 DLP/1 隧道。Android `WebSocketTunnelSocketFactory`
-/// 的 `openGateway()` 用的是同一个模式，只是它用裸 `ServerSocket`/`Socket`。
+/// 所以唯一的做法是：在本机 `127.0.0.1` 上暴露一个**真实的裸字节端点**，让系统 TLS 栈
+/// 有东西可连，再把它的字节泵进 DLP/1 隧道。
+///
+/// ## 与 Android 的对应关系
+///
+/// Android 的 `openGateway()` 在回环上开 `ServerSocket`(`peer`) 与 `Socket`(`local`)，
+/// 两端用一次性 32 字节 secret 认亲；`local` 交给 OkHttp 当「裸 socket」，
+/// `peer` 负责与隧道对泵。
+///
+/// 本实现**只需要一半**：`NWListener` 接受的那条连接本身就是 TLS 栈要连的端点，
+/// 直接与隧道对泵即可。Android 需要 secret 是因为它的 `local` 与 `peer` 是两个独立的
+/// JVM socket、必须在中间确认「连上来的确实是我自己」；而这里监听只绑回环、
+/// 且生命周期与隧道严格绑定，不存在需要甄别的第三方，因此**不做 secret 认亲**，
+/// 少一次往返也少一处可出错的握手。
 ///
 /// ## 它不是信任边界
 ///
-/// 桥只绑回环、只接受**一条**连接、用一次性随机 secret 认亲，生命周期与隧道严格绑定
-/// （隧道关闭 → 桥立即关闭，不留常驻监听端口）。**身份保证完全由隧道之上的内层 TLS
-/// 证书钉扎承担**（§4.3），桥本身不做任何信任判断——这一点与 Android 完全一致。
+/// 桥只绑 `127.0.0.1`、只接受一条连接、随隧道关闭（不留常驻监听端口）。
+/// **身份保证完全由隧道之上的内层 TLS 证书钉扎承担**（§4.3），桥不做任何信任判断。
 final class LoopbackTunnelBridge: @unchecked Sendable {
-    /// 认亲 secret 长度，照 Android `openGateway` 的 32 字节。
-    static let secretBytes = 32
-    /// 认亲超时。
-    static let claimTimeout: TimeInterval = 5
+    /// 等 TLS 端连上来的超时。
+    static let acceptTimeout: TimeInterval = 5
 
     /// 本机端点端口。`NWListener` 只在到达 `.ready` 之后才有有效端口，
-    /// 因此这里在 `start()` 返回前才赋值；读它前必须先 `await start()`。
+    /// 因此 `start()` 返回前才可用。
     private(set) var port: UInt16 = 0
 
     private let listener: NWListener
-    private let secret: Data
     private let tunnel: any RemoteTunnel
     private let queue = DispatchQueue(label: "dev.deeplinks.remote.bridge")
     private let closed = OSAllocatedUnfairLock<Bool>(initialState: false)
-    /// 认亲后的对端（即内层 TLS 栈连过来的那条裸连接）。
+    /// 内层 TLS 栈连过来的那条连接。
     private let peer = OSAllocatedUnfairLock<NWConnection?>(initialState: nil)
 
     /// - Parameters:
@@ -45,15 +52,6 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
     ///   - port: 监听端口；测试可指定，生产传 0 由系统分配。
     init(tunnel: any RemoteTunnel, port: UInt16 = 0) throws {
         self.tunnel = tunnel
-
-        var secret = Data(count: Self.secretBytes)
-        let status = secret.withUnsafeMutableBytes {
-            SecRandomCopyBytes(kSecRandomDefault, Self.secretBytes, $0.baseAddress!)
-        }
-        guard status == errSecSuccess else {
-            throw RemoteTunnelError.transport("random source unavailable")
-        }
-        self.secret = secret
 
         // 只绑回环：不接受任何外部连接。
         let parameters = NWParameters.tcp
@@ -63,9 +61,7 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         self.listener = try NWListener(using: parameters)
     }
 
-    /// 启动监听并等第一条（也是唯一一条）连接完成认亲。返回监听端口。
-    ///
-    /// 端口必须等 `.ready` 才有效——构造时读 `listener.port` 会拿到 nil。
+    /// 启动监听，等内层 TLS 端连上来，然后开始双向对泵。返回监听端口。
     @discardableResult
     func start() async throws -> UInt16 {
         let accepted = AsyncStream<NWConnection>.makeStream()
@@ -76,21 +72,17 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         }
         listener.start(queue: queue)
 
-        // 等监听就绪，此时端口才可用。
-        let boundPort = try await Self.waitReady(listener, timeout: Self.claimTimeout)
+        // 端口必须等 `.ready` 才有效——构造时读 `listener.port` 会拿到 nil。
+        let boundPort = try await Self.waitReady(listener, timeout: Self.acceptTimeout)
         self.port = boundPort
 
-        // 只接受第一条；其余由回环上的单客户端前提排除（额外连接会被 close）。
-        guard let first = await Self.firstConnection(accepted.stream, timeout: Self.claimTimeout) else {
+        guard let first = await Self.firstConnection(accepted.stream, timeout: Self.acceptTimeout) else {
             close()
             throw RemoteTunnelError.transport("bridge did not accept a connection")
         }
-        do {
-            try await claim(first)
-        } catch {
+        guard !isClosed else {
             first.cancel()
-            close()
-            throw error
+            throw RemoteTunnelError.cancelled
         }
         peer.withLock { $0 = first }
         pumpDownstream(peer: first)
@@ -131,18 +123,7 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         }
     }
 
-    /// 认亲：对端必须先发一个和 secret 完全一致的 32 字节前缀，之后才是 TLS 记录。
-    ///
-    /// 照 Android `openGateway` 的 `MessageDigest.isEqual(secret, received)` 语义。
-    /// 用常量时间比较，避免在回环上泄露 secret 的比对进度。
-    private func claim(_ connection: NWConnection) async throws {
-        let received = try await Self.receiveExactly(Self.secretBytes, from: connection, timeout: Self.claimTimeout)
-        guard DlpCryptoConstantTime.equal(received, secret) else {
-            throw RemoteTunnelError.transport("bridge authentication failed")
-        }
-    }
-
-    /// 下行：隧道 → 桥对端（即 TLS 栈）。
+    /// 下行：隧道 → 桥对端（内层 TLS 栈）。
     private func pumpDownstream(peer: NWConnection) {
         Task { [weak self] in
             guard let self else { return }
@@ -158,11 +139,10 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         }
     }
 
-    /// 上行：桥对端（TLS 栈）→ 隧道。
+    /// 上行：桥对端（内层 TLS 栈）→ 隧道。
     ///
-    /// 背压：`tunnel.write` 在隧道写不出去时会挂住，此时不再继续 `receive`，
-    /// 背压沿回环连接自然传回 TLS 栈（与 Android `pumpUpstream` 的
-    /// 「`queueSize() > 1 MiB` 就等」同义，只是这里由 TCP 自身兜住）。
+    /// 背压：`tunnel.write` 写不出去时会挂住，此时不再 `receive`，背压沿回环连接
+    /// 自然传回 TLS 栈（与 Android `pumpUpstream` 的 `queueSize() > 1 MiB` 等待同义）。
     private func pumpUpstream(peer: NWConnection) {
         Task { [weak self] in
             guard let self else { return }
@@ -221,35 +201,7 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         }
     }
 
-    /// 读满 `count` 字节。
-    private static func receiveExactly(_ count: Int, from connection: NWConnection, timeout: TimeInterval) async throws
-        -> Data
-    {
-        try await withThrowingTaskGroup(of: Data.self) { group in
-            group.addTask {
-                var collected = Data()
-                while collected.count < count {
-                    let chunk = try await receiveChunk(from: connection)
-                    guard let chunk, !chunk.isEmpty else {
-                        throw RemoteTunnelError.transport("bridge closed during authentication")
-                    }
-                    collected.append(chunk)
-                }
-                return collected
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                throw RemoteTunnelError.transport("bridge authentication timed out")
-            }
-            defer { group.cancelAll() }
-            guard let first = try await group.next() else {
-                throw RemoteTunnelError.transport("bridge authentication failed")
-            }
-            return first
-        }
-    }
-
-    private static func receiveChunk(from connection: NWConnection) async throws -> Data? {
+    static func receiveChunk(from connection: NWConnection) async throws -> Data? {
         try await withCheckedThrowingContinuation { continuation in
             connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { data, _, isComplete, error in
                 if let error {
@@ -277,15 +229,5 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
                     }
                 })
         }
-    }
-}
-
-/// 常量时间比较（认亲 secret）。
-enum DlpCryptoConstantTime {
-    static func equal(_ lhs: Data, _ rhs: Data) -> Bool {
-        guard lhs.count == rhs.count else { return false }
-        var diff: UInt8 = 0
-        for index in lhs.indices { diff |= lhs[index] ^ rhs[index] }
-        return diff == 0
     }
 }
