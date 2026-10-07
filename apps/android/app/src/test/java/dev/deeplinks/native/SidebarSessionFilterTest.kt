@@ -103,7 +103,7 @@ class SidebarSessionFilterTest {
 
     @Test
     fun `display title keeps only the last segment of a leading path`() {
-        assertEquals("2026-09-27_DSH-L", displaySessionTitle("@/Users/wuyanzu/Desktop/2026-09-27_DSH-L"))
+        assertEquals("2026-09-27_DSH-L", displaySessionTitle("@/Users/me/Desktop/2026-09-27_DSH-L"))
         assertEquals("notes.md 帮我看看", displaySessionTitle("@/Users/me/notes.md 帮我看看"))
         assertEquals("proj 看一下", displaySessionTitle("@~/code/proj/ 看一下"))
         // 不是开头的路径、没有路径、只有根目录：原样返回

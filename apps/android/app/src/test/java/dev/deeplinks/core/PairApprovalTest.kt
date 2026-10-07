@@ -2,11 +2,7 @@ package dev.deeplinks.core
 
 import dev.deeplinks.devices.isNetworkPairFailure
 import java.io.IOException
-import java.security.KeyStore
-import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.net.ssl.KeyManagerFactory
-import javax.net.ssl.SSLContext
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -25,14 +21,9 @@ class PairApprovalTest {
         val token = "test-pair-approval-token"
         val approved = AtomicBoolean(false)
         val revoked = AtomicBoolean(false)
-        val password = "dlp1-test".toCharArray()
-        val keys = KeyStore.getInstance("PKCS12")
-        javaClass.getResourceAsStream("/dlp1-test-server.p12")!!.use { keys.load(it, password) }
-        val managers = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-            .apply { init(keys, password) }
-        val tls = SSLContext.getInstance("TLS").apply { init(managers.keyManagers, null, null) }
-        val cert = keys.getCertificate(keys.aliases().nextElement())
-        val pin = MessageDigest.getInstance("SHA-256").digest(cert.encoded).joinToString("") { "%02x".format(it) }
+        val keys = TestServerIdentity.keyStore()
+        val tls = TestServerIdentity.serverContext(keys)
+        val pin = TestServerIdentity.pin(keys)
         val server = MockWebServer()
         server.useHttps(tls.socketFactory)
         server.dispatcher = object : Dispatcher() {
