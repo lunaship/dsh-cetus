@@ -82,11 +82,16 @@ struct RemoteHTTP1WireTests {
 
     @Test func parsesContentLengthResponseSplitAcrossChunks() throws {
         var parser = HTTP1Wire.ResponseParser()
-        let head = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n"
-        // 故意把头和 body 拆成多段喂进去，模拟隧道分片。
+        // Content-Length 必须与 body 实际长度一致：写死 "11" 而 body 只有 7 字节
+        // 会让解析器（正确地）继续等剩下 4 字节，测试反而测了个错的场景。
+        let expectedBody = #"{"a":1}"#
+        let head =
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: \(expectedBody.utf8.count)\r\n\r\n"
+        // 故意把头和 body 拆成多段喂进去，模拟隧道分片；
+        // 最后一片补齐 Content-Length 的那一刻 push 必须返回 true。
         #expect(try parser.push(Data(head.prefix(20).utf8)) == false)
         #expect(try parser.push(Data(head.dropFirst(20).utf8)) == false)
-        #expect(try parser.push(Data("{\"a\":1".utf8)) == false)
+        #expect(try parser.push(Data(#"{"a":1"#.utf8)) == false)
         #expect(try parser.push(Data("}".utf8)) == true)
 
         let parsed = parser.finish()

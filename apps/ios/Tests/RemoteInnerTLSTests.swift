@@ -137,10 +137,7 @@ import Testing
     /// 自签 RSA-2048、CN=127.0.0.1、SAN IP:127.0.0.1。测试里不生成证书，
     /// 避免引入 swiftsyntax/openssl 之外的新依赖，也避免每次跑测试都变指纹。
     static func loadIdentity() throws -> (identity: sec_identity_t, der: Data, fingerprint: String) {
-        let url = try #require(
-            Bundle(for: BundleToken.self).url(
-                forResource: "identity", withExtension: "p12", subdirectory: "inner-tls"))
-        let p12 = try Data(contentsOf: url)
+        let p12 = try Data(contentsOf: try fixtureURL(name: "identity", extension: "p12"))
 
         var items: CFArray?
         let options: [String: Any] = [kSecImportExportPassphrase as String: "dlptest"]
@@ -159,11 +156,23 @@ import Testing
             throw RemoteTunnelError.transport("sec_identity_create failed")
         }
 
-        let derURL = try #require(
-            Bundle(for: BundleToken.self).url(
-                forResource: "leaf", withExtension: "der", subdirectory: "inner-tls"))
-        let der = try Data(contentsOf: derURL)
+        let der = try Data(contentsOf: try fixtureURL(name: "leaf", extension: "der"))
         return (identity, der, CertificateFingerprint.sha256(der: der))
+    }
+
+    /// 在 bundle 里找 `Tests/Fixtures/inner-tls/` 下的 fixture。
+    ///
+    /// 先试带子目录的路径，再试平铺到 bundle 根的（照 `DlpVectorTests.load()`
+    /// 对 `dlp1/vectors.json` 的既有写法）。Xcode 对 `buildPhase: resources`
+    /// 的目录处理会因版本而异，两种都兜住，避免因打包方式改变而整组测试挂掉。
+    static func fixtureURL(name: String, extension ext: String) throws -> URL {
+        let bundle = Bundle(for: BundleToken.self)
+        let nested = bundle.url(forResource: name, withExtension: ext, subdirectory: "inner-tls")
+        let flat = bundle.url(forResource: name, withExtension: ext)
+        guard let url = nested ?? flat else {
+            throw RemoteTunnelError.transport("fixture \(name).\(ext) not found in test bundle")
+        }
+        return url
     }
 
     /// 取 bundle 用的锚。
