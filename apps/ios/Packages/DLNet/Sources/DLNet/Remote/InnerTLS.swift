@@ -52,7 +52,8 @@ final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
         }
 
         let bridge = try LoopbackTunnelBridge(tunnel: tunnel)
-        try await bridge.start()
+        // 端口在 start() 返回后才有效。
+        let bridgePort = try await bridge.start()
 
         let tlsOptions = NWProtocolTLS.Options()
         NWRemoteTunnelTransport.installPin(tlsOptions, expected: pin)
@@ -61,7 +62,7 @@ final class InnerTLSChannel: TunnelByteChannel, @unchecked Sendable {
         let parameters = NWParameters(tls: tlsOptions, tcp: .init())
         let connection = NWConnection(
             host: NWEndpoint.Host("127.0.0.1"),
-            port: NWEndpoint.Port(rawValue: bridge.port)!,
+            port: NWEndpoint.Port(rawValue: bridgePort)!,
             using: parameters)
 
         let channel = InnerTLSChannel(connection: connection, bridge: bridge)

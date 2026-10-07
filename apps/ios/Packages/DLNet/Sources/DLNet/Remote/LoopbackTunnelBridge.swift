@@ -28,8 +28,9 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
     /// 认亲超时。
     static let claimTimeout: TimeInterval = 5
 
-    /// 本机端点端口：上层用它去建内层 TLS 连接。
-    let port: UInt16
+    /// 本机端点端口。`NWListener` 只在到达 `.ready` 之后才有有效端口，
+    /// 因此这里在 `start()` 返回前才赋值；读它前必须先 `await start()`。
+    private(set) var port: UInt16 = 0
 
     private let listener: NWListener
     private let secret: Data
@@ -59,29 +60,27 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         parameters.requiredLocalEndpoint = .hostPort(
             host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: port) ?? .any)
         parameters.allowLocalEndpointReuse = false
-        let listener = try NWListener(using: parameters)
-        self.listener = listener
-
-        guard let bound = listener.port else {
-            throw RemoteTunnelError.transport("bridge listener has no port")
-        }
-        self.port = bound.rawValue
+        self.listener = try NWListener(using: parameters)
     }
 
-    /// 启动监听并等第一条（也是唯一一条）连接完成认亲。
-    func start() async throws {
+    /// 启动监听并等第一条（也是唯一一条）连接完成认亲。返回监听端口。
+    ///
+    /// 端口必须等 `.ready` 才有效——构造时读 `listener.port` 会拿到 nil。
+    @discardableResult
+    func start() async throws -> UInt16 {
         let accepted = AsyncStream<NWConnection>.makeStream()
 
         listener.newConnectionHandler = { connection in
             connection.start(queue: self.queue)
             accepted.continuation.yield(connection)
         }
-        listener.stateUpdateHandler = { state in
-            if case .failed = state { accepted.continuation.finish() }
-        }
         listener.start(queue: queue)
 
-        // 只接受第一条；其余立即断开（回环上不该有第二个客户端）。
+        // 等监听就绪，此时端口才可用。
+        let boundPort = try await Self.waitReady(listener, timeout: Self.claimTimeout)
+        self.port = boundPort
+
+        // 只接受第一条；其余由回环上的单客户端前提排除（额外连接会被 close）。
         guard let first = await Self.firstConnection(accepted.stream, timeout: Self.claimTimeout) else {
             close()
             throw RemoteTunnelError.transport("bridge did not accept a connection")
@@ -96,6 +95,40 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         peer.withLock { $0 = first }
         pumpDownstream(peer: first)
         pumpUpstream(peer: first)
+        return boundPort
+    }
+
+    /// 等监听进入 `.ready`，返回实际端口。
+    private static func waitReady(_ listener: NWListener, timeout: TimeInterval) async throws -> UInt16 {
+        try await withThrowingTaskGroup(of: UInt16.self) { group in
+            group.addTask {
+                let states = AsyncStream<NWListener.State>.makeStream()
+                listener.stateUpdateHandler = { states.continuation.yield($0) }
+                for await state in states.stream {
+                    switch state {
+                    case .ready:
+                        guard let port = listener.port?.rawValue else {
+                            throw RemoteTunnelError.transport("bridge listener has no port after ready")
+                        }
+                        return port
+                    case .failed(let error):
+                        throw NWRemoteTunnel.mapNWError(error)
+                    default:
+                        continue
+                    }
+                }
+                throw RemoteTunnelError.transport("bridge listener stopped before ready")
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw RemoteTunnelError.transport("bridge listener did not become ready")
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else {
+                throw RemoteTunnelError.transport("bridge listener did not become ready")
+            }
+            return first
+        }
     }
 
     /// 认亲：对端必须先发一个和 secret 完全一致的 32 字节前缀，之后才是 TLS 记录。
