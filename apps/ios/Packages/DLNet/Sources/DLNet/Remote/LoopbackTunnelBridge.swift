@@ -72,14 +72,22 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
         let accepted = AsyncStream<NWConnection>.makeStream()
         acceptedStream.withLock { $0 = accepted.stream }
 
+        // 顺序是硬要求：`stateUpdateHandler` 必须在 `start()` **之前**装好。
+        // NWListener 不是「有订阅者才推状态」，而是状态一到就调当时的 handler，
+        // 没有 handler 就丢掉。回环 TCP 监听的 `.ready` 常在几毫秒内到达，
+        // 若等到 start() 之后再装，这个 `.ready` 会被永久丢弃，后面就永远等不到。
+        // （`LocalGatewayAuthTests.readyPort` 也是先装 handler 再 start。）
+        let states = AsyncStream<NWListener.State>.makeStream()
+        listener.stateUpdateHandler = { states.continuation.yield($0) }
         listener.newConnectionHandler = { connection in
             connection.start(queue: self.queue)
             accepted.continuation.yield(connection)
         }
+
         listener.start(queue: queue)
 
         // 端口必须等 `.ready` 才有效——构造时读 `listener.port` 会拿到 nil。
-        let boundPort = try await Self.waitReady(listener, timeout: Self.acceptTimeout)
+        let boundPort = try await Self.waitReady(listener, states: states.stream, timeout: Self.acceptTimeout)
         self.port = boundPort
         return boundPort
     }
@@ -104,12 +112,15 @@ final class LoopbackTunnelBridge: @unchecked Sendable {
     }
 
     /// 等监听进入 `.ready`，返回实际端口。
-    private static func waitReady(_ listener: NWListener, timeout: TimeInterval) async throws -> UInt16 {
+    ///
+    /// - Parameter states: 由调用方在 `listener.start()` **之前**接好 handler 的状态流；
+    ///   见 `listen()` 里的顺序说明。
+    private static func waitReady(
+        _ listener: NWListener, states: AsyncStream<NWListener.State>, timeout: TimeInterval
+    ) async throws -> UInt16 {
         try await withThrowingTaskGroup(of: UInt16.self) { group in
             group.addTask {
-                let states = AsyncStream<NWListener.State>.makeStream()
-                listener.stateUpdateHandler = { states.continuation.yield($0) }
-                for await state in states.stream {
+                for await state in states {
                     switch state {
                     case .ready:
                         guard let port = listener.port?.rawValue else {
