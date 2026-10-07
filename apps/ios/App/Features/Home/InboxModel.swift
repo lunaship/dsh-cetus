@@ -30,6 +30,7 @@ enum InboxNotice: Equatable, Sendable {
     case approval
     case search
     case delete
+    case pushMissing
 }
 
 enum InboxDestination: Hashable, Sendable {
@@ -48,7 +49,7 @@ enum InboxPresentation: Equatable, Sendable {
     case workspaceEmpty
     case offlineEmpty
     case search(InboxSearchGroups, degraded: Bool, failed: Bool)
-    case sections([InboxSectionGroup])
+    case folders([InboxWorkspaceFolder])
 }
 
 struct InboxComputer: Equatable, Identifiable, Sendable {
@@ -75,6 +76,8 @@ struct InboxPayload: Equatable, Sendable {
     var hostName: String
     var route: InboxRouteKind
     var eventsEnabled: Bool
+    var pushVersion: Int = 0
+    var pairedDeviceID: String?
 }
 
 struct InboxSearchPayload: Equatable, Sendable {
@@ -180,6 +183,22 @@ struct InboxPreferences {
         defaults.set(values, forKey: key("recent", hostID))
     }
 
+    func collapsedFolders(hostID: String) -> Set<String> {
+        Set(defaults.stringArray(forKey: key("collapsed", hostID)) ?? [])
+    }
+
+    func setCollapsedFolders(_ keys: Set<String>, hostID: String) {
+        defaults.set(keys.sorted(), forKey: key("collapsed", hostID))
+    }
+
+    func expandedPreviews(hostID: String) -> Set<String> {
+        Set(defaults.stringArray(forKey: key("preview", hostID)) ?? [])
+    }
+
+    func setExpandedPreviews(_ keys: Set<String>, hostID: String) {
+        defaults.set(keys.sorted(), forKey: key("preview", hostID))
+    }
+
     func lastOnline(hostID: String) -> Date? {
         let stamp = defaults.double(forKey: key("online", hostID))
         guard stamp > 0 else { return nil }
@@ -214,6 +233,7 @@ protocol InboxServing: Sendable {
     func createSession(preset: String?, workspaceID: String?, cwd: String?) async throws -> String
     func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws
     func createWorkspace(path: String) async throws -> WorkspaceWriteResult
+    func deleteWorkspace(path: String) async throws
 }
 
 enum WorkspaceWriteResult: Equatable, Sendable {
@@ -291,6 +311,11 @@ extension InboxServing {
         _ = path
         throw InboxServiceError.offline
     }
+
+    func deleteWorkspace(path: String) async throws {
+        _ = path
+        throw InboxServiceError.offline
+    }
 }
 
 enum InboxServiceError: Error, Equatable, Sendable {
@@ -329,6 +354,7 @@ final class InboxModel {
     var renameTarget: SessionSummary?
     var renameDraft = ""
     var deleteTarget: SessionSummary?
+    var deleteWorkspacePath: String?
     var approvalTick = 0
     var notice: InboxNotice?
     var searching = false
@@ -336,6 +362,8 @@ final class InboxModel {
     var now = Date()
     var calendar = Calendar.current
     var missingHost = false
+    var pushVersion = 0
+    var pairedDeviceID: String?
     var starter = ""
     var sharePrefill: SharePrefill?
     var pendingShare: ShareInboxRecord?
@@ -369,6 +397,8 @@ final class InboxModel {
         self.calendar = calendar
         deletedIDs = preferences.deletedIDs(hostID: hostID)
         recentSearches = preferences.recentSearches(hostID: hostID)
+        collapsedFolders = preferences.collapsedFolders(hostID: hostID)
+        expandedPreviews = preferences.expandedPreviews(hostID: hostID)
         if let saved = preferences.workspace(hostID: hostID) {
             tokens = [InboxWorkspaceToken(path: saved, name: inboxWorkspaceName(saved) ?? saved)]
         }
@@ -383,6 +413,19 @@ final class InboxModel {
     }
 
     var actionsEnabled: Bool { link.isOnline }
+    var collapsedFolders: Set<String> = []
+    var expandedPreviews: Set<String> = []
+    var folderPaths: [String] { inboxVisibleWorkspaces(workspaces) }
+
+    func toggleFolder(_ key: String) {
+        collapsedFolders.formSymmetricDifference([key])
+        preferences.setCollapsedFolders(collapsedFolders, hostID: hostID)
+    }
+
+    func togglePreview(_ key: String) {
+        expandedPreviews.formSymmetricDifference([key])
+        preferences.setExpandedPreviews(expandedPreviews, hostID: hostID)
+    }
 
     var effectiveArchived: Set<String> { archivedIDs.union(pendingArchive) }
 
@@ -420,7 +463,19 @@ final class InboxModel {
             if tokens.first != nil { return .workspaceEmpty }
             return .starters
         }
-        return .sections(inboxFiltered(inboxSections(visibleSessions), filter: filter))
+        return .folders(
+            inboxWorkspaceFolders(
+                sessions: visibleSessions,
+                workspaces: inboxVisibleWorkspaces(workspaces),
+                accounts: workspaceAccounts,
+                registryReady: !workspaces.isEmpty))
+    }
+
+    var workspaceAccounts: [InboxWorkspaceAccount] {
+        workspaces.compactMap { workspace in
+            guard let path = workspace.path else { return nil }
+            return InboxWorkspaceAccount(path: path, sessionIDs: workspace.sessionIds ?? [])
+        }
     }
 
     func start() async {
@@ -558,6 +613,23 @@ final class InboxModel {
         }
     }
 
+    func deleteWorkspace(_ path: String) async {
+        guard actionsEnabled else { return }
+        do {
+            try await service.deleteWorkspace(path: path)
+            deleteWorkspacePath = nil
+            workspaces.removeAll { inboxNormalizeWorkspacePath($0.path ?? "") == inboxNormalizeWorkspacePath(path) }
+            if tokens.first?.path == path { setWorkspace(nil) }
+        } catch {
+            notice = .delete
+        }
+    }
+
+    func openNewTask(workspace path: String) {
+        setWorkspace(path)
+        openNewTask()
+    }
+
     func openNewTask(_ text: String = "") {
         starter = text
         path.append(.newTask(text))
@@ -582,6 +654,35 @@ final class InboxModel {
     func open(_ session: SessionSummary) {
         guard let id = session.sessionId else { return }
         path.append(.session(id))
+    }
+
+    /// Opens a notification. A missing session refreshes once; if it is still
+    /// absent, navigation returns home and shows a notice. It never approves.
+    func openPush(deviceID: String, sessionID: String) async {
+        let known = Set(sessions.compactMap(\.sessionId))
+        let first = PushOpenRouter.route(
+            deviceID: deviceID, sessionID: sessionID, pairedDeviceID: pairedDeviceID, knownSessions: known)
+        switch first {
+        case .session(let id):
+            path.append(.session(id))
+        case .refresh:
+            await refresh()
+            let refreshed = Set(sessions.compactMap(\.sessionId))
+            let second = PushOpenRouter.route(
+                deviceID: deviceID, sessionID: sessionID, pairedDeviceID: pairedDeviceID,
+                knownSessions: refreshed, refreshed: true)
+            if case .session(let id) = second {
+                path.append(.session(id))
+            } else {
+                path.removeAll()
+                selectedSessionID = nil
+                notice = .pushMissing
+            }
+        case .homeMissing:
+            path.removeAll()
+            selectedSessionID = nil
+            notice = .pushMissing
+        }
     }
 
     /// Reads one shared item and shows the picker. It does not send.
@@ -764,6 +865,8 @@ final class InboxModel {
             workspaces = payload.workspaces
             if !payload.hostName.isEmpty { computerName = payload.hostName }
             link = .online(payload.route)
+            pushVersion = payload.pushVersion
+            pairedDeviceID = payload.pairedDeviceID
             loading = false
             if notice == .unauthorized || notice == .certificate || notice == .load { notice = nil }
             preferences.setLastOnline(now, hostID: hostID)

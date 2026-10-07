@@ -1,0 +1,139 @@
+name: CI iOS performance
+
+on:
+  pull_request:
+    branches: [ios/main, main]
+    paths:
+      - 'apps/ios/**'
+      - 'src/**'
+      - 'scripts/ios-e2e-host.mjs'
+      - 'scripts/ios-e2e-fixture.mjs'
+      - '.github/workflows/ios-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsh-links-ci-ios-performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    name: iOS performance
+    runs-on: macos-26
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Record fixed environment
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/performance"
+          {
+            echo "xcode=$(xcodebuild -version | tr '\n' ' ')"
+            echo "runner=${{ runner.name }}"
+            echo "os=${{ runner.os }}"
+            echo "device=iPhone 17 Pro"
+            echo "runtime=iOS 26.5"
+            echo "commit=${{ github.sha }}"
+          } | tee "$RUNNER_TEMP/performance/environment.txt"
+          xcodebuild -version | grep -q '^Xcode '
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        working-directory: apps/ios
+        run: xcodegen generate
+
+      - name: Start performance host
+        run: |
+          set -eu
+          set -m
+          nohup node scripts/ios-e2e-host.mjs \
+            --performance-session \
+            --qr "$RUNNER_TEMP/performance-qr.json" \
+            --log "$RUNNER_TEMP/performance-plugin.log" \
+            > "$RUNNER_TEMP/performance-host.stdout" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/performance-host.pid"
+          disown || true
+          for _ in {1..30}; do
+            if [ -f "$RUNNER_TEMP/performance-qr.json" ] && grep -qE 'control=http://127\.0\.0\.1:[0-9]+' "$RUNNER_TEMP/performance-host.stdout"; then
+              break
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/performance-host.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/performance-host.stdout" || true
+              exit 1
+            fi
+            sleep 1
+          done
+          CONTROL=$(grep -m 1 -oE 'control=http://127\.0\.0\.1:[0-9]+' "$RUNNER_TEMP/performance-host.stdout" | cut -d= -f2-)
+          test -n "$CONTROL"
+          {
+            echo "PERFORMANCE_QR_PATH=$RUNNER_TEMP/performance-qr.json"
+            echo "PERFORMANCE_CONTROL_URL=$CONTROL"
+          } >> "$GITHUB_ENV"
+
+      - name: Measure cached launch, scroll, and append
+        working-directory: apps/ios
+        run: |
+          set -eu
+          export PERFORMANCE_IOS_RUNTIME='iOS 26.5'
+          export PERFORMANCE_FIXTURE="$RUNNER_TEMP/performance-fixture"
+          export PERFORMANCE_APPEND_STORAGE="$RUNNER_TEMP/performance-append-storage"
+          export PERFORMANCE_QR_PATH
+          export PERFORMANCE_CONTROL_URL
+          mkdir -p "$PERFORMANCE_FIXTURE" "$PERFORMANCE_APPEND_STORAGE"
+          DEST=$(sh scripts/simulator-destination.sh)
+          xcodebuild \
+            -scheme DeepLinksPerformance \
+            -destination "$DEST" \
+            -only-testing:DeepLinksUITests/PerformanceLaunchTests \
+            -resultBundlePath "$RUNNER_TEMP/performance/raw.xcresult" \
+            test
+          xcrun xcresulttool export metrics \
+            --path "$RUNNER_TEMP/performance/raw.xcresult" \
+            --output-path "$RUNNER_TEMP/performance/metrics"
+          node "../../scripts/ios-performance-summary.mjs" \
+            "$RUNNER_TEMP/performance/metrics" \
+            "$RUNNER_TEMP/performance/summary.json"
+
+      - name: Upload raw performance results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-performance-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/performance
+            ${{ runner.temp }}/performance-plugin.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Stop performance host
+        if: always()
+        run: |
+          set +e
+          if [ -n "${PERFORMANCE_CONTROL_URL:-}" ]; then
+            curl -fsS -m 10 -X POST "$PERFORMANCE_CONTROL_URL/control/shutdown" || true
+          fi
+          if [ -f "$RUNNER_TEMP/performance-host.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/performance-host.pid")" 2>/dev/null || true
+          fi

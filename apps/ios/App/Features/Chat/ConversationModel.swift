@@ -175,6 +175,7 @@ final class ConversationModel {
     private var started = false
     private var loadedHistory = false
     private var draining = false
+    private var writeInFlight = false
 
     /// Read-only SSE status. Sending remains an independent HostClient HTTP operation in I4.3c.
     private(set) var status = ConversationStatusState()
@@ -502,6 +503,9 @@ final class ConversationModel {
     }
 
     func serviceSend(_ text: String, images: [PromptImage] = []) async throws {
+        guard !writeInFlight else { throw ConversationServiceError.offline }
+        writeInFlight = true
+        defer { writeInFlight = false }
         try await service.sendPrompt(sessionID: sessionID, text: text, images: images)
     }
 

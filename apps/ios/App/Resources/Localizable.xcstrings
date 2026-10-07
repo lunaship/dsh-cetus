@@ -3154,6 +3154,62 @@
         }
       }
     },
+    "inbox.showAllCount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show all %d" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示全部 %d 个" } }
+      }
+    },
+    "inbox.collapseAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Collapse" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "收起" } }
+      }
+    },
+    "inbox.newHere" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "New task here" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在这里新建" } }
+      }
+    },
+    "inbox.ungrouped" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ungrouped" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未分组" } }
+      }
+    },
+    "inbox.more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更多" } }
+      }
+    },
+    "inbox.deleteWorkspace" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete workspace" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除工作区" } }
+      }
+    },
+    "inbox.deleteWorkspaceTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete workspace?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除工作区？" } }
+      }
+    },
+    "inbox.deleteWorkspaceMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove %@ from this phone. Sessions stay on the computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从这台手机移除 %@。会话仍留在电脑上。" } }
+      }
+    },
     "inbox.computers" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5964,6 +6020,34 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要审批时" } }
       }
     },
+    "settings.notifyQuestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When a question arrives" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要回答时" } }
+      }
+    },
+    "settings.notifyFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When a task fails" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任务失败时" } }
+      }
+    },
+    "settings.pushUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This build cannot register for notifications." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当前构建不能注册通知。" } }
+      }
+    },
+    "settings.pushPrivacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications pass through the gateway, but their content stays end-to-end encrypted. They can only open the app." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通知经过网关转发，内容端到端加密；只能打开 App，不能直接批准。" } }
+      }
+    },
     "settings.notifyDone" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6417,6 +6501,20 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep at least one model." } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "至少保留一个模型。" } }
+      }
+    },
+    "inbox.pushMissing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That task is no longer on this computer." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这个任务已经不在这台电脑上。" } }
+      }
+    },
+    "settings.pushFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications could not be registered." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通知没有注册成功。" } }
       }
     }
   },

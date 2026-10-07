@@ -1,4 +1,5 @@
 import DLModels
+import DLSecurity
 import SwiftUI
 
 #if canImport(UIKit)
@@ -26,6 +27,7 @@ struct SettingsHomePage: View {
     var account: (any SettingsAccountServing)?
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
+    var push: PushSettingsRegistration?
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -63,7 +65,8 @@ struct SettingsHomePage: View {
         }
         .navigationTitle(copy.text(.title))
         .navigationDestination(for: SettingsPage.self) { page in
-            SettingsDetailPage(page: page, account: account, crashReport: crashReport, models: models)
+            SettingsDetailPage(
+                page: page, account: account, crashReport: crashReport, models: models, push: push)
         }
         .task {
             if let models {
@@ -80,10 +83,13 @@ struct SettingsDetailPage: View {
     var account: (any SettingsAccountServing)?
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
+    var push: PushSettingsRegistration?
     @AppStorage("settings.theme") private var theme = "system"
     @AppStorage("settings.notifyMaster") private var notifyMaster = false
     @AppStorage("settings.notifyApproval") private var notifyApproval = false
+    @AppStorage("settings.notifyQuestion") private var notifyQuestion = false
     @AppStorage("settings.notifyDone") private var notifyDone = false
+    @AppStorage("settings.notifyFailed") private var notifyFailed = false
     @AppStorage("settings.liveActivity") private var liveActivity = false
     @AppStorage("settings.balanceAlert") private var balanceAlert = false
     @AppStorage("settings.balanceAlertAmount") private var balanceAlertAmount = ""
@@ -96,6 +102,8 @@ struct SettingsDetailPage: View {
     @State private var crashExport: SettingsCrashExport?
     @State private var selectedDiscovered: Set<String> = []
     @State private var presetID: String?
+    @State private var pushAvailable = false
+    @State private var pushNotice: String?
     @State private var modelID = ""
     @State private var effortID: String?
     @Environment(\.locale) private var locale
@@ -143,11 +151,27 @@ struct SettingsDetailPage: View {
             case .language:
                 LabeledContent(copy.text(.language), value: copy.text(.languageValue))
             case .notifications:
-                Toggle(copy.text(.notifyMaster), isOn: $notifyMaster)
+                Toggle(copy.text(.notifyMaster), isOn: notifyMasterBinding)
+                    .disabled(!pushAvailable)
+                if !pushAvailable {
+                    Text(copy.text(.pushUnavailable))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let pushNotice {
+                    Text(pushNotice)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Toggle(copy.text(.notifyApproval), isOn: $notifyApproval)
+                    .disabled(!notifyMaster)
+                Toggle(copy.text(.notifyQuestion), isOn: $notifyQuestion)
+                    .disabled(!notifyMaster)
                 Toggle(copy.text(.notifyDone), isOn: $notifyDone)
-                Toggle(copy.text(.liveActivity), isOn: $liveActivity)
-                Text(copy.text(.pushNote))
+                    .disabled(!notifyMaster)
+                Toggle(copy.text(.notifyFailed), isOn: $notifyFailed)
+                    .disabled(!notifyMaster || !pushAvailable)
+                Text(copy.text(.pushPrivacy))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             case .appearance:
@@ -191,7 +215,14 @@ struct SettingsDetailPage: View {
         }
         .navigationTitle(title(copy))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadAccount(copy) }
+        .task {
+            await loadAccount(copy)
+            await refreshPush(copy)
+        }
+        .onChange(of: notifyApproval) { _, _ in Task { await refreshPush(copy) } }
+        .onChange(of: notifyQuestion) { _, _ in Task { await refreshPush(copy) } }
+        .onChange(of: notifyDone) { _, _ in Task { await refreshPush(copy) } }
+        .onChange(of: notifyFailed) { _, _ in Task { await refreshPush(copy) } }
         .toolbar {
             if page == .diagnostics {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -231,6 +262,51 @@ struct SettingsDetailPage: View {
         }
     }
 
+    private var notifyMasterBinding: Binding<Bool> {
+        Binding(
+            get: { notifyMaster },
+            set: { value in
+                notifyMaster = value
+                Task { await refreshPush(SettingsCopy(locale: locale)) }
+            })
+    }
+
+    private func refreshPush(_ copy: SettingsCopy) async {
+        guard page == .notifications else { return }
+        let capabilities = LocalPushCapabilities(
+            version: push?.pushVersion ?? 0, apnsBuildEnabled: APNsBuild.enabled)
+        pushAvailable = capabilities.canEnable
+        // A free-signed build has no aps-environment. Do not request a token or
+        // report registration until both the host capability and that entitlement exist.
+        guard capabilities.canEnable, let service = push?.service() else {
+            notifyMaster = false
+            pushNotice = copy.text(.pushUnavailable)
+            return
+        }
+        let outcome = await service.sync(
+            enabled: notifyMaster,
+            preferences: PushPreferences(
+                approval: notifyApproval, question: notifyQuestion, completed: notifyDone, failed: notifyFailed))
+        apply(outcome, copy: copy)
+    }
+
+    private func apply(_ outcome: PushRegistrationOutcome, copy: SettingsCopy) {
+        switch outcome {
+        case .registered:
+            pushNotice = nil
+        case .disabled:
+            notifyMaster = false
+            pushNotice = nil
+        case .unavailable:
+            notifyMaster = false
+            pushAvailable = false
+            pushNotice = copy.text(.pushUnavailable)
+        case .failed:
+            notifyMaster = false
+            pushNotice = copy.text(.pushFailed)
+        }
+    }
+
     private func renameComputer(_ copy: SettingsCopy) async {
         guard let account, !busy else { return }
         busy = true
@@ -251,6 +327,8 @@ struct SettingsDetailPage: View {
         if shouldDeleteCredentials(after: outcome) {
             unpaired = true
             notice = nil
+            notifyMaster = false
+            Task { _ = await push?.service().unregister() }
         } else {
             notice = copy.text(.unpairFailed)
         }
@@ -526,7 +604,12 @@ enum SettingsText: String {
     case history
     case about
     case notifyApproval
+    case notifyQuestion
     case notifyDone
+    case notifyFailed
+    case pushUnavailable
+    case pushFailed
+    case pushPrivacy
     case liveActivity
     case pushNote
     case themeSystem
@@ -609,8 +692,14 @@ enum SettingsText: String {
         case .history: "Session history"
         case .about: "About"
         case .notifyApproval: "When approval is needed"
+        case .notifyQuestion: "When a question arrives"
         case .notifyDone: "When a task finishes"
+        case .notifyFailed: "When a task fails"
         case .liveActivity: "Live Activity"
+        case .pushUnavailable: "This build cannot register for notifications."
+        case .pushFailed: "Notifications could not be registered."
+        case .pushPrivacy:
+            "Notifications pass through the gateway, but their content stays end-to-end encrypted. They can only open the app."
         case .pushNote: "Delivery through the official gateway arrives in a later update."
         case .themeSystem: "System"
         case .themeLight: "Light"

@@ -13,7 +13,7 @@ struct ConversationStatusView: View {
     var body: some View {
         if let kind = state.kind {
             DLStatusSlot(
-                title: title(kind), systemImage: symbol(kind),
+                title: statusTitle(kind), systemImage: symbol(kind),
                 isExpanded: kind == .goal && expanded,
                 toggleLabel: copy.text(expanded ? .statusCollapse : .statusExpand),
                 onToggle: toggleAction(kind)
@@ -82,7 +82,13 @@ struct ConversationStatusView: View {
         withAnimation(reduceMotion ? nil : .spring) { expanded.toggle() }
     }
 
-    private func title(_ kind: ConversationStatusKind) -> String {
+    static func statusTitle(
+        _ kind: ConversationStatusKind, state: ConversationStatusState, copy: ConversationCopy, expanded: Bool
+    ) -> String {
+        ConversationStatusView(state: state, copy: copy, expanded: .constant(expanded)).statusTitle(kind)
+    }
+
+    func statusTitle(_ kind: ConversationStatusKind) -> String {
         switch kind {
         case .disconnected:
             return copy.text(

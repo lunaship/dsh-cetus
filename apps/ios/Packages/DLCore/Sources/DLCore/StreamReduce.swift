@@ -134,23 +134,29 @@ private func apply(_ frame: StreamFrame, to messages: inout [HistoryMessage]) {
         guard let chunk = chunk(frame) else { return }
         applyChunk(chunk, time: frame.time, to: &messages)
     case "user/message":
+        let id = "msg-\(frame.seq)"
+        guard !messages.contains(where: { $0.seq == frame.seq || $0.id == id }) else { return }
         let text = userText(frame.data)
         messages.append(
             HistoryMessage(
-                id: "msg-\(frame.seq)", seq: frame.seq, role: "user", kind: .user, text: text, time: frame.time,
+                id: id, seq: frame.seq, role: "user", kind: .user, text: text, time: frame.time,
                 type: "text"))
     case "tool/call":
+        let id = "tool-\(frame.seq)"
+        guard !messages.contains(where: { $0.seq == frame.seq || $0.id == id }) else { return }
         let data = frame.data.objectValue ?? [:]
         messages.append(
             HistoryMessage(
-                id: "tool-\(frame.seq)", seq: frame.seq, role: "tool_call", kind: .role("tool_call"), time: frame.time,
+                id: id, seq: frame.seq, role: "tool_call", kind: .role("tool_call"), time: frame.time,
                 type: "tool_call", callId: data["callId"]?.stringValue, name: data["name"]?.stringValue,
                 args: argumentsText(data["arguments"]), turn: data["turn"]?.intValue, step: data["step"]?.intValue))
     case "tool/result":
+        let id = "tool-res-\(frame.seq)"
+        guard !messages.contains(where: { $0.seq == frame.seq || $0.id == id }) else { return }
         let data = frame.data.objectValue ?? [:]
         messages.append(
             HistoryMessage(
-                id: "tool-res-\(frame.seq)", seq: frame.seq, role: "tool_result", kind: .role("tool_result"),
+                id: id, seq: frame.seq, role: "tool_result", kind: .role("tool_result"),
                 text: resultText(data), time: frame.time, type: "tool_result", callId: data["callId"]?.stringValue,
                 turn: data["turn"]?.intValue, step: data["step"]?.intValue))
     case "approval/asked", "approval/decided":
@@ -266,12 +272,14 @@ private func applyChanges(_ frame: StreamFrame, to messages: inout [HistoryMessa
         summary.files != nil || summary.total != nil
     else { return }
     let turn = summary.turn ?? frame.data.objectValue?["turn"]?.intValue
+    let id = "changes-\(frame.seq)"
+    if messages.contains(where: { $0.seq == frame.seq || $0.id == id }) { return }
     if let turn, let index = messages.lastIndex(where: { $0.role == "workspace_changes" && $0.turn == turn }) {
         messages.remove(at: index)
     }
     messages.append(
         HistoryMessage(
-            id: "changes-\(frame.seq)", seq: frame.seq, role: "workspace_changes", kind: .role("workspace_changes"),
+            id: id, seq: frame.seq, role: "workspace_changes", kind: .role("workspace_changes"),
             time: frame.time, type: "workspace_changes", turn: turn, changes: summary))
 }
 

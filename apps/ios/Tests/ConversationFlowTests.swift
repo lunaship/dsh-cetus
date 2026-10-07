@@ -49,6 +49,30 @@ import Testing
         #expect(saved.maxSeq == 8)
     }
 
+    @Test func restartSnapshotRecoversEventsMissedWhileOffline() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let box = TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory)
+        let old = HistoryMessage(id: "old", role: "user", kind: .user, text: "旧消息")
+        try box.write(
+            hostID: "host", sessionID: "session",
+            plaintext: try TranscriptSnapshotCoding.encode(
+                TranscriptSnapshotRecord(
+                    messages: [old], stats: nil, maxSeq: 4, title: "发布说明", workspace: "/work/app", running: false,
+                    step: nil)))
+        let recovered = HistoryMessage(id: "new", role: "assistant", kind: .role("assistant"), text: "重启期间产生")
+        let service = RecordingRestartService(
+            HistoryResponse(messages: [old, recovered], maxSeq: 9))
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session", seed: ConversationSeed(title: "发布说明", workspace: "/work/app"),
+            service: service, box: box, autostart: true)
+        await model.start()
+        #expect(model.messages.map { $0.id } == ["old", "new"])
+        #expect(await service.openedAfter == [9])
+        #expect(!model.loadFailed)
+    }
+
     @Test func unauthorizedKeepsSnapshot() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString, isDirectory: true)
@@ -120,6 +144,23 @@ import Testing
         #expect(await service.sent.count == 1)
     }
 
+    @Test func disconnectedWritesAttemptOnceAndKeepDraft() async {
+        let service = FailingPromptService()
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session",
+            service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: URL(fileURLWithPath: "/tmp")),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+        await model.retryConnection()
+        #expect(model.loadFailed)
+        await #expect(throws: ConversationServiceError.offline) {
+            try await model.serviceSend("继续", images: [])
+        }
+        #expect(await service.attempts == 1)
+        await model.retryConnection()
+        #expect(await service.attempts == 1)
+    }
+
     @Test func subtitleAndActivity() {
         let zh = ConversationCopy(locale: Locale(identifier: "zh-Hans"))
         let en = ConversationCopy(locale: Locale(identifier: "en"))
@@ -132,6 +173,16 @@ import Testing
 }
 
 private struct IdleConversationService: ConversationServing {}
+
+private actor FailingPromptService: ConversationServing {
+    private(set) var attempts = 0
+
+    func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
+        _ = (sessionID, text, images)
+        attempts += 1
+        throw ConversationServiceError.offline
+    }
+}
 
 private actor RecordingPromptService: ConversationServing {
     private(set) var sent: [(text: String, images: [PromptImage])] = []
@@ -151,6 +202,26 @@ private struct ProbePrompt: Decodable {
 private func promptImage(from decision: PromptAttachmentDecision) -> PromptImage? {
     if case .image(let image) = decision { return image }
     return nil
+}
+
+private actor RecordingRestartService: ConversationServing {
+    private let response: HistoryResponse
+    private(set) var openedAfter: [Int] = []
+
+    init(_ response: HistoryResponse) {
+        self.response = response
+    }
+
+    func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse {
+        _ = (sessionID, beforeSeq)
+        return response
+    }
+
+    func open(sessionID: String, afterSeq: Int) async throws -> AsyncStream<ConversationSignal> {
+        _ = sessionID
+        openedAfter.append(afterSeq)
+        return AsyncStream { $0.finish() }
+    }
 }
 
 private actor FailingHistory: ConversationServing {

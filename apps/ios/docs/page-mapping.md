@@ -50,12 +50,12 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 
 | v4 | 页面 | iOS 页面 / 组件 / API | 与 Android 差异 | 截图测试 |
 |---|---|---|---|---|
-| 2.1 | 首页 | `NavigationStack` + 大标题；`.navigationSubtitle` 电脑状态；`toolbarTitleMenu`（2.5）；plain `List` 三组；`DLInboxRow`；底栏筛选 / 搜索 /「新任务」（唯一 BrandFill）；`.refreshable` | 无 FAB；搜索在底栏；「允许一次」为 `.bordered`+tint | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading`、`Snapshot_2_1_filtered` |
+| 2.1 | 首页 | 居中电脑名；待处理跨工作区置顶；工作区文件夹默认 3 条；空工作区可新建；底栏搜索 /「新任务」 | 与 Android 同口径；置顶会话不在文件夹重复 | `Snapshot_2_1_inbox_*`、`Snapshot_2_1_loading` |
 | 2.2 | 空态 | `DLEmptyState` +「从一件事开始」三行 | — | `Snapshot_2_2_empty_*`、`Snapshot_2_2_workspace` |
 | 2.3 | 离线 | 顶 `DLBanner` + 重试 / 诊断；批准按钮禁用 | — | `Snapshot_2_3_offline_*` |
 | 2.4 | 搜索 | `.searchable(text:tokens:)`；工作区 token；`.searchSuggestions` | 工作区用 token | `Snapshot_2_4_search_*`、`Snapshot_2_4_suggestions`、`Snapshot_2_4_empty`、`Snapshot_2_4_degraded` |
-| 2.5 | 电脑与工作区 | `toolbarTitleMenu` 两组 | 菜单代替弹层 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived`（静态列表） |
-| 2.6 | 长按 / 左滑 | `contextMenu`；`swipeActions` 归档 / 删除；**审批不滑动** | 多左滑 | `Snapshot_2_6_context_*`、`Snapshot_2_6_delete`、`Snapshot_2_6_rename` |
+| 2.5 | 电脑与工作区 | 右上角「更多」保留电脑切换；设置和已归档也在其中 | 不再使用标题菜单；首页不提供添加工作区 | `Snapshot_2_5_menu`、`Snapshot_2_5_archived` |
+| 2.6 | 长按 / 左滑 | 会话菜单只留删除并二次确认；工作区长按可新建或删除，删除也二次确认 | 首页不再提供归档、分叉和重命名 | `Snapshot_2_6_delete` |
 
 ## 3.x 新任务
 
@@ -74,7 +74,7 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 4.2 | 轮尾 | 改动卡（最多 3 行 + 查看全部）→ 元信息 → 复制 / 重新生成 / 分享 → chip | 查看全部不进入改动页 | `Snapshot_4_2_tail_*` |
 | 4.3 | 待审批 | 对话页底部 `DLComposerView` 切到决策：状态行、问题、命令块、拒绝 / 允许一次；消息流约 42% | 只处理手机接管的最新一条。加号、模型、权限、麦克风没有本项数据，不画 | `Snapshot_4_3_approval_*` |
 | 4.4 | 回答问题 | 同一玻璃容器切到提问。多题翻页和跳过还没接 | 只显示最新一条未终态提问 | `Snapshot_4_4_question_light_zh` |
-| 4.5 / 4.8 | 状态槽 | `DLStatusSlot`；优先级断线 > 待处理 > 目标 > 预览；`scrollEdgeEffectStyle(.soft, for: .top)` | 状态槽无玻璃 | `Snapshot_4_5_status_*`、`Snapshot_4_8_status_*` |
+| 4.5 / 4.8 | 状态槽 | 输入区上沿一行胶囊；目标点击向上展开；优先级断线 > 待处理 > 目标 > 预览，一次只显示一个 | 无玻璃；更高优先级出现时收起目标 | `Snapshot_4_5_status_*`、`Snapshot_4_8_status_*` |
 | 4.6 | 工具过程 | `DLProcessLine` 展开细线步骤 | — | `Snapshot_4_6_process_*` |
 | 4.7 | 轨迹 | push `TrajectoryPage`：搜索、筛选 chip、按轮分组，组头右侧时间次要色 | 改动 / 文件 / 子代理 / 用量 / 预览等菜单项目标页留给后续项 | `Snapshot_4_7_trace_light_zh` |
 | 4.9 | ⋯ 菜单 | `Menu` 两组：查看（改动、文件、轨迹、子代理、用量、预览）/ 操作（目标、定时任务、重命名、分叉、分享）。只有轨迹会 push | 归档 / 删除只在首页。其余目标页留给后续项 | （按钮含在 4.1，不单开基线） |

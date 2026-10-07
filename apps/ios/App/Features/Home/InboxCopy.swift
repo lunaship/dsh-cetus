@@ -62,6 +62,14 @@ enum InboxText: String, Equatable, Sendable {
     case workspaceEmptyTitle
     case workspaceEmptyHint
     case showAll
+    case showAllCount
+    case collapseAll
+    case newHere
+    case ungrouped
+    case more
+    case deleteWorkspace
+    case deleteWorkspaceTitle
+    case deleteWorkspaceMessage
     case computers
     case workspaces
     case allWorkspaces
@@ -99,6 +107,7 @@ enum InboxText: String, Equatable, Sendable {
     case renameFailed
     case approvalFailed
     case deleteFailed
+    case pushMissing
     case shareBody
 
     var fallback: String {
@@ -163,6 +172,14 @@ enum InboxText: String, Equatable, Sendable {
         case .workspaceEmptyTitle: "No tasks in this workspace yet"
         case .workspaceEmptyHint: "Start one here, or switch back to all workspaces"
         case .showAll: "View all"
+        case .showAllCount: "Show all %d"
+        case .collapseAll: "Collapse"
+        case .newHere: "New task here"
+        case .ungrouped: "Ungrouped"
+        case .more: "More"
+        case .deleteWorkspace: "Delete workspace"
+        case .deleteWorkspaceTitle: "Delete workspace?"
+        case .deleteWorkspaceMessage: "Remove %@ from this phone. Sessions stay on the computer."
         case .computers: "Computer"
         case .workspaces: "Workspaces"
         case .allWorkspaces: "All workspaces"
@@ -201,6 +218,7 @@ enum InboxText: String, Equatable, Sendable {
         case .renameFailed: "Couldn't rename"
         case .approvalFailed: "Couldn't send the decision"
         case .deleteFailed: "Couldn't delete"
+        case .pushMissing: "That task is no longer on this computer."
         case .shareBody: "%@\n%@"
         }
     }
