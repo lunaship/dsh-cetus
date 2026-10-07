@@ -216,10 +216,17 @@ import Testing
         // 正确的指纹改成全 0：格式合法但与叶证书不符。
         let wrong = String(repeating: "0", count: 64)
 
+        // 必须**快速失败**，不能把「超时」当成「拒绝」。握手超时是 10 秒；
+        // 若走了超时路径，说明拒绝并没有真的发生，这条断言就形同虚设。
+        let started = Date()
         await #expect(throws: CertificatePinError.self) {
             _ = try await NWRemoteTunnelTransport.openInnerTLS(
                 over: DirectTunnel(port: port), host: "127.0.0.1", expectedFingerprint: wrong)
         }
+        let elapsed = Date().timeIntervalSince(started)
+        #expect(
+            elapsed < NWRemoteTunnelTransport.innerTLSTimeout - 1,
+            "指纹不符应立即被 verify_block 拒绝，而不是拖到握手超时（实际 \(elapsed)s）")
 
         // 关键断言：不是「没崩」，而是服务端**确实没有**完成任何请求。
         #expect(server.completedRequests == 0, "指纹不符时不得建立内层 TLS 会话")
