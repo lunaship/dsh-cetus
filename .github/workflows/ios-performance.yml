@@ -60,6 +60,8 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Generate build metadata
+        run: node scripts/build-metadata.mjs --platform ios
       - name: Generate project
         working-directory: apps/ios
         run: xcodegen generate
