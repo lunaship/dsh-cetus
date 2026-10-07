@@ -160,10 +160,14 @@ const createPanelModule = (require) => {
     .dl-switch input:focus-visible + .dl-switch-track { outline: 2px solid var(--dl-link); outline-offset: 2px; }
 
     /* 连接码 */
-    .dl-pair { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center;
+    .dl-pair { display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
       padding: 16px 0; border-bottom: 0.5px solid var(--dl-line); }
     .dl-qr { appearance: none; cursor: zoom-in; width: 168px; height: 168px; padding: 9px; border-radius: 12px;
       border: 0.5px solid var(--dl-line-strong); background: #ffffff; display: block; transition: transform 0.15s; }
+    .dl-status-line { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 20px; color: var(--dl-text); }
+    .dl-status-line[data-tone="danger"] { color: var(--dl-danger); }
+    .dl-more { margin-top: 8px; }
+    .dl-more > summary { cursor: pointer; font-size: 13px; line-height: 32px; color: var(--dl-text-2); }
     .dl-qr:hover { transform: scale(1.015); }
     .dl-qr:focus-visible { outline: 2px solid var(--dl-link); outline-offset: 2px; }
     .dl-qr img { display: block; width: 100%; height: 100%; }
@@ -269,22 +273,11 @@ const createPanelModule = (require) => {
 
   // ─── 头部 ────────────────────────────────────────────────────────────────
 
-  function headerStatus({ devices, workspaceApprovals, remote }) {
-    const waiting = (devices ?? []).filter((d) => d.status === 'pending').length + (workspaceApprovals ?? []).length
-    if (waiting) return { tone: 'warn', text: `${waiting} 件待处理` }
-    if (remote?.state === 'ready') return { tone: 'ok', text: '局域网 + 远程' }
-    if (remote?.state === 'connecting') return { tone: 'warn', live: true, text: '远程连接中' }
-    if (remote?.state === 'error') return { tone: 'danger', text: '远程出错' }
-    return { tone: 'ok', text: '局域网' }
-  }
-
-  function Header({ status }) {
+  function Header() {
     return h('div', { className: 'dl-head' },
       h('div', null,
         h('h2', { className: 'dl-head-title' }, '手机连接'),
-        h('p', { className: 'dl-head-sub' }, '用 DeepLinks App 扫码，在手机上使用这台电脑'),
       ),
-      status ? h('span', { className: 'dl-pill', role: 'status' }, h(Dot, { tone: status.tone, live: status.live }), status.text) : null,
     )
   }
 
@@ -325,27 +318,16 @@ const createPanelModule = (require) => {
 
   // ─── 连接码 ──────────────────────────────────────────────────────────────
 
-  function PairAddresses({ infos }) {
-    const items = (Array.isArray(infos) ? infos : []).filter((item) => item?.label && item.category !== 'loopback')
-    if (!items.length) return null
-    return h('div', { className: 'dl-routes' },
-      items.map((item, index) => h('span', { key: item.url || String(index), className: 'dl-route' },
-        item.category === 'tailnet' ? `${item.label} · Tailscale` : item.label,
-      )),
-    )
+  function connectionLine(remote) {
+    const summary = remoteSummary(remote)
+    if (!remote || remote.state === 'off') return { tone: 'idle', text: '未开启' }
+    if (remote.state === 'connecting' || summary.tone === 'warn') return { tone: 'warn', live: true, text: summary.text || '连接中' }
+    if (remote.state === 'ready') return { tone: 'ok', text: '已就绪' }
+    return { tone: 'danger', text: summary.text || '失败' }
   }
 
-  function pairHint(remote) {
-    if (remote?.state === 'ready') return '扫一次就行：在家自动走局域网，外出自动走远程。'
-    if (remote?.state === 'connecting') return '远程连上后，这张码会自动带上远程能力。'
-    return '手机需和电脑在同一网络。开启下方「远程连接」后，这张码在外面也能用。'
-  }
-
-  function PairGroup({ info, remote, onExpired, onRequireConfirm }) {
-    const [copied, setCopied] = React.useState(false)
+  function PairGroup({ info, remote, onExpired }) {
     const [zoom, setZoom] = React.useState(false)
-    const copyTimer = React.useRef(0)
-    React.useEffect(() => () => clearTimeout(copyTimer.current), [])
     const now = useNow(Boolean(info.expiresAt))
     const left = info.expiresAt ? info.expiresAt - now : null
     const expired = left !== null && left <= 0
@@ -356,45 +338,20 @@ const createPanelModule = (require) => {
     // 远程状态变化时换图：同一张配对码，就绪前后编进去的内容不同
     const stamp = `${code}:${info.expiresAt ?? ''}:${remoteReady ? 'r' : 'l'}`
     const src = `/dsh-link/qr.png?v=${encodeURIComponent(stamp)}`
-    const copy = async () => {
-      try {
-        await navigator.clipboard.writeText(code)
-        setCopied(true)
-        clearTimeout(copyTimer.current)
-        copyTimer.current = setTimeout(() => setCopied(false), 1800)
-      } catch {}
-    }
-    const remoteRoute = remoteSummary(remote)
+    const line = connectionLine(remote)
 
-    return h(Group, { title: '连接码' },
+    return h(React.Fragment, null,
       h('div', { className: 'dl-pair' },
         h('button', { type: 'button', className: 'dl-qr', onClick: () => setZoom(true), title: '点击放大', 'aria-label': '放大连接码' },
           h('img', { key: stamp, src, alt: '手机连接码' })),
-        h('div', { className: 'dl-pair-meta' },
-          h('div', { className: 'dl-code-row' },
-            h('span', { className: 'dl-code', 'aria-label': `配对码 ${code.split('').join(' ')}` }, formatCode(code)),
-            code ? h('button', { type: 'button', className: 'dl-copy' + (copied ? ' is-done' : ''), onClick: copy }, copied ? '已复制' : '复制') : null,
-          ),
-          h('div', { className: 'dl-routes' },
-            h('span', { className: 'dl-route' }, h(Dot, { tone: 'ok' }), '局域网'),
-            h('span', { className: 'dl-route', 'data-off': remoteRoute.tone === 'idle' ? '' : undefined },
-              h(Dot, { tone: remoteRoute.tone, live: remoteRoute.tone === 'warn' }),
-              remoteReady ? '远程' : remote?.state === 'off' || !remote ? '远程未开启' : '远程连接中'),
-          ),
-          h(PairAddresses, { infos: info.infos }),
-          h('p', { className: 'dl-pair-hint' },
-            pairHint(remote),
-            left !== null ? h('span', { className: 'dl-expiry' }, ` ${expired ? '正在换新码…' : `${formatCountdown(left)} 后换新码。`}`) : null,
-          ),
+        h('div', { className: 'dl-status-line', 'data-tone': line.tone, role: 'status' },
+          h(Dot, { tone: line.tone === 'idle' ? undefined : line.tone, live: line.live }),
+          line.text,
         ),
+        left !== null ? h('p', { className: 'dl-pair-hint' },
+          h('span', { className: 'dl-expiry' }, expired ? '正在换新码…' : `${formatCountdown(left)} 后换新码`),
+        ) : null,
       ),
-      h(Row, {
-        title: '新手机要在这里批准',
-        desc: remoteReady || remote?.state === 'connecting'
-          ? '开启后，扫码的手机要在这台电脑上点「批准」才能用。经远程首次配对的手机始终需要批准。'
-          : '开启后，扫码的手机要在这台电脑上点「批准」才能用。',
-        actions: h(Switch, { checked: info.requireConfirm, onChange: onRequireConfirm, label: '新手机要在这里批准' }),
-      }),
       zoom ? h('div', { className: 'dl-zoom', role: 'button', tabIndex: -1, onClick: () => setZoom(false) },
         h('img', { src, alt: '手机连接码' }),
         h('span', null, '此码可添加新设备，别截图外传 · 点任意处关闭')) : null,
@@ -441,7 +398,7 @@ const createPanelModule = (require) => {
     return `没通：${stage ?? '未知原因'}`
   }
 
-  function RemoteGroup({ remote, actions }) {
+  function RemoteGroup({ info, remote, actions, extra }) {
     const [editing, setEditing] = React.useState(false)
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState('')
@@ -486,47 +443,42 @@ const createPanelModule = (require) => {
       try { await actions.remoteReset() } finally { setBusy(false) }
     }
 
-    let desc
-    if (!on) {
-      desc = '在外面也能用手机连这台电脑。电脑和手机都只向外连中继，中继看不到内容。'
-    } else {
-      const where = remote.official ? `${remote.host}（官方）` : remote.host
-      const count = remote.state === 'ready' && remote.remoteDevices ? `${remote.remoteDevices} 台手机可远程` : null
-      desc = joinParts([h(React.Fragment, null, h(Dot, { tone: summary.tone, live: summary.tone === 'warn' }), ' ', summary.text), where, count])
-    }
-
-    return h(Group, { title: '远程连接' },
+    const failed = on && (remote.state === 'error' || summary.tone === 'danger')
+    return h(React.Fragment, null,
       h(Row, {
         title: '外出时也能连',
-        desc,
-        descTone: on && summary.tone === 'danger' ? 'danger' : null,
-        actions: h(Switch, { checked: on, disabled: busy, onChange: toggle, label: '远程连接' }),
+        desc: failed ? summary.text : null,
+        descTone: failed ? 'danger' : null,
+        actions: h(Switch, { checked: on, disabled: busy, onChange: toggle, label: '外出时也能连' }),
       }),
-      !on && !editing ? h('div', { className: 'dl-form' },
-        h('p', { className: 'dl-note' }, '默认使用官方中继 relay.dshlinks.com，可以换成自己搭的。 ',
-          h('button', { type: 'button', className: 'dl-link', onClick: () => setEditing(true) }, '用自建中继'))) : null,
-      editing ? h(RelayForm, {
-        remote, busy, error,
-        submitLabel: on ? '更换并连接' : '开启',
-        onSubmit: enable,
-        onCancel: () => { setEditing(false); setError('') },
-      }) : null,
       !editing && error ? h('p', { className: 'dl-banner is-danger', role: 'alert' }, error) : null,
       remote.replaced ? h('p', { className: 'dl-banner', role: 'alert' },
         '另一处正以这台电脑的身份连着中继，常见于两个 DSH 配置共用了插件状态目录。给其中一个配置单独设置 stateDir 即可。') : null,
-      on && !editing ? h(React.Fragment, null,
+      h('details', { className: 'dl-more' },
+        h('summary', null, '更多'),
         h(Row, {
-          title: '中继服务器',
-          desc: remote.endpoint,
+          title: '新手机要在这里批准',
+          desc: '开启后，扫码的手机要在这台电脑上点「批准」才能用。经远程首次配对的手机始终需要批准。',
+          actions: h(Switch, { checked: info.requireConfirm, onChange: onRequireConfirm, label: '新手机要在这里批准' }),
+        }),
+        editing ? h(RelayForm, {
+          remote, busy, error,
+          submitLabel: '更换并连接',
+          onSubmit: enable,
+          onCancel: () => { setEditing(false); setError('') },
+        }) : h(Row, {
+          title: '自建中继',
+          desc: remote.endpoint || '未设置',
           actions: [
             h('button', { key: 't', type: 'button', className: 'dl-btn is-quiet', disabled: testing || remote.state !== 'ready', onClick: runTest }, testing ? '测试中…' : '测试'),
             h('button', { key: 'e', type: 'button', className: 'dl-btn', disabled: busy, onClick: () => { setEditing(true); setError(''); setTest(null) } }, '更换'),
           ],
         }, test ? h('div', { className: 'dl-row-desc' + (test.ok ? '' : ' is-danger'), role: 'status' },
           h(Dot, { tone: test.ok ? 'ok' : 'danger' }), testResultText(test)) : null),
-        h('p', { className: 'dl-foot' }, '怀疑远程凭据泄露？',
+        h('p', { className: 'dl-foot' },
           h('button', { type: 'button', className: 'dl-link is-danger', disabled: busy, onClick: reset }, '重置远程身份')),
-      ) : null,
+        extra,
+      ),
     )
   }
 
@@ -542,14 +494,13 @@ const createPanelModule = (require) => {
 
   function DevicesGroup({ devices, remote, actions }) {
     const paired = (devices ?? []).filter((d) => d.status !== 'pending')
+    if (!paired.length) return null
     return h(Group, {
       title: '已配对手机',
-      count: paired.length || null,
+      count: paired.length,
       action: paired.length > 1 ? h('button', { type: 'button', className: 'dl-btn is-quiet', onClick: actions.revokeAll }, '全部吊销') : null,
     },
-      paired.length === 0
-        ? h('div', { className: 'dl-empty' }, '还没有配对的手机。用 DeepLinks App 扫上面的码。')
-        : paired.map((d) => h(Row, {
+      paired.map((d) => h(Row, {
             key: d.deviceId || d.name,
             title: d.name,
             desc: joinParts([...deviceRoute(d, remote), seenLabel(d.lastSeenAt)]),
@@ -832,11 +783,6 @@ const createPanelModule = (require) => {
     )
   }
 
-  function ExposureNote({ exposure }) {
-    if (exposure?.level !== 'untrusted' || !exposure.warning) return null
-    return h('p', { className: 'dl-banner is-danger' }, exposure.warning)
-  }
-
   // ─── 数据 ────────────────────────────────────────────────────────────────
 
   async function postJson(path, body) {
@@ -927,19 +873,22 @@ const createPanelModule = (require) => {
     if (!info) return h('div', { className: 'dl-status' }, '加载中…')
     return h(React.Fragment, null,
       h(AttentionGroup, { devices, workspaceApprovals, actions }),
-      h(PairGroup, { info, remote, onExpired: load, onRequireConfirm: actions.setRequireConfirm }),
-      h(RemoteGroup, { remote, actions }),
+      h(PairGroup, { info, remote, onExpired: load }),
+      h(RemoteGroup, {
+        info, remote, actions,
+        extra: h(React.Fragment, null,
+          h(DiagnosticsGroup, {}),
+          h(PreviewGroup, { previews, detected, actions }),
+        ),
+      }),
       h(DevicesGroup, { devices, remote, actions }),
-      h(PreviewGroup, { previews, detected, actions }),
-      h(DiagnosticsGroup, {}),
-      h(ExposureNote, { exposure: info.exposure }),
     )
   }
 
   function Panel({ active }) {
     const pair = usePanelData(active)
     return h(React.Fragment, null,
-      h(Header, { status: pair.info ? headerStatus(pair) : null }),
+      h(Header, {}),
       h(PanelBody, pair),
     )
   }
