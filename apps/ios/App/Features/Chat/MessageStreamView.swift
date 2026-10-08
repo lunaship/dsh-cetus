@@ -135,9 +135,17 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
     private var lastIDs: [String] = []
     // MARK: - C04 分页
     var onReachTop: (() -> Void)? = nil
-    var hasOlder = false
-    var olderFailed = false
-    var loadingOlder = false
+    var hasOlder = false {
+        didSet { updateOlderControl() }
+    }
+    var olderFailed = false {
+        didSet { updateOlderControl() }
+    }
+    var loadingOlder = false {
+        didSet { updateOlderControl() }
+    }
+    /// C04 要求 5：失败就地重试；加载中给状态。自动分页失败后不再自动重试，只留这个手动入口。
+    private let olderButton = UIButton(configuration: .bordered())
     /// C04：上翻保持锚点期间收到了新消息 —— 通知 SwiftUI 显示"回到最新"入口。
     var onNewMessagesWhileHeld: (() -> Void)? = nil
     /// 接近顶部只触发一次，避免连续滚动时重复请求。
@@ -166,6 +174,20 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         // UIKit-backed message flow uses the same iOS 26 system soft edge as SwiftUI.
         if usesSoftTopEdge { collectionView.topEdgeEffect.style = .soft }
         view.addSubview(collectionView)
+        olderButton.translatesAutoresizingMaskIntoConstraints = false
+        olderButton.accessibilityIdentifier = "load-older"
+        olderButton.addAction(
+            UIAction { [weak self] _ in
+                guard let self, !self.loadingOlder else { return }
+                self.onReachTop?()
+            }, for: .touchUpInside)
+        view.addSubview(olderButton)
+        NSLayoutConstraint.activate([
+            olderButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            olderButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            olderButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
+        updateOlderControl()
         let registration = UICollectionView.CellRegistration<MeasuredCell, String> { [weak self] cell, _, id in
             guard let self, let row = self.rowsByID[id] else { return }
             let chrome = self.chrome
@@ -226,6 +248,11 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
                 snapshot.reconfigureItems(changed)
             }
         }
+        // C04 要求 4：前插更早的消息前记下首个可见消息与它的相对偏移。
+        let prepended =
+            !chrome.staticSnapshot && !previousIDs.isEmpty && ids.first != previousIDs.first
+            && previousIDs.first.map { rowsByID[$0] != nil } == true
+        let anchor = prepended ? captureAnchor() : nil
         previous = rowsByID
         previousIDs = ids
         if chrome.staticSnapshot {
@@ -236,6 +263,7 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
             dataSource.apply(snapshot, animatingDifferences: animated && !changed.isEmpty && !chromeChanged)
         }
         collectionView.layoutIfNeeded()
+        if let anchor, restore(anchor) { return }
         guard !chrome.staticSnapshot, pinsToTail else { return }
         // C04：上翻读历史时保持锚点 —— 这是旧实现最大的问题
         // （无条件 scrollToItem 会把用户拽回底部）。
@@ -252,6 +280,33 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         else { return }
         collectionView.scrollToItem(at: indexPath, at: .bottom, animated: false)
         didPin = true
+    }
+
+    /// 首个可见消息及其顶部相对可视区的偏移。
+    private func captureAnchor() -> ScrollAnchor? {
+        guard let collectionView, let dataSource else { return nil }
+        let offset = collectionView.contentOffset.y
+        let visible = collectionView.indexPathsForVisibleItems.sorted().compactMap {
+            path -> (id: String, top: Double, height: Double)? in
+            guard let id = dataSource.itemIdentifier(for: path),
+                let frame = collectionView.layoutAttributesForItem(at: path)?.frame
+            else { return nil }
+            return (id, Double(frame.minY - offset), Double(frame.height))
+        }
+        return AnchorResolver.capture(visible: visible)
+    }
+
+    /// 前插后把锚点消息放回原来的位置，用户正在读的那条不跳走。
+    private func restore(_ anchor: ScrollAnchor) -> Bool {
+        guard let collectionView, let dataSource,
+            let path = dataSource.indexPath(for: anchor.messageID),
+            let frame = collectionView.layoutAttributesForItem(at: path)?.frame
+        else { return false }
+        let newTop = Double(frame.minY - collectionView.contentOffset.y)
+        let delta = AnchorResolver.compensation(anchor: anchor, newTop: newTop)
+        guard abs(delta) > 0.5 else { return true }
+        collectionView.contentOffset.y += CGFloat(delta)
+        return true
     }
 
     /// 依据当前滚动位置更新"是否上翻"。
@@ -275,7 +330,7 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
     /// 接近顶部触发一次分页（方案 §8 要求 5）。失败时保留手动入口，
     /// 由 `olderFailed` 控制是否显示重试。
     private func maybeLoadOlder() {
-        guard hasOlder, !loadingOlder, !didRequestTopPage else { return }
+        guard hasOlder, !loadingOlder, !olderFailed, !didRequestTopPage else { return }
         guard let collectionView, collectionView.contentSize.height > 1 else { return }
         let distanceToTop = collectionView.contentOffset.y
         // 距顶部一屏内就预取，用户滚到顶时内容已就位。
@@ -284,6 +339,23 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         onReachTop?()
         // 一次分页完成后解除，允许下一次继续翻页。
         DispatchQueue.main.async { [weak self] in self?.didRequestTopPage = false }
+    }
+
+    /// 更早消息入口：失败 → 重试；加载中 → 忙碌态；其余隐藏（自动分页负责）。
+    private func updateOlderControl() {
+        guard isViewLoaded else { return }
+        let visible = hasOlder && !chrome.staticSnapshot && (olderFailed || loadingOlder)
+        olderButton.isHidden = !visible
+        guard visible else { return }
+        var config = UIButton.Configuration.bordered()
+        config.cornerStyle = .capsule
+        config.showsActivityIndicator = loadingOlder
+        config.title = chrome.copy.text(loadingOlder ? .loadOlder : .loadOlderFailed)
+        config.subtitle = loadingOlder ? nil : chrome.copy.text(.retry)
+        config.image = loadingOlder ? nil : UIImage(systemName: "arrow.clockwise")
+        config.imagePadding = 6
+        olderButton.configuration = config
+        olderButton.isEnabled = !loadingOlder
     }
 
     /// 显式回到最新（点了"有新内容"入口，或自己发完消息）。

@@ -3,7 +3,7 @@ import Foundation
 
 /// 多题草稿与一次提交（A3.6 / A3.11）。对齐 Android `QuestionAnswers.kt`：
 /// 只展示并回答 payload 里的题，可选可跳过，最终一次提交 `{ answers: [...] }`。
-public struct QuestionDraft: Equatable, Sendable {
+public struct QuestionDraft: Codable, Equatable, Sendable {
     public var selected: [String]
     public var custom: String
 
@@ -180,5 +180,47 @@ public struct QuestionForm: Equatable, Sendable {
 
     private static func key(_ question: ClarifyingQuestion, at index: Int) -> String {
         questionID(question, at: index)
+    }
+
+    /// 当前题的自由回答。与普通消息草稿完全分开（C06 要求 10.2.6）。
+    public var currentCustom: String {
+        current.map { draft(for: $0).custom } ?? ""
+    }
+
+    /// 落盘用的快照：按 rpcID 归属，每题草稿按题目 ID 存（C06 要求 10.2.4）。
+    public func snapshot(rpcID: String) -> QuestionFormSnapshot {
+        QuestionFormSnapshot(rpcID: rpcID, index: index, drafts: drafts)
+    }
+
+    /// 只恢复同一个问题请求的草稿；rpcID 不符（已换题）一律丢弃。
+    public mutating func restore(_ snapshot: QuestionFormSnapshot?, rpcID: String) {
+        guard let snapshot, snapshot.rpcID == rpcID else { return }
+        drafts = snapshot.drafts
+        index = questions.isEmpty ? 0 : min(max(0, snapshot.index), questions.count - 1)
+    }
+}
+
+/// 问题回答草稿的落盘形状。存进会话的 answer 槽位，不碰普通消息草稿。
+public struct QuestionFormSnapshot: Codable, Equatable, Sendable {
+    public var rpcID: String
+    public var index: Int
+    public var drafts: [String: QuestionDraft]
+
+    public init(rpcID: String, index: Int, drafts: [String: QuestionDraft]) {
+        self.rpcID = rpcID
+        self.index = index
+        self.drafts = drafts
+    }
+
+    /// 没有任何内容时返回空串：草稿仓库把空串当删除。
+    public var encoded: String {
+        let hasContent = drafts.values.contains { !$0.selected.isEmpty || !$0.custom.isEmpty }
+        guard hasContent, let data = try? JSONEncoder().encode(self) else { return "" }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    public static func decode(_ text: String) -> QuestionFormSnapshot? {
+        guard !text.isEmpty else { return nil }
+        return try? JSONDecoder().decode(QuestionFormSnapshot.self, from: Data(text.utf8))
     }
 }

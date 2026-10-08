@@ -23,6 +23,8 @@ struct ConversationBar: UIViewRepresentable {
     var placeholder = ""
     /// C06：请求已被其他设备处理 → 决策面板显示"已处理"，不给成功触感。
     var decisionHandled = false
+    /// C06：审批 / 回答提交在途时决策按钮不可点，防止重复提交。
+    var decisionBusy = false
 
     func makeUIView(context: Context) -> DLComposerView {
         let view = DLComposerView(sendTitle: copy.text(.send))
@@ -59,6 +61,7 @@ struct ConversationBar: UIViewRepresentable {
         view.isSending = isSending
         view.placeholder = placeholder
         let inDecision = decision != nil
+        view.isEnabled = !(inDecision && decisionBusy)
         let key = ObjectIdentifier(view)
         let wasInDecision = Self.lastMode[key] ?? false
         if let decision {

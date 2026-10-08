@@ -231,6 +231,12 @@ enum ChatText: String {
     case decisionAlreadyHandled
     case retry
     case sending
+    /// C06：审批 / 回答提交失败，内容保留。
+    case decisionFailed
+    /// C06：问题自由回答的提示，与普通消息草稿分开。
+    case questionAnswerPlaceholder
+    /// C02：草稿写盘失败。内存副本还在，但不能让用户以为已保存。
+    case draftNotSaved
 
     var fallback: String {
         switch self {
@@ -456,6 +462,9 @@ enum ChatText: String {
         case .decisionAlreadyHandled: "Already handled elsewhere."
         case .retry: "Retry"
         case .sending: "Sending…"
+        case .decisionFailed: "Couldn't submit. Your answer is kept — try again."
+        case .questionAnswerPlaceholder: "Your answer"
+        case .draftNotSaved: "Draft not saved — it stays on screen. Check storage and try again."
         }
     }
 }

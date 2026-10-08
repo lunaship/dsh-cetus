@@ -400,7 +400,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         field.isEditable = isEnabled
         field.isSelectable = isEnabled
         field.textColor = isEnabled ? DLUIKitColor.label : DLUIKitColor.tertiaryLabel
-        sendButton.isEnabled = isEnabled
+        sendButton.isEnabled = isEnabled && !isSending
+        sendButton.alpha = isSending ? 0.5 : 1
         attachButton.isHidden = !showsAttachButton
     }
 

@@ -424,6 +424,29 @@ final class ConversationModel {
         loadChanges(seq: seq)
     }
 
+    /// C08：当前对话里有改动的轮次（按显示顺序）。
+    var changesTurnSeqs: [Int] { ChangesTurnNavigator.seqs(in: rows) }
+    var changesPreviousSeq: Int? {
+        ChangesTurnNavigator.previous(of: changesSeq ?? changesRequest, in: changesTurnSeqs)
+    }
+    var changesNextSeq: Int? {
+        ChangesTurnNavigator.next(of: changesSeq ?? changesRequest, in: changesTurnSeqs)
+    }
+
+    /// 切到上一轮 / 下一轮。旧对比不属于新轮次，切换时丢弃。
+    func viewAdjacentChanges(forward: Bool) {
+        guard let target = forward ? changesNextSeq : changesPreviousSeq, !changesLoading else { return }
+        fileDiffs = [:]
+        viewChanges(seq: target)
+    }
+
+    /// C08：“就这些改动提问”的引用文本；`index` 为 nil 时引用本轮全部文件。
+    func changesAskReference(index: Int? = nil) -> String {
+        let files = changes?.files ?? []
+        let picked = index.map { files.indices.contains($0) ? [files[$0]] : [] } ?? files
+        return ChangesTurnNavigator.askReference(paths: picked.compactMap { $0.path ?? $0.display })
+    }
+
     /// C08：拉取改动摘要与（可选）对比。失败时保留旧的，可重试。
     private func loadChanges(seq: Int?) {
         guard let seq, !changesLoading else { return }

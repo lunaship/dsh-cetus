@@ -197,7 +197,8 @@ public struct ComposerDraftStore: Sendable {
 
     /// 旧实现把明文 txt 直接放在以 host 摘要命名的目录里；新草稿换到 `current/`，
     /// 两边隔离，旧文件不会被当成新草稿，新草稿也不会被当成待认领的孤儿。
-    private func legacyDirectory(hostID: String) -> URL {
+    /// 暴露给单测：用来铺一份旧版本遗留的明文草稿。
+    func legacyDirectory(hostID: String) -> URL {
         directory
             .appendingPathComponent(digest(hostID), isDirectory: true)
             .appendingPathComponent("legacy", isDirectory: true)

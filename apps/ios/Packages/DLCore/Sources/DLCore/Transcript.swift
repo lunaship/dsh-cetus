@@ -191,6 +191,40 @@ public enum TranscriptRow: Equatable, Sendable, Identifiable {
     }
 }
 
+/// C08：改动页的轮次导航。只在已加载的对话里有改动的轮次之间切换，不猜不存在的轮。
+public enum ChangesTurnNavigator {
+    /// 按显示顺序列出有改动卡的 seq（去重）。
+    public static func seqs(in rows: [TranscriptRow]) -> [Int] {
+        var seen = Set<Int>()
+        return rows.compactMap { row -> Int? in
+            guard case .tail(let tail) = row, tail.showsCard, let seq = tail.changesSeq, seen.insert(seq).inserted
+            else { return nil }
+            return seq
+        }
+    }
+
+    public static func previous(of seq: Int?, in seqs: [Int]) -> Int? {
+        guard let seq, let index = seqs.firstIndex(of: seq), index > 0 else { return nil }
+        return seqs[index - 1]
+    }
+
+    public static func next(of seq: Int?, in seqs: [Int]) -> Int? {
+        guard let seq, let index = seqs.firstIndex(of: seq), index + 1 < seqs.count else { return nil }
+        return seqs[index + 1]
+    }
+
+    /// “就这些改动提问”：生成引用插入草稿，不自动发送。路径用 `@"..."` 引用形式。
+    public static func askReference(paths: [String]) -> String {
+        paths.filter { !$0.isEmpty }.map { "@\"\($0)\"" }.joined(separator: " ")
+    }
+
+    /// 把引用追加到已有草稿后面，绝不覆盖用户已写的内容。
+    public static func appending(_ reference: String, to draft: String) -> String {
+        guard !reference.isEmpty else { return draft }
+        return draft.isEmpty ? reference : draft + "\n" + reference
+    }
+}
+
 public struct TranscriptSnapshotRecord: Codable, Equatable, Sendable {
     public var version: Int
     public var messages: [HistoryMessage]

@@ -2160,6 +2160,40 @@
         }
       }
     },
+    "chat.questionAnswerPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的回答"
+          }
+        }
+      }
+    },
+    "chat.decisionFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't submit. Your answer is kept — try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提交失败，内容已保留，请重试。"
+          }
+        }
+      }
+    },
     "chat.questionSkip": {
       "extractionState": "manual",
       "localizations": {

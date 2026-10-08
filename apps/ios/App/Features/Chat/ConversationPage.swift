@@ -98,6 +98,9 @@ struct ConversationPage: View {
     var presentChanges = false
     @State var statusExpanded = false
     @State private var draft = ""
+    /// 草稿写入的合并入口（C02 要求 6）：不是每个字符都同步写盘。
+    /// 截图路径用 `.disabled` 空壳，不碰开发者的真实草稿。
+    @State private var drafts = ComposerDraftController.disabled
     @State private var questionForm = QuestionForm(questions: [])
     @State private var questionRPC: String?
     @State private var decisionPulse = 0
@@ -123,6 +126,14 @@ struct ConversationPage: View {
     // MARK: - C03 提交状态
     /// 当前 draft 的修订号：每次用户编辑都会前进，用来区分"提交的那份"与"提交期间新写的"。
     @State private var draftRevision = 0
+    /// 写盘失败要提示：内存副本还在，但不能让用户以为已保存（C02 要求 6）。
+    @State private var draftWriteFailed = false
+    /// 问题自由回答的独立输入框（C06）：不再复用正文 `draft`，
+    /// 否则切题 / 提交会把用户正在写的正文一起冲掉。
+    @State private var answerText = ""
+    /// 决策（审批 / 问题提交）在途锁，避免重复点击（C06）。
+    @State private var decisionBusy = false
+    @State private var decisionNotice: ChatText?
     @State private var submission: SubmissionState = .idle
     @State private var submissionNotice: ChatText?
     // MARK: - C04 跟滚
@@ -188,7 +199,15 @@ struct ConversationPage: View {
                 .modifier(
                     ChangesPresentation(
                         regular: sizeClass == .regular, presented: $showChanges, copy: ReviewCopy(locale: locale),
-                        zoom: changesZoom, model: model)
+                        zoom: changesZoom, model: model,
+                        // C08：引用只预填输入区，不自动发送。
+                        onAsk: { reference in
+                            draft = ChangesTurnNavigator.appending(reference, to: draft)
+                            draftRevision += 1
+                            drafts.update(reference, kind: .reference)
+                            drafts.update(draft, kind: .prompt)
+                            showChanges = false
+                        })
                 )
                 .navigationDestination(isPresented: $showFiles) {
                     FilesPage(
@@ -213,10 +232,11 @@ struct ConversationPage: View {
                                 discarded: file.failed, liveShare: !file.failed, copy: ReviewCopy(locale: locale),
                                 onQuote: {
                                     let reference = "@\"\(file.path)\""
-                                    draft += draft.isEmpty ? reference : "\n" + reference
+                                    draft = ChangesTurnNavigator.appending(reference, to: draft)
                                     draftRevision += 1
-                                    draftStore.save(
-                                        ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID), text: draft)
+                                    // 引用走自己的槽位（.reference），不与正文草稿互相覆盖。
+                                    drafts.update(reference, kind: .reference)
+                                    drafts.update(draft, kind: .prompt)
                                     showFilePreview = false
                                     showFiles = false
                                 },
@@ -306,6 +326,44 @@ struct ConversationPage: View {
         return message
     }
 
+    /// 当前审批请求的 id，用于感知"审批出现 / 消失"。
+    private var decisionApprovalID: String? {
+        guard case .approval(let message) = decision else { return nil }
+        return message.approvalId
+    }
+
+    // MARK: - 草稿
+
+    /// 把环境注入的仓库装进控制器。截图路径不装（保持 `.disabled` 空壳）。
+    private func installDrafts() {
+        guard !drafts.isEnabled, !staticSnapshot else { return }
+        drafts = ComposerDraftController(
+            store: draftStore,
+            key: ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID))
+        drafts.onWriteFailure = { _ in draftWriteFailed = true }
+    }
+
+    /// 审批出现 → 冻结正文草稿（不清空）；审批消失 → 解冻并把内存文字补写回去。
+    private func syncDecisionFreeze() {
+        if decisionApprovalID != nil {
+            drafts.freeze(.prompt)
+        } else {
+            drafts.unfreeze(.prompt, text: draft)
+        }
+    }
+
+    /// 问题卡片出现时把回答草稿存进 `.answer` 槽位，与正文 `.prompt` 分开（C02 要求 2）。
+    private func syncQuestionDraft() {
+        if activeQuestion != nil {
+            // 正文草稿冻结：输入区被问题卡片占用，回来的文字仍在内存里（不清空）。
+            drafts.freeze(.prompt)
+            persistQuestionDraft()
+        } else {
+            drafts.unfreeze(.prompt, text: draft)
+            drafts.clear(.answer)
+        }
+    }
+
     private func screen(_ copy: ConversationCopy) -> some View {
         column(copy)
             .modifier(
@@ -326,9 +384,8 @@ struct ConversationPage: View {
                             // 因此与"被提交的那份快照"区分开（C03 要求 2）。
                             if text != draft { draftRevision += 1 }
                             draft = text
-                            draftStore.save(
-                                ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
-                                text: text)
+                            // 只排队，不每个字符写盘（C02 要求 6）。
+                            drafts.update(text, kind: .prompt)
                         },
                         onSend: { Task { await send(copy) } },
                         onEscape: { _ = dismissPresented() },
@@ -340,8 +397,10 @@ struct ConversationPage: View {
                         showsAttach: !staticSnapshot && decision == nil,
                         attachTitle: copy.text(.attachTitle),
                         onAttach: { sheet = .attach },
+                        isSending: submission.busy,
                         placeholder: composerPlaceholderText(copy),
-                        decisionHandled: isDecisionHandled
+                        decisionHandled: isDecisionHandled,
+                        decisionBusy: decisionBusy
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
@@ -350,15 +409,23 @@ struct ConversationPage: View {
             )
             .sensoryFeedback(.success, trigger: decisionPulse)
             .onAppear {
+                installDrafts()
                 if let sharePrefill, sharePrefill.target == .session(model.sessionID) {
                     draft = sharePrefill.text
                     attachments = sharePrefill.images
                     return
                 }
                 guard draft.isEmpty else { return }
-                draft =
-                    draftStore.load(
-                        ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID))?.text ?? ""
+                draft = drafts.restored(.prompt)
+            }
+            // 审批 / 问题卡片出现：冻结正文草稿（不清空，用户回来文字还在）。
+            // 离开时解冻，让内存里的文字继续落盘。
+            .onChange(of: activeQuestion?.questionRpcId) { _, _ in syncQuestionDraft() }
+            .onChange(of: decisionApprovalID) { _, _ in syncDecisionFreeze() }
+            .onDisappear { drafts.flush() }
+            // 进后台前落盘：进程随后可能被回收，草稿必须已经在盘上（C02 要求 6）。
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                drafts.flush()
             }
             .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
             .onChange(of: model.status.goal?.ref?.id) { _, _ in statusExpanded = false }
@@ -368,6 +435,18 @@ struct ConversationPage: View {
         VStack(spacing: 0) {
             if model.loadFailed && model.status.kind != .disconnected {
                 DLBanner(copy.text(.loadFailed), systemImage: "wifi.exclamationmark", iconIsError: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+            }
+            // C06：决策提交失败要显式提示，静默吞掉会让用户以为已批准。
+            if !staticSnapshot, let decisionNotice, decision != nil {
+                DLBanner(copy.text(decisionNotice), systemImage: "exclamationmark.triangle", iconIsError: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+            }
+            // C02 要求 6：写盘失败要提示，内存副本还在但不能当用户已保存。
+            if draftWriteFailed {
+                DLBanner(copy.text(.draftNotSaved), systemImage: "exclamationmark.triangle", iconIsError: true)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
             }
@@ -479,56 +558,90 @@ struct ConversationPage: View {
             }
         } else {
             selected = selected == [value] ? [] : [value]
-            draft = ""
         }
-        questionForm.updateCurrent(selected: selected, custom: draft)
+        questionForm.updateCurrent(selected: selected, custom: answerText)
+        persistQuestionDraft()
     }
 
     private func questionNavigator(_ copy: ConversationCopy) -> some View {
         let count = max(questionForm.questions.count, 1)
-        return HStack {
-            Button(copy.text(.questionPrevious)) { moveQuestion(.previous) }
-                .disabled(!questionForm.canGoBack)
-            if questionForm.canSkip {
-                Button(copy.text(.questionSkip)) { moveQuestion(.skip) }
+        return VStack(spacing: 8) {
+            // C06：自由回答用独立输入框，不再复用正文 draft —— 切题 / 提交
+            // 不会把用户正在写的正文冲掉。
+            TextField(copy.text(.questionAnswerPlaceholder), text: $answerText)
+                .textFieldStyle(.roundedBorder)
+                .frame(minHeight: 44)
+                .onChange(of: answerText) { _, _ in persistQuestionDraft() }
+            HStack {
+                Button(copy.text(.questionPrevious)) { moveQuestion(.previous) }
+                    .disabled(!questionForm.canGoBack || decisionBusy)
+                if questionForm.canSkip {
+                    Button(copy.text(.questionSkip)) { moveQuestion(.skip) }
+                        .disabled(decisionBusy)
+                }
+                Spacer()
+                Text(copy.format(.questionProgress, questionForm.index + 1, count))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.secondaryLabel)
+                Spacer()
+                Button(questionForm.isLast ? copy.text(.send) : copy.text(.questionNext)) {
+                    moveQuestion(questionForm.isLast ? .submit : .next)
+                }
+                .disabled(decisionBusy)
             }
-            Spacer()
-            Text(copy.format(.questionProgress, questionForm.index + 1, count))
-                .font(DLFont.footnote)
-                .foregroundStyle(DLColor.secondaryLabel)
-            Spacer()
-            Button(questionForm.isLast ? copy.text(.send) : copy.text(.questionNext)) {
-                moveQuestion(questionForm.isLast ? .submit : .next)
-            }
+            .frame(minHeight: 44)
         }
-        .frame(minHeight: 44)
+        .padding(.horizontal, 16)
         .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
         .onChange(of: activeQuestion?.questionRpcId) { _, _ in
             if let activeQuestion { syncQuestionForm(activeQuestion) }
         }
     }
 
+    /// 每题草稿存进 `.answer` 槽位，与正文 `.prompt` 分开（C02 要求 2）。
+    private func persistQuestionDraft() {
+        guard let id = activeQuestion?.questionRpcId else { return }
+        questionForm.updateCurrent(custom: answerText)
+        drafts.update(questionForm.snapshot(rpcID: id).encoded, kind: .answer)
+    }
+
     private func syncQuestionForm(_ message: RequestMessage) {
-        guard questionRPC != message.questionRpcId else { return }
-        questionRPC = message.questionRpcId
+        guard let rpcID = message.questionRpcId, questionRPC != rpcID else { return }
+        questionRPC = rpcID
         questionForm = QuestionForm(questions: QuestionForm.questions(from: message.questionPayloadJson))
-        draft = ""
+        // 先恢复这一题上次写到一半的回答，再冻结正文草稿（不清空）。
+        if let saved = QuestionFormSnapshot.decode(drafts.restored(.answer)) {
+            questionForm.restore(saved, rpcID: rpcID)
+        }
+        answerText = questionForm.currentCustom
+        syncQuestionDraft()
     }
 
     private func moveQuestion(_ action: QuestionNavigation) {
-        guard let message = activeQuestion, let id = message.questionRpcId else { return }
+        guard !decisionBusy, let message = activeQuestion, let id = message.questionRpcId else { return }
         syncQuestionForm(message)
-        questionForm.updateCurrent(custom: draft)
+        questionForm.updateCurrent(custom: answerText)
         if action == .submit {
             guard let body = questionForm.move(.submit) else { return }
+            decisionBusy = true
+            decisionNotice = nil
             Task {
-                try? await model.serviceQuestion(rpcID: id, answer: body)
-                draft = ""
+                defer { decisionBusy = false }
+                do {
+                    try await model.serviceQuestion(rpcID: id, answer: body)
+                    // 提交成功才清回答草稿。失败时保留，用户重试不用重打。
+                    drafts.clear(.answer)
+                    answerText = ""
+                    decisionPulse += 1
+                } catch {
+                    decisionNotice = .decisionFailed
+                }
             }
             return
         }
         _ = questionForm.move(action)
-        draft = questionForm.current.flatMap { questionForm.draft(for: $0).custom } ?? ""
+        answerText = questionForm.currentCustom
+        persistQuestionDraft()
     }
 
     private func dismissPresented() -> KeyPress.Result {
@@ -652,9 +765,9 @@ struct ConversationPage: View {
                 {
                     attachments = []
                 }
-                draftStore.save(
-                    ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
-                    text: "")
+                // 正文与引用两个槽位都清掉。
+                drafts.clear(.prompt)
+                drafts.clear(.reference)
             }
         } catch {
             // 结果未知（超时/断连）与确定失败都不清输入，也**不自动重发**。
@@ -692,7 +805,10 @@ struct ConversationPage: View {
         }
     }
     private func decide(allow: Bool) async {
-        guard !staticSnapshot, let decision else { return }
+        guard !staticSnapshot, !decisionBusy, let decision else { return }
+        decisionBusy = true
+        decisionNotice = nil
+        defer { decisionBusy = false }
         do {
             switch decision {
             case .approval(let message):
@@ -701,16 +817,20 @@ struct ConversationPage: View {
             case .question(let message):
                 guard allow, let id = message.questionRpcId else { return }
                 syncQuestionForm(message)
-                questionForm.updateCurrent(custom: draft)
+                questionForm.updateCurrent(custom: answerText)
                 guard let body = questionForm.move(.submit) else { return }
                 try await model.serviceQuestion(rpcID: id, answer: body)
-                draft = ""
+                // 提交成功才清。失败保留，用户重试不用重打。
+                drafts.clear(.answer)
+                answerText = ""
             }
             // C06：另一设备已处理时不给成功触感（方案 §10.1 要求 4）
             if !isDecisionHandled {
                 decisionPulse += 1
             }
-        } catch {}
+        } catch {
+            decisionNotice = .decisionFailed
+        }
     }
 
     @ViewBuilder private func sheetPage(_ item: ChatSurface, copy: ConversationCopy) -> some View {
@@ -901,6 +1021,8 @@ private struct ChangesPresentation: ViewModifier {
     var zoom: Namespace.ID
     /// C08：真实改动数据（从 ConversationModel 取），不再是空集合。
     var model: ConversationModel
+    /// C08：把改动引用并入输入区。只预填，**不自动发送**。
+    var onAsk: (String) -> Void
 
     private var files: [ChangedFile] { model.changes?.files ?? [] }
     private var turn: Int { model.changes?.turn ?? (model.changesSeq ?? 0) }
@@ -909,9 +1031,13 @@ private struct ChangesPresentation: ViewModifier {
         let page = ChangesPage(
             files: files,
             turn: max(1, turn),
-            canPrevious: false,
-            canNext: false,
+            canPrevious: model.changesPreviousSeq != nil,
+            canNext: model.changesNextSeq != nil,
             copy: copy,
+            onAsk: { onAsk(model.changesAskReference()) },
+            onPrevious: { model.viewAdjacentChanges(forward: false) },
+            onNext: { model.viewAdjacentChanges(forward: true) },
+            onAskFile: { onAsk(model.changesAskReference(index: $0)) },
             loading: model.changesLoading,
             error: model.changesError,
             onRetry: { [model] in if let seq = model.changesSeq { model.viewChanges(seq: seq) } },

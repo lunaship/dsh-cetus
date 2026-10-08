@@ -68,6 +68,11 @@ struct ChangesPage: View {
     var canNext: Bool
     var copy: ReviewCopy
     var onAsk: () -> Void = {}
+    /// C08：真实轮次导航（只在对应方向有轮次时可用）。
+    var onPrevious: () -> Void = {}
+    var onNext: () -> Void = {}
+    /// 就单个文件提问（下标）。
+    var onAskFile: (Int) -> Void = { _ in }
     // MARK: - C08 真实数据与动作
     var loading = false
     var error = false
@@ -95,11 +100,21 @@ struct ChangesPage: View {
         .navigationTitle(copy.text(.changesTitle))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // C08：上/下一轮按钮在没有多轮数据时不显示（不画死按钮）。
-            // 当前模型只持有最新一轮 changes，轮次切换需按 seq 分页拉取，
-            // 属 C09 范围，此处不占位。
+            // C08：上/下一轮只在对话里确实有多轮改动时出现；一端到头时置灰。
             ToolbarItem(placement: .principal) {
-                Text(copy.format(.turn, max(1, turn))).font(DLFont.footnote)
+                HStack(spacing: 12) {
+                    if canPrevious || canNext {
+                        Button(action: onPrevious) { Image(systemName: "chevron.left") }
+                            .disabled(!canPrevious || loading)
+                            .accessibilityLabel(copy.text(.previousTurn))
+                    }
+                    Text(copy.format(.turn, max(1, turn))).font(DLFont.footnote)
+                    if canPrevious || canNext {
+                        Button(action: onNext) { Image(systemName: "chevron.right") }
+                            .disabled(!canNext || loading)
+                            .accessibilityLabel(copy.text(.nextTurn))
+                    }
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -155,6 +170,9 @@ struct ChangesPage: View {
             }
         }
         .frame(minHeight: 44, alignment: .top)
+        .contextMenu {
+            Button(copy.text(.askFile), systemImage: "text.bubble") { onAskFile(index) }
+        }
     }
 
     /// 把 ChangesDiffResponse 的 hunk 转成 DiffLine 列表。
