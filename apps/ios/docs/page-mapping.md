@@ -182,4 +182,8 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 6.2 全页 diff | C08 加符号列 + 双列行号（`DiffLine.oldLineNumber/newLineNumber`，推进规则对齐 Android `WorkspaceChanges.kt`）；响应说明行（新建/删除/两侧相同/逐行超时/截断）；上/下一个差异段导航，边界置灰 | `ReviewTests` / `IntralineDiffContractTests` |
 | 7.13 关于 | C16 构建元数据改为可注入（截图固定取值）。**必须可注入的原因**：该页渲染真实 commit/date，否则基线每次提交、每天都会漂移 | `SettingsSnapshotTests` |
 
+截图基线注意：`ios-regen-screenshots.yml` 在 record 模式下**一次不一定覆盖所有变体**
+（record 会让每个快照「失败」，跑批提前结束）。基线更新后请核对目标 suite 的变体数量是否齐全，
+必要时再次触发，直到 CI 的 screenshot check 变绿。
+
 截图路径 ≠ 生产路径的差异说明：`SettingsSnapshotTests` 注入固定 `BuildInfo`，生产走 `BuildInfo.from()`（读 `BuildMetadata.xcconfig`）；`staticSnapshot` 只影响动画与命令块渲染时机，决策栏与 diff 的行为由上述单测覆盖。
