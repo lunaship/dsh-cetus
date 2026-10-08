@@ -791,7 +791,12 @@ private fun openReleasePage(context: android.content.Context, url: String) {
 // ---------- 关于 ----------
 
 @Composable
-internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Unit) {
+internal fun AboutSettings(
+    onOpenLegal: (fileName: String, title: String) -> Unit,
+    // 构建元数据可注入：截图测试固定取值，否则基线会随每次提交/日期变化。
+    buildCommit: String = BuildConfig.BUILD_COMMIT,
+    buildDate: String = BuildConfig.BUILD_DATE,
+) {
     val s = DshS
     val context = androidx.compose.ui.platform.LocalContext.current
     var checkUpdates by androidx.compose.runtime.remember {
@@ -809,7 +814,7 @@ internal fun AboutSettings(onOpenLegal: (fileName: String, title: String) -> Uni
         // 内部构建元数据（方案 §4 C00）：只在这里显示，不进日常首页。
         DshListRow(
             title = s.buildCommit,
-            subtitle = "${BuildConfig.BUILD_COMMIT} · ${BuildConfig.BUILD_DATE}",
+            subtitle = "$buildCommit · $buildDate",
             icon = InfoOutline16,
         )
         DshListRow(

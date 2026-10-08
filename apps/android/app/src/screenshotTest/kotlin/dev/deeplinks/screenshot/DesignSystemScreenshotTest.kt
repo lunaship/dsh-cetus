@@ -1073,7 +1073,9 @@ internal fun SettingsSessionsLightZh() {
 @Preview(name = "settings about dark en", showBackground = true, widthDp = 412, heightDp = 560)
 @Composable
 internal fun SettingsAboutDarkEn() {
-    GroupedWall(dark = true, english = true) { AboutSettings(onOpenLegal = { _, _ -> }) }
+    GroupedWall(dark = true, english = true) {
+        AboutSettings(onOpenLegal = { _, _ -> }, buildCommit = "f85155b6", buildDate = "2026-10-08")
+    }
 }
 
 internal val PreviewHost = Host(
