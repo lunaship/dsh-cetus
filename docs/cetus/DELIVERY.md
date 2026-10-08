@@ -33,7 +33,7 @@ HEAD `a91562ae`：
 | 3 | `PushPayloadReader.openRequest` 不校验 `deviceId` | 空 deviceId 也产出路由请求，与 `sessionId` 的校验不对称。修的是**生产代码**，不是改测试迁就 |
 | 4 | 定位服务器校验错误会**指错题** | 题目 id 常是短串（`a`/`b`），裸 `contains` 让 `"missing_answer"` 里的 `a` 命中题目 a。改为整词匹配 |
 | 5 | 诊断导出会把凭据原样写进剪贴板 | `diagnosticsClipboard` 直通 `.text` 明细。改为**形状白名单 + 敏感形状黑名单**双层（`ghp_`/`sk-`/IPv4/路径/长十六进制） |
-| 6 | 弹层截图用裸 `.image`（逐像素全等），其它套件都用 `precision: 0.995` | accessibility3 大字号下**不可复现**：CI 自己生成的基线，下次 CI 又判不匹配 → 无限"重生成→仍失败"。这是连续多轮 CI 红的真正根因 |
+| 6 | 截图套件容差不一致：`ChatSheetSnapshotTests` 及另外**五套**用裸 `.image`（逐像素全等），其它套件用 `precision: 0.995` | accessibility3 大字号下**不可复现**：CI 自己生成的基线，下次 CI 又判不匹配 → 无限"重生成→仍失败"。这是连续多轮 CI 红的真正根因。**六套已全部统一**，该类抖动应就此消除 |
 | 7 | 关于页截图渲染真实构建 commit/日期 | 基线每次提交、每天漂移。改为 `BuildInfo` 可注入，截图固定取值（Android 侧同一处理） |
 
 本轮（C10）另修 4 项，详见 `docs/cetus/C10-GAP.md`：
