@@ -187,7 +187,11 @@ import XCTest
         let image = chatImage(
             content, appearance: appearance, large: large, increaseContrast: increaseContrast)
         assertSnapshot(
-            of: image, as: .image, named: named ?? (large ? "large" : "default"),
+            // 与其它截图套件同档容差。裸 `.image` 是**逐像素全等**，在大字号 /
+            // 无障碍变体下渲染不稳定：CI 自己生成的基线，下次 CI 又判不匹配，
+            // 于是「重生成 → 仍失败」反复循环（ChatSheetSnapshotTests 同一根因）。
+            of: image, as: .image(precision: 0.995, perceptualPrecision: 0.99),
+            named: named ?? (large ? "large" : "default"),
             testName: snapshotName(scene, appearance: appearance, language: language))
     }
 
