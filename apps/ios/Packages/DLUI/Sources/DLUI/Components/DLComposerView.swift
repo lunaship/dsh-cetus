@@ -14,26 +14,29 @@ public struct ComposerSuggestion: Equatable {
     }
 }
 
-/// 硬件键盘合同需要知道 Shift 是否按下；文本输入路径不暴露修饰键，
-/// 所以在 responder 链上记一下。
-final class DLComposerTextView: UITextView {
-    var shiftIsDown = false
+/// 硬件键盘合同需要追踪 Shift 是否按下（Return 发送、Shift-Return 换行）；
+/// 文本输入路径不暴露修饰键，所以在 responder 链上记一下。
+///
+/// public：编辑器由 `DLComposerView.editor` 以 `UITextView` 暴露，测试需要
+/// cast 回本类型并读写 `shiftIsDown`，所以类与属性都要 public。
+public final class DLComposerTextView: UITextView {
+    public var shiftIsDown = false
 
-    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         if presses.contains(where: { $0.key?.modifierFlags.contains(.shift) == true }) {
             shiftIsDown = true
         }
         super.pressesBegan(presses, with: event)
     }
 
-    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    public override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         if presses.contains(where: { $0.key?.modifierFlags.contains(.shift) == true }) {
             shiftIsDown = false
         }
         super.pressesEnded(presses, with: event)
     }
 
-    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    public override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         if presses.contains(where: { $0.key?.modifierFlags.contains(.shift) == true }) {
             shiftIsDown = false
         }
