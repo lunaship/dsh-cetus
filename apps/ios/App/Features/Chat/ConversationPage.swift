@@ -724,14 +724,7 @@ struct ConversationPage: View {
 
     /// 失败文案：未知结果要明说"不自动重发"，别让用户以为没发出去而重复点。
     private func submissionNoticeText(_ copy: ConversationCopy) -> String {
-        switch submission {
-        case .failedBeforeAccept(_, let message):
-            message.isEmpty ? copy.text(.sendFailedKeepDraft) : message
-        case .outcomeUnknown:
-            copy.text(.sendOutcomeUnknown)
-        default:
-            copy.text(.sendFailedKeepDraft)
-        }
+        copy.text(submissionNotice ?? .sendFailedKeepDraft)
     }
 
     private func send(_ copy: ConversationCopy) async {
@@ -771,30 +764,13 @@ struct ConversationPage: View {
             }
         } catch {
             // 结果未知（超时/断连）与确定失败都不清输入，也**不自动重发**。
-            let timedOut = isTimeoutLike(error)
+            let failure = SubmissionFailure.classify(error)
             submission =
-                timedOut
+                failure == .outcomeUnknown
                 ? .outcomeUnknown(revision: snapshot.revision)
-                : .failedBeforeAccept(
-                    revision: snapshot.revision,
-                    message: error.localizedDescription)
-            submissionNotice = timedOut ? .sendOutcomeUnknown : .sendFailedKeepDraft
+                : .failedBeforeAccept(revision: snapshot.revision, message: "")
+            submissionNotice = failure.copyKey
         }
-    }
-
-    /// 超时/连接中断这类"发出去了但不知道结果"的错误。
-    /// 与"确定没发出"（连不上、被拒）区分开——前者不能自动重发，否则可能重复提交。
-    private func isTimeoutLike(_ error: Error) -> Bool {
-        let ns = error as NSError
-        if ns.domain == NSURLErrorDomain {
-            return [
-                NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost,
-                NSURLErrorNotConnectedToInternet,
-            ].contains(ns.code)
-        }
-        let text = error.localizedDescription.lowercased()
-        return text.contains("timeout") || text.contains("timed out")
-            || text.contains("connection lost")
     }
 
     /// C09：打开会话工作区文件 → 下载，按类型展示；失败给说明不留无效链接。

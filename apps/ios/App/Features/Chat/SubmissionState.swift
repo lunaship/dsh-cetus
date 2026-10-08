@@ -1,3 +1,4 @@
+import DLNet
 import Foundation
 
 /// 一次发送的提交状态（方案 §7 / C03）。
@@ -48,6 +49,71 @@ public struct SubmissionSnapshot: Equatable, Sendable {
         self.revision = revision
         self.text = text
         self.attachmentCount = attachmentCount
+    }
+}
+
+/// C03 要求 4：失败按场景给简短可操作的文案，不把原始错误描述拿给用户看。
+enum SubmissionFailure: Equatable, Sendable {
+    /// 超时 / 连接中断：服务端可能已收到，不自动重发。
+    case outcomeUnknown
+    /// 会话已不存在（被删除）或主机不支持该接口。
+    case targetGone
+    /// 设备授权失效。
+    case unauthorized
+    /// 设备还在等电脑上批准。
+    case pendingApproval
+    /// 权限不足。
+    case forbidden
+    /// 会话正忙（另一个提交在跑）。
+    case busy
+    /// 附件 / 正文太大。
+    case tooLarge
+    /// 电脑的证书变了，需要重新配对。
+    case certificateChanged
+    /// 确定没发出去的其它情况。
+    case generic
+
+    static func classify(_ error: any Error) -> SubmissionFailure {
+        if let host = error as? HostClientError {
+            switch host {
+            case .transport(let urlError): return classify(urlError)
+            case .unauthorized: return .unauthorized
+            case .forbidden(let pending): return pending ? .pendingApproval : .forbidden
+            case .sessionBusy: return .busy
+            case .capabilityMissing: return .targetGone
+            case .certificateChanged: return .certificateChanged
+            case .server(let status, let code):
+                if status == 413 || code == "payload_too_large" || code == "attachment_too_large" { return .tooLarge }
+                if status == 410 || code == "session_not_found" { return .targetGone }
+                return .generic
+            case .conflict(let code):
+                return code == "session_not_found" ? .targetGone : .generic
+            case .decoding:
+                // 请求已到服务端、只是答复解不开：结果未知。
+                return .outcomeUnknown
+            }
+        }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut, .networkConnectionLost: return .outcomeUnknown
+            default: return .generic
+            }
+        }
+        return .generic
+    }
+
+    var copyKey: ChatText {
+        switch self {
+        case .outcomeUnknown: .sendOutcomeUnknown
+        case .targetGone: .sendFailedTargetGone
+        case .unauthorized: .sendFailedUnauthorized
+        case .pendingApproval: .sendFailedPending
+        case .forbidden: .sendFailedForbidden
+        case .busy: .sendFailedBusy
+        case .tooLarge: .sendFailedTooLarge
+        case .certificateChanged: .sendFailedCertificate
+        case .generic: .sendFailedKeepDraft
+        }
     }
 }
 

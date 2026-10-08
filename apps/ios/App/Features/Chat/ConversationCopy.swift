@@ -227,6 +227,13 @@ enum ChatText: String {
     case sendFailedKeepDraft
     /// 结果未知（超时/断连）：服务端可能已接受，不自动重发。
     case sendOutcomeUnknown
+    case sendFailedTargetGone
+    case sendFailedUnauthorized
+    case sendFailedPending
+    case sendFailedForbidden
+    case sendFailedBusy
+    case sendFailedTooLarge
+    case sendFailedCertificate
     /// 审批/问题已在别处处理完。
     case decisionAlreadyHandled
     case retry
@@ -459,6 +466,14 @@ enum ChatText: String {
             "Message not sent. Your text is kept — tap send to retry."
         case .sendOutcomeUnknown:
             "Unknown result — the computer may already have received it. Not resending automatically."
+        case .sendFailedTargetGone:
+            "This conversation is gone on the computer. Your text is kept — copy it to a new task."
+        case .sendFailedUnauthorized: "This phone is no longer authorized. Your text is kept — pair again to send."
+        case .sendFailedPending: "Waiting for approval on the computer. Your text is kept — approve, then send again."
+        case .sendFailedForbidden: "Not allowed on this computer. Your text is kept."
+        case .sendFailedBusy: "The conversation is busy. Your text is kept — try again in a moment."
+        case .sendFailedTooLarge: "Too large to send. Remove an attachment or shorten the text, then retry."
+        case .sendFailedCertificate: "The computer's certificate changed. Your text is kept — re-pair to continue."
         case .decisionAlreadyHandled: "Already handled elsewhere."
         case .retry: "Retry"
         case .sending: "Sending…"

@@ -9249,6 +9249,125 @@
         }
       }
     },
+    "chat.sendFailedBusy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The conversation is busy. Your text is kept — try again in a moment."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会话正忙。文字已保留，稍后再试。"
+          }
+        }
+      }
+    },
+    "chat.sendFailedCertificate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The computer's certificate changed. Your text is kept — re-pair to continue."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑证书已变化。文字已保留，重新配对后继续。"
+          }
+        }
+      }
+    },
+    "chat.sendFailedForbidden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not allowed on this computer. Your text is kept."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑不允许这个操作。文字已保留。"
+          }
+        }
+      }
+    },
+    "chat.sendFailedPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for approval on the computer. Your text is kept — approve, then send again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待电脑上批准。文字已保留，批准后再发。"
+          }
+        }
+      }
+    },
+    "chat.sendFailedTargetGone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This conversation is gone on the computer. Your text is kept — copy it to a new task."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个会话在电脑上已不存在。文字已保留，可以复制到新任务。"
+          }
+        }
+      }
+    },
+    "chat.sendFailedTooLarge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too large to send. Remove an attachment or shorten the text, then retry."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内容太大。删掉附件或缩短文字后重试。"
+          }
+        }
+      }
+    },
+    "chat.sendFailedUnauthorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This phone is no longer authorized. Your text is kept — pair again to send."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台手机的授权已失效。文字已保留，重新配对后再发。"
+          }
+        }
+      }
+    },
     "chat.sendOutcomeUnknown": {
       "extractionState": "manual",
       "localizations": {
