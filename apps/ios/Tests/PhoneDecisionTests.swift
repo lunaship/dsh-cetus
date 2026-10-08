@@ -45,7 +45,7 @@ import Testing
     /// 请求已是终态 → 面板显示"已处理"。
     @Test func terminalRequestIsHandled() {
         #expect(isTerminalRequestStatus(.resolved) == true)
-        #expect(isTerminalRequestStatus(.rejected) == true)
+        #expect(isTerminalRequestStatus(approvalUiStatus(outcome: "rejected")) == true)
         #expect(isTerminalRequestStatus(.cancelled) == true)
         #expect(isTerminalRequestStatus(.expired) == true)
     }
@@ -59,7 +59,7 @@ import Testing
     /// 终态不能被迟到 pending 回滚（C06 要求 3）。
     @Test func terminalCannotBeRolledBackByLatePending() {
         #expect(mergeStatus(.resolved, .pending) == .resolved)
-        #expect(mergeStatus(.rejected, .pending) == .rejected)
+        #expect(mergeStatus(approvalUiStatus(outcome: "rejected"), .pending) == .resolved)
         // 非终态的终态可前进
         #expect(mergeStatus(.pending, .resolved) == .resolved)
     }
