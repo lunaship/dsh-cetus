@@ -23,6 +23,7 @@ enum InboxText: String, Equatable, Sendable {
     case waiting
     case running
     case done
+    case unknownStatus
     case interrupted
     case stopped
     case errorStopped
@@ -133,6 +134,7 @@ enum InboxText: String, Equatable, Sendable {
         case .waiting: "Waiting for you"
         case .running: "Running"
         case .done: "Done"
+        case .unknownStatus: "Unknown — updating"
         case .interrupted: "Interrupted"
         case .stopped: "Stopped"
         case .errorStopped: "Stopped by error"
@@ -259,6 +261,7 @@ struct InboxCopy {
         case .waiting: text(.waiting)
         case .done: text(.done)
         case .stopped(let reason): stop(reason)
+        case .unknown: text(.unknownStatus)
         }
     }
 

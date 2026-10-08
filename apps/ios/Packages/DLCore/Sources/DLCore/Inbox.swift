@@ -44,6 +44,8 @@ public enum InboxStatusKind: Equatable, Sendable {
     case waiting
     case done
     case stopped(InboxStopKind)
+    /// C07 要求 5：未知状态不默认完成。
+    case unknown
 }
 
 public enum InboxStopKind: Equatable, Sendable {
@@ -420,8 +422,12 @@ public func inboxRowContent(session: SessionSummary, action: InboxPhoneAction?, 
     let status: InboxStatusKind
     if let reason = nonBlank(session.stoppedReason) {
         status = .stopped(inboxStopKind(reason))
-    } else {
+    } else if session.lastResult != nil {
         status = .done
+    } else {
+        // C07 要求 5：既没有停止原因也没有结果摘要 —— 不能默认"完成"，
+        // 可能是缓存滞后或刚结束的会话。
+        status = .unknown
     }
     return InboxRowContent(
         dot: nil,
