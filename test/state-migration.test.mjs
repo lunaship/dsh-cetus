@@ -852,6 +852,32 @@ test("符号链接：指向目录之外时必须拒绝迁移（防止把 ~/.ssh 
   assertNoRealDirTouched(before)
 })
 
+test("符号链接：嵌套目录里的越界软链同样拒绝（递归预检）", async (t) => {
+  if (process.platform === "win32") return t.skip("Windows 符号链接需要额外权限")
+  const before = snapshotRealDirs()
+  const base = join(sandbox(), ".dsh")
+  const src = join(base, PRIOR_DIR_NAME)
+  const dst = join(base, CANONICAL_DIR_NAME)
+  await writeStateDir(src, { devices: [fakeDevice("A", "dev-1")] })
+  const outside = join(sandbox(), "nested-outside-secret.txt")
+  writeFileSync(outside, "NESTED-SECRET", { mode: 0o600 })
+  mkdirSync(join(src, "nested", "deeper"), { recursive: true })
+  symlinkSync(outside, join(src, "nested", "deeper", "leak"))
+
+  assert.throws(
+    () => migrateStateDir(src, dst, { log: () => {} }),
+    (err) => {
+      assert.ok(err instanceof StateMigrationError)
+      assert.equal(err.code, "unsafe-symlink")
+      assert.match(err.message, /nested\/deeper\/leak/)
+      return true
+    },
+  )
+  assert.equal(existsSync(dst), false, "越界软链时必须停止，不得提升")
+  assert.equal(readFileSync(outside, "utf8"), "NESTED-SECRET")
+  assertNoRealDirTouched(before)
+})
+
 test("符号链接：指向目录内部时保留为链接本体，不复制目标内容", async (t) => {
   if (process.platform === "win32") return t.skip("Windows 符号链接需要额外权限")
   const before = snapshotRealDirs()

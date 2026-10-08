@@ -368,7 +368,7 @@ function copyAndVerify(sourceDir, stagingDir, { now, log, freeSpace = null }) {
     // 符号链接：绝不 dereference。跟随链接会把**链接目标**（可能在 state 目录之外，
     // 比如 ~/.ssh/id_rsa）的内容复制进 state 目录 —— 既是越界拷贝，也是把秘密搬到了
     // 预期之外的位置。这里先做越界检查，再用 verbatimSymlinks 原样保留链接本身。
-    assertLinkStaysInside(from, sourceDir, name)
+    assertTreeLinksStayInside(from, sourceDir, name)
     try {
       cpSync(from, to, {
         recursive: true,
@@ -445,7 +445,31 @@ function assertLinkStaysInside(target, sourceDir, label) {
   }
 }
 
-/** 递归校验一条复制结果：目录逐层下钻，文件逐字节比对。 */function verifyEntry(from, to, name, sourceDir) {
+/**
+ * 递归预检：嵌套目录里的软链同样不许越界。
+ *
+ * 只查顶层不够：`sessions/x -> ~/.ssh/id_rsa` 这种二级软链在复制后校验（statSync /
+ * readFileSync 会跟随链接）时仍会读到外部文件。所以复制前用 lstat 逐层下钻，
+ * 不跟随任何链接进入子目录。
+ */
+function assertTreeLinksStayInside(target, sourceDir, label) {
+  let st
+  try { st = lstatSync(target, { throwIfNoEntry: false }) } catch { return }
+  if (!st) return
+  if (st.isSymbolicLink()) {
+    assertLinkStaysInside(target, sourceDir, label)
+    return
+  }
+  if (!st.isDirectory()) return
+  let names = []
+  try { names = readdirSync(target) } catch { return }
+  for (const child of names) {
+    assertTreeLinksStayInside(join(target, child), sourceDir, `${label}/${child}`)
+  }
+}
+
+/** 递归校验一条复制结果：目录逐层下钻，文件逐字节比对。 */
+function verifyEntry(from, to, name, sourceDir) {
   let st
   try {
     st = statSync(from, { throwIfNoEntry: false })
