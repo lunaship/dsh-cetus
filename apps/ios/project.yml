@@ -84,12 +84,22 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Cetus
-        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug
+        # C16 §20.6: Debug and Release must not share one bundle id. The base id
+        # is the maintainer-owned legacy value (docs/REBRAND_CETUS.md §3.1); the
+        # per-config `.debug` suffix below is added only for Debug, mirroring the
+        # Android `applicationIdSuffix` arrangement. Debug keeps the exact id it
+        # has always had, so CI, UI tests and installed debug builds are unaffected.
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/Cetus.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios
   NotificationService:
     type: app-extension
     platform: iOS
@@ -105,11 +115,16 @@ targets:
     settings:
       base:
         PRODUCT_NAME: NotificationService
-        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.notification-service
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.notification-service
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/NotificationService/Info.plist
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.notification-service
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.notification-service
   LiveActivity:
     type: app-extension
     platform: iOS
@@ -120,11 +135,16 @@ targets:
     settings:
       base:
         PRODUCT_NAME: LiveActivity
-        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.live-activity
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.live-activity
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/LiveActivity/Info.plist
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.live-activity
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.live-activity
   Share:
     type: app-extension
     platform: iOS
@@ -137,12 +157,17 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Share
-        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.share
+        PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.share
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Extensions/Share/Info.plist
         CODE_SIGN_ENTITLEMENTS: Extensions/Share/Share.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.debug.share
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: dev.deeplinks.ios.share
   CetusTests:
     type: bundle.unit-test
     platform: iOS
