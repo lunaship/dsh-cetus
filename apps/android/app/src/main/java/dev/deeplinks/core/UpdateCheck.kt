@@ -21,6 +21,19 @@ private const val KEY_URL = "update_latest_url"
 
 const val GITHUB_RELEASES_URL = "https://api.github.com/repos/lunaship/dsh-cetus/releases?per_page=10"
 
+/**
+ * 过渡期兼容的旧仓库（方案 §24.1 第 2 步）。
+ *
+ * 仓库从 `lunaship/dsh-links` 迁移到 `lunaship/dsh-cetus` 期间，**已装在用户手机上的旧包**
+ * 写死的是旧地址。新包若只认新仓库，那些包就看不到迁移 release —— 正是方案要避免的
+ * 「先移动地址再修消费者」。
+ *
+ * 因此白名单同时接受两个仓库；仍只接受 `lunaship` 名下 `https` 的 GitHub release 地址，
+ * 第三方仓库一律拒绝。旧版本淘汰后由维护者移除这一项。
+ */
+private const val LEGACY_GITHUB_REPO_PATH = "/lunaship/dsh-links/"
+private const val CANONICAL_GITHUB_REPO_PATH = "/lunaship/dsh-cetus/"
+
 /** 只认 App 的 `app-v*` 正式发布，插件 tag 和草稿都丢掉。 */
 fun parseReleases(json: String): List<AppRelease> {
     val array = JSONArray(json)
@@ -86,7 +99,8 @@ fun isGithubReleaseUrl(url: String): Boolean {
     val host = uri.host ?: return false
     if (!host.equals("github.com", ignoreCase = true)) return false
     val path = uri.path ?: return false
-    return path.startsWith("/lunaship/dsh-cetus/")
+    // 过渡期：新旧仓库都接受（旧包看到迁移 release 的唯一途径）。
+    return path.startsWith(CANONICAL_GITHUB_REPO_PATH) || path.startsWith(LEGACY_GITHUB_REPO_PATH)
 }
 
 fun newerRelease(currentVersionName: String, releases: List<AppRelease>): AppRelease? {

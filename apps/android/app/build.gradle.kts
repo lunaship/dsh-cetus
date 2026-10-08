@@ -213,6 +213,42 @@ tasks.register("ensureReleaseSigning") {
     }
 }
 
+/**
+ * 方案 §21.1：产物文件名带上平台、版本与短 SHA ——「不靠显示名判断安装身份」。
+ *
+ * 目标名 `cetus-android-<versionName>-<shortSHA>.apk`。**保留** AGP 默认的
+ * `app-release.apk`（CI、RELEASING 与既有脚本都按那个名字取件），只额外产出一份合规命名，
+ * 因此不会让任何既有消费者失效。
+ *
+ * git 不可用时短 SHA 退化为 `nogit`，不让归档命名把构建搞失败。
+ */
+val cetusArtifactName: String by lazy {
+    val shortSha = try {
+        providers.exec { commandLine("git", "rev-parse", "--short=8", "HEAD") }
+            .standardOutput.asText.get().trim().ifEmpty { "nogit" }
+    } catch (_: Exception) {
+        "nogit"
+    }
+    "cetus-android-${android.defaultConfig.versionName ?: "unknown"}-$shortSha.apk"
+}
+
+val nameReleaseArtifact = tasks.register<Copy>("nameReleaseArtifact") {
+    group = "build"
+    description = "把签名 release APK 另存为 cetus-android-<version>-<shortSHA>.apk（方案 §21.1）。"
+    from(layout.buildDirectory.file("outputs/apk/release/app-release.apk"))
+    // 写到独立目录：不能写回 AGP 自己的 outputs/apk/release，
+    // 否则 Gradle 会判定与 createReleaseApkListingFileRedirect 冲突（产物顺序不确定）。
+    into(layout.buildDirectory.dir("outputs/cetus"))
+    rename { cetusArtifactName }
+    mustRunAfter(tasks.matching { it.name == "assembleRelease" })
+}
+
+tasks.register("cetusReleaseArtifact") {
+    group = "build"
+    description = "assembleRelease + 合规命名副本（发版取件用这一条）。"
+    dependsOn("assembleRelease", nameReleaseArtifact)
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

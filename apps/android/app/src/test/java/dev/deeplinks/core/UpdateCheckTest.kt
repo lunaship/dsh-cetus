@@ -58,6 +58,34 @@ class UpdateCheckTest {
         assertEquals("app-v9.0.0", newerRelease("0.0.1", listOf(evil, good))?.tagName)
     }
 
+    /**
+     * 方案 §24.1 第 2 步：仓库迁移过渡期必须**同时**接受新旧仓库，
+     * 否则装在用户手机上的旧包（写死旧地址）看不到迁移 release。
+     */
+    @Test
+    fun legacyRepoIsAcceptedDuringTheRenameTransition() {
+        val legacy = "https://github.com/lunaship/dsh-links/releases/tag/app-v0.5.0-beta.31"
+        assertTrue("过渡期必须接受旧仓库", isGithubReleaseUrl(legacy))
+        assertTrue(isGithubReleaseUrl("https://GITHUB.COM/lunaship/dsh-links/releases/tag/app-v1"))
+
+        // 放宽的只是"仓库名"，其余安全约束一条都不能松：
+        assertFalse("非 https 仍拒绝", isGithubReleaseUrl("http://github.com/lunaship/dsh-links/releases/tag/app-v1"))
+        assertFalse("非 github 主机仍拒绝", isGithubReleaseUrl("https://evil.com/lunaship/dsh-links/releases/tag/app-v1"))
+        assertFalse("非 lunaship 名下仍拒绝", isGithubReleaseUrl("https://github.com/other/dsh-links/releases/tag/app-v1"))
+        assertFalse("相似前缀不能蒙混", isGithubReleaseUrl("https://github.com/lunaship/dsh-links-evil/releases/tag/app-v1"))
+    }
+
+    @Test
+    fun legacyReleaseIsOfferedToOldInstalls() {
+        // 旧地址上的迁移 release 要能被识别为「有新版」，否则旧包永远升不上来。
+        val migration = AppRelease(
+            "app-v0.5.0-beta.31",
+            "https://github.com/lunaship/dsh-links/releases/tag/app-v0.5.0-beta.31",
+            "",
+        )
+        assertEquals("app-v0.5.0-beta.31", newerRelease("0.5.0-beta.27", listOf(migration))?.tagName)
+    }
+
     @Test
     fun checksAtMostOncePerDay() {
         val now = 1_700_000_000_000L
