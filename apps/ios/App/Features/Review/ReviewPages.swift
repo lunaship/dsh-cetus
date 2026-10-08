@@ -235,37 +235,110 @@ func breadcrumbLabel(_ crumb: String, copy: ReviewCopy) -> String {
 
 struct FilesPage: View {
     var path: String
-    var entries: [TreeEntry]
+    /// 当前层条目。C09：真实数据从 ConversationModel.fileEntries 取；
+    /// 加载/错误时用 loading/error 表示，不用空数组冒充"真的空"。
+    var entries: [TreeEntry]?
     var copy: ReviewCopy
+    // MARK: - C09 懒加载 / 错误态 / 动作
+    var loading = false
+    var error = false
+    var truncated = false
+    var unsupported = false
+    var openingFile = false
+    /// 面包屑点某层 → 回到那层（父路径）。
+    var onBreadcrumb: (String) -> Void = { _ in }
+    /// 点目录 → 进入。
+    var onEnterDir: (String) -> Void = { _ in }
+    /// 点文件 → 打开预览。
+    var onOpenFile: (String) -> Void = { _ in }
+    /// 目录/错误重试。
+    var onRetry: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView(.horizontal) {
                 HStack(spacing: 4) {
                     ForEach(breadcrumbPaths(path), id: \.self) { crumb in
-                        Text(breadcrumbLabel(crumb, copy: copy))
-                            .font(DLFont.footnote)
-                            .foregroundStyle(crumb == path ? DLColor.label : DLColor.secondaryLabel)
+                        Button(breadcrumbLabel(crumb, copy: copy)) {
+                            onBreadcrumb(crumb)
+                        }
+                        .font(DLFont.footnote)
+                        .foregroundStyle(crumb == path ? DLColor.label : DLColor.secondaryLabel)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
-            List(entries, id: \.name) { entry in
-                HStack {
-                    Image(systemName: entry.type == .dir ? "folder" : "doc")
-                        .foregroundStyle(DLColor.secondaryLabel)
-                    Text(entry.name ?? "")
-                    Spacer()
-                    if entry.type == .dir {
-                        Image(systemName: "chevron.right").foregroundStyle(DLColor.tertiaryLabel)
-                    }
+            if unsupported {
+                DLEmptyState(title: copy.text(.changesUnavailable), systemImage: "folder.badge.questionmark")
+            } else if error {
+                DLEmptyState(title: copy.text(.filesError), systemImage: "exclamationmark.triangle")
+            } else if let entries, entries.isEmpty, !loading {
+                DLEmptyState(title: copy.text(.filesEmptyDir), systemImage: "folder")
+            } else if let entries {
+                List(entries, id: \.name) { entry in
+                    entryRow(entry)
                 }
-                .frame(minHeight: 44)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            if openingFile { ProgressView(copy.text(.filesLoading)).padding(16) }
+            if truncated {
+                Text(copy.text(.filesTruncated))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.secondaryLabel)
+                    .padding(.horizontal, 16)
+            }
+            if loading {
+                Text(copy.text(.filesLoading))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.secondaryLabel)
+                    .padding(.horizontal, 16)
+            }
+            if error {
+                Button(copy.text(.filesRetry), action: onRetry)
+                    .padding(.horizontal, 16)
             }
         }
         .navigationTitle(copy.text(.filesTitle))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder private func entryRow(_ entry: TreeEntry) -> some View {
+        let outside = entry.outside == true
+        let name = entry.name ?? ""
+        let isDir = entry.type == .dir
+        HStack {
+            Image(systemName: isDir ? "folder" : (outside ? "link.badge.exclamationmark" : "doc"))
+                .foregroundStyle(DLColor.secondaryLabel)
+            Text(name)
+            Spacer()
+            if isDir {
+                Image(systemName: "chevron.right").foregroundStyle(DLColor.tertiaryLabel)
+            }
+            if outside {
+                Text(copy.text(.filesOutside))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.tertiaryLabel)
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if outside { return }  // 外部符号链接不可进入 / 不可打开
+            if isDir {
+                onEnterDir(childPath(path, name))
+            } else {
+                onOpenFile(childPath(path, name))
+            }
+        }
+        .disabled(outside || openingFile)
+        .accessibilityHint(outside ? copy.text(.filesOutsideHint) : "")
+    }
+
+    private func childPath(_ parent: String, _ child: String) -> String {
+        parent.isEmpty ? child : parent + "/" + child
     }
 }
 
@@ -278,6 +351,13 @@ struct FilePreviewPage: View {
     var liveShare = false
     var copy: ReviewCopy
     var onQuote: () -> Void = {}
+    // MARK: - C09 真实动作
+    /// "复制路径"写系统剪贴板并反馈；nil = 无剪贴板环境（截图路径）→ 不显示。
+    var onCopyPath: (() -> Void)? = nil
+    /// "引用"加入当前会话草稿（无会话上下文时不显示）。
+    var showQuote = true
+
+    @State private var copiedPath = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -307,14 +387,27 @@ struct FilePreviewPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             HStack {
-                Button(copy.text(.copyPath)) {}
-                if liveShare {
-                    ShareLink(item: path) { Text(copy.text(.shareFile)) }
-                } else {
-                    Button(copy.text(.shareFile)) {}
+                if let onCopyPath {
+                    Button {
+                        onCopyPath()
+                        copiedPath = true
+                    } label: {
+                        Text(copiedPath ? copy.text(.copied) : copy.text(.copyPath))
+                    }
+                    .task(id: copiedPath) {
+                        guard copiedPath else { return }
+                        try? await Task.sleep(for: .seconds(1.5))
+                        guard !Task.isCancelled else { return }
+                        copiedPath = false
+                    }
+                }
+                if liveShare, let fileURL {
+                    ShareLink(item: fileURL) { Text(copy.text(.shareFile)) }
                 }
                 Spacer()
-                Button(copy.text(.quote), action: onQuote)
+                if showQuote {
+                    Button(copy.text(.quote), action: onQuote)
+                }
             }
             .frame(minHeight: 44)
             .padding(.horizontal, 16)
@@ -325,24 +418,56 @@ struct FilePreviewPage: View {
 }
 
 struct PreviewPage: View {
-    var previews: [PreviewInfo]
+    /// C09：nil = 尚未拉取 / 拉取失败（看 error）。已批准预览；检测到的端口是另一类，
+    /// 不能在这里当"可访问"显示。
+    var previews: [PreviewInfo]?
     var copy: ReviewCopy
     var loadsWeb = false
     var forward: (@Sendable (String) async -> PreviewHTTPResult)? = nil
+    // MARK: - C09 状态
+    var loading = false
+    var error = false
+    /// 检测到的端口（不可批准，仅提示"去电脑批准"）。
+    var detectedPorts: [Int] = []
+    /// 重新拉取。
+    var onRetry: () -> Void = {}
+    var refreshApproved: (@Sendable () async throws -> [PreviewInfo])? = nil
     @State private var proxy: PreviewLocalProxy?
+    @State private var openFailed = false
     @State private var boundPort = 0
     @State private var openURL: URL?
 
     var body: some View {
         let page = Group {
-            if previews.isEmpty {
+            if error {
+                DLEmptyState(
+                    title: copy.text(.filesError), systemImage: "exclamationmark.triangle")
+                if !detectedPorts.isEmpty {
+                    detectedHint
+                }
+            } else if let previews, previews.isEmpty, !loading {
                 DLEmptyState(
                     title: copy.text(.previewEmpty), systemImage: "rectangle.dashed",
                     message: copy.text(.previewEmptyDetail))
-            } else {
+                if !detectedPorts.isEmpty {
+                    detectedHint
+                }
+            } else if let previews {
                 List(previews, id: \.previewId) { item in
                     row(item)
                 }
+                if !detectedPorts.isEmpty {
+                    detectedHint
+                }
+            } else {
+                Text(copy.text(.filesLoading))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.secondaryLabel)
+                    .padding(16)
+            }
+            if error {
+                Button(copy.text(.filesRetry), action: onRetry)
+                    .padding(.horizontal, 16)
             }
         }
         .navigationTitle(copy.text(.previewTitle))
@@ -353,11 +478,44 @@ struct PreviewPage: View {
                 .navigationDestination(item: $openURL) { url in
                     PreviewWebView(url: url, port: boundPort)
                 }
-                .task { await startProxy() }
-                .onDisappear { Task { await proxy?.stop() } }
+                .alert(copy.text(.previewEmptyDetail), isPresented: $openFailed) {
+                    Button(copy.text(.filesRetry)) { onRetry() }
+                }
+                .onDisappear {
+                    // Pushing the web view keeps this proxy alive; stop only when leaving its navigation.
+                    guard openURL == nil else { return }
+                    let previous = proxy
+                    proxy = nil
+                    Task { await previous?.stop() }
+                }
+                .onChange(of: openURL) { _, url in
+                    if url == nil {
+                        let previous = proxy
+                        proxy = nil
+                        Task { await previous?.stop() }
+                    }
+                }
         } else {
             page
         }
+    }
+
+    /// C09 要求 2：检测到端口与已批准预览分开显示；手机不能批准端口。
+    @ViewBuilder private var detectedHint: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(copy.text(.previewDetected))
+                .font(DLFont.footnote)
+                .foregroundStyle(DLColor.secondaryLabel)
+            Text(detectedPorts.map(String.init).joined(separator: ", "))
+                .font(DLFont.mono(DLFont.footnote))
+                .foregroundStyle(DLColor.tertiaryLabel)
+            Text(copy.text(.previewNeedsApproval))
+                .font(DLFont.footnote)
+                .foregroundStyle(DLColor.secondaryLabel)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder private func row(_ item: PreviewInfo) -> some View {
@@ -393,8 +551,23 @@ struct PreviewPage: View {
     }
 
     private func open(_ item: PreviewInfo) async {
-        guard let id = item.previewId, let proxy else { return }
-        openURL = URL(string: await proxy.localURL(previewID: id))
+        guard let id = item.previewId else { return }
+        do {
+            if let refreshApproved {
+                let approved = try await refreshApproved()
+                guard approved.contains(where: { $0.previewId == id }) else {
+                    openFailed = true
+                    onRetry()
+                    return
+                }
+            }
+            await startProxy()
+            guard let proxy, boundPort > 0 else {
+                openFailed = true
+                return
+            }
+            openURL = URL(string: await proxy.localURL(previewID: id))
+        } catch { openFailed = true }
     }
 }
 
@@ -491,6 +664,7 @@ enum ReviewText: String {
     case filesTitle
     case root
     case copyPath
+    case copied
     case shareFile
     case quote
     case binaryFile
@@ -499,6 +673,16 @@ enum ReviewText: String {
     case changesUnavailable
     case changesRetry
     case diffOpen
+    // C09 文件 / 预览 真实数据
+    case filesError
+    case filesEmptyDir
+    case filesTruncated
+    case filesLoading
+    case filesRetry
+    case filesOutside
+    case filesOutsideHint
+    case previewNeedsApproval
+    case previewDetected
     case previewTitle
     case previewEmpty
     case previewEmptyDetail
@@ -520,6 +704,7 @@ enum ReviewText: String {
         case .filesTitle: "Files"
         case .root: "Workspace"
         case .copyPath: "Copy path"
+        case .copied: "Copied"
         case .shareFile: "Share"
         case .quote: "Quote in chat"
         case .binaryFile: "Binary file"
@@ -527,6 +712,15 @@ enum ReviewText: String {
         case .changesUnavailable: "Changes unavailable"
         case .changesRetry: "Retry"
         case .diffOpen: "Diff"
+        case .filesError: "Couldn't load directory"
+        case .filesEmptyDir: "Empty directory"
+        case .filesTruncated: "Showing first entries"
+        case .filesLoading: "Loading…"
+        case .filesRetry: "Retry"
+        case .filesOutside: "Outside workspace"
+        case .filesOutsideHint: "Symbolic link points outside the workspace"
+        case .previewNeedsApproval: "Approve this port on your computer first"
+        case .previewDetected: "Detected — not yet approved"
         case .previewTitle: "Preview"
         case .previewEmpty: "No preview"
         case .previewEmptyDetail: "Approved ports from the computer show up here."

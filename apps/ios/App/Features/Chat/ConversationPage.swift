@@ -107,6 +107,7 @@ struct ConversationPage: View {
     @State private var showSelectText = false
     @State private var showChanges = false
     @State private var showFiles = false
+    @State private var showFilePreview = false
     @State private var showPreview = false
     @Namespace private var changesZoom
     @State private var sheet: ChatSurface?
@@ -190,12 +191,47 @@ struct ConversationPage: View {
                         zoom: changesZoom, model: model)
                 )
                 .navigationDestination(isPresented: $showFiles) {
-                    FilesPage(path: "", entries: [], copy: ReviewCopy(locale: locale))
+                    FilesPage(
+                        path: model.filesPath,
+                        entries: model.fileEntries,
+                        copy: ReviewCopy(locale: locale),
+                        loading: model.filesLoading,
+                        error: model.filesError,
+                        truncated: model.filesTruncated,
+                        unsupported: model.filesUnsupported,
+                        openingFile: model.openingFile,
+                        onBreadcrumb: { model.loadFiles(path: $0) },
+                        onEnterDir: { model.loadFiles(path: $0) },
+                        onOpenFile: { openFile($0, copy: copy) },
+                        onRetry: { model.loadFiles(path: model.filesPath) }
+                    )
+                    .navigationDestination(isPresented: $showFilePreview) {
+                        if let file = model.openedFile {
+                            FilePreviewPage(
+                                path: file.path, text: file.text, kind: file.kind, fileURL: file.url,
+                                discarded: file.failed, liveShare: !file.failed, copy: ReviewCopy(locale: locale),
+                                onQuote: {
+                                    let reference = "@\"\(file.path)\""
+                                    draft += draft.isEmpty ? reference : "\n" + reference
+                                    draftRevision += 1
+                                    draftStore.save(
+                                        ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID), text: draft)
+                                    showFilePreview = false
+                                    showFiles = false
+                                },
+                                onCopyPath: { UIPasteboard.general.string = file.path }, showQuote: !file.failed)
+                        }
+                    }
                 }
                 .navigationDestination(isPresented: $showPreview) {
                     PreviewPage(
-                        previews: [], copy: ReviewCopy(locale: locale), loadsWeb: true,
-                        forward: model.previewForwarder())
+                        previews: model.previews, copy: ReviewCopy(locale: locale), loadsWeb: true,
+                        forward: model.previewForwarder(),
+                        loading: model.previewsLoading,
+                        error: model.previewsError,
+                        detectedPorts: model.detectedPreviewPorts,
+                        onRetry: { model.loadPreviews() },
+                        refreshApproved: { try await model.approvedPreviews() })
                 }
                 .sheet(item: $sheet) { item in
                     NavigationStack { sheetPage(item, copy: copy) }
@@ -646,6 +682,13 @@ struct ConversationPage: View {
             || text.contains("connection lost")
     }
 
+    /// C09：打开会话工作区文件 → 下载，按类型展示；失败给说明不留无效链接。
+    private func openFile(_ path: String, copy: ConversationCopy) {
+        Task {
+            await model.openFile(path: path)
+            if model.openedFile != nil { showFilePreview = true }
+        }
+    }
     private func decide(allow: Bool) async {
         guard !staticSnapshot, let decision else { return }
         do {
@@ -814,11 +857,17 @@ struct ConversationPage: View {
             Menu {
                 Section(copy.text(.menuView)) {
                     Button(copy.text(.menuChanges)) { showChanges = true }
-                    Button(copy.text(.menuFiles)) { showFiles = true }
+                    Button(copy.text(.menuFiles)) {
+                        model.loadFiles(path: model.filesPath)
+                        showFiles = true
+                    }
                     Button(copy.text(.menuTrajectory)) { showTrajectory = true }
                     Button(copy.text(.menuAgents)) { showAgents = true }
                     Button(copy.text(.menuUsage)) { sheet = .usage }
-                    Button(copy.text(.menuPreview)) { showPreview = true }
+                    Button(copy.text(.menuPreview)) {
+                        model.loadPreviews()
+                        showPreview = true
+                    }
                 }
                 Section(copy.text(.menuActions)) {
                     Button(copy.text(.menuGoal)) { sheet = .goal }

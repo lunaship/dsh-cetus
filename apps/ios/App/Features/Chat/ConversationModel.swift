@@ -51,6 +51,15 @@ protocol ConversationServing: Sendable {
     func changesSummary(sessionID: String, seq: Int) async throws -> ChangesSummary?
     /// C08：单文件对比（`GET /sessions/:id/changes/diff?seq=&index=`）。
     func changesDiff(sessionID: String, seq: Int, index: Int) async throws -> ChangesDiffResponse?
+
+    /// C09：工作区文件树（`GET /sessions/:id/tree?path=`），按层懒加载。
+    func tree(sessionID: String, path: String) async throws -> TreeResponse?
+    /// C09：下载会话工作区文件（`GET /sessions/:id/file?path=`，带 SHA-256 头）。
+    func downloadFile(sessionID: String, path: String) async throws -> DownloadedWorkspaceFile
+    /// C09：已批准本机预览（`GET /previews`，未过期的）。
+    func previews() async throws -> [PreviewInfo]
+    /// C09：检测到的端口（`GET /preview-detections`，**不能**用于批准）。
+    func previewDetections() async throws -> [PreviewDetection]
 }
 
 extension ConversationServing {
@@ -136,6 +145,25 @@ extension ConversationServing {
     func changesDiff(sessionID: String, seq: Int, index: Int) async throws -> ChangesDiffResponse? {
         _ = (sessionID, seq, index)
         return nil
+    }
+
+    /// C09：默认无能力（fake / 离线测试）。
+    func tree(sessionID: String, path: String) async throws -> TreeResponse? {
+        _ = (sessionID, path)
+        return nil
+    }
+
+    func downloadFile(sessionID: String, path: String) async throws -> DownloadedWorkspaceFile {
+        _ = (sessionID, path)
+        throw ConversationServiceError.offline
+    }
+
+    func previews() async throws -> [PreviewInfo] {
+        []
+    }
+
+    func previewDetections() async throws -> [PreviewDetection] {
+        []
     }
 }
 
@@ -238,6 +266,20 @@ final class ConversationModel {
     private(set) var changesError = false
     /// 单文件对比（`index` → diff）。
     private(set) var fileDiffs: [Int: ChangesDiffResponse] = [:]
+    // MARK: - C09 文件 / 预览 数据
+    /// 当前文件树目录（相对会话 cwd）。"" 是根。
+    private(set) var filesPath = ""
+    private(set) var fileEntries: [TreeEntry]?
+    private(set) var filesLoading = false
+    private(set) var filesError = false
+    private(set) var filesTruncated = false
+    private(set) var filesUnsupported = false
+    private var filesTask: Task<Void, Never>?
+    private var filesGeneration = 0
+    /// 已批准预览（手机只能打开这些，不能批准端口）。
+    private(set) var previews: [PreviewInfo]?
+    private(set) var previewsLoading = false
+    private(set) var previewsError = false
 
     init(
         hostID: String,
@@ -335,6 +377,9 @@ final class ConversationModel {
     }
 
     func stop() async {
+        filesTask?.cancel()
+        filesGeneration += 1
+        filesLoading = false
         statusRefreshTask?.cancel()
         previewRefreshTask?.cancel()
         persistTask?.cancel()
@@ -394,6 +439,83 @@ final class ConversationModel {
                 self.changesError = true
             }
             self.changesLoading = false
+        }
+    }
+
+    /// C09：按层拉取文件树（相对会话 cwd 的路径；"" 是根）。
+    func loadFiles(path: String) {
+        filesTask?.cancel()
+        filesGeneration += 1
+        let generation = filesGeneration
+        filesLoading = true
+        filesError = false
+        filesUnsupported = false
+        filesPath = path
+        fileEntries = nil
+        filesTruncated = false
+        filesTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let tree = try await self.service.tree(sessionID: self.sessionID, path: path)
+                guard !Task.isCancelled, self.filesGeneration == generation else { return }
+                if let tree {
+                    self.filesPath = tree.path ?? path
+                    self.fileEntries = tree.entries ?? []
+                    self.filesTruncated = tree.truncated == true
+                } else {
+                    self.filesUnsupported = true
+                }
+            } catch {
+                guard !Task.isCancelled, self.filesGeneration == generation else { return }
+                self.filesError = true
+            }
+            self.filesLoading = false
+        }
+    }
+
+    /// C09：打开的文件（下载后内联文本 / 受保护临时副本）。
+    private(set) var openedFile: OpenedFile?
+    private(set) var openingFile = false
+    private(set) var detectedPreviewPorts: [Int] = []
+
+    /// C09: Prepare a protected export before exposing any share or preview action.
+    func openFile(path: String) async {
+        guard !openingFile else { return }
+        openingFile = true
+        defer { openingFile = false }
+        do {
+            let file = try await service.downloadFile(sessionID: sessionID, path: path)
+            try Task.checkCancellation()
+            openedFile = try WorkspaceFileExport.prepare(file, path: path)
+        } catch {
+            openedFile = OpenedFile(path: path, failed: true)
+        }
+    }
+
+    func approvedPreviews() async throws -> [PreviewInfo] {
+        try await service.previews()
+    }
+
+    /// C09：拉取已批准预览（未过期；手机不能批准端口）。
+    func loadPreviews() {
+        guard !previewsLoading else { return }
+        previewsLoading = true
+        previewsError = false
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                self.previews = try await self.service.previews()
+                let detections = (try? await self.service.previewDetections()) ?? []
+                let approved = Set((self.previews ?? []).compactMap(\.port))
+                self.detectedPreviewPorts = Array(
+                    Set(
+                        detections.filter { $0.sessionId == self.sessionID }
+                            .compactMap(\.port))
+                ).filter { !approved.contains($0) }.sorted()
+            } catch {
+                self.previewsError = true
+            }
+            self.previewsLoading = false
         }
     }
 

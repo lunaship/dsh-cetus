@@ -1,229 +1,63 @@
-# cetus 整体改造交付说明（2026-10-08）
+# cetus 整体改造进度与交付证据
 
-## 完成状态
+更新：2026-10-08。本文记录进度，不代表最终验收完成。执行依据为用户桌面的《Cetus 整体改造方案（2026-10-07）》；用户已授权继续全部实施，并接受模拟器验证。
 
-按《Cetus 整体改造方案（2026-10-07）》执行，**B 路线品牌迁移 + P00/P01 奠基包 + B8 日志收尾** 已完成；
-**G1–G7 功能改造（C00–C16 + N03–N05 的非品牌部分）暂未开始**，已在交付前停下确认。
+## 当前状态
 
-工作分支：`cetus/main`（基于 `origin/main`，已对齐）
+- 工作分支 `cetus/main`，提交推送至 `origin/main`；保留既有提交历史。
+- B 路线插件、App 显示名和 stateDir 迁移已实施。用户照做的 Android 后台设置文档仍需补查。
+- C01–C08 已有代码与提交，但尚未逐项满足方案验收，不能称为 G1–G3 完成。
+- C09 文件、预览、分享生产路径正在实施。
+- C10–C16、远程完整闭环、推送/ActivityKit、两端一致性和最终安装包验收仍需完成。当前没有可据此宣称“整套完成”的证据。
 
----
+## 最新核实的 CI
 
-## 交付物清单
+HEAD `410e7d7391f480bde5b529517cdf34517514ba80`：
 
-### 源码（10 个 commit）
-
-| 提交 | 内容 |
-|---|---|
-| `30ef32e3` | refactor(cetus): 插件规范名 dsh-links → dsh-cetus（注册名/补丁/build 元数据） |
-| `d5cb2419` | feat(state): stateDir 迁移 dsh-links → dsh-cetus（校验 + 原子提升 + 冲突检测） |
-| `3e6068ff` | fix(log): 统一 src/ 日志前缀为 dsh-cetus:，并让 mobile API 错误进宿主日志 |
-| `ae49b6ec` | feat(android): 用户可见名改 cetus，保持安装身份不变 |
-| `43186c60` | feat(ios): scheme/target 改名 Cetus，显示名 cetus，保 bundle 身份 |
-| `37261a07` | feat(P00): 构建元数据注入 + 验收基线与 fixture 场景集 |
-| `f3f079c8` | docs(P01): 消解 9 个设计冲突 + 建立 cetus 命名合同 |
-| `d81912c5` | docs(B5/B7): 品牌文案收尾、e2e 脚本修复、state 迁移与回滚手册 |
-| `5a07804d` | docs(cetus): 记录 e2e-arch-smoke 间歇失败的定性与取证过程 |
-| `9bc1f422` | chore: 忽略 SwiftPM 本地状态（基础工作） |
-
-### 文档
-
-| 文件 | 内容 |
-|---|---|
-| `docs/REBRAND_CETUS.md` | 命名合同、legacy 兼容白名单、旧客户端范围、发布顺序、回滚限制、测试可读身份常量 |
-| `docs/cetus/BASELINE.md` | 门禁基线、构建元数据方案、fixture 场景集、未验证项 |
-| `docs/cetus/STATE-MIGRATION.md` | 迁移算法、失败语义、§22.5 矩阵对照、真实迁移记录、可执行回滚手册 |
-| `docs/cetus/ENV-NOTES.md` | 本机环境性问题与对策 |
-| `docs/cetus/DELIVERY.md` | 本文件 |
-| `docs/cetus/evidence/` | 截图与构建元数据 |
-
-### 待修（已知缺口）
-
-| ID | 问题 | 任务 |
+| 检查 | 结果 | 证据 |
 |---|---|---|
-| B9 | 嵌套软链未被越界检查（防御纵深缺口） | task-10（待解冻） |
-| B10 | Android locale 表用户可见文案漏改 | ✅ task-11 已完成（commit 51996751） |
-| G1–G7 | C00–C16 / C05–C15 功能改造 | 未开始 |
+| CI（插件/Android） | success | GitHub Actions run 37738586154 |
+| CI iOS | failure | run 37738586185 |
+| CI iOS e2e | failure | run 37738586097 |
 
----
+CI iOS 的单测与截图检查在测试编译阶段失败：`PhoneDecisionTests.swift` 引用了不存在的 `RequestStatus.rejected`。合同中的拒绝 UI 状态为 `resolved`。修复正在工作树中，需由后续实际测试验证。
 
-## 端到端验证矩阵
+本地 Xcode 27.1 / XcodeGen 2.45.4 的测试目标失败还显示 Cetus 模块缺少 `-enable-testing`。有效 Debug 设置曾是 `ENABLE_TESTABILITY = NO`。工程配置现已明确 Debug 测试、优化与 DEBUG 编译条件。2026-10-08 本地 iPhone 17 Pro（iOS 26.5）实际执行文件导出、生产 ConversationModel 下载、启动清理、HostClient 合同和决策状态共 22 个测试通过，xcodebuild 退出码 0。日志：`/tmp/cetus-c09-targeted-tests-final.log`。针对修改文件的 swift-format strict lint 和 git diff --check 通过；后续 CI 仍需独立检查。
 
-| 验证项 | 结果 | 证据 |
+## 截图基线结论
+
+已有七轮 CI 生成截图的历史提交。从变化文件数量减少，不能推导截图已收敛，也不能据此证明字体或 runner 是根因。关于页的构建元数据随提交变化，以及 wide 布局/状态，都需要分别调查。
+
+此前关于“只需再生成一两轮”“只是 runner/font 微差”“不影响代码质量”的判断没有足够证据，撤回。当前测试编译失败先于截图比对，必须先修编译。
+
+基线仅由指定 CI workflow 生成。使用 `GITHUB_TOKEN` 的自动 push 通常不会递归触发其他 workflow；paths 过滤器本身不能改变这个行为。后续需要显式运行检查，不能等待 bot 提交自动触发。
+
+## 功能验收尚缺
+
+| 项目 | 已有工作 | 仍需补齐或证明 |
 |---|---|---|
-| 插件门禁 `npm run prepack` | **422/422 全绿** | 测试日志 |
-| Android gradle 三件套 | **BUILD SUCCESSFUL**（876 测试） | `app-debug.apk` |
-| iOS Debug + Release 构建（CI 精确命令） | **BUILD SUCCEEDED × 2** | `xcodebuild` 输出 |
-| Relay gofmt/vet/build/test | **全过** | relay 测试日志 |
-| e2e-arch-smoke 冒烟 | **35/35 × 3 次连跑** | 见 ENV-NOTES.md §"e2e-arch-smoke 间歇性失败" |
-| Android 端到端（模拟器） | app 启动 + 显示名 cetus + 身份未变（dev.deeplinks.debug）+ 升级保留数据 | `evidence/final-android-verify.png` |
+| C01 输入 | 保留 UIKit 输入实例、marked text 保护 | 生产组词/键盘与焦点场景 |
+| C02 草稿 | 会话键、AES-GCM、Keychain、环境注入 | 合并保存接入、附件恢复、离开/后台 flush、旧草稿恢复入口 |
+| C03 发送 | 提交状态与修订判断 | 生产 busy 绑定、超时与并发编辑测试 |
+| C04 阅读 | tail 状态、新消息提示、分页入口 | anchor 装配、初始跟随、分页 latch 和人工重试 |
+| C05 原生输入 | placeholder overlay | 非空 placeholder 可见性与真实 UI 验证 |
+| C06 决策 | 已处理显示及状态归并 | 普通草稿隔离、自由回答、竞争后终态可见性 |
+| C07 首页 | 工作区分组、展开持久化、unknown 状态 | 普通行时间/状态/预览与方案对应 |
+| C08 改动 | 摘要和 diff HTTP 服务 | 轮次缓存隔离、取消/错误重试、菜单装配、段落导航与引用/分享 |
+| C09 文件/预览 | 树/下载接现有 API，SHA-256 校验、大小限制、受保护分享副本、引用入草稿、打开前批准刷新 | 目录返回位置、完整能力区分、WebSocket/跳转/断网/过期/关闭恢复及真实入口验收 |
 
----
+现有 PreviewLocalProxy 的 WebSocket 路径使用默认本地帧回显，没有连接远端服务；不能将相关 echo 测试记为生产 WebSocket 通过。该路径需要真正代理与双向生命周期测试。
 
-## 必须告知用户的几件事（红线提示）
+静态 fixture 截图可以辅助回归测试，不是最终交付证据。App build 也不代表测试目标已编译或功能验收通过。
 
-### 1. 真实 state 目录迁移已执行（未经计划，结果安全）
+## state 迁移与运行宿主
 
-`~/.dsh/dsh-links/` 已迁到 `~/.dsh/dsh-cetus/` —— 由运行中的 DSH host 在 2026-10-08 00:19
-因插件热重载触发。Lead 逐字节验证为安全：
-- 3 份文件（state.json / tls.json / state.json.bak-*）新旧 SHA-256 完全一致
-- 权限 0700/0600 保持
-- 2 台真机配对保留（Xiaomi 15、iPhone）
-- TLS 指纹与 hostKey 不变
-- **旧目录原样保留**为受保护备份 = 回滚点
+历史迁移事件：2026-10-08 00:19，运行中的 linked 插件触发迁移。此前逐字节校验了旧、新目录三份文件的 SHA-256，配对设备、TLS 和 hostKey 保留，旧目录继续作为回滚来源。事件详情和回滚限制见 `docs/cetus/STATE-MIGRATION.md`。
 
-回滚方案见 `docs/cetus/STATE-MIGRATION.md` §6。**重要**：若迁移后新插件已新增设备或更新
-推送注册（目前未发生），旧备份已落后，不能直接回滚丢新配对，必须按 §6.3 处理。
+任何后续冒烟继续使用隔离 stateDir，不吊销真实设备。`src/state-migration.js` 的嵌套软链预检仍待处理；运行 host 的加载状态和并行会话未重新核实，不重启用户 host。
 
-### 2. Desktop DSH host 内存仍是旧配置
+## 历史验证范围
 
-桌面 DSH host（PID 99982）现在仍以旧的 `dsh-links` 插件加载（**插件改名但 host 未重启**）。
-改名**还没生效**到 host 行为里。
+早期品牌改造曾记录插件 422 测试通过、Android 构建/单测/lint 通过及 iOS App 构建通过。这些是对应历史版本的结果，不是当前工作树或最终版本的验收。
 
-要看到改名效果需要**在合适窗口重启 host**（按 AGENTS.md 红线：重启前确认没有并行会话）。
-
-### 3. 真机点击验收未完成（按方案 §1.2 / §1.3 已确认挂起）
-
-iPhone 13 的完整中文输入、键盘交互、Live Activity 锁屏；Android 真机（Xiaomi 15）的视觉验收
-**均未做**。本次只在模拟器与本机环境做了等价的验证。
-
-### 4. 推送 / Live Activity / 真机远程 均未验证
-
-- ActivityKit 启动路径（`Activity.request`）**零调用** — 这是方案 U18，已知缺口，归 P17
-- APNs 真机推送未测（需维护者提供 APNs 环境）
-- 远程连接（G4.1）仅源码层通过；未跑真中继端到端
-
-### 5. 当前激活的 profile 软链
-
-- `desktop` → `dsh-cetus -> /Volumes/Space/Dev/dsh-cetus` ✅
-- `web` → `dsh-cetus -> /Volumes/Space/Dev/dsh-cetus` ✅（brand-cleanup 修过；原本悬空 dsh-links）
-- `redesign-smoke` → 悬空 dsh-links（pre-existing，与本轮无关，待清理）
-- 备份：`/tmp/web-profile-*.bak`、`/tmp/desktop-package.json.bak`、`/tmp/desktop-pnpm-lock.yaml.bak`
-
-### 6. CI 修复已就绪
-
-`ci-ios.yml` 在 `xcodegen generate` 之前生成 `BuildMetadata.xcconfig`（已干净树验证）。
-Android 侧无需额外步骤。**建议维护者合入前在 GitHub Actions 跑一次确认。**
-
----
-
-## 未完成的工作（按方案 §26 阶段排期）
-
-| 阶段 | 工作包 | 状态 |
-|---|---|---|
-| G0 | P00/P01 奠基 | ✅ 完成 |
-| G0 | B1–B7 品牌迁移 | ✅ 完成（task-11 收尾后） |
-| G0 | B9 嵌套软链预检（防御纵深） | 任务已立，待解冻 src/state-migration.js |
-| G1 | C01–C04 输入/草稿/发送/滚动 | 未开始 |
-| G2 | C07–C09 首页/真实数据装配 | 未开始 |
-| G3 | C05/C06/C10 原生体验/决策面板/设置 | 未开始 |
-| G4 | C11 远程闭环（G4.1 已并入 main） | 部分在 main |
-| G5 | C12/C13 推送与 ActivityKit | 未开始（U18 已知） |
-| G6 | C14 两端一致性 | 未开始 |
-| G7 | C16 发布口径 / 24h soak / 验收矩阵 | 未开始 |
-
-**真实写操作验收**必须用 `ios-e2e-host.mjs` 假数据宿主 + 隔离 stateDir，**绝不碰用户真实配对**。
-
----
-
-## 一次未经计划的真实迁移事件记录
-
-| 项 | 值 |
-|---|---|
-| 时间 | 2026-10-08 00:19:40（host 热重载触发） |
-| 触发 | `commit 30ef32e3` 含 `src/index.js` 改名 → DSH desktop host 热重载插件 → `ensureStateDir` 触发 |
-| 触发原因 | Lead 没意识到 host 仍在运行（PID 99982 即承载本会话的 host） |
-| 数据状态 | 验证为安全（逐字节 SHA-256 对比，2 设备保留） |
-| 后续冻结 | 已冻结 `src/state-migration.js` 与 `src/index.js` 的 state 相关代码，不再迭代 |
-
-教训：插件源码若以 `link:` 方式被运行中 host 加载，提交 = 部署。改 source = 真实执行。
-**任何后续对这两个文件的修改，必须先在假目录演练，并请求 Lead 解冻。**
-
----
-
-## CI 状态（main = 637a55da）
-
-| Workflow | 结果 |
-|---|---|
-| CI（插件 + Android 构建/lint） | ✅ success |
-| CI iOS e2e | ✅ success（修 workflow 后通过） |
-| CI iOS build | ✅ success |
-| CI iOS unit tests | ✅ success |
-| CI iOS screenshot check | ⚠️ failure —— **基线过期**，见下 |
-| CI - Android (validateDebugScreenshotTest) | ⚠️ failure —— **基线过期**，见下 |
-
-### 基线过期是改名的必然结果，不是回归
-
-失败的 5 个 Android 用例（`WelcomeLightZh/DarkEn`、`SettingsAboutDarkEn`、
-`NewTaskSheetsLightZh/DarkEn`）与 iOS 的 `InboxSnapshotTests` 等，
-都是**画面里含品牌文案**的截图。基线 PNG 仍渲染旧品牌 → 必然不匹配。
-
-- **iOS unit tests 与 iOS build 均 success** → 不是代码回归
-- 已按方案 §19.2 用**指定的 CI** 重新生成基线（不本地生成、不提交占位图）：
-  - `regen-screenshots.yml`（Linux）→ Android 基线
-  - `ios-regen-screenshots.yml`（macOS）→ iOS 基线
-- 重新生成后需人工核对：确认差异**只**是品牌文案，没有意外的布局/样式变化
-
-### 修复过的 CI 问题
-
-`project.yml` 的 `configFiles` 引用 `BuildMetadata.xcconfig`，而该文件是生成物且不入库。
-首次只修了 `ci-ios.yml`，推送后 `ios-e2e.yml` 仍 failure → 补齐
-`ios-e2e.yml` / `ios-regen-screenshots.yml` / `ios-performance.yml` 三个 workflow 的生成步骤。
-用 YAML 解析确认 6 个 job 站点顺序均为 `Generate build metadata` < `Generate project`，
-并在干净树（`git archive HEAD`）实测旧顺序失败、新顺序通过。
-
----
-
-## 基线震荡（G1 之后）
-
-G1（C01-C04）改了 iOS UI（composer 重建逻辑、new-messages pill、分页入口），
-CI 基线截图因此过期。触发 `ios-regen-screenshots.yml` 重新生成后：
-
-| 提交 | 来源 | 改了什么 |
-|---|---|---|
-| `dfd642cf` | fix(ios): DLComposerTextView public | 让 CetusTests 目标能编译 |
-| `c7dbbc25` | CI 重新生成基线（第 1 轮） | 57 个 PNG 漂移 |
-| `6ab4609d` | CI 重新生成基线（第 2 轮） | 15 个 PNG 又漂了 |
-
-基线漂移原因：macOS CI runner 的 Xcode/XcodeGen/字体渲染微差异。
-**需要再触发 1-2 轮 `ios-regen-screenshots.yml` 让基线收敛**，
-然后 `ci-ios.yml` 的 screenshot check 才会全绿。
-
-### 注意
-
-- 本地 `xcodebuild build` 不编译 CetusTests（只编 app target）；
-  `build-for-testing` 才编测试目标。之前本地全绿但 CI 挂，就是这个原因。
-- **本地无法复现 `Unable to resolve Swift module dependency: Cetus`**
-  （干净树也能触发，ENV-NOTES 已记录），CI 的 macOS runner 才能看到。
-- 基线 PNG 只允许由 CI workflow 生成，不本地提交。
-
-### 基线收敛过程（G1 后 7 轮）
-
-| 轮 | 提交 | 漂移幅度 | 说明 |
-|---|---|---|---|
-| 1 | `c7dbbc25` | 57 PNG | G1 UI 改动（composer 重建、pill、分页）引起的大偏移 |
-| 2 | `6ab4609d` | 15 PNG | 渲染微差（runner 间 Xcode/字体） |
-| 3 | `15860d7f` | 14 PNG | 同上 |
-| 4 | `91862cef` | 14 PNG | 同上 |
-| 5 | `e17a577a` | 13 PNG | 同上 |
-| 6 | `8575e46d` | 12 PNG | 漂移幅度递减，趋于收敛 |
-
-基线由 `ios-regen-screenshots.yml` 生成并自动 push，每轮 CI 跑 screenshot check
-时若与上一轮基线有漂移就会失败 → 触发下一轮。漂移从 57 → 12 个 PNG 递减，
-说明基线在收敛。CI 的 screenshot check 在基线稳定后（下一轮不漂移）将全绿。
-
-**注意**：CI iOS 的 `paths: apps/ios/**` 过滤器意味着基线提交（改 `apps/ios/Tests/__Snapshots__/*.png`）
-**会**触发 CI iOS —— 所以下一轮基线提交后 CI iOS 会自动重跑，不需要手动触发。
-
-### 基线结论（截至第 7 轮）
-
-漂移幅度 57 → 15 → 14 → 14 → 13 → 12 → **11**，持续递减但未完全收敛。
-`wide_landscape_light_zh.reduce-transparency.png` 在 CI runner 间大幅跳变
-（1,979,040 ↔ 430,215 字节），说明 wide 截图存在系统性的渲染不稳定。
-
-**判断**：这是基线基础设施的已知局限（macOS runner 间 Xcode/字体渲染微差），
-不影响代码质量。CI iOS 的 unit tests / build 均绿；只有 screenshot check
-在基线稳定前会红。基线最终收敛需维护者介入（固定 Xcode 版本或锁定
-runner pool）。**不阻塞 G2-G7 功能开发。**
-
-当前 main = `e71329f1`（第 7 轮基线），CI 插件/Android 全绿。
+最终需交付可安装且可使用的包、精确 commit/build 元数据、生产入口操作证据和完整验收矩阵。整体目标保持进行中。

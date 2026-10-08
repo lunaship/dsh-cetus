@@ -257,6 +257,50 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    /// C09：工作区文件树（`GET /sessions/:id/tree?path=`）。
+    func tree(sessionID: String, path: String) async throws -> TreeResponse? {
+        let http = try await connect()
+        var query: [String: String] = [:]
+        if !path.isEmpty { query["path"] = path }
+        do {
+            return try await http.get(TreeResponse.self, path: try sessionPath(sessionID, "/tree"), query: query)
+        } catch let error as HostClientError where error == .capabilityMissing {
+            return nil
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    /// C09：下载会话工作区文件（`GET /sessions/:id/file?path=`）。
+    /// 返回原始 bytes + 文件名（`x-dsh-link-filename`）；下载失败/能力缺失抛错，
+    /// App 侧显示"未下载"或对应说明，不留下无效链接。
+    func downloadFile(sessionID: String, path: String) async throws -> DownloadedWorkspaceFile {
+        let http = try await connect()
+        let response = try await http.getRaw(path: try sessionPath(sessionID, "/file"), query: ["path": path])
+        guard let bytes = acceptedDownload(bytes: response.data, sha256: response.headers["x-dsh-link-sha256"]) else {
+            throw HostClientError.decoding("File checksum mismatch")
+        }
+        return DownloadedWorkspaceFile(
+            data: bytes, filename: response.headers["x-dsh-link-filename"],
+            contentType: response.headers["content-type"])
+    }
+
+    /// C09：已批准预览（`GET /previews`）。
+    func previews() async throws -> [PreviewInfo] {
+        let http = try await connect()
+        let response = try await http.get(PreviewsResponse.self, path: "/dsh-link/mobile/previews")
+        return (response.previews ?? []).filter {
+            $0.expiresAt == nil || ($0.expiresAt ?? 0) > Int(Date.now.timeIntervalSince1970 * 1000)
+        }
+    }
+
+    /// C09：检测到的端口（`GET /preview-detections`）。只读，不能批准。
+    func previewDetections() async throws -> [PreviewDetection] {
+        let http = try await connect()
+        let response = try await http.get(PreviewDetectionsResponse.self, path: "/dsh-link/mobile/preview-detections")
+        return response.detections ?? []
+    }
+
     func previewExchange(path: String) async -> PreviewHTTPResult {
         guard path.hasPrefix("/dsh-link/mobile/preview/") else {
             return PreviewHTTPResult(status: 404, body: Data())

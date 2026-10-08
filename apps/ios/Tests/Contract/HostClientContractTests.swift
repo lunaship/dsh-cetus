@@ -139,6 +139,46 @@ struct HostClientContractTests {
                 .appendingPathComponent(name))
     }
 
+    @Test func rawDownloadUsesTokenAndNormalizesHeaders() async throws {
+        let path = "/raw-success"
+        let bytes = Data([0, 1, 2, 255])
+        StubURLProtocol.registry.stub(path: path, status: 200, body: bytes)
+        let response = try await makeClient().getRaw(path: path, query: ["path": "中文 +.png"])
+        #expect(response.data == bytes)
+        #expect(response.headers["content-type"] == "application/json")
+        let record = try #require(StubURLProtocol.registry.records(forPath: path).last)
+        #expect(record.tokenHeaderValue != nil)
+        #expect(URLComponents(url: record.url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value == "中文 +.png")
+    }
+
+    @Test func rawDownloadRejectsOversizedResponse() async {
+        let path = "/raw-limit"
+        StubURLProtocol.registry.stub(path: path, status: 200, body: Data([1, 2, 3, 4]))
+        await #expect(throws: HostClientError.decoding("File exceeds download limit")) {
+            _ = try await makeClient().getRaw(path: path, maxBytes: 3)
+        }
+    }
+
+    @Test func rawDownloadMapsForbiddenAndTransportErrors() async {
+        let path = "/raw-forbidden"
+        StubURLProtocol.registry.stub(path: path, status: 403, body: Data("{}".utf8))
+        await #expect(throws: HostClientError.forbidden(pending: false)) {
+            _ = try await makeClient().getRaw(path: path)
+        }
+        let broken = "/raw-timeout"
+        StubURLProtocol.registry.failNext(forPath: broken, with: URLError(.timedOut))
+        do {
+            _ = try await makeClient().getRaw(path: broken)
+            Issue.record("Expected timeout")
+        } catch let error as HostClientError {
+            guard case .transport(let underlying) = error else {
+                Issue.record("Expected transport error, got \(error)")
+                return
+            }
+            #expect(underlying.code == .timedOut)
+        } catch { Issue.record("Unexpected error: \(error)") }
+    }
+
     // MARK: - 成功路径（fixtures 解码）
 
     @Test("bootstrap fixtures：成功解码 + 统一设备 token 头")

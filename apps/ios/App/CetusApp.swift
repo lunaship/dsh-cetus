@@ -111,6 +111,7 @@ struct CetusApp: App {
         // App-hosted tests must not load a developer's paired hosts or poll a real computer.
         // UI tests also set XCTestConfigurationFilePath, but they pass -e2eQRPayload and must stay live.
         let testing = environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil
+        if !testing { WorkspaceFileExport.expire() }
         let endToEnd = DebugE2EQRLaunch.isRequested
         let performance = PerformanceLaunchFixture.isRequested
         let model = PairingFlowModel(

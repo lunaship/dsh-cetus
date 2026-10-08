@@ -127,6 +127,50 @@ public struct HostClient: Sendable {
         }
     }
 
+    public struct RawResponse: Sendable {
+        public var data: Data
+        /// Lowercase keys allow callers to read headers independent of server capitalization.
+        public var headers: [String: String]
+    }
+
+    /// Download bounded bytes using the same pinned session and error mapping as JSON requests.
+    public func getRaw(
+        path: String, query: [String: String] = [:], maxBytes: Int = 8 * 1024 * 1024
+    ) async throws -> RawResponse {
+        let pinBefore = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
+        do {
+            let request = Self.makeRequest(
+                method: "GET", url: Self.url(baseURL: baseURL, path: path, query: query), body: nil, token: token)
+            let (bytes, response) = try await session.bytes(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw HostClientError.transport(URLError(.badServerResponse))
+            }
+            guard maxBytes >= 0, response.expectedContentLength <= Int64(maxBytes) else {
+                throw HostClientError.decoding("File exceeds download limit")
+            }
+            var data = Data()
+            for try await byte in bytes {
+                guard data.count < maxBytes else {
+                    throw HostClientError.decoding("File exceeds download limit")
+                }
+                data.append(byte)
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                throw Self.mapStatus(http.statusCode, body: data)
+            }
+            var headers: [String: String] = [:]
+            for (key, value) in http.allHeaderFields {
+                if let name = key as? String { headers[name.lowercased()] = String(describing: value) }
+            }
+            return RawResponse(data: data, headers: headers)
+        } catch let error as HostClientError {
+            throw error
+        } catch {
+            let pinAfter = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
+            throw Self.mapTransportError(error, pinErrorChanged: pinAfter != pinBefore)
+        }
+    }
+
     /// DELETE。2xx 的正文原样返回。
     public func delete(path: String, query: [String: String] = [:]) async throws -> Data {
         try await send(
