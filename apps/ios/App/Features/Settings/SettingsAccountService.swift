@@ -149,3 +149,42 @@ enum PairedPhoneNameStore {
         ComputerLocalNames(defaults: defaults).setPhoneName(name, hostID: hostID)
     }
 }
+
+extension SettingsAccountService {
+    /// 生产装配（C10 要求 1）。
+    ///
+    /// 之前详情页拿不到 account，7.2「电脑」与 7.3「诊断」整块不工作：
+    /// `loadAccount` 第一行就 `guard let account else { return }`。
+    ///
+    /// 连接复用与首页同一套选路（直连优先，全部失败才远程），凭据只从 Keychain 取，
+    /// 不缓存 token。
+    static func live(
+        hostID: String,
+        store: HostStore = HostStore(),
+        routes: RouteSelector = RouteSelector(),
+        names: ComputerLocalNames = ComputerLocalNames(defaults: .standard),
+        draftStore: ComposerDraftStore = ComposerDraftStore.live(keys: KeychainStore())
+    ) -> SettingsAccountService {
+        SettingsAccountService(
+            client: {
+                guard let host = await store.get(hostId: hostID),
+                    let token = await store.token(for: hostID), !token.isEmpty
+                else { throw InboxServiceError.missingHost }
+                let selection = await routes.select(
+                    key: hostID, candidates: RouteSelector.directCandidates(for: host)
+                ) { address in
+                    await InboxLiveService.probe(address: address, fingerprint: host.certFingerprint)
+                }
+                guard case .direct(let address) = selection, let base = URL(string: address) else {
+                    throw InboxServiceError.offline
+                }
+                return HostClient(baseURL: base, token: token, expectedFingerprint: host.certFingerprint)
+            },
+            host: { await store.get(hostId: hostID) },
+            rename: { alias in names.setAlias(alias, hostID: hostID) },
+            alias: { names.alias(hostID: hostID) },
+            phoneName: { names.phoneName(hostID: hostID) },
+            deleteHost: { try await store.delete(hostId: hostID) },
+            discardDrafts: { draftStore.removeHost(hostID: $0) })
+    }
+}

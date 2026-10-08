@@ -806,6 +806,8 @@ struct InboxDestinationPage: View {
     var destination: InboxDestination
     var model: InboxModel
     @Environment(\.locale) private var locale
+    /// 解绑电脑时要一并清掉该主机的草稿（C02 要求 9），所以设置页需要同一个仓库实例。
+    @Environment(\.composerDraftStore) private var draftStore
 
     var body: some View {
         let copy = InboxCopy(locale: locale)
@@ -825,6 +827,10 @@ struct InboxDestinationPage: View {
                 computerAddress: model.hostAddress ?? "",
                 online: model.link.isOnline,
                 route: model.settingsRoute,
+                // C10 要求 1：生产依赖根必须装配 account，否则 7.2/7.3（电脑信息、
+                // 重命名、解绑、诊断）整块都不工作 —— 之前这里没有 `account:`，
+                // 详情页拿不到服务，`loadAccount` 直接 return。
+                account: SettingsAccountService.live(hostID: model.hostID, draftStore: draftStore),
                 models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)),
                 push: PushSettingsRegistration(
                     hostID: model.hostID, pushVersion: model.pushVersion, pairedDeviceID: model.pairedDeviceID))

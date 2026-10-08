@@ -421,7 +421,9 @@ actor InboxLiveService: InboxServing {
 
     /// Any HTTP response means the address answered. Pin failure and transport failure do not.
     /// No token is sent. Slightly wider than a TLS-only handshake: there is no handshake-only API.
-    private static func probe(address: String, fingerprint: String) async -> Bool {
+    /// 供设置页复用。设为 internal 而不是再写一份 —— 选路探测必须只有一处实现，
+    /// 否则首页能连、设置页连不上这类不一致会重新出现。
+    static func probe(address: String, fingerprint: String) async -> Bool {
         guard let url = URL(string: address) else { return false }
         let delegate = PinnedSessionDelegate(expectedFingerprint: fingerprint)
         let configuration = URLSessionConfiguration.ephemeral
