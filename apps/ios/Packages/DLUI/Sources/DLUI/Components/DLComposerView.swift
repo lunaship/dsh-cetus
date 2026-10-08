@@ -95,6 +95,15 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         }
     }
 
+    /// C05：编辑器为空时显示的提示。不抢焦点，不进发送正文。
+    /// 空闲态用"给这个会话发消息"，运行中用"补充说明"。
+    public var placeholder = "" {
+        didSet {
+            placeholderLabel.text = placeholder
+            placeholderLabel.isHidden = !placeholder.isEmpty || !(field.text ?? "").isEmpty
+        }
+    }
+
     public var isEnabled = true {
         didSet {
             guard didFinishInit, isEnabled != oldValue else { return }
@@ -112,6 +121,15 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private let editorHeight: NSLayoutConstraint
     private let sendButton: UIButton
     private let attachButton = UIButton(type: .system)
+    private let placeholderLabel: UILabel = {
+        let label = UILabel()
+        label.font = .preferredFont(forTextStyle: .body)
+        label.textColor = .tertiaryLabel
+        label.adjustsFontForContentSizeCategory = true
+        label.isHidden = true
+        return label
+    }()
+
     private let suggestionStack: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
@@ -172,8 +190,22 @@ public final class DLComposerView: UIView, UITextViewDelegate {
 
         configureEditor()
         configureChrome()
+        configurePlaceholder()
         didFinishInit = true
         showComposer(animated: false)
+    }
+
+    private func configurePlaceholder() {
+        field.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        composerRoot.addArrangedSubview(placeholderLabel)
+        // placeholder 叠在 field 上（同位置，不占额外空间）
+        field.addSubview(placeholderLabel)
+        NSLayoutConstraint.activate([
+            placeholderLabel.topAnchor.constraint(equalTo: field.topAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 4),
+            placeholderLabel.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -4),
+        ])
     }
 
     required init?(coder: NSCoder) {
@@ -247,6 +279,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         mirrorText = current
         updateEditorHeight()
         refreshMetrics()
+        placeholderLabel.isHidden = !placeholder.isEmpty && current.isEmpty ? false : true
         // 程序下推的文本不回声，避免 SwiftUI ↔ UIKit 回调死循环。
         guard !isApplyingExternalText else { return }
         onDraft?(current)
@@ -314,6 +347,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         clampSelection()
         updateEditorHeight()
         refreshMetrics()
+        placeholderLabel.isHidden = !placeholder.isEmpty && mirrorText.isEmpty ? false : true
     }
 
     private func clampSelection() {

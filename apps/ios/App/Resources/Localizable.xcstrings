@@ -9316,6 +9316,40 @@
           }
         }
       }
+    },
+    "chat.composerIdlePrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message this conversation"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "给这个会话发消息"
+          }
+        }
+      }
+    },
+    "chat.composerRunningPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add more details"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补充说明"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

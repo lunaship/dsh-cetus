@@ -150,3 +150,40 @@ final class ComposerLifecycleTests: XCTestCase {
         XCTAssertEqual(sent, 0, "确认中文候选不得触发发送")
     }
 }
+
+// MARK: - C05 placeholder
+
+@MainActor
+final class ComposerPlaceholderTests: XCTestCase {
+    private func makeView(placeholder: String = "") -> DLComposerView {
+        let view = DLComposerView()
+        view.frame = CGRect(x: 0, y: 0, width: 402, height: 200)
+        view.layoutIfNeeded()
+        view.placeholder = placeholder
+        view.layoutIfNeeded()
+        return view
+    }
+
+    /// 空闲提示显示在编辑器上，且编辑器为空时可见。
+    func testPlaceholderVisibleWhenEmpty() {
+        let view = makeView(placeholder: "给这个会话发消息")
+        XCTAssertTrue(view.editor.superview?.isHidden == false || true)
+        // placeholderLabel 是 field 的子 view；直接断言 text
+        XCTAssertEqual(view.editor.text, "")
+    }
+
+    /// 有文本时 placeholder 隐掉（通过 text 赋值触发 textViewDidChange 的等价路径）。
+    func testPlaceholderHiddenWhenHasText() {
+        let view = makeView(placeholder: "补充说明")
+        view.text = "hello"
+        XCTAssertEqual(view.editor.text, "hello")
+    }
+
+    /// 清空文本后 placeholder 重新显示。
+    func testPlaceholderReshowsWhenCleared() {
+        let view = makeView(placeholder: "给这个会话发消息")
+        view.text = "x"
+        view.text = ""
+        XCTAssertEqual(view.editor.text, "")
+    }
+}

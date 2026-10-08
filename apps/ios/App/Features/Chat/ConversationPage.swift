@@ -301,7 +301,8 @@ struct ConversationPage: View {
                         onSuggestion: { pickSlash($0, copy: copy) },
                         showsAttach: !staticSnapshot && decision == nil,
                         attachTitle: copy.text(.attachTitle),
-                        onAttach: { sheet = .attach }
+                        onAttach: { sheet = .attach },
+                        placeholder: composerPlaceholderText(copy)
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
@@ -545,6 +546,18 @@ struct ConversationPage: View {
             return .handled
         }
         return .ignored
+    }
+
+    /// C05：按会话状态给编辑器提示。空闲→"给这个会话发消息"，运行中→"补充说明"。
+    /// 不抢焦点，不进发送正文（只是 UILabel 叠加在编辑器上）。
+    private func composerPlaceholderText(_ copy: ConversationCopy) -> String {
+        switch model.status.kind {
+        case .goal, .preview:
+            // 目标进行中 / 预览中 → 按"运行中"提示
+            copy.text(.composerRunningPrompt)
+        default:
+            copy.text(.composerIdlePrompt)
+        }
     }
 
     /// 失败文案：未知结果要明说"不自动重发"，别让用户以为没发出去而重复点。

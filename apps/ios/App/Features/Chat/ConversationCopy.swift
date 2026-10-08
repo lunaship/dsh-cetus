@@ -216,6 +216,9 @@ enum ChatText: String {
     case backToLatest
     case selectTitle
     case selectText
+    // C05：输入栏按状态的 placeholder
+    case composerIdlePrompt
+    case composerRunningPrompt
     // MARK: - C03 提交状态与失败文案
     /// 发送失败但输入已保留。
     case sendFailedKeepDraft
@@ -438,6 +441,8 @@ enum ChatText: String {
         case .backToLatest: "Back to latest"
         case .selectTitle: "Select text"
         case .selectText: "Select text"
+        case .composerIdlePrompt: "Message this conversation"
+        case .composerRunningPrompt: "Add more details"
         // C03 提交状态与失败文案
         case .sendFailedKeepDraft:
             "Message not sent. Your text is kept — tap send to retry."
