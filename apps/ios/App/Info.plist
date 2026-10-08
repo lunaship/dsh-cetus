@@ -26,6 +26,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>deeplinks</string>
+				<string>cetus</string>
 			</array>
 		</dict>
 	</array>

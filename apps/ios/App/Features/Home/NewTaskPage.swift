@@ -62,8 +62,12 @@ struct NewTaskPage: View {
             if preset == nil { preset = shownPresets.first { $0.isDefault == true } ?? shownPresets.first }
             saved = NewTaskDraftStore.load(hostID: hostID)
             if !starter.isEmpty {
-                draft = starter
-                images = starterImages
+                // C13 要求 2：分享内容**并入**已有草稿，不能覆盖用户已经写下的字。
+                // 已有草稿优先取当前编辑中的 draft，其次取本地持久化的 saved。
+                let base = draft.isEmpty ? saved : draft
+                let merged = ShareInbox.merging(draft: base, shared: starter)
+                draft = merged.text
+                images = ShareInbox.mergingImages(existing: images, shared: starterImages)
             } else if draft.isEmpty {
                 draft = saved
             }

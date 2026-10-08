@@ -57,19 +57,35 @@ enum ShareExtensionIntake {
         return nil
     }
 
-    private static func firstImage(_ providers: [NSItemProvider]) async throws -> (bytes: Data, caption: String)? {
+    private static func firstImage(
+        _ providers: [NSItemProvider]
+    ) async throws -> (bytes: Data, caption: String)? {
         for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            let item = try await provider.loadItem(forTypeIdentifier: UTType.image.identifier)
+            // C13 要求 3：格式白名单 —— 只接受明确允许的图片 UTI，
+            // 不接受 UTType.image 下的任意子类型（例如矢量/RAW/PSD）。
+            guard
+                let identifier = provider.registeredTypeIdentifiers.first(where: {
+                    UTType($0)?.conforms(to: .image) == true
+                }),
+                ShareInbox.isAllowedImageType(identifier)
+            else { continue }
+
+            let item = try await provider.loadItem(forTypeIdentifier: identifier)
             let bytes: Data?
             if let url = item as? URL {
-                bytes = try Data(contentsOf: url)
+                // 跨容器 URL 必须走 security-scoped 读取：开启 → 同步读 → 释放，
+                // 三步收敛在 ShareInbox.readSecurityScopedFile 内，异常路径也不会漏 stop。
+                bytes = try ShareInbox.readSecurityScopedFile(at: url)
             } else if let image = item as? UIImage {
                 bytes = image.pngData()
             } else {
                 bytes = item as? Data
             }
             guard let bytes else { continue }
-            guard bytes.count <= ShareAppGroup.imageByteLimit else { throw ShareInboxError.tooLarge }
+            // 内存路径（UIImage/Data）同样要过大小检查
+            guard !bytes.isEmpty, bytes.count <= ShareAppGroup.imageByteLimit else {
+                throw ShareInboxError.tooLarge
+            }
             return (bytes, "")
         }
         return nil
