@@ -95,7 +95,7 @@ public enum PushPayloadReader {
         let sessionID =
             string("sessionId", in: userInfo)
             ?? decryptedSessionID(in: userInfo, bindings: bindings, now: now)
-        guard let sessionID, !sessionID.isEmpty else { return nil }
+        guard !deviceID.isEmpty, let sessionID, !sessionID.isEmpty else { return nil }
         return PushOpenRequest(deviceID: deviceID, sessionID: sessionID)
     }
 
