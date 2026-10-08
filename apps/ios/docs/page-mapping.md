@@ -172,3 +172,14 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 **已知文档矛盾（P01 报告，不猜测）**：`apps/ios/docs/design/README.md`「设计决定」第 1 条仍写「首页大标题 + 副标题」与旧品牌名。它是**历史设计稿的说明文件**（对应 I1.5a），按冲突 9「PNG 与生成脚本不改」**本次不修改**；其首页信息架构口径已作废，以本表与 `docs/ios/PLAN.md` I4.2 为准。
 
 其他：设计稿需要的数据若插件没有，按「删掉该元素」处理，在对应实现 PR 里写明。
+
+## 本轮（C06 / C08 / C16）与页面编号对照
+
+| 页面编号 | 改动 | 测试 |
+|---|---|---|
+| 4.3 / 4.4 决策栏 | C06 10.1.4 命令块改限高可滚动（`UITextView`，≤132pt），拒绝按钮固定在块下方始终可见；10.1.6 多请求时显示「第 N / M 个」；10.1.5 失败提示留在面板内；10.1.7 状态不再截成一行、读屏顺序 = 视觉顺序 | `DecisionBarTests` |
+| 4.4 问题表单 | C06 10.2.2 含未知题型**不提交**且给出说明（不静默丢空数组）；10.2.7 末题「提交回答」只由题目导航区提供，决策栏不再重复放发送 | `DecisionUnsupportedQuestionTests` |
+| 6.2 全页 diff | C08 加符号列 + 双列行号（`DiffLine.oldLineNumber/newLineNumber`，推进规则对齐 Android `WorkspaceChanges.kt`）；响应说明行（新建/删除/两侧相同/逐行超时/截断）；上/下一个差异段导航，边界置灰 | `ReviewTests` / `IntralineDiffContractTests` |
+| 7.13 关于 | C16 构建元数据改为可注入（截图固定取值）。**必须可注入的原因**：该页渲染真实 commit/date，否则基线每次提交、每天都会漂移 | `SettingsSnapshotTests` |
+
+截图路径 ≠ 生产路径的差异说明：`SettingsSnapshotTests` 注入固定 `BuildInfo`，生产走 `BuildInfo.from()`（读 `BuildMetadata.xcconfig`）；`staticSnapshot` 只影响动画与命令块渲染时机，决策栏与 diff 的行为由上述单测覆盖。
