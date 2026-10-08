@@ -91,7 +91,6 @@ struct SettingsHomePage: View {
 
 struct SettingsDetailPage: View {
     var page: SettingsPage
-    var checks: [DiagnosticCheck] = SettingsDetailPage.sampleChecks
     /// 本次实际走通的路线；由 `SettingsHomePage` 传入，与首页同一状态源（C10 要求 3）。
     var route: SettingsRouteKind?
     /// 构建元数据可注入：截图基线必须固定取值，否则「关于」页每次提交/每天都会变，
@@ -172,6 +171,12 @@ struct SettingsDetailPage: View {
                         Image(systemName: diagnosticSymbol(check.status))
                     }
                     .frame(minHeight: 44)
+                }
+                // C10 要求 2：没有真实结果时**明确说明**，不留空白，也不用样例填充。
+                if displayedChecks.isEmpty {
+                    Text(copy.text(.diagnosticsEmpty))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             case .language:
                 LabeledContent(copy.text(.language), value: copy.text(.languageValue))
@@ -275,8 +280,13 @@ struct SettingsDetailPage: View {
         effortID = defaults.reasoningEffort
     }
 
+    /// 诊断页真正要显示的检查项。
+    ///
+    /// C10 要求 2：**生产默认不得使用样例诊断**。以前这里在未加载时回退到样例，
+    /// 于是「查询失败」的提示旁边会同时列出伪造的 OK/WARN 结果 —— 用户会真的相信
+    /// 那三条是这台电脑的诊断结论。现在只有两种状态：真实结果，或者空（由 UI 说明）。
     private var displayedChecks: [DiagnosticCheck] {
-        loadedChecks ?? checks
+        loadedChecks ?? []
     }
 
     private func loadAccount(_ copy: SettingsCopy) async {
@@ -291,6 +301,8 @@ struct SettingsDetailPage: View {
                 loadedChecks = report.checks ?? []
                 notice = nil
             } catch {
+                // 明确置空，避免回退到样例（见 displayedChecks 注释）。
+                loadedChecks = []
                 notice = copy.text(.diagnosticsUnavailable)
             }
         }
@@ -378,12 +390,6 @@ struct SettingsDetailPage: View {
             UIPasteboard.general.string = diagnosticsClipboard(displayedChecks)
         #endif
     }
-
-    static let sampleChecks = [
-        DiagnosticCheck(id: "host.rpc", status: .ok, code: "HOST_RPC_OK"),
-        DiagnosticCheck(id: "tls.cert", status: .warn, code: "TLS_CERT_EXPIRING"),
-        DiagnosticCheck(id: "remote.relay", status: .skip, code: "REMOTE_DISABLED"),
-    ]
 
     @ViewBuilder private func defaultsSection(_ copy: SettingsCopy) -> some View {
         if let models {
@@ -735,6 +741,8 @@ enum SettingsText: String {
     case renameFailed
     case unpairFailed
     case diagnosticsUnavailable
+    /// C10 要求 2：没有真实诊断结果时的明确说明（不用样例填充）。
+    case diagnosticsEmpty
     case errorOffline
     case errorMissingHost
     case errorUnauthorized
@@ -828,6 +836,7 @@ enum SettingsText: String {
         case .renameFailed: "Couldn't rename this computer."
         case .unpairFailed: "Couldn't unpair. The saved credential was kept."
         case .diagnosticsUnavailable: "Diagnostics are unavailable on this computer."
+        case .diagnosticsEmpty: "No diagnostics yet. Connect to your computer and try again."
         case .errorOffline: "This computer is offline."
         case .errorMissingHost: "This computer is not paired."
         case .errorUnauthorized: "Sign in again on this computer."

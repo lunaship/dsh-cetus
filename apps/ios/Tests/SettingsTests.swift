@@ -74,3 +74,20 @@ import Testing
         #expect(shown == "macbook.local")
     }
 }
+
+@Suite struct SettingsDiagnosticsHonestyTests {
+    /// C10 要求 2：生产默认不得用样例诊断填充。
+    /// 这条测试盯的是**文件事实**而非渲染结果：样例一旦被塞回生产默认，
+    /// 用户会在"查询失败"旁边看到伪造的 OK/WARN 结论。
+    @Test("生产设置页不再自带样例诊断数据")
+    func productionHasNoSampleChecks() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // Tests
+            .deletingLastPathComponent()  // apps/ios
+            .appending(path: "App/Features/Settings/SettingsPages.swift")
+        let source = try String(contentsOf: url, encoding: .utf8)
+        #expect(!source.contains("sampleChecks"), "生产文件不应再出现 sampleChecks")
+        // 空态必须有明确说明，不能留白。
+        #expect(source.contains("diagnosticsEmpty"))
+    }
+}

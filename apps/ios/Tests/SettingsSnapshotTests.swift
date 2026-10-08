@@ -1,4 +1,5 @@
 import DLCore
+import DLModels
 import SnapshotTesting
 import SwiftUI
 import UIKit
@@ -25,13 +26,19 @@ import XCTest
         NavigationStack {
             SettingsDetailPage(
                 page: page,
+                // C10 要求 2 之后生产默认不再注入样例诊断，所以截图显式给一份固定结果：
+                // 截图要覆盖「有真实结果」的布局，而生产在没有结果时走空态说明。
                 // 「关于」页会渲染真实构建元数据（commit/date/configuration）。
                 // 基线必须用固定值，否则每次提交、每天都会漂移，基线永远追不上。
-                buildInfo: Self.fixedBuildInfo)
+                buildInfo: Self.fixedBuildInfo,
+                account: Self.fixedAccount)
         }
         .environment(\.locale, Locale(identifier: language))
         .transaction { $0.disablesAnimations = true }
     }
+
+    /// 固定账号服务：只为截图稳定，不代表任何真实主机。
+    private static let fixedAccount = SettingsSnapshotAccount()
 
     /// 固定的构建元数据，只为截图稳定；不代表任何真实构建。
     private static let fixedBuildInfo = BuildInfo(
@@ -142,4 +149,27 @@ private enum SettingsSnapshotAccessibility {
     case standard
     case reduceTransparency
     case increaseContrast
+}
+
+/// 截图专用的固定账号服务。返回**固定**的诊断与电脑信息，让「电脑」「诊断」
+/// 两页有内容可渲染且逐次一致；不代表任何真实主机，也不参与生产装配。
+private struct SettingsSnapshotAccount: SettingsAccountServing {
+    func loadComputer() async -> ComputerAccountSnapshot {
+        ComputerAccountSnapshot(
+            displayName: "MacBook Pro", originalName: "MacBook Pro", alias: nil,
+            address: "192.0.2.10:18640", hasTailnet: false, hasRelay: false,
+            pairedPhoneName: "iPhone")
+    }
+
+    func renameComputer(_ draft: String) async -> ComputerRename? { nil }
+
+    func unpair() async -> ComputerUnpairOutcome { .revoked }
+
+    func diagnostics() async throws -> DiagnosticsReport {
+        DiagnosticsReport(checks: [
+            DiagnosticCheck(id: "host.rpc", status: .ok, code: "HOST_RPC_OK"),
+            DiagnosticCheck(id: "tls.cert", status: .warn, code: "TLS_CERT_EXPIRING"),
+            DiagnosticCheck(id: "remote.relay", status: .skip, code: "REMOTE_DISABLED"),
+        ])
+    }
 }
