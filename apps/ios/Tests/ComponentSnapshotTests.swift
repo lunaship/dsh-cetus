@@ -2,6 +2,7 @@ import SnapshotTesting
 import SwiftUI
 import UIKit
 import XCTest
+
 @testable import Cetus
 
 final class ComponentSnapshotTests: XCTestCase {
