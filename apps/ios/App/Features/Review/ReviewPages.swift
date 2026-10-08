@@ -68,42 +68,38 @@ struct ChangesPage: View {
     var canNext: Bool
     var copy: ReviewCopy
     var onAsk: () -> Void = {}
+    // MARK: - C08 真实数据与动作
+    var loading = false
+    var error = false
+    var onRetry: () -> Void = {}
+    /// 点文件行 → 拉取该文件对比（下标）。
+    var onOpenDiff: (Int) -> Void = { _ in }
+    /// 已拉取的单文件对比（index → diff）。
+    var diff: [Int: ChangesDiffResponse] = [:]
 
     var body: some View {
         List {
-            ForEach(Array(files.enumerated()), id: \.offset) { _, file in
-                let parts = fileTitleParts(file.display ?? file.path ?? "")
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(parts.name).font(DLFont.mono(DLFont.body)).lineLimit(1)
-                        if !parts.directory.isEmpty {
-                            Text(parts.directory)
-                                .font(DLFont.footnote)
-                                .foregroundStyle(DLColor.secondaryLabel)
-                                .lineLimit(1)
-                        }
-                    }
-                    Spacer(minLength: 8)
-                    Text(copy.format(.added, file.added ?? 0)).foregroundStyle(DLColor.ok)
-                    Text(copy.format(.deleted, file.deleted ?? 0)).foregroundStyle(DLColor.err)
+            if files.isEmpty && error {
+                DLEmptyState(title: copy.text(.changesUnavailable), systemImage: "exclamationmark.triangle")
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                if loading {
+                    Button(copy.text(.changesRetry), action: onRetry)
                 }
-                .font(DLFont.mono(DLFont.footnote))
-                .frame(minHeight: 44)
+            } else {
+                ForEach(Array(files.enumerated()), id: \.offset) { index, file in
+                    fileRow(index: index, file: file)
+                }
             }
         }
         .navigationTitle(copy.text(.changesTitle))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button(copy.text(.previousTurn)) {}
-                    .disabled(!canPrevious)
-            }
+            // C08：上/下一轮按钮在没有多轮数据时不显示（不画死按钮）。
+            // 当前模型只持有最新一轮 changes，轮次切换需按 seq 分页拉取，
+            // 属 C09 范围，此处不占位。
             ToolbarItem(placement: .principal) {
-                Text(copy.format(.turn, turn)).font(DLFont.footnote)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(copy.text(.nextTurn)) {}
-                    .disabled(!canNext)
+                Text(copy.format(.turn, max(1, turn))).font(DLFont.footnote)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -113,6 +109,59 @@ struct ChangesPage: View {
                 .padding(.vertical, 8)
                 .background(DLColor.background)
         }
+    }
+
+    private func fileRow(index: Int, file: ChangedFile) -> some View {
+        let parts = fileTitleParts(file.display ?? file.path ?? "")
+        let known = file.binary == true || file.oversized == true
+        let diffLines = diff[index].flatMap { linesFromDiff($0) }
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(parts.name).font(DLFont.mono(DLFont.body)).lineLimit(1)
+                    if !parts.directory.isEmpty {
+                        Text(parts.directory)
+                            .font(DLFont.footnote)
+                            .foregroundStyle(DLColor.secondaryLabel)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 8)
+                if known {
+                    Text(copy.text(.binaryFile))
+                        .font(DLFont.mono(DLFont.footnote))
+                        .foregroundStyle(DLColor.secondaryLabel)
+                } else {
+                    Text(copy.format(.added, file.added ?? 0)).foregroundStyle(DLColor.ok)
+                    Text(copy.format(.deleted, file.deleted ?? 0)).foregroundStyle(DLColor.err)
+                }
+                if !known {
+                    Button(copy.text(.diffOpen)) { onOpenDiff(index) }
+                        .font(DLFont.mono(DLFont.footnote))
+                }
+            }
+            .font(DLFont.mono(DLFont.footnote))
+            if let diffLines, !diffLines.isEmpty {
+                ForEach(Array(diffLines.enumerated()), id: \.offset) { _, line in
+                    Text(line.text)
+                        .font(DLFont.mono(DLFont.footnote))
+                        .foregroundStyle(
+                            line.kind == .add
+                                ? DLColor.ok : (line.kind == .delete ? DLColor.err : DLColor.secondaryLabel)
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 12)
+                }
+            }
+        }
+        .frame(minHeight: 44, alignment: .top)
+    }
+
+    /// 把 ChangesDiffResponse 的 hunk 转成 DiffLine 列表。
+    private func linesFromDiff(_ response: ChangesDiffResponse) -> [DiffLine]? {
+        guard response.kind == .text, let hunks = response.hunks, !hunks.isEmpty else { return nil }
+        var budget = intralineBudgetCells
+        return diffLines(from: hunks, budget: &budget)
     }
 }
 
@@ -137,8 +186,8 @@ struct DiffPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             HStack {
-                Button(copy.text(.previousHunk)) {}
-                Button(copy.text(.nextHunk)) {}
+                // C08：diff 按 hunk 展示（C09 的 hunk 锚点导航属后续），
+                // 不再有"上/下 hunk"死按钮；保留"就这个文件提问"。
                 Spacer()
                 Button(copy.text(.askFile), action: onAsk)
             }
@@ -446,6 +495,10 @@ enum ReviewText: String {
     case quote
     case binaryFile
     case discarded
+    // C08：真实数据缺失 / 重试 / 打开对比
+    case changesUnavailable
+    case changesRetry
+    case diffOpen
     case previewTitle
     case previewEmpty
     case previewEmptyDetail
@@ -471,6 +524,9 @@ enum ReviewText: String {
         case .quote: "Quote in chat"
         case .binaryFile: "Binary file"
         case .discarded: "Check failed. The download was discarded."
+        case .changesUnavailable: "Changes unavailable"
+        case .changesRetry: "Retry"
+        case .diffOpen: "Diff"
         case .previewTitle: "Preview"
         case .previewEmpty: "No preview"
         case .previewEmptyDetail: "Approved ports from the computer show up here."

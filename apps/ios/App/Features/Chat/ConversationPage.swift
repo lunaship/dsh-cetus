@@ -187,7 +187,7 @@ struct ConversationPage: View {
                 .modifier(
                     ChangesPresentation(
                         regular: sizeClass == .regular, presented: $showChanges, copy: ReviewCopy(locale: locale),
-                        zoom: changesZoom)
+                        zoom: changesZoom, model: model)
                 )
                 .navigationDestination(isPresented: $showFiles) {
                     FilesPage(path: "", entries: [], copy: ReviewCopy(locale: locale))
@@ -848,16 +848,35 @@ private struct ChangesPresentation: ViewModifier {
     @Binding var presented: Bool
     var copy: ReviewCopy
     var zoom: Namespace.ID
+    /// C08：真实改动数据（从 ConversationModel 取），不再是空集合。
+    var model: ConversationModel
+
+    private var files: [ChangedFile] { model.changes?.files ?? [] }
+    private var turn: Int { model.changes?.turn ?? (model.changesSeq ?? 0) }
 
     func body(content: Content) -> some View {
+        let page = ChangesPage(
+            files: files,
+            turn: max(1, turn),
+            canPrevious: false,
+            canNext: false,
+            copy: copy,
+            loading: model.changesLoading,
+            error: model.changesError,
+            onRetry: { [model] in if let seq = model.changesSeq { model.viewChanges(seq: seq) } },
+            onOpenDiff: { [model] index in
+                guard let seq = model.changesSeq else { return }
+                model.loadFileDiff(seq: seq, index: index)
+            },
+            diff: model.fileDiffs)
         if regular {
             content.inspector(isPresented: $presented) {
-                ChangesPage(files: [], turn: 1, canPrevious: false, canNext: false, copy: copy)
+                page
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
             }
         } else {
             content.navigationDestination(isPresented: $presented) {
-                ChangesPage(files: [], turn: 1, canPrevious: false, canNext: false, copy: copy)
+                page
                     .navigationTransition(.zoom(sourceID: 0, in: zoom))
             }
         }

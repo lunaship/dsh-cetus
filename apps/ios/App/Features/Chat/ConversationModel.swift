@@ -46,6 +46,11 @@ protocol ConversationServing: Sendable {
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws
     func deleteSchedule(sessionID: String, scheduleID: String) async throws
     func previewExchange(path: String) async -> PreviewHTTPResult
+
+    /// C08：改动摘要（`GET /sessions/:id/changes?seq=`）。无能力时返回 nil。
+    func changesSummary(sessionID: String, seq: Int) async throws -> ChangesSummary?
+    /// C08：单文件对比（`GET /sessions/:id/changes/diff?seq=&index=`）。
+    func changesDiff(sessionID: String, seq: Int, index: Int) async throws -> ChangesDiffResponse?
 }
 
 extension ConversationServing {
@@ -120,6 +125,17 @@ extension ConversationServing {
     func previewExchange(path: String) async -> PreviewHTTPResult {
         _ = path
         return PreviewHTTPResult(status: 502, body: Data())
+    }
+
+    /// C08：默认无能力（fake / 离线测试），生产由 ConversationLiveService 实现。
+    func changesSummary(sessionID: String, seq: Int) async throws -> ChangesSummary? {
+        _ = (sessionID, seq)
+        return nil
+    }
+
+    func changesDiff(sessionID: String, seq: Int, index: Int) async throws -> ChangesDiffResponse? {
+        _ = (sessionID, seq, index)
+        return nil
     }
 }
 
@@ -214,6 +230,14 @@ final class ConversationModel {
     var copiedText = ""
     var changesRequest: Int?
     var diffRequested = false
+    // MARK: - C08 改动页数据
+    /// 当前显示的改动轮次（`seq`）与摘要。nil = 尚未拉取。
+    private(set) var changes: ChangesSummary?
+    private(set) var changesSeq: Int?
+    private(set) var changesLoading = false
+    private(set) var changesError = false
+    /// 单文件对比（`index` → diff）。
+    private(set) var fileDiffs: [Int: ChangesDiffResponse] = [:]
 
     init(
         hostID: String,
@@ -344,6 +368,46 @@ final class ConversationModel {
 
     func viewChanges(seq: Int?) {
         changesRequest = seq
+        loadChanges(seq: seq)
+    }
+
+    /// C08：拉取改动摘要与（可选）对比。失败时保留旧的，可重试。
+    private func loadChanges(seq: Int?) {
+        guard let seq, !changesLoading else { return }
+        changesLoading = true
+        changesError = false
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                if let summary = try await self.service.changesSummary(
+                    sessionID: self.sessionID, seq: seq)
+                {
+                    self.changes = summary
+                    self.changesSeq = seq
+                } else {
+                    // 主机不支持（旧 Host / 重启后摘要过期）→ 出空态，不出假数据。
+                    self.changes = nil
+                    self.changesSeq = nil
+                    self.changesError = true
+                }
+            } catch {
+                self.changesError = true
+            }
+            self.changesLoading = false
+        }
+    }
+
+    /// C08：拉取单文件对比（按摘要数组下标）。
+    func loadFileDiff(seq: Int, index: Int) {
+        guard fileDiffs[index] == nil else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            if let diff = try? await self.service.changesDiff(
+                sessionID: self.sessionID, seq: seq, index: index)
+            {
+                self.fileDiffs[index] = diff
+            }
+        }
     }
 
     func noteDiff() {

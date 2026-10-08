@@ -221,6 +221,42 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    /// C08：改动摘要（`GET /sessions/:id/changes?seq=`）。
+    /// 主机不支持时返回 404 `changes_unsupported` → 映射为 nil（App 出空态，不造假数据）。
+    func changesSummary(sessionID: String, seq: Int) async throws -> ChangesSummary? {
+        let http = try await connect()
+        do {
+            let response = try await http.get(
+                ChangesSummaryResponse.self,
+                path: try sessionPath(sessionID, "/changes"),
+                query: ["seq": String(seq)])
+            guard let files = response.files, !files.isEmpty else { return nil }
+            return ChangesSummary(
+                turn: response.turn, total: response.total,
+                added: response.added, deleted: response.deleted, files: files)
+        } catch let error as HostClientError where error == .capabilityMissing {
+            // 404：主机不支持改动 / 摘要已过期 → 出空态，不造假数据。
+            return nil
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
+    /// C08：单文件对比（`GET /sessions/:id/changes/diff?seq=&index=`）。
+    func changesDiff(sessionID: String, seq: Int, index: Int) async throws -> ChangesDiffResponse? {
+        let http = try await connect()
+        do {
+            return try await http.get(
+                ChangesDiffResponse.self,
+                path: try sessionPath(sessionID, "/changes/diff"),
+                query: ["seq": String(seq), "index": String(index)])
+        } catch let error as HostClientError where error == .capabilityMissing {
+            return nil
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
     func previewExchange(path: String) async -> PreviewHTTPResult {
         guard path.hasPrefix("/dsh-link/mobile/preview/") else {
             return PreviewHTTPResult(status: 404, body: Data())
