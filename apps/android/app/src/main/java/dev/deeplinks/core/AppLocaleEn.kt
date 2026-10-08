@@ -634,7 +634,7 @@ val DshStringsEn = DshStrings(
         put("balanceAlertHint", "Uses the top-up balance. Home stays quiet while this is off.")
         put("balanceAlertAmount", "Threshold")
         put("balanceAlertBanner", "Top-up balance is below %s")
-        put("pluginTooOld", "The dsh-links plugin on the computer is outdated. Update it to manage providers here.")
+        put("pluginTooOld", "The dsh-cetus plugin on the computer is outdated. Update it to manage providers here.")
         put("sectionProviders", "Providers")
         put("addProvider", "Add provider")
         put("addProviderEmpty", "Every catalog provider is already added")

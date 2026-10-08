@@ -633,7 +633,7 @@ val DshStringsZh = DshStrings(
         put("balanceAlertHint", "只看充值余额。关闭时首页不提示。")
         put("balanceAlertAmount", "阈值")
         put("balanceAlertBanner", "充值余额低于 %s")
-        put("pluginTooOld", "电脑端 dsh-links 插件版本过旧，更新后才能在手机上管理")
+        put("pluginTooOld", "电脑端 dsh-cetus 插件版本过旧，更新后才能在手机上管理")
         put("sectionProviders", "供应商")
         put("addProvider", "添加供应商")
         put("addProviderEmpty", "目录中的供应商都已添加")
