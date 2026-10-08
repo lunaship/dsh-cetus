@@ -14,7 +14,7 @@ Paired devices receive a long-lived `x-dsh-link-token` (192-bit random number). 
 
 - Add a new plugin config: `deviceIdleExpireDays` (default `90`, `0` = never expire).
 - During auth, if `now - lastSeenAt > idleExpire`, treat the token as revoked and return `401`.
-- Log: `dsh-links: device expired device=<8>`.
+- Log: `dsh-cetus: device expired device=<8>`.
 - Host panel shows each device's "last seen" time and "will expire in X days".
 - Tests: fake clock covers "just not expired", "just expired", and "configured as 0".
 

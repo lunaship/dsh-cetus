@@ -132,13 +132,13 @@
 ### 4.1 目录
 
 ```text
-dsh-links/
+dsh-cetus/
 ├── apps/
 │   ├── android/                    # 不动
 │   └── ios/                        # 新增
 │       ├── project.yml             # XcodeGen 工程描述（.xcodeproj 不入库，避免 agent 冲突）
 │       ├── App/                    # App target：入口、路由、页面
-│       │   ├── DeepLinksApp.swift
+│       │   ├── CetusApp.swift
 │       │   ├── Routing/
 │       │   ├── Features/
 │       │   │   ├── Pairing/        # 1.x
@@ -300,13 +300,13 @@ Figma 无法由 agent 操作，改为两步：
 ### I2.1 工程骨架
 
 - `project.yml`：App target（bundle id 先用 `dev.deeplinks.ios.debug`，阶段 9 再定正式 id）、三个扩展 target 先占位、本地 Packages 引用。
-- `DeepLinksApp.swift`：`@main`，根视图是空的 `NavigationStack`；`scenePhase` 监听。
+- `CetusApp.swift`：`@main`，根视图是空的 `NavigationStack`；`scenePhase` 监听。
 - `Info.plist`：
   - `NSLocalNetworkUsageDescription`（中英文）：“用于连接你电脑上的 DeepSeek Harness。”
   - `NSCameraUsageDescription`：“用于扫描电脑上的配对二维码。”
   - `NSAppTransportSecurity → NSAllowsLocalNetworking = YES`。
 - `PrivacyInfo.xcprivacy`：先登记 `UserDefaults`（理由 `CA92.1`）；后续用到其他“需说明理由的 API”时补齐。
-- 验收：`xcodegen generate && xcodebuild -scheme DeepLinks build` 在 CI 通过。
+- 验收：`xcodegen generate && xcodebuild -scheme Cetus build` 在 CI 通过。
 
 ### I2.2 CI
 

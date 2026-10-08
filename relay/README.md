@@ -1,6 +1,6 @@
 # DLP/1 中继（dlp-relay）
 
-DeepLinks 远程连接的「哑管道」：电脑插件与手机 App 都只向外连这里，中继把两条 WebSocket 拼起来，
+cetus 远程连接的「哑管道」：电脑插件与手机 App 都只向外连这里，中继把两条 WebSocket 拼起来，
 原样转发内层 TLS 字节。它不保存账号、设备档案或任何业务内容，看不到明文，也无法冒充电脑。
 协议合同见 [`docs/rfc/0001-dlp1-remote-pipe.md`](../docs/rfc/0001-dlp1-remote-pipe.md)。
 

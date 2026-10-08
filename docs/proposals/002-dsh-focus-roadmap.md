@@ -1,7 +1,7 @@
 # Proposal 002：专注 DSH 的五期执行方案
 
 > 状态：已批准执行（2026-10）。本文写给执行 PR 的 agent：每期、每个子项都可以独立领取。
-> 背景：通用手机终端（如 Moshi）不是我们的赛道。DeepLinks 只服务 DeepSeek Harness（DSH），把“只有专做 DSH
+> 背景：通用手机终端（如 Moshi）不是我们的赛道。cetus 只服务 DeepSeek Harness（DSH），把“只有专做 DSH
 > 才做得到的深度”做透，同时补齐连通性、后台与通知体验。
 
 ## 0. 总则（所有 PR 必须遵守）
@@ -195,7 +195,7 @@
 - `DshNotifier.taskMonitorNotification` 改成进度通知：标题是会话名；正文写状态（执行中 / 等你审批 / 等你回答 / 已完成）；进度取 `todos` 完成数 / 总数（没有 todos 就用不确定进度条），另外显示第几步和已用时间。
 - Android 16（API 36）以上使用 `ProgressStyle` 并申请提升为进行中通知（`setRequestPromotedOngoing`）；先确认 `androidx.core` 1.19 中 `NotificationCompat.ProgressStyle` 是否可用，不可用就用平台 API 并加 SDK 版本判断。低版本退回 `setProgress`。
 - 更新节流：同一条通知 2 秒内最多更新一次；进程在后台时不要每个流式片段都刷新通知。
-- 隐私：锁屏版本（`setPublicVersion`）只显示“DeepLinks · 任务执行中”。
+- 隐私：锁屏版本（`setPublicVersion`）只显示“cetus · 任务执行中”。
 - 测试：把通知内容的拼装抽成纯函数 `TaskProgressContent`，单测覆盖各状态、无 todos、todos 全部完成三种情况。
 
 ### P3.2 后台监听扩展到“整台电脑”（方案 A）
@@ -315,7 +315,7 @@
 | P2.1 | #26 | 已按方案落地。首页不显示用量：`session.list` 不带 `tokenUsage` / `stats`（Q3）。上下文占用百分比与输入区圆环一样截断，60.0K/128.0K 为 46%。 |
 | P2.2 | #27 | 已按方案落地。`/dsh-link/mobile/models` 没有价格字段，省钱/最强按上下文窗口最小/最大（模型自带 `inputPrice` 时改按输入单价）。均衡用 Host 默认模型，推理强度取中位，只有两档时取偏高的那个。余额提醒关着时首页不拉余额。 |
 | P2.3 | #28 | 已按方案落地。Host 模型接口没有价格字段，用 2026-10-02 的 DeepSeek 官方价表，峰时为 UTC 工作日 01:00–04:00 与 06:00–10:00。中国法定节假日官方按谷时，插件没有节假日日历，工作日峰时窗口仍按峰时估算。未知模型省略金额。 |
-| P3.1 | #29 | 已按方案落地。`androidx.core` 1.19 有 `NotificationCompat.ProgressStyle`，API 36 使用它并请求提升为进行中通知。锁屏英文写 “DeepLinks · Task running”。进入监听时读一次历史种入已有待办，之后只跟实时事件，流式片段不刷新。 |
+| P3.1 | #29 | 已按方案落地。`androidx.core` 1.19 有 `NotificationCompat.ProgressStyle`，API 36 使用它并请求提升为进行中通知。锁屏英文写 “cetus · Task running”。进入监听时读一次历史种入已有待办，之后只跟实时事件，流式片段不刷新。 |
 | P3.2 插件 | #30 | 已按方案落地。DSH 没有全局会话事件，只在有订阅者时每 5 秒差分 `session.list`。`error` 记为 failed，其他非完成的结束原因记为 stopped。第一次快照不推已经结束的会话。 |
 | P3.2 App | #31 | 已按方案落地。后台改听主机事件，不再单开会话流。`HostStore` 只保留最近一台电脑，状态机按多台计时。全部空闲 5 分钟后停止。只有正在看的会话审批带按钮。网络唤醒会重连；是否算「真正换网」由 `hostMonitorShouldReconnect` 判定。 |
 | P3.3 | #32 | 已按方案落地。未调用 `schedule.history`：主机事件已有 `origin` 和终态，列表没有开始时间，耗时按手机首次看到活跃状态起算；没看到开始的普通任务不通知。回复首行用已有的 `lastResult.text`（首段，最多 60 字），只在设置打开时另读会话列表。锁屏不含首行。总开关关闭时定时任务也不发。 |

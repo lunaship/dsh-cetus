@@ -1,6 +1,6 @@
-# DeepLinks iOS 续作执行单（从 I4.8 收尾到上架）
+# cetus iOS 续作执行单（从 I4.8 收尾到上架）
 
-> 版本：v1.1（2026-10-06）。放入仓库：`docs/ios/CONTINUE.md`。本轮收尾以桌面 `DeepLinks-收尾方案.md` 为准；与本文旧顺序冲突时以收尾方案和 PLAN v1.4 为准。
+> 版本：v1.1（2026-10-06）。放入仓库：`docs/ios/CONTINUE.md`。本轮收尾以桌面 `cetus-收尾方案.md` 为准；与本文旧顺序冲突时以收尾方案和 PLAN v1.4 为准。
 > 2026-10-06 起点：`origin/main` @ `b1054fa0`（已包含 `origin/ios/main` @ `b5b796ee`，另有一次 `push/` 依赖更新）。没有开着的 PR。
 > 本文是 `docs/ios/PLAN.md`（v1.4）的**续作执行单**。阶段 A 已完成的子项仍以 PLAN 第 11 节为准。规则、红线、设计约束以 PLAN 第 2、3 节和 `apps/ios/AGENTS.md` 为准。
 
@@ -29,7 +29,7 @@
 目的：用自动化代替“没人运行过”。在 macOS CI 上启动**真实插件 + 假 Host**，用模拟器里的 App 走完主流程。
 
 1. 复用 I3.2 的 `scripts/export-contract-fixtures.mjs` 里的假 Host，抽成 `scripts/ios-e2e-host.mjs`：在 `127.0.0.1` 启动插件，输出配对二维码载荷（JSON）到一个文件；提供“触发一条审批 / 一条提问 / 一段流式输出 / 完成”的控制接口（只监听回环）。
-2. 新增 UI 测试 target `DeepLinksUITests`（XCUITest），启动参数 `-e2eQRPayload <path>` 让 App 跳过相机，直接用这份载荷配对（只在 Debug 构建可用，Release 编译期移除）。
+2. 新增 UI 测试 target `CetusUITests`（XCUITest），启动参数 `-e2eQRPayload <path>` 让 App 跳过相机，直接用这份载荷配对（只在 Debug 构建可用，Release 编译期移除）。
 3. 用例（每条独立、可重跑）：
    - `testPairAndInbox`：配对 → 电脑上批准（脚本自动批准）→ 首页出现会话。
    - `testStreamAndSend`：打开会话 → 看到流式文本 → 发送一条消息 → 消息出现在流里。
