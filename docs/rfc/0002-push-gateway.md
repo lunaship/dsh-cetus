@@ -163,6 +163,21 @@ NSE 规则：
 2. `ts` 超过 15 分钟：显示通用文案。
 3. 解密失败：显示「cetus 有新的任务动态」。
 
+**`deviceId` 由接收端本地解析，不在 payload 里**（2026-10-08 定案）
+
+内容 AAD 需要 `deviceId`，但 APNs payload（§5.6）**只**发送 `aps` / `e` / `k`，不含 `deviceId`，也不含 `sessionId`。接收端按以下顺序解析，全程不扩大 APNs 可见字段：
+
+1. payload 若出现 `deviceId`（未来兼容），以它为准；
+2. 否则用 payload 的 `k`（`kid`）查**共享 Keychain** 里的 `kid → deviceId` 绑定。该绑定在 App 注册推送时与内容密钥 `K` 一起写入，每台电脑各一条，清除注册时一并删除；
+3. 查不到（`kid` 未知、从未注册）→ 不猜 AAD，直接显示通用文案。
+
+`sessionId` 同理：payload 没有该字段，点击通知时由 App 用共享的 `K` 与解析出的 `deviceId` 本地解开密文取得，**仅用于导航定位会话**，绝不用来执行批准。
+
+由此两条硬性要求：
+
+- NSE 仍**不联网**、不读设备 token；只读共享 Keychain 的 `K` 与 `kid → deviceId` 绑定。
+- 锁屏标题始终是通用文案（`PushContent.generic`）。任务标题只在 App 内展示。`hiddenPreviewsBodyPlaceholder` 保持通用。
+
 **共享测试数据** `testdata/push/content/`（阶段 6 由 Go 生成；本仓库先放占位）：正例、过期 / 失败兜底、以及「误用 token 前缀」负例。
 
 ### 5.5 网关 HTTP 接口
@@ -247,6 +262,8 @@ NSE 规则：
 
 `interruption-level: time-sensitive` **只**给 `type` 为 `approval` / `question` 的推送（插件侧在构造前决定）；完成类用默认级别且可不带该字段。需要 App 开启 Time Sensitive Notifications 能力。
 
+**payload 顶层只有 `aps` / `e` / `k`**（硬性）。**不得**加入 `deviceId`、`sessionId`、`tool`、标题原文或任何明文业务字段：接收端需要的一切都从密文或本机共享存储解析（§5.4）。这既避免了把设备标识交给 APNs，也保证新增字段不会悄悄扩宽锁屏可见面。
+
 #### `kind: la-update` / `la-start` / `la-end`
 
 - `apns-push-type: liveactivity`
@@ -264,6 +281,16 @@ NSE 规则：
 ```
 
 标题由 Widget 从 App Group 按 `sessionRef` 本地查找。命令、文件名不得出现。
+
+**锁屏标题策略（2026-10-08 定案，与 §16.1.2 对齐）**
+
+锁屏与灵动岛**一律显示通用文案**（"有一项任务需要处理" / "任务进行中" / "任务已结束"），**不**显示任务标题原文。具体标题只在本机 App 内、用户点开之后展示。`content-state` 因此**不得**携带 `title`：它既超出上表允许字段，也会把标题直接推到锁屏。
+
+**过期与离线（§16.4.3）**
+
+ActivityKit 的 `staleDate` 设为最后一次更新的 15 分钟后。超过该时间未更新时，锁屏显示「已离线 · 最后更新 <时间>」，**不得**继续显示为"运行中"。锁屏计时文本使用「最后更新」时刻，**禁止**使用会无限递增的倒计时/正计时，否则已停止的任务会一直看起来在跑。
+
+**不做百分比**：没有进度总量时只显示阶段与时间，不生成百分比（§16.1.3）。
 
 ### 5.7 防滥用与隐私
 
@@ -365,6 +392,8 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 - [ ] 前台 SSE 抑制推送；collapse 合并；吊销清理
 - [ ] 日志脱敏检查
 - [ ] 模拟器 `simctl push` 验证 NSE（无需付费账号）
+- [x] NSE 链路：真实网关 payload 形状（只含 `aps`/`e`/`k`）→ 本地解析 `deviceId`/`sessionId` → 解密出正文（`apps/ios/Tests/PushPayloadChainTests.swift`）
+- [x] 锁屏：Live Activity `content-state` 不含 `title`，锁屏通用文案，`staleDate` 过期后显示「已离线 · 最后更新」
 - [ ] 真实 APNs 送达留到阶段 9
 
 ---
@@ -377,3 +406,4 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 | 2026-10-03 | 按 PLAN v1.2：锁定 HPKE 套件为 X25519 / HKDF-SHA256 / ChaCha20-Poly1305；明确 `info`/`aad`/线上格式/`kid` 绑定；增加 `testdata/push/hpke/` 占位说明 |
 | 2026-10-03 | 按 PLAN v1.3：`sealed` 定为 JSON 对象（字符串 → 400）；AAD 域分离为 `dlpush/1 token|` / `dlpush/1 content|`；向量目录分 `hpke/` 与 `content/` |
 | 2026-10-04 | 明确插件注册字段、关闭、密钥轮换、410 与吊销清理边界 |
+| 2026-10-08 | 明确 `deviceId` 与 `sessionId` 由接收端本地解析、不进 payload（§5.4）；payload 顶层限定为 `aps`/`e`/`k`（§5.6）；锁屏与灵动岛统一通用文案、`content-state` 去除 `title`；补 Live Activity `staleDate` 过期与「最后更新」显示规则 |
