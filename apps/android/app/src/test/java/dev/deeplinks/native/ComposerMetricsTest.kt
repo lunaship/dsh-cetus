@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.core.L
+import dev.deeplinks.core.sendOfflineBlocked
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -162,5 +163,36 @@ class ComposerMetricsTest {
         assertEquals(L.chatPlaceholder, composerPlaceholder(isListening = false, running = false))
         // 听写优先于执行中：正在录音时提示仍是听写
         assertEquals(L.listening, composerPlaceholder(isListening = true, running = true))
+    }
+
+    // ===== 方案 §18「离线」：可读缓存，写操作禁止 =====
+
+    @Test
+    fun offlineBlocksSendEvenWithContent() {
+        assertFalse(
+            "离线时有内容也不能发",
+            composerCanSend(hasContent = true, sending = false, online = false),
+        )
+        assertTrue(composerCanSend(hasContent = true, sending = false, online = true))
+    }
+
+    @Test
+    fun sendStillNeedsContentAndNoInFlightSubmit() {
+        // 在线但没内容 → 不可发；在线但已有提交在途 → 不可发（防重复提交）
+        assertFalse(composerCanSend(hasContent = false, sending = false, online = true))
+        assertFalse(composerCanSend(hasContent = true, sending = true, online = true))
+    }
+
+    @Test
+    fun subagentSessionCannotSend() {
+        assertFalse(
+            composerCanSend(hasContent = true, sending = false, online = true, subagentSession = true),
+        )
+    }
+
+    @Test
+    fun offlineNoticeExplainsOnlyWhenOffline() {
+        assertEquals(L.sendOfflineBlocked, composerOfflineNotice(online = false))
+        assertEquals(null, composerOfflineNotice(online = true))
     }
 }

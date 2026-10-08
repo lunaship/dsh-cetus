@@ -1,6 +1,7 @@
 package dev.deeplinks.native
 
 import dev.deeplinks.core.L
+import dev.deeplinks.core.sendOfflineBlocked
 
 import androidx.compose.ui.unit.dp
 
@@ -100,6 +101,26 @@ fun composerShowsSetupRow(
 /** 发送/停止失败写在输入槽内；发送中不保留上一次错误。 */
 fun composerShowsActionError(error: String?, sending: Boolean): Boolean =
     !sending && !error.isNullOrBlank()
+
+/**
+ * 发送按钮是否可点（方案 §18「离线」：可读缓存，写操作禁止）。
+ *
+ * 离线时发送是写操作 —— 必须禁用并解释，不能让用户点了才拿到一句泛化的网络错误。
+ * 停止是取消而不是写，在线状态未知时仍允许（否则用户无法中止正在跑的 turn）。
+ */
+fun composerCanSend(
+    hasContent: Boolean,
+    sending: Boolean,
+    online: Boolean,
+    subagentSession: Boolean = false,
+): Boolean = hasContent && !sending && online && !subagentSession
+
+/**
+ * 离线时输入槽要显示的说明；在线返回 null。
+ *
+ * 与 `hostOffline`（建议行里的「电脑离线」）分开：那条只说状态，这条解释为什么发不出去。
+ */
+fun composerOfflineNotice(online: Boolean): String? = if (online) null else L.sendOfflineBlocked
 
 /** 已开聊且刚改过本会话权限时，输入条 chip 显示这次选择，而不是全局默认。 */
 fun composerPermissionPreset(

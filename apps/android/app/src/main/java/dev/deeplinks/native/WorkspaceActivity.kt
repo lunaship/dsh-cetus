@@ -1,4 +1,7 @@
 package dev.deeplinks.native
+import dev.deeplinks.core.sendOfflineBlocked
+import dev.deeplinks.native.util.classifySendFailure
+import dev.deeplinks.native.util.sendFailureMessage
 import dev.deeplinks.native.util.workspaceDisplayName
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -1843,7 +1846,11 @@ fun WorkspaceScreen(
             submitComposer = {
                 val rawText = inputText.trim()
                     val images = pendingImages
-                    if ((rawText.isNotBlank() || images.isNotEmpty()) && !isSending) {
+                    // 方案 §18「离线」：发送是写操作。按钮已禁用，这里再兜一次，
+                    // 保证任何入口（命令面板 / 高权限确认弹窗）都发不出去。
+                    if (!hostReachable && (rawText.isNotBlank() || images.isNotEmpty())) {
+                        composerActionError = L.sendOfflineBlocked
+                    } else if ((rawText.isNotBlank() || images.isNotEmpty()) && !isSending) {
                         // DSH 里 plan / goal 是 `/plan` `/goal` 命令（命令面板里可选），
                         // 不是输入条上的模式开关，所以这里不再自动加前缀。
                         val textToSend = rawText
@@ -1970,7 +1977,16 @@ fun WorkspaceScreen(
                                     )
                                     // 发送失败：若尚未真正进入 turn，收回乐观 running
                                     if (currentSession?.running != true) liveRunning = false
-                                    composerActionError = L.sendFailed.format(e.message ?: L.unknownError)
+                                    // 方案 §7 要求 4 / §18：按场景给可操作文案，
+                                    // 而不是把原始网络错误丢给用户。
+                                    val http = e as? MobileApiHttpException
+                                    val failure = classifySendFailure(
+                                        throwable = e,
+                                        httpCode = http?.httpCode,
+                                        body = http?.body,
+                                        message = e.message,
+                                    )
+                                    composerActionError = sendFailureMessage(failure, e.message)
                                 }
                             } finally {
                                 withContext(Dispatchers.Main) {
@@ -2514,6 +2530,7 @@ fun WorkspaceScreen(
                         onAnswerApproval = { id, outcome, done -> currentSessionId?.let { workspaceViewModel.answerApproval(it, id, outcome, done) } ?: done(false) },
                         onAnswerQuestion = { id, answer, done -> currentSessionId?.let { workspaceViewModel.answerQuestion(it, id, answer, done) } ?: done(false) },
                         modifier = Modifier.widthIn(max = dshLayout.contentMaxWidthDp.dp).wrapContentWidth(Alignment.CenterHorizontally),
+                        online = hostReachable,
                     )
                 } else {
                 // 两层输入区：上下文条（工作区 / 最近改动 / 累计用量）+ 输入卡
@@ -2567,7 +2584,14 @@ fun WorkspaceScreen(
                 onTakePhoto = { launchCamera() },
                 isListening = isListening,
                 isSending = isSending,
-                canSend = (inputText.isNotBlank() || pendingImages.isNotEmpty()) && !isSending && currentSession?.origin != "subagent",
+                // 方案 §18「离线」：离线禁写 —— 发送是写操作，必须禁用并解释原因。
+                canSend = composerCanSend(
+                    hasContent = inputText.isNotBlank() || pendingImages.isNotEmpty(),
+                    sending = isSending,
+                    online = hostReachable,
+                    subagentSession = currentSession?.origin == "subagent",
+                ),
+                online = hostReachable,
                 running = running,
                 modelName = inputModelSeat.name,
                 modelEffort = inputModelSeat.effort,

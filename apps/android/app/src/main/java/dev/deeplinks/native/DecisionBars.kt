@@ -24,6 +24,7 @@ import dev.deeplinks.core.Dsh
 import dev.deeplinks.core.DshS
 import dev.deeplinks.core.DshType
 import dev.deeplinks.core.L
+import dev.deeplinks.core.approveOfflineBlocked
 import dev.deeplinks.core.decisionCustom
 import dev.deeplinks.core.decisionNext
 import dev.deeplinks.core.decisionPrev
@@ -90,6 +91,7 @@ internal fun ApprovalDecisionBar(
     msg: MobileMessage,
     onAnswer: (approvalId: String, outcome: String, onDone: (Boolean) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    online: Boolean = true,
 ) {
     val haptic = rememberDshHaptic()
     var submitting by remember(msg.id) { mutableStateOf(false) }
@@ -99,6 +101,11 @@ internal fun ApprovalDecisionBar(
     fun submit(outcome: String) {
         val id = msg.approvalId ?: return
         if (submitting) return
+        // 方案 §18「离线」：审批是写操作，离线时不发请求，直接说明原因。
+        if (!online) {
+            error = L.approveOfflineBlocked
+            return
+        }
         haptic(if (outcome == "allowed-once") DshHaptic.Confirm else DshHaptic.Reject)
         submitting = true
         error = null
@@ -116,8 +123,8 @@ internal fun ApprovalDecisionBar(
         },
         command = command ?: tool,
         note = if (command == null) L.approvalArgsMissing else null,
-        secondary = DlAction(L.reject, { submit("rejected") }, enabled = !submitting),
-        primary = DlAction(L.allowOnce, { submit("allowed-once") }, enabled = !submitting),
+        secondary = DlAction(L.reject, { submit("rejected") }, enabled = !submitting && online),
+        primary = DlAction(L.allowOnce, { submit("allowed-once") }, enabled = !submitting && online),
         modifier = modifier,
         extra = error?.let { message -> { DecisionError(message) } },
     )
@@ -129,6 +136,7 @@ internal fun QuestionDecisionBar(
     msg: MobileMessage,
     onAnswer: (rpcId: String, answer: JSONObject, onDone: (Boolean) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    online: Boolean = true,
 ) {
     val questions = remember(msg.id, msg.questionPayloadJson) { displayQuestionsOf(msg) }
     val drafts = remember(msg.id) { mutableStateMapOf<String, QuestionDraft>() }
@@ -145,6 +153,13 @@ internal fun QuestionDecisionBar(
     fun submit() {
         val answer = buildQuestionAnswers(questions, drafts) ?: return
         val rpcId = msg.questionRpcId ?: return
+        // 与审批同一把锁：连点两次只产生一次提交（方案 §7 要求 2 / §18「问题」）。
+        if (submitting) return
+        // 方案 §18「离线」：作答是写操作，离线时不发请求，直接说明原因。
+        if (!online) {
+            error = L.approveOfflineBlocked
+            return
+        }
         submitting = true
         error = null
         onAnswer(rpcId, answer) { ok ->
@@ -180,13 +195,13 @@ internal fun QuestionDecisionBar(
     }
 
     val secondary = when {
-        question.optional -> DlAction(L.decisionSkip, { drafts.remove(question.id); advance() }, enabled = !submitting)
-        else -> DlAction(L.decisionPrev, { index -= 1 }, enabled = index > 0 && !submitting)
+        question.optional -> DlAction(L.decisionSkip, { drafts.remove(question.id); advance() }, enabled = !submitting && online)
+        else -> DlAction(L.decisionPrev, { index -= 1 }, enabled = index > 0 && !submitting && online)
     }
     val primary = DlAction(
         if (last) DshS.questionSubmitAnswer else L.decisionNext,
         { advance() },
-        enabled = !submitting && (answered || question.optional) && (!last || questionDraftComplete(questions, drafts)),
+        enabled = !submitting && online && (answered || question.optional) && (!last || questionDraftComplete(questions, drafts)),
     )
     DlDecisionBar(
         status = L.decisionWaitAnswer,
@@ -260,10 +275,12 @@ internal fun DecisionBarHost(
     onAnswerApproval: (approvalId: String, outcome: String, onDone: (Boolean) -> Unit) -> Unit,
     onAnswerQuestion: (rpcId: String, answer: JSONObject, onDone: (Boolean) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    /** 方案 §18「离线」：审批 / 作答也是写操作，离线时禁用主次动作并解释。 */
+    online: Boolean = true,
 ) {
     if (decision.role == "approval") {
-        ApprovalDecisionBar(decision, onAnswerApproval, modifier)
+        ApprovalDecisionBar(decision, onAnswerApproval, modifier, online)
     } else {
-        QuestionDecisionBar(decision, onAnswerQuestion, modifier)
+        QuestionDecisionBar(decision, onAnswerQuestion, modifier, online)
     }
 }

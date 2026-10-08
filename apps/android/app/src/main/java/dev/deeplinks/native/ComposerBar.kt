@@ -88,6 +88,11 @@ internal fun InputBar(
     isSending: Boolean,
     canSend: Boolean,
     running: Boolean,
+    /**
+     * 电脑是否可达（方案 §18「离线」）：离线时可读缓存，但发送属于写操作，要禁用并解释。
+     * 默认 true 让调用点不改也能编译，但生产必须传真实值。
+     */
+    online: Boolean = true,
     modelName: String?,
     modelEffort: String?,
     sessionStats: MobileSessionStats?,
@@ -171,7 +176,8 @@ internal fun InputBar(
                 canSend = canSend,
                 isSending = isSending,
                 isListening = isListening,
-                showMic = composerIdle && !running && !isSending && !isListening && voiceAvailable,
+                // 离线时发送是写操作，直接不给麦克风/发送入口（方案 §18「离线」）。
+                showMic = online && composerIdle && !running && !isSending && !isListening && voiceAvailable,
                 voiceAvailable = voiceAvailable,
                 actionError = actionError,
                 onStop = onStop,
@@ -181,6 +187,23 @@ internal fun InputBar(
         },
         footer = {
             val shownActionError = actionError
+            // 方案 §18「离线」：发送被禁用时给出原因，而不是让按钮无声失效。
+            // 只在下有内容、且没有更具体的动作错误时提示，避免两行错误叠着。
+            val offlineNotice = composerOfflineNotice(online)
+            val showOfflineNotice =
+                offlineNotice != null && !composerIdle && (shownActionError == null
+                    || !composerShowsActionError(shownActionError, isSending))
+            if (showOfflineNotice && offlineNotice != null) {
+                Text(
+                    offlineNotice,
+                    color = Dsh.labelSecondary,
+                    style = DshType.supporting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = DshSpace.s8, vertical = DshSpace.s4)
+                        .semantics { contentDescription = offlineNotice },
+                )
+            }
             if (shownActionError != null && composerShowsActionError(shownActionError, isSending)) {
                 Text(
                     shownActionError,
