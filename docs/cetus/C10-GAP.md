@@ -29,15 +29,21 @@
 | 10 关于页显示 cetus/版本/构建/许可证 | `SettingsPages.swift` about 分支；构建元数据本轮改为可注入 |
 | 11 MetricKit 只本地查看与导出 | `SettingsCrashStore.export`；无报告时文案为「暂无诊断」，不伪造崩溃记录 |
 
+## 第二轮修复（续）
+
+| # | 方案要求 | 修复前实况 | 修复 |
+|---|---|---|---|
+| **2（续）** | 诊断「显示测试时间」 | `DiagnosticsReport.generatedAt` 已解码但界面从不呈现 —— 用户无法判断结果是刚测的还是缓存 | 新增 `diagnosticsTestedAtText`，按**毫秒**口径格式化；无时间戳时不显示（不编造） |
+| **8** | 通知设置三**个**维度（系统授权 / App 偏好 / 网关可用性） | 只有一个 `pushAvailable` 兼作网关维度；**系统授权状态完全不呈现**。用户看到「开关是开的却收不到通知」无法定位：是系统拒了，还是电脑不支持 | 新增 `PushSystemAuthorization`（notDetermined/authorized/denied 三态归一）与独立文案键；页面同时显示「系统权限」「电脑」两行，拒绝时给「App 内改不了、要去系统设置」的可行动说明 |
+| **6** | 语言切换覆盖新增文案 | 语言页是「跟随系统」的只读展示（符合设计）；但**没有任何测试**保证新加的 key 两种语言齐备 —— 漏一个就会在中文界面夹英文 | 新增 `SettingsCatalogCoverageTests`，对 10 个新增 key 断言 `en` 与 `zh-Hans` 都存在且非空 |
+
 ## 仍未验证 / 未完成
 
 | # | 项 | 原因 |
 |---|---|---|
-| 6 | 语言在当前层立即生效 | **未逐项验证**：`@AppStorage` 语言键的切换覆盖范围需要真机走一遍新增文案，本地未做 |
 | 6 | 本机设置 vs 电脑 profile 设置分清 | 部分：`settingsWritable` 已区分可写性，但未逐条核对每个偏好归属 |
-| 8 | 通知设置三维度（系统授权 / App 偏好 / 网关可用性） | **部分**：`pushAvailable` 覆盖了网关可用性，系统授权状态未单独呈现；需真机授权流程验证 |
-| — | 诊断「显示测试时间」 | 未做：`DiagnosticsReport.generatedAt` 已解码但界面未呈现 |
 | — | 外观覆盖 WebView 与 sheet | 根层 `.preferredColorScheme` 理论上覆盖，但**未在真机上验证** sheet / WKWebView 内的实际效果 |
+| 8 | 系统授权三态在真机上的实际呈现 | 逻辑与文案已就位并有单测；**真机授权/拒绝流程未走**（本地只能到 notDetermined） |
 
 ## 验收对照（方案原文）
 
