@@ -200,6 +200,7 @@ struct ConversationPage: View {
                         truncated: model.filesTruncated,
                         unsupported: model.filesUnsupported,
                         openingFile: model.openingFile,
+                        returnAnchor: model.filesReturnAnchor,
                         onBreadcrumb: { model.loadFiles(path: $0) },
                         onEnterDir: { model.loadFiles(path: $0) },
                         onOpenFile: { openFile($0, copy: copy) },

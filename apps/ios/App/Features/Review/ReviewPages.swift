@@ -245,6 +245,8 @@ struct FilesPage: View {
     var truncated = false
     var unsupported = false
     var openingFile = false
+    /// Entry to scroll to after returning to an ancestor directory.
+    var returnAnchor: String? = nil
     /// 面包屑点某层 → 回到那层（父路径）。
     var onBreadcrumb: (String) -> Void = { _ in }
     /// 点目录 → 进入。
@@ -276,8 +278,14 @@ struct FilesPage: View {
             } else if let entries, entries.isEmpty, !loading {
                 DLEmptyState(title: copy.text(.filesEmptyDir), systemImage: "folder")
             } else if let entries {
-                List(entries, id: \.name) { entry in
-                    entryRow(entry)
+                ScrollViewReader { reader in
+                    List(entries, id: \.name) { entry in
+                        entryRow(entry).id(entry.name)
+                    }
+                    .onAppear { reveal(returnAnchor, in: entries, reader: reader) }
+                    .onChange(of: entries.map(\.name)) { _, _ in
+                        reveal(returnAnchor, in: entries, reader: reader)
+                    }
                 }
             } else {
                 ProgressView()
@@ -335,6 +343,11 @@ struct FilesPage: View {
         }
         .disabled(outside || openingFile)
         .accessibilityHint(outside ? copy.text(.filesOutsideHint) : "")
+    }
+
+    private func reveal(_ anchor: String?, in entries: [TreeEntry], reader: ScrollViewProxy) {
+        guard let anchor, entries.contains(where: { $0.name == anchor }) else { return }
+        reader.scrollTo(anchor, anchor: .center)
     }
 
     private func childPath(_ parent: String, _ child: String) -> String {

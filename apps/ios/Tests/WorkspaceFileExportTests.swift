@@ -1,4 +1,5 @@
 import DLCore
+import DLModels
 import DLSecurity
 import Foundation
 import Testing
@@ -12,7 +13,51 @@ private actor WorkspaceDownloadService: ConversationServing {
     }
 }
 
+private actor WorkspaceTreeService: ConversationServing {
+    func tree(sessionID: String, path: String) async throws -> TreeResponse? {
+        switch path {
+        case "legacy": return nil
+        case "broken": throw ConversationServiceError.failed
+        case "empty": return TreeResponse(ok: true, path: "empty", entries: [])
+        default:
+            return TreeResponse(
+                ok: true, path: path, truncated: path.isEmpty,
+                entries: [TreeEntry(name: "src", type: .dir), TreeEntry(name: "说明.md", type: .file)])
+        }
+    }
+}
+
 @MainActor @Suite struct WorkspaceFileExportTests {
+    private func waitForFiles(_ model: ConversationModel) async {
+        for _ in 0..<200 where model.filesLoading { try? await Task.sleep(for: .milliseconds(5)) }
+    }
+
+    @Test func treeStatesStayDistinctAndReturnRevealsPreviousFolder() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = ConversationModel(
+            hostID: "test-host", sessionID: "test-session", service: WorkspaceTreeService(),
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: root), autostart: false)
+        model.loadFiles(path: "")
+        await waitForFiles(model)
+        #expect(model.fileEntries?.count == 2)
+        #expect(model.filesTruncated)
+        model.loadFiles(path: "src/app")
+        await waitForFiles(model)
+        model.loadFiles(path: "")
+        await waitForFiles(model)
+        #expect(model.filesReturnAnchor == "src")
+        model.loadFiles(path: "legacy")
+        await waitForFiles(model)
+        #expect(model.filesUnsupported && !model.filesError && model.fileEntries == nil)
+        model.loadFiles(path: "broken")
+        await waitForFiles(model)
+        #expect(model.filesError && !model.filesUnsupported && model.fileEntries == nil)
+        model.loadFiles(path: "empty")
+        await waitForFiles(model)
+        #expect(model.fileEntries == [] && !model.filesError && !model.filesUnsupported)
+    }
+
     @Test func exportsStayInsideUniqueProtectedDirectories() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

@@ -11,6 +11,16 @@ public func fileTitleParts(_ display: String) -> (directory: String, name: Strin
     return (directory, name.isEmpty ? trimmed : name)
 }
 
+/// C09: when moving from `current` up to ancestor `target`, the child of `target` to reveal.
+public func filesReturnAnchorName(from current: String, to target: String) -> String? {
+    let currentParts = current.split(separator: "/").map(String.init)
+    let targetParts = target.split(separator: "/").map(String.init)
+    guard currentParts.count > targetParts.count,
+        Array(currentParts.prefix(targetParts.count)) == targetParts
+    else { return nil }
+    return currentParts[targetParts.count]
+}
+
 public func breadcrumbPaths(_ path: String) -> [String] {
     var crumbs = [""]
     var current = ""

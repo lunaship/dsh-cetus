@@ -280,6 +280,8 @@ final class ConversationModel {
     private(set) var filesError = false
     private(set) var filesTruncated = false
     private(set) var filesUnsupported = false
+    /// C09: entry to reveal after returning to an ancestor directory.
+    private(set) var filesReturnAnchor: String?
     private var filesTask: Task<Void, Never>?
     private var filesGeneration = 0
     /// 已批准预览（手机只能打开这些，不能批准端口）。
@@ -456,6 +458,7 @@ final class ConversationModel {
         filesLoading = true
         filesError = false
         filesUnsupported = false
+        if path != filesPath { filesReturnAnchor = filesReturnAnchorName(from: filesPath, to: path) }
         filesPath = path
         fileEntries = nil
         filesTruncated = false

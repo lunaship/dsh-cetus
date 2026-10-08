@@ -10,6 +10,15 @@ import Testing
         #expect(breadcrumbPaths("src/app") == ["", "src", "src/app"])
     }
 
+    @Test func returningToAncestorRevealsTheFolderWeCameFrom() {
+        #expect(filesReturnAnchorName(from: "src/app/ui", to: "src") == "app")
+        #expect(filesReturnAnchorName(from: "src/app", to: "") == "src")
+        #expect(filesReturnAnchorName(from: "文档/设计", to: "文档") == "设计")
+        #expect(filesReturnAnchorName(from: "src", to: "src/app") == nil)
+        #expect(filesReturnAnchorName(from: "src/app", to: "lib") == nil)
+        #expect(filesReturnAnchorName(from: "src", to: "src") == nil)
+    }
+
     @Test func diffLinesMarkTheChangedWord() {
         var budget = intralineBudgetCells
         let lines = diffLines(
