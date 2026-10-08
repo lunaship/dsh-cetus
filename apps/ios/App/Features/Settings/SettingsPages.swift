@@ -228,6 +228,11 @@ struct SettingsDetailPage: View {
         .onChange(of: notifyQuestion) { _, _ in Task { await refreshPush(copy) } }
         .onChange(of: notifyDone) { _, _ in Task { await refreshPush(copy) } }
         .onChange(of: notifyFailed) { _, _ in Task { await refreshPush(copy) } }
+        // RFC 0002 §16.2.1: a rotated APNs token must re-register immediately,
+        // not only on the next cold launch.
+        .onReceive(NotificationCenter.default.publisher(for: .deepLinksPushTokenChanged)) { _ in
+            Task { await refreshPush(copy) }
+        }
         .toolbar {
             if page == .diagnostics {
                 ToolbarItem(placement: .topBarTrailing) {

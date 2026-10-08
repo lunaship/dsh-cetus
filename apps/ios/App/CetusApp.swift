@@ -55,6 +55,8 @@ final class CetusAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // DEBUG-only: seed the shared Keychain for the simctl NSE check.
+        DebugPushSimSeed.applyIfRequested()
         let open = UNNotificationAction(
             identifier: PushNotificationCategory.openAction,
             title: "Open",
@@ -94,7 +96,13 @@ final class CetusAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        PushTokenBridge.shared.didRegister(deviceToken: deviceToken)
+        let changed = PushTokenBridge.shared.didRegister(deviceToken: deviceToken)
+        // RFC 0002 §16.2.1: a changed token must be re-registered with the plugin.
+        // The settings screen performs the actual sync on next appearance; this
+        // notification lets an already-open screen react immediately.
+        if changed {
+            NotificationCenter.default.post(name: .deepLinksPushTokenChanged, object: nil)
+        }
     }
 
     func application(
@@ -144,12 +152,14 @@ struct CetusApp: App {
 /// app process do not always see the same environment.
 extension Notification.Name {
     static let deepLinksOpenPush = Notification.Name("dev.deeplinks.ios.open-push")
+    /// Posted when APNs hands the app a device token that differs from the last
+    /// one, so an open settings screen can re-register without a relaunch.
+    static let deepLinksPushTokenChanged = Notification.Name("dev.deeplinks.ios.push-token-changed")
 }
 
 enum DebugE2EQRLaunch {
     static let argument = "-e2eQRPayload"
     static let environmentKey = "E2E_QR_PAYLOAD"
-
     static var isRequested: Bool {
         #if DEBUG
             payloadPath() != nil
@@ -174,6 +184,56 @@ enum DebugE2EQRLaunch {
                 return path
             }
             return nil
+        }
+    #endif
+}
+
+/// DEBUG-only seed for the `simctl push` NSE check (`scripts/ios-nse-simctl-push.sh`).
+///
+/// A real push cannot decrypt until the shared Keychain holds the test content key
+/// and the matching `kid` -> `deviceId` binding. This writes both so the script can
+/// exercise the NSE end to end on a simulator without an Apple account.
+///
+/// It never runs in Release: the whole type is compiled out, and the values are
+/// throwaway test constants — never a user key.
+enum DebugPushSimSeed {
+    static let argument = "-CetusPushSimSeed"
+    static let key = "4242424242424242424242424242424242424242424242424242424242424242"
+    static let kid = "sim-kid-0001"
+    static let deviceID = "sim-nse-device"
+
+    /// Applies the seed when the launch argument is present. Returns whether it ran.
+    @discardableResult
+    static func applyIfRequested() -> Bool {
+        #if DEBUG
+            guard ProcessInfo.processInfo.arguments.contains(argument) else { return false }
+            guard let bytes = decodeHex(key), bytes.count == 32 else { return false }
+            do {
+                let store = PushKeyStore.live()
+                try store.save(bytes)
+                try store.bind(kid: kid, deviceID: deviceID)
+                return true
+            } catch {
+                return false
+            }
+        #else
+            return false
+        #endif
+    }
+
+    #if DEBUG
+        /// Minimal hex decoder so the seed needs no shared helper in the app target.
+        private static func decodeHex(_ text: String) -> Data? {
+            guard text.count % 2 == 0 else { return nil }
+            var bytes: [UInt8] = []
+            var index = text.startIndex
+            while index < text.endIndex {
+                let next = text.index(index, offsetBy: 2)
+                guard let byte = UInt8(text[index..<next], radix: 16) else { return nil }
+                bytes.append(byte)
+                index = next
+            }
+            return Data(bytes)
         }
     #endif
 }
