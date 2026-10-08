@@ -187,3 +187,6 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 必要时再次触发，直到 CI 的 screenshot check 变绿。
 
 截图路径 ≠ 生产路径的差异说明：`SettingsSnapshotTests` 注入固定 `BuildInfo`，生产走 `BuildInfo.from()`（读 `BuildMetadata.xcconfig`）；`staticSnapshot` 只影响动画与命令块渲染时机，决策栏与 diff 的行为由上述单测覆盖。
+
+| 7.2 电脑 / 7.3 诊断 | C10：装配真实账号服务（此前生产未注入，整页不可用）；电脑页三条路线按**真实选路**显示、地址用实际连接地址而非 hostID；诊断失败时显示空态说明，不再在「不可用」旁列出伪造结论 | `SettingsRouteDisplayTests` / `SettingsDiagnosticsHonestyTests` / `SettingsAccountTests` |
+| 7.5 外观 | C10：`ThemePreference` 统一存储键与配色换算，`RootView` 用 `.preferredColorScheme` 在根层应用；「跟随系统」不覆盖 | `ThemePreferenceTests` |
