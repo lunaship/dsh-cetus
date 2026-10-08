@@ -175,3 +175,41 @@ import Testing
         #expect(year >= 2025 && year <= 2027, "毫秒被当成秒会把年份算到 1970 年代，实际 \(year)")
     }
 }
+
+// MARK: - C10 要求 6：新增文案必须两种语言都有
+
+@Suite struct SettingsCatalogCoverageTests {
+    /// 防的是「加了 key 但漏了某个语言」——界面会退回英文 fallback，
+    /// 中文用户看到夹杂英文。截图测试只覆盖截图里的页面，抓不到这个。
+    @Test("设置相关新增 key 都有 en 与 zh-Hans")
+    func newSettingsKeysAreTranslated() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "App/Resources/Localizable.xcstrings")
+        let data = try Data(contentsOf: url)
+        let catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let strings = try #require(catalog?["strings"] as? [String: Any])
+
+        let required = [
+            "settings.diagnosticsEmpty",
+            "settings.diagnosticsTestedAt",
+            "settings.pushSystemAuthorization",
+            "settings.pushGateway",
+            "settings.pushGatewayReady",
+            "settings.pushGatewayUnavailable",
+            "settings.pushAuthAuthorized",
+            "settings.pushAuthDenied",
+            "settings.pushAuthNotDetermined",
+            "settings.pushSystemDeniedHint",
+        ]
+        for key in required {
+            let entry = try #require(strings[key] as? [String: Any], "缺少 key: \(key)")
+            let localizations = try #require(entry["localizations"] as? [String: Any])
+            for language in ["en", "zh-Hans"] {
+                let unit = (localizations[language] as? [String: Any])?["stringUnit"] as? [String: Any]
+                let value = unit?["value"] as? String
+                #expect(value?.isEmpty == false, "\(key) 缺少 \(language) 翻译")
+            }
+        }
+    }
+}
