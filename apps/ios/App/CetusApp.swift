@@ -14,12 +14,18 @@ struct RootView: View {
     /// 用户手动解除后，本次前台周期内不再重盖（避免一解除就被重新盖住）。
     @State private var escapedThisCycle = false
     @Environment(\.scenePhase) private var scenePhase
+    /// C10 要求 5：外观必须在**根层**应用，才能覆盖导航、sheet、消息、WebView
+    /// 与后续页面。以前只写 `settings.theme` 却没人读 —— 用户选完外观毫无反应。
+    @AppStorage(ThemePreference.storageKey) private var theme = ThemePreference.system
 
     var body: some View {
         content
             // 草稿仓库从依赖根注入一次，紧凑导航 / 宽屏详情 / 分享预填三条路
             // 都取到同一份（C02 要求 4）。测试可用 .composerDraftStore(_:) 覆盖。
             .composerDraftStore(ComposerDraftStore.live(keys: KeychainStore()))
+            // 「跟随系统」= 不加覆盖（nil），由系统决定；显式选择则覆盖整棵视图树，
+            // 包括 sheet、警报与 WebView 内容。
+            .preferredColorScheme(ThemePreference.colorScheme(for: theme))
             .overlay {
                 if showsCover {
                     PrivacyCoverView(

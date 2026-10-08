@@ -100,7 +100,7 @@ struct SettingsDetailPage: View {
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
     var push: PushSettingsRegistration?
-    @AppStorage("settings.theme") private var theme = "system"
+    @AppStorage(ThemePreference.storageKey) private var theme = ThemePreference.system
     @AppStorage("settings.notifyMaster") private var notifyMaster = false
     @AppStorage("settings.notifyApproval") private var notifyApproval = false
     @AppStorage("settings.notifyQuestion") private var notifyQuestion = false
@@ -206,9 +206,9 @@ struct SettingsDetailPage: View {
                     .foregroundStyle(.secondary)
             case .appearance:
                 Picker(copy.text(.appearance), selection: $theme) {
-                    Text(copy.text(.themeSystem)).tag("system")
-                    Text(copy.text(.themeLight)).tag("light")
-                    Text(copy.text(.themeDark)).tag("dark")
+                    Text(copy.text(.themeSystem)).tag(ThemePreference.system)
+                    Text(copy.text(.themeLight)).tag(ThemePreference.light)
+                    Text(copy.text(.themeDark)).tag(ThemePreference.dark)
                 }
                 .pickerStyle(.inline)
                 Text(copy.text(.typeSizeNote))

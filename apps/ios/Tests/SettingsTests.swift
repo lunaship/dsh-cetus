@@ -91,3 +91,37 @@ import Testing
         #expect(source.contains("diagnosticsEmpty"))
     }
 }
+
+// MARK: - C10 要求 5：外观在根层生效
+
+@Suite struct ThemePreferenceTests {
+    @Test("跟随系统不覆盖配色，交给系统决定")
+    func systemDoesNotOverride() {
+        #expect(ThemePreference.colorScheme(for: ThemePreference.system) == nil)
+    }
+
+    @Test("显式选择映射到对应配色")
+    func explicitChoicesMap() {
+        #expect(ThemePreference.colorScheme(for: ThemePreference.light) == .light)
+        #expect(ThemePreference.colorScheme(for: ThemePreference.dark) == .dark)
+    }
+
+    @Test("未知取值退回跟随系统，不给用户坏掉的界面")
+    func unknownFallsBack() {
+        #expect(ThemePreference.colorScheme(for: "") == nil)
+        #expect(ThemePreference.colorScheme(for: "high-contrast") == nil)
+    }
+
+    /// 设置页写入的键与根视图读取的键必须**是同一个常量**。
+    /// 这条防的正是历史缺陷：写入 `settings.theme` 而无人读取，外观设置静默失效。
+    @Test("根视图与设置页共用同一个存储键")
+    func rootAndSettingsShareKey() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "App/CetusApp.swift")
+        let source = try String(contentsOf: root, encoding: .utf8)
+        #expect(source.contains("ThemePreference.storageKey"), "根视图必须读同一个键")
+        #expect(source.contains("preferredColorScheme"), "根视图必须真的应用外观")
+        #expect(!source.contains("\"settings.theme\""), "不应再出现裸字符串键")
+    }
+}
