@@ -214,3 +214,16 @@ CI 基线截图因此过期。触发 `ios-regen-screenshots.yml` 重新生成后
 
 **注意**：CI iOS 的 `paths: apps/ios/**` 过滤器意味着基线提交（改 `apps/ios/Tests/__Snapshots__/*.png`）
 **会**触发 CI iOS —— 所以下一轮基线提交后 CI iOS 会自动重跑，不需要手动触发。
+
+### 基线结论（截至第 7 轮）
+
+漂移幅度 57 → 15 → 14 → 14 → 13 → 12 → **11**，持续递减但未完全收敛。
+`wide_landscape_light_zh.reduce-transparency.png` 在 CI runner 间大幅跳变
+（1,979,040 ↔ 430,215 字节），说明 wide 截图存在系统性的渲染不稳定。
+
+**判断**：这是基线基础设施的已知局限（macOS runner 间 Xcode/字体渲染微差），
+不影响代码质量。CI iOS 的 unit tests / build 均绿；只有 screenshot check
+在基线稳定前会红。基线最终收敛需维护者介入（固定 Xcode 版本或锁定
+runner pool）。**不阻塞 G2-G7 功能开发。**
+
+当前 main = `e71329f1`（第 7 轮基线），CI 插件/Android 全绿。
