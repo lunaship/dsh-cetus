@@ -61,8 +61,12 @@ import XCTest
             content, appearance: appearance, large: large, increaseContrast: increaseContrast)
         let name = variantName(
             large: large, reduceTransparency: reduceTransparency, increaseContrast: increaseContrast)
+        // 与其他截图套件（SettingsSnapshotTests / ReviewSnapshotTests / WideSnapshotTests）
+        // 用同一档容差。此前这里是裸 `.image`（**逐像素全等**），在
+        // `accessibility3` 大字号下渲染不稳定：CI 自己重生成的基线，下次 CI 又判定不匹配，
+        // 于是「重生成 → 仍失败」反复循环。容差与其它套件对齐后可复现。
         assertSnapshot(
-            of: image, as: .image, named: name,
+            of: image, as: .image(precision: 0.995, perceptualPrecision: 0.99), named: name,
             testName: snapshotName(scene, appearance: appearance, language: language))
     }
 
