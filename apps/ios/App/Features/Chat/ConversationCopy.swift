@@ -240,6 +240,14 @@ enum ChatText: String {
     case sending
     /// C06：审批 / 回答提交失败，内容保留。
     case decisionFailed
+    /// C06 10.2.2：问卷含未知题型，不能提交，也不能静默丢弃。
+    case questionUnsupported
+    /// C06 10.2.8：服务器校验打回且**能定位到题**（参数是 1 基题号）。
+    case questionInvalidIndexed
+    /// C06 10.2.8：服务器校验打回但**无法定位到题**，退回通用文案。
+    case questionInvalidGeneric
+    /// C06 10.1.6：多个待处理请求的位置（参数：当前序号、总数）。
+    case decisionPosition
     /// C06：问题自由回答的提示，与普通消息草稿分开。
     case questionAnswerPlaceholder
     /// C02：草稿写盘失败。内存副本还在，但不能让用户以为已保存。
@@ -478,6 +486,11 @@ enum ChatText: String {
         case .retry: "Retry"
         case .sending: "Sending…"
         case .decisionFailed: "Couldn't submit. Your answer is kept — try again."
+        case .questionUnsupported:
+            "This question uses a type this app can't answer yet. Submitted nothing — answer it on the computer."
+        case .questionInvalidIndexed: "The computer rejected question %d. Fix it and try again."
+        case .questionInvalidGeneric: "The computer rejected the answers. Check them and try again."
+        case .decisionPosition: "Request %d of %d"
         case .questionAnswerPlaceholder: "Your answer"
         case .draftNotSaved: "Draft not saved — it stays on screen. Check storage and try again."
         }

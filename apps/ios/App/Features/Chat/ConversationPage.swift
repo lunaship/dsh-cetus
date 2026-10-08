@@ -134,6 +134,8 @@ struct ConversationPage: View {
     /// 决策（审批 / 问题提交）在途锁，避免重复点击（C06）。
     @State private var decisionBusy = false
     @State private var decisionNotice: ChatText?
+    /// C06 10.2.8：决策提示的格式化参数（如出错题号）。空表示无参数。
+    @State private var decisionNoticeArguments: [CVarArg] = []
     @State private var submission: SubmissionState = .idle
     @State private var submissionNotice: ChatText?
     // MARK: - C04 跟滚
@@ -400,6 +402,10 @@ struct ConversationPage: View {
                         isSending: submission.busy,
                         placeholder: composerPlaceholderText(copy),
                         decisionHandled: isDecisionHandled,
+                        decisionPosition: decisionPositionText(copy),
+                        decisionNotice: decisionNoticeText(copy),
+                        // C06 10.2.7：末题提交由题目导航区负责，决策栏不再重复放发送。
+                        questionUsesNavigatorSubmit: activeQuestion != nil,
                         decisionBusy: decisionBusy
                     )
                     .padding(.horizontal, 12)
@@ -411,8 +417,11 @@ struct ConversationPage: View {
             .onAppear {
                 installDrafts()
                 if let sharePrefill, sharePrefill.target == .session(model.sessionID) {
-                    draft = sharePrefill.text
-                    attachments = sharePrefill.images
+                    // C13: merge the share into the saved draft instead of replacing it.
+                    // installDrafts() does not restore text, so read the saved prompt first.
+                    let base = draft.isEmpty ? drafts.restored(.prompt) : draft
+                    draft = ShareInbox.merging(draft: base, shared: sharePrefill.text).text
+                    attachments = ShareInbox.mergingImages(existing: attachments, shared: sharePrefill.images)
                     return
                 }
                 guard draft.isEmpty else { return }
@@ -587,9 +596,18 @@ struct ConversationPage: View {
                 Button(questionForm.isLast ? copy.text(.send) : copy.text(.questionNext)) {
                     moveQuestion(questionForm.isLast ? .submit : .next)
                 }
-                .disabled(decisionBusy)
+                // C06 10.2.2：含未知题型时**不提交**（也不静默丢空数组），
+                // 由下方说明告诉用户去电脑上答。
+                .disabled(decisionBusy || questionForm.hasUnsupportedQuestion)
             }
             .frame(minHeight: 44)
+            // C06 10.2.2：未知题型的用户可见说明——按钮为什么点不动。
+            if questionForm.hasUnsupportedQuestion {
+                Text(copy.text(.questionUnsupported))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.err)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(.horizontal, 16)
         .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
@@ -621,6 +639,12 @@ struct ConversationPage: View {
         guard !decisionBusy, let message = activeQuestion, let id = message.questionRpcId else { return }
         syncQuestionForm(message)
         questionForm.updateCurrent(custom: answerText)
+        // C06 10.2.2：含未知题型时一律不提交（按钮已禁用，这里再兜一层）。
+        if action == .submit, questionForm.hasUnsupportedQuestion {
+            decisionNotice = .questionUnsupported
+            decisionNoticeArguments = []
+            return
+        }
         if action == .submit {
             guard let body = questionForm.move(.submit) else { return }
             decisionBusy = true
@@ -634,7 +658,22 @@ struct ConversationPage: View {
                     answerText = ""
                     decisionPulse += 1
                 } catch {
-                    decisionNotice = .decisionFailed
+                    // C06 10.2.8：把服务器校验错误定位到具体题，并跳到那一题让用户就地改。
+                    let located = locateQuestionValidationError(error, questions: questionForm.questions)
+                    if let located, located.isLocalized, questionForm.moveToQuestion(located) {
+                        answerText = questionForm.currentCustom
+                        decisionNotice =
+                            located.questionIndex.map { _ in
+                                .questionInvalidIndexed
+                            } ?? .questionInvalidGeneric
+                        decisionNoticeArguments = located.questionIndex.map { [$0] } ?? []
+                    } else {
+                        // 定位不到就不猜，退回通用文案。
+                        decisionNotice = .questionInvalidGeneric
+                        decisionNoticeArguments = []
+                    }
+                    // 失败时保留草稿，用户改完可直接重试。
+                    persistQuestionDraft()
                 }
             }
             return
@@ -707,6 +746,38 @@ struct ConversationPage: View {
         switch decision {
         case .approval(let message), .question(let message):
             return isTerminalRequestStatus(message.requestStatus)
+        }
+    }
+
+    /// C06 10.1.5 / 10.2.8：面板内提示文案。带参数时走 format（如「第 N 题」）。
+    private func decisionNoticeText(_ copy: ConversationCopy) -> String? {
+        guard let decisionNotice else { return nil }
+        guard !decisionNoticeArguments.isEmpty else { return copy.text(decisionNotice) }
+        return copy.format(decisionNotice, decisionNoticeArguments)
+    }
+
+    /// C06 10.1.6：多个可处理请求时给出「第 N / 共 M 个」的位置。
+    /// 只有一个（或没有）请求时返回 nil，不在面板上堆无意义文案。
+    private func decisionPositionText(_ copy: ConversationCopy) -> String? {
+        guard let decision else { return nil }
+        let pending = pendingRequestIDs
+        guard pending.count > 1 else { return nil }
+        let currentID: String?
+        switch decision {
+        case .approval(let message): currentID = message.approvalId
+        case .question(let message): currentID = message.questionRpcId
+        }
+        guard let currentID, let offset = pending.firstIndex(of: currentID) else { return nil }
+        return copy.format(.decisionPosition, offset + 1, pending.count)
+    }
+
+    /// 当前所有**手机上可处理**的请求 id，按处理顺序（与 `pendingPhoneDecision`
+    /// 的 `reversed()` 一致：新请求在前）。
+    private var pendingRequestIDs: [String] {
+        model.status.requests.messages.reversed().compactMap { message -> String? in
+            if actionablePhoneApproval(message) { return message.approvalId }
+            if actionablePhoneQuestion(message) { return message.questionRpcId }
+            return nil
         }
     }
 

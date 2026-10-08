@@ -164,7 +164,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private enum Mode {
         case composer
         case decision(
-            status: String, question: String, command: String?, secondaryTitle: String, primaryTitle: String)
+            status: String, question: String, command: String?, secondaryTitle: String, primaryTitle: String,
+            positionText: String?, notice: String?)
     }
 
     private enum Installed: Equatable {
@@ -245,6 +246,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         secondaryTitle: String,
         primaryTitle: String,
         command: String? = nil,
+        positionText: String? = nil,
+        notice: String? = nil,
         animated: Bool
     ) {
         mode = .decision(
@@ -252,7 +255,9 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             question: question,
             command: command,
             secondaryTitle: secondaryTitle,
-            primaryTitle: primaryTitle
+            primaryTitle: primaryTitle,
+            positionText: positionText,
+            notice: notice
         )
         applyMode(animated: animated)
     }
@@ -373,9 +378,12 @@ public final class DLComposerView: UIView, UITextViewDelegate {
                 field.becomeFirstResponder()
             }
             shouldRestoreFocus = false
-        case .decision(let status, let question, let command, let secondaryTitle, let primaryTitle):
+        case .decision(
+            let status, let question, let command, let secondaryTitle, let primaryTitle, let positionText, let notice
+        ):
             let signature = [
                 status, question, command ?? "", secondaryTitle, primaryTitle, isEnabled ? "1" : "0",
+                positionText ?? "", notice ?? "",
             ].joined(separator: "␟")
             if installed == .decision(signature: signature) { return }
             shouldRestoreFocus = installed == .composer && field.isFirstResponder
@@ -386,6 +394,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
                 secondaryTitle: secondaryTitle,
                 primaryTitle: primaryTitle,
                 enabled: isEnabled,
+                positionText: positionText,
+                notice: notice,
                 onSecondary: { [weak self] in self?.onDecisionSecondary?() },
                 onPrimary: { [weak self] in self?.onDecisionPrimary?() }
             )

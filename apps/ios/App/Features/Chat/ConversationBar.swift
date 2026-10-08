@@ -21,8 +21,15 @@ struct ConversationBar: UIViewRepresentable {
     var isSending = false
     /// C05：编辑器为空时的提示文案。
     var placeholder = ""
-    /// C06：请求已被其他设备处理 → 决策面板显示"已处理"，不给成功触感。
+    /// C06：请求已被其他设备处理 → 决策面板显示「已处理」，不给成功触感。
     var decisionHandled = false
+    /// C06 10.1.6：多个待处理请求时的位置文案（如「第 1 / 3 个请求」）。
+    var decisionPosition: String?
+    /// C06 10.1.5：面板内的失败提示。
+    var decisionNotice: String?
+    /// C06 10.2.7：问题模式下，末题的「提交回答」已由题目导航区提供，
+    /// 决策栏不再放第二个语义重复的发送按钮。
+    var questionUsesNavigatorSubmit = true
     /// C06：审批 / 回答提交在途时决策按钮不可点，防止重复提交。
     var decisionBusy = false
 
@@ -75,6 +82,8 @@ struct ConversationBar: UIViewRepresentable {
                             secondaryTitle: "",
                             primaryTitle: copy.text(.decisionHandledPrimary),
                             command: approvalCommand(from: message.toolArgs),
+                            positionText: decisionPosition,
+                            notice: decisionNotice,
                             animated: false)
                     } else {
                         view.showDecision(
@@ -83,15 +92,22 @@ struct ConversationBar: UIViewRepresentable {
                             secondaryTitle: copy.text(.reject),
                             primaryTitle: copy.text(.allowOnce),
                             command: approvalCommand(from: message.toolArgs),
+                            positionText: decisionPosition,
+                            notice: decisionNotice,
                             animated: false)
                     }
                 case .question(let message):
+                    // C06 10.2.7：末题「提交回答」由题目导航区提供。若导航区正在
+                    // 承担提交，决策栏只保留拒绝，**不再出现第二个「发送」**。
+                    let questionHandled = decisionHandled || questionUsesNavigatorSubmit
                     view.showDecision(
-                        status: copy.text(.waitAnswer),
+                        status: decisionHandled ? copy.text(.decisionHandledStatus) : copy.text(.waitAnswer),
                         question: message.text.isEmpty ? copy.text(.question) : message.text,
-                        secondaryTitle: copy.text(.reject),
-                        primaryTitle: copy.text(.send),
+                        secondaryTitle: decisionHandled ? "" : copy.text(.reject),
+                        primaryTitle: questionHandled ? "" : copy.text(.send),
                         command: nil,
+                        positionText: decisionPosition,
+                        notice: decisionNotice,
                         animated: false)
                 }
                 Self.lastMode[key] = true
