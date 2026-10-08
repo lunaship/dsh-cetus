@@ -141,6 +141,10 @@ final class PushRegistrationTests: XCTestCase {
     }
 
     func testNotificationTapRoutesWithoutApproving() {
+        // The APNs payload carries only `e`/`k`, so the reader recovers both ids
+        // locally: `deviceId` from the kid binding, `sessionId` by opening the
+        // ciphertext. A payload that also carries them explicitly is still
+        // accepted, and the ids are trimmed.
         let request = PushPayloadReader.openRequest(in: [
             "deviceId": " device-7 ",
             "sessionId": "sess-9",
@@ -148,8 +152,11 @@ final class PushRegistrationTests: XCTestCase {
             "e": "ciphertext",
         ])
         XCTAssertEqual(request, PushOpenRequest(deviceID: "device-7", sessionID: "sess-9"))
+        // No session id anywhere: nothing to route to.
         XCTAssertNil(PushPayloadReader.openRequest(in: ["deviceId": "device-7"]))
         XCTAssertNil(PushPayloadReader.openRequest(in: ["deviceId": " ", "sessionId": "sess-9"]))
+        // A blank session id is not a route either.
+        XCTAssertNil(PushPayloadReader.openRequest(in: ["sessionId": "  "]))
     }
 
     func testContentKeyLivesOnlyInSecureStore() throws {
