@@ -302,7 +302,8 @@ struct ConversationPage: View {
                         showsAttach: !staticSnapshot && decision == nil,
                         attachTitle: copy.text(.attachTitle),
                         onAttach: { sheet = .attach },
-                        placeholder: composerPlaceholderText(copy)
+                        placeholder: composerPlaceholderText(copy),
+                        decisionHandled: isDecisionHandled
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
@@ -548,6 +549,16 @@ struct ConversationPage: View {
         return .ignored
     }
 
+    /// C06：当前决策是否已被其他设备处理（请求状态已终态）。
+    /// 另一设备先处理时，面板显示"已处理"且不给成功触感（方案 §10.1 要求 4）。
+    private var isDecisionHandled: Bool {
+        guard let decision else { return false }
+        switch decision {
+        case .approval(let message), .question(let message):
+            return isTerminalRequestStatus(message.requestStatus)
+        }
+    }
+
     /// C05：按会话状态给编辑器提示。空闲→"给这个会话发消息"，运行中→"补充说明"。
     /// 不抢焦点，不进发送正文（只是 UILabel 叠加在编辑器上）。
     private func composerPlaceholderText(_ copy: ConversationCopy) -> String {
@@ -650,7 +661,10 @@ struct ConversationPage: View {
                 try await model.serviceQuestion(rpcID: id, answer: body)
                 draft = ""
             }
-            decisionPulse += 1
+            // C06：另一设备已处理时不给成功触感（方案 §10.1 要求 4）
+            if !isDecisionHandled {
+                decisionPulse += 1
+            }
         } catch {}
     }
 

@@ -90,7 +90,7 @@ public func approvalUiStatus(outcome: String?) -> RequestStatus {
     }
 }
 
-func isTerminalRequestStatus(_ status: RequestStatus?) -> Bool {
+public func isTerminalRequestStatus(_ status: RequestStatus?) -> Bool {
     status == .resolved || status == .cancelled || status == .expired
 }
 

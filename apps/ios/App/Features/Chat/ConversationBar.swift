@@ -21,6 +21,8 @@ struct ConversationBar: UIViewRepresentable {
     var isSending = false
     /// C05：编辑器为空时的提示文案。
     var placeholder = ""
+    /// C06：请求已被其他设备处理 → 决策面板显示"已处理"，不给成功触感。
+    var decisionHandled = false
 
     func makeUIView(context: Context) -> DLComposerView {
         let view = DLComposerView(sendTitle: copy.text(.send))
@@ -63,13 +65,23 @@ struct ConversationBar: UIViewRepresentable {
             if !wasInDecision {
                 switch decision {
                 case .approval(let message):
-                    view.showDecision(
-                        status: copy.text(.waitApproval),
-                        question: message.text.isEmpty ? (message.toolName ?? copy.text(.approval)) : message.text,
-                        secondaryTitle: copy.text(.reject),
-                        primaryTitle: copy.text(.allowOnce),
-                        command: approvalCommand(from: message.toolArgs),
-                        animated: false)
+                    if decisionHandled {
+                        view.showDecision(
+                            status: copy.text(.decisionHandledStatus),
+                            question: message.text.isEmpty ? (message.toolName ?? copy.text(.approval)) : message.text,
+                            secondaryTitle: "",
+                            primaryTitle: copy.text(.decisionHandledPrimary),
+                            command: approvalCommand(from: message.toolArgs),
+                            animated: false)
+                    } else {
+                        view.showDecision(
+                            status: copy.text(.waitApproval),
+                            question: message.text.isEmpty ? (message.toolName ?? copy.text(.approval)) : message.text,
+                            secondaryTitle: copy.text(.reject),
+                            primaryTitle: copy.text(.allowOnce),
+                            command: approvalCommand(from: message.toolArgs),
+                            animated: false)
+                    }
                 case .question(let message):
                     view.showDecision(
                         status: copy.text(.waitAnswer),

@@ -214,6 +214,9 @@ enum ChatText: String {
     // C04：上翻读历史时，新消息到达的提示入口
     case newMessages
     case backToLatest
+    // C06：请求已被其他设备处理的决策面板状态
+    case decisionHandledStatus
+    case decisionHandledPrimary
     case selectTitle
     case selectText
     // C05：输入栏按状态的 placeholder
@@ -439,6 +442,8 @@ enum ChatText: String {
         case .loadOlderFailed: "Couldn't load earlier messages"
         case .newMessages: "New messages"
         case .backToLatest: "Back to latest"
+        case .decisionHandledStatus: "Handled elsewhere"
+        case .decisionHandledPrimary: "Dismiss"
         case .selectTitle: "Select text"
         case .selectText: "Select text"
         case .composerIdlePrompt: "Message this conversation"
