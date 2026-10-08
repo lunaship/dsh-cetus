@@ -11,6 +11,11 @@ struct PushRegistrationService: Sendable {
     var store: @Sendable () -> PushKeyStore
     var metadata: @Sendable () -> PushRegistrationMetadataStore
     var capabilities: @Sendable () -> LocalPushCapabilities
+    /// This phone's device id for the paired computer, as reported by the
+    /// plugin's bootstrap (`host.deviceId`). It is written into the shared
+    /// `kid` -> deviceId binding so the notification extension can rebuild the
+    /// content AAD without the payload carrying it (RFC 0002 decision on B).
+    var deviceID: @Sendable () -> String? = { nil }
     var now: @Sendable () -> Date = { Date() }
 
     func sync(enabled: Bool, preferences: PushPreferences) async -> PushRegistrationOutcome {
@@ -63,6 +68,11 @@ struct PushRegistrationService: Sendable {
         case .register(let body):
             do {
                 try store().save(draft.contentKey)
+                // Bind before the network call so a payload arriving right after
+                // the plugin accepts the registration can already be decrypted.
+                if let paired = deviceID()?.trimmingCharacters(in: .whitespacesAndNewlines), !paired.isEmpty {
+                    try store().bind(kid: body.kid, deviceID: paired)
+                }
                 _ = try await http.postJSONData(
                     path: "/dsh-link/mobile/push/register",
                     body: PushRegistrationWire.json(body, contentKey: draft.contentKey))
@@ -97,6 +107,7 @@ struct PushRegistrationService: Sendable {
 
     private func clearLocal() throws {
         try store().remove()
+        try store().removeBindings()
         metadata().record = nil
     }
 

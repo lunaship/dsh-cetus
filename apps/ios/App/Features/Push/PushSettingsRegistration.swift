@@ -31,7 +31,8 @@ struct PushSettingsRegistration {
             },
             capabilities: { [pushVersion] in
                 LocalPushCapabilities(version: pushVersion, apnsBuildEnabled: APNsBuild.enabled)
-            })
+            },
+            deviceID: { [pairedDeviceID] in pairedDeviceID })
     }
 }
 

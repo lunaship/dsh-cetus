@@ -78,7 +78,11 @@ final class CetusAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         guard
             response.actionIdentifier == UNNotificationDefaultActionIdentifier
                 || response.actionIdentifier == PushNotificationCategory.openAction,
-            let request = PushPayloadReader.openRequest(in: response.notification.request.content.userInfo)
+            // The APNs payload carries only `e`/`k`, so the reader rebuilds the
+            // routing ids locally: `deviceId` from the kid binding, `sessionId`
+            // by opening the ciphertext. This only navigates; it never approves.
+            let request = PushPayloadReader.openRequest(
+                in: response.notification.request.content.userInfo, bindings: PushKeyStore.live())
         else { return }
         NotificationCenter.default.post(
             name: .deepLinksOpenPush,

@@ -82,11 +82,36 @@ public struct PushOpenRequest: Equatable, Sendable {
 public enum PushPayloadReader {
     /// Notification taps carry only routing identifiers. They never approve and
     /// never expose the encrypted body to navigation.
-    public static func openRequest(in userInfo: [AnyHashable: Any]) -> PushOpenRequest? {
-        guard let deviceID = string("deviceId", in: userInfo),
-            let sessionID = string("sessionId", in: userInfo)
-        else { return nil }
+    ///
+    /// The APNs payload has neither `deviceId` nor `sessionId` (RFC 0002 §5.6
+    /// sends only `aps`, `e`, `k`), so both are recovered locally: `deviceId`
+    /// from the `kid` binding, `sessionId` by opening the ciphertext with the
+    /// shared key. The decrypted `sessionId` is used for navigation only —
+    /// never to approve.
+    public static func openRequest(
+        in userInfo: [AnyHashable: Any], bindings: PushKeyStore? = nil, now: Date = Date()
+    ) -> PushOpenRequest? {
+        let deviceID = deviceID(in: userInfo, bindings: bindings) ?? ""
+        let sessionID =
+            string("sessionId", in: userInfo)
+            ?? decryptedSessionID(in: userInfo, bindings: bindings, now: now)
+        guard let sessionID, !sessionID.isEmpty else { return nil }
         return PushOpenRequest(deviceID: deviceID, sessionID: sessionID)
+    }
+
+    /// Opens the payload just far enough to recover the session id for routing.
+    ///
+    /// The freshness rule still applies: a stale notification must not route to
+    /// a session either, since the request it referred to is long gone.
+    private static func decryptedSessionID(
+        in userInfo: [AnyHashable: Any], bindings: PushKeyStore?, now: Date
+    ) -> String? {
+        guard let bindings else { return nil }
+        let ciphertext = ciphertext(in: userInfo)
+        guard !ciphertext.isEmpty else { return nil }
+        let deviceID = deviceID(in: userInfo, bindings: bindings) ?? ""
+        guard !deviceID.isEmpty, let key = (try? bindings.load()) ?? nil else { return nil }
+        return PushContent.openPayload(ciphertext: ciphertext, key: key, deviceID: deviceID, now: now)?.sessionID
     }
 
     public static func ciphertext(in userInfo: [AnyHashable: Any]) -> String {
@@ -95,8 +120,26 @@ public enum PushPayloadReader {
         return ""
     }
 
-    public static func deviceID(in userInfo: [AnyHashable: Any]) -> String {
-        string("deviceId", in: userInfo) ?? ""
+    /// The gateway key id that travels in the APNs payload (`k`). The extension
+    /// resolves the matching `deviceId` locally through `PushKeyStore`.
+    public static func kid(in userInfo: [AnyHashable: Any]) -> String {
+        string("k", in: userInfo) ?? ""
+    }
+
+    /// Resolves the device id to rebuild the content AAD from.
+    ///
+    /// RFC 0002 keeps `deviceId` out of the APNs payload, so it is looked up
+    /// from the shared binding written at registration. An explicit `deviceId`
+    /// in the payload still wins when a future build sends one. Returning nil
+    /// (unknown `kid`, never registered) makes the caller show the generic
+    /// notification instead of guessing an AAD that would fail to open.
+    public static func deviceID(
+        in userInfo: [AnyHashable: Any], bindings: PushKeyStore? = nil
+    ) -> String? {
+        if let explicit = string("deviceId", in: userInfo) { return explicit }
+        let kid = kid(in: userInfo)
+        guard !kid.isEmpty, let bindings else { return nil }
+        return (try? bindings.deviceID(forKid: kid)) ?? nil
     }
 
     private static func string(_ key: String, in userInfo: [AnyHashable: Any]) -> String? {

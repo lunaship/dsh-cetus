@@ -10,6 +10,16 @@ public struct PushKeyStore: Sendable {
     public static let accessGroup = "group.dev.deeplinks.ios"
     public static let keyAccount = "content-key"
 
+    /// Per-gateway-key binding of `kid` -> the device id this computer's
+    /// payloads are encrypted for.
+    ///
+    /// RFC 0002 keeps `deviceId` out of the APNs payload, so the extension
+    /// cannot read it from `userInfo`. It rebuilds the content AAD
+    /// (`"dlpush/1 content|" + deviceId`) from this map instead, keyed by the
+    /// `kid` that does travel in the payload. One entry per paired computer.
+    /// Nothing stored here is a credential.
+    public static let deviceBindingAccount = "content-device-bindings"
+
     private let store: any SecureStore
 
     public init(store: any SecureStore) {
@@ -43,6 +53,36 @@ public struct PushKeyStore: Sendable {
         if try load() == key { return false }
         try save(key)
         return true
+    }
+
+    // MARK: - kid -> deviceId bindings (shared with the notification extension)
+
+    /// Binds `kid` to `deviceID`, keeping any other computer's entry.
+    public func bind(kid: String, deviceID: String) throws {
+        let trimmedKid = kid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDevice = deviceID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKid.isEmpty, !trimmedDevice.isEmpty else { return }
+        var map = try loadBindings()
+        map[trimmedKid] = trimmedDevice
+        try store.setData(try JSONEncoder().encode(map), forKey: Self.deviceBindingAccount)
+    }
+
+    /// The device id bound to `kid`, or nil when this build never registered it.
+    /// A missing binding must fall back to the generic notification rather than
+    /// guess an AAD.
+    public func deviceID(forKid kid: String) throws -> String? {
+        let trimmed = kid.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return try loadBindings()[trimmed]
+    }
+
+    public func removeBindings() throws {
+        try store.removeData(forKey: Self.deviceBindingAccount)
+    }
+
+    private func loadBindings() throws -> [String: String] {
+        guard let data = try store.data(forKey: Self.deviceBindingAccount) else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
     }
 }
 
