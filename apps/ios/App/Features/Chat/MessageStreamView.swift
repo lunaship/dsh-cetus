@@ -19,6 +19,27 @@ struct MessageChrome {
     var changesNamespace: Namespace.ID? = nil
 }
 
+/// 让 SwiftUI 侧能命令控制器滚动（C04："回到最新"入口）。
+///
+/// `UIViewControllerRepresentable` 拿不到控制器实例，所以用一个轻量的
+/// 可观察持有者把 `scrollToLatest` 暴露出去。
+final class MessageStreamCoordinator: ObservableObject {
+    private var controller: MessageStreamController?
+
+    func attach(_ controller: MessageStreamController) {
+        self.controller = controller
+    }
+
+    func detach() {
+        controller = nil
+    }
+
+    /// 回到最新并恢复跟随。
+    func scrollToLatest() {
+        controller?.scrollToLatest()
+    }
+}
+
 struct MessageStreamView: UIViewControllerRepresentable {
     var rows: [TranscriptRow]
     var chrome: MessageChrome
@@ -26,12 +47,28 @@ struct MessageStreamView: UIViewControllerRepresentable {
     var pumpsFrames: Bool
     var onFrame: () -> Void
     var usesSoftTopEdge = true
+    // MARK: - C04 分页（入口在滚动内容顶部，不再是导航下的常驻占位）
+    /// 接近顶部时触发一次加载；失败时给就地重试。
+    var onReachTop: (() -> Void)? = nil
+    var hasOlder = false
+    var olderFailed = false
+    var loadingOlder = false
+    /// C04：上翻保持锚点期间收到了新消息 —— 通知 SwiftUI 显示"回到最新"入口。
+    var onNewMessagesWhileHeld: (() -> Void)? = nil
+    /// SwiftUI 侧通过它命令"回到最新"（C04）。
+    var coordinator: MessageStreamCoordinator? = nil
 
     func makeUIViewController(context: Context) -> MessageStreamController {
         let controller = MessageStreamController()
         controller.usesSoftTopEdge = usesSoftTopEdge
         controller.cache = RowMeasureCache()
+        coordinator?.attach(controller)
         return controller
+    }
+
+    static func dismantleUIViewController(_ uiViewController: MessageStreamController, coordinator: ()) {
+        // controller 销毁时断开，避免 coordinator 持有已释放的实例。
+        _ = uiViewController
     }
 
     func updateUIViewController(_ controller: MessageStreamController, context: Context) {
@@ -41,6 +78,11 @@ struct MessageStreamView: UIViewControllerRepresentable {
         controller.pinsToTail = pinsToTail
         controller.pumpsFrames = pumpsFrames
         controller.onFrame = onFrame
+        controller.onReachTop = onReachTop
+        controller.hasOlder = hasOlder
+        controller.olderFailed = olderFailed
+        controller.loadingOlder = loadingOlder
+        controller.onNewMessagesWhileHeld = onNewMessagesWhileHeld
         controller.apply(rows, animated: !chrome.staticSnapshot && !chrome.reduceMotion)
     }
 
@@ -87,6 +129,19 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
     private var chromeStamp = ""
     private var displayLink: CADisplayLink?
     private var didPin = false
+    /// C04：用户是否上翻过。上翻期间**不**自动贴底（方案 §8 要求 2）。
+    private var tailTracker = TailTracker()
+    /// 最近一次应用的消息 ID 顺序，供 `scrollToLatest()` 在 apply 之外定位最后一条。
+    private var lastIDs: [String] = []
+    // MARK: - C04 分页
+    var onReachTop: (() -> Void)? = nil
+    var hasOlder = false
+    var olderFailed = false
+    var loadingOlder = false
+    /// C04：上翻保持锚点期间收到了新消息 —— 通知 SwiftUI 显示"回到最新"入口。
+    var onNewMessagesWhileHeld: (() -> Void)? = nil
+    /// 接近顶部只触发一次，避免连续滚动时重复请求。
+    private var didRequestTopPage = false
     private var layingOutSnapshot = false
     private var snapshotHeights: [String: CGFloat] = [:]
 
@@ -153,6 +208,7 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         pendingAnimated = animated
         guard isViewLoaded, let dataSource else { return }
         let ids = rows.map(\.id)
+        lastIDs = ids
         rowsByID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
         var snapshot = NSDiffableDataSourceSnapshot<Int, String>()
         snapshot.appendSections([0])
@@ -180,10 +236,64 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
             dataSource.apply(snapshot, animatingDifferences: animated && !changed.isEmpty && !chromeChanged)
         }
         collectionView.layoutIfNeeded()
-        guard !chrome.staticSnapshot, pinsToTail, !didPin || structureChanged || !changed.isEmpty, let last = ids.last,
+        guard !chrome.staticSnapshot, pinsToTail else { return }
+        // C04：上翻读历史时保持锚点 —— 这是旧实现最大的问题
+        // （无条件 scrollToItem 会把用户拽回底部）。
+        refreshTailState()
+        if tailTracker.policy == .hold {
+            // 用户在上翻读历史，期间来了新消息 → 提示，但**不**把他拽回底部。
+            if !changed.isEmpty || structureChanged {
+                onNewMessagesWhileHeld?()
+            }
+            return
+        }
+        guard !didPin || structureChanged || !changed.isEmpty, let last = ids.last,
             let indexPath = dataSource.indexPath(for: last)
         else { return }
         collectionView.scrollToItem(at: indexPath, at: .bottom, animated: false)
+        didPin = true
+    }
+
+    /// 依据当前滚动位置更新"是否上翻"。
+    ///
+    /// 只用滚动位置判断会在惯性滚动经过底部时抖动，所以阈值用可视高度的
+    /// 比例（见 `TailTracker.tailThresholdFraction`），且进入阈值内才恢复跟随。
+    private func refreshTailState() {
+        guard let collectionView, collectionView.bounds.height > 1 else { return }
+        let visible = collectionView.bounds.height
+        let contentHeight = collectionView.contentSize.height
+        let distance = max(0, contentHeight - collectionView.contentOffset.y - visible)
+        tailTracker.update(distanceFromBottom: Double(distance), visibleHeight: Double(visible))
+    }
+
+    /// 用户滚动时同步状态；贴底时清掉"上翻"标记，恢复正常跟随。
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        refreshTailState()
+        maybeLoadOlder()
+    }
+
+    /// 接近顶部触发一次分页（方案 §8 要求 5）。失败时保留手动入口，
+    /// 由 `olderFailed` 控制是否显示重试。
+    private func maybeLoadOlder() {
+        guard hasOlder, !loadingOlder, !didRequestTopPage else { return }
+        guard let collectionView, collectionView.contentSize.height > 1 else { return }
+        let distanceToTop = collectionView.contentOffset.y
+        // 距顶部一屏内就预取，用户滚到顶时内容已就位。
+        guard distanceToTop < collectionView.bounds.height * 0.5 else { return }
+        didRequestTopPage = true
+        onReachTop?()
+        // 一次分页完成后解除，允许下一次继续翻页。
+        DispatchQueue.main.async { [weak self] in self?.didRequestTopPage = false }
+    }
+
+    /// 显式回到最新（点了"有新内容"入口，或自己发完消息）。
+    func scrollToLatest(animated: Bool = true) {
+        tailTracker.jumpToLatest()
+        didPin = false
+        guard let collectionView, let last = lastIDs.last,
+            let indexPath = dataSource.indexPath(for: last)
+        else { return }
+        collectionView.scrollToItem(at: indexPath, at: .bottom, animated: animated)
         didPin = true
     }
 

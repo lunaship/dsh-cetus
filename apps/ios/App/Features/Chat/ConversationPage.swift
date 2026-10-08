@@ -124,6 +124,10 @@ struct ConversationPage: View {
     @State private var draftRevision = 0
     @State private var submission: SubmissionState = .idle
     @State private var submissionNotice: ChatText?
+    // MARK: - C04 跟滚
+    /// 上翻期间来了新消息 → 显示"回到最新"入口。
+    @State private var showNewMessagesPill = false
+    @StateObject private var streamCoordinator = MessageStreamCoordinator()
     @State private var selectedText = ""
     @State private var permission = PermissionPreset.workspaceWrite
     @State private var modelRowsLive: [ModelRow] = []
@@ -332,14 +336,8 @@ struct ConversationPage: View {
                     .frame(minHeight: 44)
                     .padding(.horizontal, 16)
             }
-            if !staticSnapshot, model.hasOlder || model.olderFailed {
-                Button(model.olderFailed ? copy.text(.loadOlderFailed) : copy.text(.loadOlder)) {
-                    Task { await model.loadOlder() }
-                }
-                .disabled(model.loadingOlder)
-                .frame(minHeight: 44)
-                .padding(.horizontal, 16)
-            }
+            // C04：分页入口从"导航下方常驻占位"移到滚动内容顶部
+            // （见 MessageStreamView 的 header）。这里不再占固定阅读空间。
             if model.rows.isEmpty {
                 DLEmptyState(title: copy.text(.empty), systemImage: "bubble.left.and.bubble.right")
             } else {
@@ -369,10 +367,36 @@ struct ConversationPage: View {
                         changesNamespace: staticSnapshot ? nil : changesZoom),
                     pinsToTail: staticSnapshot ? pinsToTail : true,
                     pumpsFrames: !staticSnapshot,
-                    onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot
+                    onFrame: { model.drainFrame() }, usesSoftTopEdge: showsStatusSlot,
+                    onReachTop: { Task { await model.loadOlder() } },
+                    hasOlder: model.hasOlder,
+                    olderFailed: model.olderFailed,
+                    loadingOlder: model.loadingOlder,
+                    onNewMessagesWhileHeld: { showNewMessagesPill = true },
+                    coordinator: streamCoordinator
                 )
                 .scrollEdgeEffectStyle(showsStatusSlot ? .soft : nil, for: .top)
                 .opacity(composerOn && decision != nil ? 0.42 : 1)
+                // C04：上翻读历史时，新消息到达给一个紧凑入口。
+                // 它在输入区**上方**，不遮挡输入区与正文（方案 §8 要求 2）。
+                .overlay(alignment: .bottomTrailing) {
+                    if showNewMessagesPill {
+                        Button {
+                            streamCoordinator.scrollToLatest()
+                            showNewMessagesPill = false
+                        } label: {
+                            Label(copy.text(.newMessages), systemImage: "arrow.down")
+                                .font(.subheadline)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -554,6 +578,9 @@ struct ConversationPage: View {
         do {
             try await model.serviceSend(snapshot.text, images: images)
             submission = .accepted(revision: snapshot.revision)
+            // 自己发完消息 → 按合同恢复跟随（方案 §8 要求 3）。
+            showNewMessagesPill = false
+            streamCoordinator.scrollToLatest()
             // 关键：只清"提交过且之后没被改动"的那一份。
             // 提交期间用户若又写了新内容（revision 已前进），绝不清空。
             if SubmissionResolver.shouldClear(submitted: snapshot.revision, current: draftRevision) {

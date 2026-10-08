@@ -9282,6 +9282,40 @@
           }
         }
       }
+    },
+    "chat.newMessages": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New messages"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有新消息"
+          }
+        }
+      }
+    },
+    "chat.backToLatest": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to latest"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回到最新"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

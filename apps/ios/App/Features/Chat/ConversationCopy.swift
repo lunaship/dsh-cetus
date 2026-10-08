@@ -211,6 +211,9 @@ enum ChatText: String {
     case statusRetry
     case loadOlder
     case loadOlderFailed
+    // C04：上翻读历史时，新消息到达的提示入口
+    case newMessages
+    case backToLatest
     case selectTitle
     case selectText
     // MARK: - C03 提交状态与失败文案
@@ -431,6 +434,8 @@ enum ChatText: String {
         case .statusRetry: "Retry"
         case .loadOlder: "Load earlier messages"
         case .loadOlderFailed: "Couldn't load earlier messages"
+        case .newMessages: "New messages"
+        case .backToLatest: "Back to latest"
         case .selectTitle: "Select text"
         case .selectText: "Select text"
         // C03 提交状态与失败文案
