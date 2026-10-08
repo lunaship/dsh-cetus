@@ -976,9 +976,25 @@ final class InboxModel {
                 discardDrafts(hostID, id)
             }
             if phoneAction?.sessionID == id { phoneAction = nil }
+            // C14：删除/归档后必须更新返回栈与当前目标，否则用户会**停在已被
+            // 归档的会话页上继续操作**（那里还能发消息、还能点审批）—— 服务端
+            // 已不再把它当作活跃会话，等于让用户对着一个死页面发请求。
+            closeSession(id)
             if notice == noticeOnFailure { notice = nil }
         } catch {
             notice = noticeOnFailure
         }
+    }
+
+    /// 把已归档/已删除的会话从导航栈里摘掉。
+    ///
+    /// 只摘这一个会话，不动用户在其之上打开的其他页面（例如从会话进入的
+    /// 改动页或设置页）——那些页面对应的是主机级目的，仍然有效。
+    private func closeSession(_ id: String) {
+        path.removeAll { destination in
+            if case .session(let openID) = destination { return openID == id }
+            return false
+        }
+        if selectedSessionID == id { selectedSessionID = nil }
     }
 }

@@ -314,3 +314,79 @@ import Testing
             awaitingInput: awaiting)
     }
 }
+
+// MARK: - C14：删除/归档后返回栈与当前目标必须更新
+
+@MainActor @Suite(.serialized) struct InboxDeleteNavigationTests {
+    private actor ArchiveScript: InboxServing {
+        var archives: [String] = []
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            return InboxPayload(
+                sessions: [
+                    SessionSummary(sessionId: "s1", title: "One", cwd: "/work"),
+                    SessionSummary(sessionId: "s2", title: "Two", cwd: "/work"),
+                ],
+                archivedIDs: [], workspaces: [], hostName: "mac", route: .local, eventsEnabled: false)
+        }
+        func archive(sessionID: String) async throws { archives.append(sessionID) }
+    }
+
+    private func makeModel() -> (InboxModel, ArchiveScript) {
+        let script = ArchiveScript()
+        let model = InboxModel(
+            hostID: "mac", service: script, cache: InboxMemoryCache(), autostart: false)
+        return (model, script)
+    }
+
+    /// 归档正在浏览的会话后，导航栈里不能再留着它 —— 否则用户停在死页面上
+    /// 继续发消息/点审批，而服务端已不再把它当活跃会话（C14）。
+    @Test func archivingOpenSessionPopsIt() async {
+        let (model, _) = makeModel()
+        await model.refresh()
+        model.path = [.session("s1")]
+        await model.archive(SessionSummary(sessionId: "s1", title: "One", cwd: "/work"))
+        #expect(!model.path.contains(.session("s1")), "归档后不该还停在已归档的会话页")
+    }
+
+    /// 只摘掉被归档的那个会话，用户在其之上打开的其他页面保持不动。
+    @Test func archivingKeepsOtherDestinations() async {
+        let (model, _) = makeModel()
+        await model.refresh()
+        model.path = [.session("s1"), .settings]
+        await model.archive(SessionSummary(sessionId: "s1", title: "One", cwd: "/work"))
+        #expect(model.path == [.settings], "不应连带清掉设置页")
+    }
+
+    /// 归档**别的**会话时，当前停留在的会话页不能被误关。
+    @Test func archivingDifferentSessionKeepsCurrent() async {
+        let (model, _) = makeModel()
+        await model.refresh()
+        model.path = [.session("s2")]
+        model.selectedSessionID = "s2"
+        await model.archive(SessionSummary(sessionId: "s1", title: "One", cwd: "/work"))
+        #expect(model.path == [.session("s2")], "归档 s1 不该影响正在看的 s2")
+        #expect(model.selectedSessionID == "s2")
+    }
+
+    /// 归档失败时**不动**导航 —— 服务端没接受，用户应该留在原地看错误。
+    @Test func failedArchiveKeepsNavigation() async {
+        let script = FailingArchiveScript()
+        let model = InboxModel(hostID: "mac", service: script, cache: InboxMemoryCache(), autostart: false)
+        await model.refresh()
+        model.path = [.session("s1")]
+        await model.archive(SessionSummary(sessionId: "s1", title: "One", cwd: "/work"))
+        #expect(model.path == [.session("s1")], "归档失败不该把用户踹出页面")
+        #expect(model.notice == .archive)
+    }
+
+    private actor FailingArchiveScript: InboxServing {
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            return InboxPayload(
+                sessions: [SessionSummary(sessionId: "s1", title: "One", cwd: "/work")],
+                archivedIDs: [], workspaces: [], hostName: "mac", route: .local, eventsEnabled: false)
+        }
+        func archive(sessionID: String) async throws { throw InboxServiceError.failed }
+    }
+}
