@@ -190,3 +190,5 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 
 | 7.2 电脑 / 7.3 诊断 | C10：装配真实账号服务（此前生产未注入，整页不可用）；电脑页三条路线按**真实选路**显示、地址用实际连接地址而非 hostID；诊断失败时显示空态说明，不再在「不可用」旁列出伪造结论 | `SettingsRouteDisplayTests` / `SettingsDiagnosticsHonestyTests` / `SettingsAccountTests` |
 | 7.5 外观 | C10：`ThemePreference` 统一存储键与配色换算，`RootView` 用 `.preferredColorScheme` 在根层应用；「跟随系统」不覆盖 | `ThemePreferenceTests` |
+| 7.4 通知 | C10 §8：拆成**系统授权 / App 偏好 / 电脑能力**三个维度显示，拒绝时给「App 内改不了」的说明 | `PushSettingsDimensionsTests` |
+| 7.3 诊断 | C10 §2：显示**测试时间**（毫秒口径）；失败时空态说明，不再列伪造结论 | `DiagnosticsTimestampTests` / `SettingsDiagnosticsHonestyTests` |
