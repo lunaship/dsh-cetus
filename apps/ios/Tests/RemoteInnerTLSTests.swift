@@ -70,6 +70,8 @@ import Testing
         private var listener: NWListener?
         private let lock = NSLock()
         private var completed = 0
+        private var lastRequest = Data()
+        var requestBytes: Data { lock.withLock { lastRequest } }
 
         /// 服务端完整处理完的请求数。指纹不符时它必须是 0。
         var completedRequests: Int { lock.withLock { completed } }
@@ -106,6 +108,7 @@ import Testing
                 connection.cancel()
                 return
             }
+            lock.withLock { lastRequest = request }
             let body = #"{"via":"inner-tls","ok":true}"#
             let response =
                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)"
@@ -177,6 +180,47 @@ import Testing
 
     /// 取 bundle 用的锚。
     final class BundleToken {}
+
+    @Test func previewUpstreamPinsCertificateAndAddsTokenOnlyToHostRequest() async throws {
+        let fixture = try Self.loadIdentity()
+        let server = FakeTLSServer()
+        let port = try await server.start(identity: fixture.identity)
+        defer { server.stop() }
+        let connection = try await PreviewUpstream.open(
+            baseURL: URL(string: "https://127.0.0.1:\(port)")!, fingerprint: fixture.fingerprint,
+            token: "isolated-preview-token",
+            path: "/dsh-link/mobile/preview/" + String(repeating: "ab", count: 12) + "/socket",
+            key: "dGhlIHNhbXBsZSBub25jZQ==", protocols: "vite-hmr")
+        defer { connection.cancel() }
+        _ = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { data, _, _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: data ?? Data())
+                }
+            }
+        }
+        let request = String(decoding: server.requestBytes, as: UTF8.self)
+        #expect(request.contains("x-dsh-link-token: isolated-preview-token\r\n"))
+        #expect(request.contains("Sec-WebSocket-Protocol: vite-hmr\r\n"))
+        #expect(!request.components(separatedBy: "\r\n")[0].contains("isolated-preview-token"))
+    }
+
+    @Test func previewUpstreamRejectsMismatchedCertificateBeforeSendingToken() async throws {
+        let fixture = try Self.loadIdentity()
+        let server = FakeTLSServer()
+        let port = try await server.start(identity: fixture.identity)
+        defer { server.stop() }
+        await #expect(throws: HostClientError.certificateChanged) {
+            _ = try await PreviewUpstream.open(
+                baseURL: URL(string: "https://127.0.0.1:\(port)")!, fingerprint: String(repeating: "00", count: 32),
+                token: "must-not-arrive",
+                path: "/dsh-link/mobile/preview/" + String(repeating: "ab", count: 12) + "/socket",
+                key: "dGhlIHNhbXBsZSBub25jZQ==", protocols: nil)
+        }
+        #expect(server.requestBytes.isEmpty)
+    }
 
     // MARK: - 测试
 

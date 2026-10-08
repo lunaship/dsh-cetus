@@ -3,6 +3,7 @@ import DLModels
 import DLNet
 import DLSecurity
 import Foundation
+import Network
 
 actor ConversationLiveService: ConversationServing {
     private let hostID: String
@@ -299,6 +300,14 @@ actor ConversationLiveService: ConversationServing {
         let http = try await connect()
         let response = try await http.get(PreviewDetectionsResponse.self, path: "/dsh-link/mobile/preview-detections")
         return response.detections ?? []
+    }
+
+    func previewWebSocket(path: String, key: String, protocols: String?) async throws -> NWConnection {
+        let http = try await connect()
+        guard let host = await store.get(hostId: hostID) else { throw ConversationServiceError.missingHost }
+        return try await PreviewUpstream.open(
+            baseURL: http.baseURL, fingerprint: host.certFingerprint ?? "", token: http.token,
+            path: path, key: key, protocols: protocols)
     }
 
     func previewExchange(path: String) async -> PreviewHTTPResult {

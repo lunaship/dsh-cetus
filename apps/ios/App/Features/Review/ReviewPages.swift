@@ -424,6 +424,7 @@ struct PreviewPage: View {
     var copy: ReviewCopy
     var loadsWeb = false
     var forward: (@Sendable (String) async -> PreviewHTTPResult)? = nil
+    var websocket: PreviewWebSocketOpener? = nil
     // MARK: - C09 状态
     var loading = false
     var error = false
@@ -436,6 +437,8 @@ struct PreviewPage: View {
     @State private var openFailed = false
     @State private var boundPort = 0
     @State private var openURL: URL?
+    @State private var opening = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let page = Group {
@@ -477,6 +480,7 @@ struct PreviewPage: View {
             page
                 .navigationDestination(item: $openURL) { url in
                     PreviewWebView(url: url, port: boundPort)
+                        .onDisappear { closeProxy() }
                 }
                 .alert(copy.text(.previewEmptyDetail), isPresented: $openFailed) {
                     Button(copy.text(.filesRetry)) { onRetry() }
@@ -489,10 +493,14 @@ struct PreviewPage: View {
                     Task { await previous?.stop() }
                 }
                 .onChange(of: openURL) { _, url in
-                    if url == nil {
-                        let previous = proxy
-                        proxy = nil
-                        Task { await previous?.stop() }
+                    if url == nil { closeProxy() }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .background {
+                        openURL = nil
+                        closeProxy()
+                    } else if phase == .active {
+                        onRetry()
                     }
                 }
         } else {
@@ -540,18 +548,28 @@ struct PreviewPage: View {
         }
     }
 
-    private func startProxy() async {
+    private func closeProxy() {
+        let previous = proxy
+        proxy = nil
+        boundPort = 0
+        Task { await previous?.stop() }
+    }
+
+    private func startProxy() async throws {
         guard proxy == nil else { return }
-        let started = PreviewLocalProxy { path in
-            await forward?(path) ?? PreviewHTTPResult(status: 502, body: Data())
-        }
-        try? await started.start()
+        let started = PreviewLocalProxy(
+            exchange: { path in
+                await forward?(path) ?? PreviewHTTPResult(status: 502, body: Data())
+            }, websocket: websocket)
+        try await started.start()
         boundPort = Int(await started.port)
         proxy = started
     }
 
     private func open(_ item: PreviewInfo) async {
-        guard let id = item.previewId else { return }
+        guard !opening, let id = item.previewId else { return }
+        opening = true
+        defer { opening = false }
         do {
             if let refreshApproved {
                 let approved = try await refreshApproved()
@@ -561,7 +579,7 @@ struct PreviewPage: View {
                     return
                 }
             }
-            await startProxy()
+            try await startProxy()
             guard let proxy, boundPort > 0 else {
                 openFailed = true
                 return

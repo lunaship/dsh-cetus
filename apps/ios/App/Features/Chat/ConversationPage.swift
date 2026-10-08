@@ -227,6 +227,7 @@ struct ConversationPage: View {
                     PreviewPage(
                         previews: model.previews, copy: ReviewCopy(locale: locale), loadsWeb: true,
                         forward: model.previewForwarder(),
+                        websocket: model.previewWebSocketOpener(),
                         loading: model.previewsLoading,
                         error: model.previewsError,
                         detectedPorts: model.detectedPreviewPorts,

@@ -3,6 +3,7 @@ import DLModels
 import DLNet
 import DLSecurity
 import Foundation
+import Network
 import Observation
 import UIKit
 
@@ -46,6 +47,7 @@ protocol ConversationServing: Sendable {
     func clearGoal(sessionID: String, refID: String, revision: Int) async throws
     func deleteSchedule(sessionID: String, scheduleID: String) async throws
     func previewExchange(path: String) async -> PreviewHTTPResult
+    func previewWebSocket(path: String, key: String, protocols: String?) async throws -> NWConnection
 
     /// C08：改动摘要（`GET /sessions/:id/changes?seq=`）。无能力时返回 nil。
     func changesSummary(sessionID: String, seq: Int) async throws -> ChangesSummary?
@@ -134,6 +136,10 @@ extension ConversationServing {
     func previewExchange(path: String) async -> PreviewHTTPResult {
         _ = path
         return PreviewHTTPResult(status: 502, body: Data())
+    }
+
+    func previewWebSocket(path: String, key: String, protocols: String?) async throws -> NWConnection {
+        throw ConversationServiceError.offline
     }
 
     /// C08：默认无能力（fake / 离线测试），生产由 ConversationLiveService 实现。
@@ -796,6 +802,13 @@ final class ConversationModel {
             try await service.clearGoal(sessionID: sessionID, refID: id, revision: revision)
             status.goal = nil
         } catch {}
+    }
+
+    func previewWebSocketOpener() -> PreviewWebSocketOpener {
+        let service = service
+        return { path, key, protocols in
+            try await service.previewWebSocket(path: path, key: key, protocols: protocols)
+        }
     }
 
     func previewForwarder() -> @Sendable (String) async -> PreviewHTTPResult {
