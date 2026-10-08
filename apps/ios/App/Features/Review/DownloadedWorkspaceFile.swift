@@ -18,14 +18,24 @@ struct OpenedFile: Equatable, Sendable {
 /// Each export gets its own protected directory so another download cannot overwrite a shared file.
 /// Expiry runs on app launch, never on backgrounding while a share sheet may be using the URL.
 enum WorkspaceFileExport {
+    /// 缺省上限。插件会在 `files.maxBytes` 里声明自己的上限；拿不到声明时用这个值。
     static let maximumBytes = 8 * 1024 * 1024
     static let inlineTextBytes = 512 * 1024
 
+    /// C09 验收「8MB 边界按协商能力」：把插件声明的上限收敛成一个可用值。
+    /// 缺省（nil）或非正数时回退 `maximumBytes`，避免把 0 / 负数当成「什么都不许传」。
+    static func effectiveMaximumBytes(declared: Int?) -> Int {
+        guard let declared, declared > 0 else { return maximumBytes }
+        return declared
+    }
+
     static func prepare(
         _ file: DownloadedWorkspaceFile, path: String,
+        maximumBytes: Int = WorkspaceFileExport.maximumBytes,
         root: URL = FileManager.default.temporaryDirectory.appendingPathComponent("WorkspaceExports", isDirectory: true)
     ) throws -> OpenedFile {
-        guard file.data.count <= maximumBytes else { throw ConversationServiceError.failed }
+        let limit = effectiveMaximumBytes(declared: maximumBytes)
+        guard file.data.count <= limit else { throw ConversationServiceError.failed }
         let decoded = file.filename?.removingPercentEncoding ?? file.filename
         let name = URL(fileURLWithPath: decoded ?? path).lastPathComponent
         guard !name.isEmpty, name != ".", name != ".." else { throw ConversationServiceError.failed }

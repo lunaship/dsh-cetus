@@ -129,4 +129,38 @@ private actor WorkspaceTreeService: ConversationServing {
             _ = try WorkspaceFileExport.prepare(file, path: "big.bin")
         }
     }
+
+    // MARK: - C09：8MB 边界按插件协商能力
+
+    /// 插件声明了更小的上限 → 按更小值拒绝；8MB 本身在声明 4MB 时也必须被拒。
+    @Test func declaredSmallerLimitIsEnforced() throws {
+        let declared = 4 * 1024 * 1024
+        #expect(WorkspaceFileExport.effectiveMaximumBytes(declared: declared) == declared)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let within = DownloadedWorkspaceFile(data: Data(count: declared), filename: "ok.bin", contentType: nil)
+        let justOver = DownloadedWorkspaceFile(data: Data(count: declared + 1), filename: "over.bin", contentType: nil)
+        _ = try WorkspaceFileExport.prepare(within, path: "ok.bin", maximumBytes: declared, root: root)
+        #expect(throws: ConversationServiceError.failed) {
+            _ = try WorkspaceFileExport.prepare(justOver, path: "over.bin", maximumBytes: declared, root: root)
+        }
+        // 声明 4MB 时，旧的硬编码 8MB 上限不再生效：5MB 也要拒。
+        let fiveMB = DownloadedWorkspaceFile(data: Data(count: 5 * 1024 * 1024), filename: "five.bin", contentType: nil)
+        #expect(throws: ConversationServiceError.failed) {
+            _ = try WorkspaceFileExport.prepare(fiveMB, path: "five.bin", maximumBytes: declared, root: root)
+        }
+    }
+
+    /// 插件没声明（旧插件 / 还没收到 ready）→ 回退 8MB。
+    @Test func missingDeclarationFallsBackToEightMegabytes() {
+        #expect(WorkspaceFileExport.effectiveMaximumBytes(declared: nil) == WorkspaceFileExport.maximumBytes)
+        #expect(WorkspaceFileExport.maximumBytes == 8 * 1024 * 1024)
+    }
+
+    /// 非正数声明（0 / 负数）是坏数据 → 回退 8MB，而不是“什么都不许传”。
+    @Test func nonPositiveDeclarationFallsBackToEightMegabytes() {
+        #expect(WorkspaceFileExport.effectiveMaximumBytes(declared: 0) == WorkspaceFileExport.maximumBytes)
+        #expect(WorkspaceFileExport.effectiveMaximumBytes(declared: -1) == WorkspaceFileExport.maximumBytes)
+        #expect(WorkspaceFileExport.effectiveMaximumBytes(declared: 0) > 0)
+    }
 }

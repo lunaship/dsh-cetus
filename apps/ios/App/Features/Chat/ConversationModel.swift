@@ -221,6 +221,8 @@ final class ConversationModel {
     private var previewRefreshTask: Task<Void, Never>?
     private var previewDetectionAvailable = false
     private var requestsAvailable = false
+    /// C09：插件声明的上传/预览下载上限（`files.maxBytes`）。nil = 还没收到 ready 事件。
+    private(set) var declaredFileMaxBytes: Int?
     private var persistTask: Task<Void, Never>?
     private var started = false
     private var loadedHistory = false
@@ -518,7 +520,9 @@ final class ConversationModel {
         do {
             let file = try await service.downloadFile(sessionID: sessionID, path: path)
             try Task.checkCancellation()
-            openedFile = try WorkspaceFileExport.prepare(file, path: path)
+            // C09：按插件协商的上限判定（拿不到声明时回退 8MB）。
+            let limit = WorkspaceFileExport.effectiveMaximumBytes(declared: declaredFileMaxBytes)
+            openedFile = try WorkspaceFileExport.prepare(file, path: path, maximumBytes: limit)
         } catch {
             openedFile = OpenedFile(path: path, failed: true)
         }
@@ -675,6 +679,7 @@ final class ConversationModel {
             guard let ready = try? decoder.decode(StreamReadyEvent.self, from: raw) else { return }
             requestsAvailable = ready.capabilities?.requests?.snapshot == true
             previewDetectionAvailable = ready.capabilities?.preview?.detect == 1
+            declaredFileMaxBytes = ready.capabilities?.files?.maxBytes
             previewRefreshTask?.cancel()
             if !previewDetectionAvailable {
                 status.apply(detections: PreviewDetectionsResponse(detections: []), sessionID: sessionID)

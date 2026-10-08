@@ -25,7 +25,7 @@
 
 因此本文件的实际作用是：**逐条复核 C09 的 12 项要求，给出证据与判定**，并标出真正尚未闭环的少数几点（见 §3）。
 
-**§3 里只有 G3 是需要改代码的真实缺口**（8MB 上限未读插件协商能力）；其余为测试覆盖或真机验收缺口。
+**§3 里唯一的真实代码缺口 G3 已修复**（2026-10-08，方案 A），修复记录与门禁证据见 §5；其余为测试覆盖或真机验收缺口。
 
 ### 0.1 门禁证据（已实跑，非推断）
 
@@ -153,13 +153,56 @@ Packages/DLCore/Sources/DLCore/QuestionAnswers.swift:115:16: error: ... 同上
 |---|---|---|---|
 | G1 | 13.1 R6「应用进入后台不能把尚在分享中的文件删掉」 | 逻辑正确（只在启动时清理），但**没有测试**断言「进入后台不触发清理」 | 补一条测试或明确记录为人工验证项 |
 | G2 | 13.2 R4「过期 / 代理关闭 / App 返回后的恢复」 | 有实现与部分测试；**端到端**（真断网、真过期、真返回）未覆盖 | 纳入真机/模拟器验收清单 |
-| G3 | 验收项「8MB 边界按协商能力」 | **确认为真实缺口。** 插件侧 `src/protocol-caps.js:37` 已在 `files` 能力里声明 `maxBytes: 8 * 1024 * 1024`（`src/workspace-file.js:4`）；iOS 侧 `DLModels/Bootstrap.swift:182-205` 的 `FileCapabilities` **已建模 `maxBytes` 并会解码**，但 `DownloadedWorkspaceFile.swift:23` 仍硬编码 `maximumBytes = 8 * 1024 * 1024`，**没有任何地方消费这个能力值**。今天两边数值恰好相同（都 8MB）所以看不出问题，但插件一旦调整，App 会继续按 8MB 判定，与「按协商能力」的验收口径不符。 | 让 `WorkspaceFileExport.prepare` 接受一个上限参数（默认 8MB 保持兼容），由 `ConversationModel` 从 bootstrap 的 `capabilities.files.maxBytes` 取值传入；补一条「插件声明更小上限时 App 按更小值拒绝」的测试 |
+| G3 | 验收项「8MB 边界按协商能力」 | ~~确认为真实缺口~~ **已修复（2026-10-08）。** 插件侧 `src/protocol-caps.js:37` 在 `files` 能力里声明 `maxBytes: 8 * 1024 * 1024`（`src/workspace-file.js:4`）；iOS 侧 `DLModels/Bootstrap.swift:182-205` 的 `FileCapabilities` 已建模 `maxBytes`，但原先 `DownloadedWorkspaceFile.swift:23` 硬编码 `maximumBytes = 8 * 1024 * 1024`，**没有任何地方消费该能力值**。今天两边数值恰好相同（都 8MB）所以看不出问题，但插件一旦调整，App 会继续按 8MB 判定，与「按协商能力」的验收口径不符。 | **已完成**，见 §5 |
 | G4 | 验收项「中文文件名」「路径引用」 | 单测已覆盖（`WorkspaceFileExportTests` 的中文路径与 `ReviewTests` 的 `文档/设计`） | 无需动作，记录已覆盖 |
 | G5 | 验收项「WebSocket 预览」 | `PreviewProxyTests` 覆盖帧解析与桥接；真机 WebSocket 预览未验 | 纳入真机验收清单 |
 | G6 | 主工作树编译被 `QuestionAnswers.swift` 在途改动阻塞 | 非 C09 问题 | 由该文件作者修复；Lead 协调 |
 
-## 4. 为什么本轮没有新增代码
+## 4. 为什么最初没有新增代码
 
-C09 的 12 项要求在 `cetus/main` 上**已全部实现并有测试**。若按「接通真实数据」再写一遍，会出现第二套并行的数据通路，违反方案 §2.3「不发明第二套」与仓库「不新增入口」的规则。因此本轮的产出是**这份差距复核**，加上在干净 worktree 上跑通的 16 项门禁证据。
+C09 的 12 项要求在 `cetus/main` 上**已全部实现并有测试**。若按「接通真实数据」再写一遍，会出现第二套并行的数据通路，违反方案 §2.3「不发明第二套」与仓库「不新增入口」的规则。因此首轮产出是**这份差距复核**，加上在干净 worktree 上跑通的 16 项门禁证据。
 
-如 Lead 认为仍需改动，请指定具体是哪一条要求**未**被上述代码位置覆盖——那才是需要动手的缺口。
+---
+
+## 5. G3 修复记录（2026-10-08，Lead 选定方案 A）
+
+### 5.1 改动
+
+| 文件 | 改动 |
+|---|---|
+| `apps/ios/App/Features/Review/DownloadedWorkspaceFile.swift` | 新增 `effectiveMaximumBytes(declared:)`：`nil` 或非正数 → 回退 `maximumBytes`（8MB）；否则用声明值。`prepare(...)` 新增 `maximumBytes: Int = WorkspaceFileExport.maximumBytes` 参数（默认值保持既有调用兼容），内部先过一次 `effectiveMaximumBytes` 再比较。 |
+| `apps/ios/App/Features/Chat/ConversationModel.swift` | 新增 `private(set) var declaredFileMaxBytes: Int?`；在 `absorbStatusEvent` 的 `ready` 分支写 `declaredFileMaxBytes = ready.capabilities?.files?.maxBytes`；`openFile(path:)` 传入 `WorkspaceFileExport.effectiveMaximumBytes(declared: declaredFileMaxBytes)`。 |
+| `apps/ios/Tests/WorkspaceFileExportTests.swift` | 新增 3 条测试（见 5.2）。 |
+
+**未新增任何服务端接口**；`ConversationModel` 的改动是最小的三处（属性、ready 赋值、openFile 传参）。
+
+### 5.2 新增测试（Lead 指定的三条）
+
+| 测试 | 断言 |
+|---|---|
+| `declaredSmallerLimitIsEnforced` | 声明 4MB 时：4MB 通过、4MB+1 拒绝、**5MB 也拒绝**（证明旧的硬编码 8MB 上限不再生效） |
+| `missingDeclarationFallsBackToEightMegabytes` | `declared: nil` → `effectiveMaximumBytes` == `maximumBytes`，且 `maximumBytes == 8 * 1024 * 1024` |
+| `nonPositiveDeclarationFallsBackToEightMegabytes` | `declared: 0` 与 `-1` → 回退 8MB，且结果 > 0（不会被 0 卡成「什么都不许传」） |
+
+### 5.3 门禁证据（干净 worktree `/Volumes/Space/c09-g3`，`HEAD = def80993`）
+
+```
+node scripts/build-metadata.mjs --platform ios   # commit def80993, dirty:false
+xcodegen generate --spec apps/ios/project.yml
+xcodebuild -project apps/ios/Cetus.xcodeproj -scheme Cetus \
+  -destination 'platform=iOS Simulator,id=E5E97F60-9F2D-4A99-B382-2A4A86CE8103' \
+  test -parallel-testing-enabled NO -derivedDataPath /Volumes/Space/dd/design-contract \
+  -only-testing:CetusTests/WorkspaceFileExportTests \
+  -only-testing:CetusTests/ReviewTests \
+  -only-testing:CetusTests/PreviewProxyTests \
+  CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES
+```
+
+结果：**`** TEST SUCCEEDED **`，`Test run with 19 tests in 3 suites passed`**（原 16 → 19，新增 3 条全绿）。
+
+`xcrun swift-format lint --strict --configuration apps/ios/.swift-format` 对三个改动文件：**通过（exit 0）**。
+修复过程中发现并修掉一处 `[LineLength]` 超长行（`ConversationModel.swift:525`）。
+
+### 5.4 仍未闭环（与 G3 无关）
+
+G1（后台不清理缺测试）、G2（预览端到端未覆盖）、G5（WebSocket 真机未验）、G6（他人文件阻塞编译）见 §3；G4 已覆盖。
