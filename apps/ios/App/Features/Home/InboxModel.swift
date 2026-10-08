@@ -347,7 +347,25 @@ final class InboxModel {
     var workspaces: [WorkspaceInfo] = []
     var computers: [InboxComputer] = []
     var filter: InboxListFilter = .all
-    var query = ""
+    var query = "" {
+        didSet {
+            guard query != oldValue else { return }
+            let wasSearching = !oldValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let isSearching = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if !wasSearching, isSearching {
+                // C07 §11.2 R11: remember where the user was before searching so
+                // cancelling the search can return them there.
+                searchReturnAnchor = firstVisibleSessionID
+            } else if wasSearching, !isSearching {
+                // Leaving search: ask the list to scroll back to the anchor.
+                searchRestoreToken = UUID()
+            }
+        }
+    }
+    /// First visible row when the search began; the list scrolls back here.
+    private(set) var searchReturnAnchor: String?
+    /// Bumped when a search ends, so the view can trigger a one-shot scroll.
+    private(set) var searchRestoreToken: UUID?
     var tokens: [InboxWorkspaceToken] = []
     var workspaceSuggestions: [InboxWorkspaceToken] = []
     var recentSearches: [String] = []
@@ -442,6 +460,15 @@ final class InboxModel {
             return InboxWorkspaceAccount(path: path, sessionIDs: workspace.sessionIds ?? [])
         }
         return inboxSessions(inWorkspace: workspace, sessions: base, accounts: accounts)
+    }
+
+    /// First row the list shows, used as the scroll anchor when a search starts.
+    /// Rows awaiting input are pinned above the folders (see `inboxRows`), so
+    /// they win when present — otherwise the first visible session in order.
+    var firstVisibleSessionID: String? {
+        let pinned = visibleSessions.first { $0.awaitingInput == true }
+        if let id = pinned?.sessionId { return id }
+        return visibleSessions.first?.sessionId
     }
 
     var archivedSessions: [SessionSummary] {

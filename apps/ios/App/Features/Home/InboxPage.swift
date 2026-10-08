@@ -328,12 +328,26 @@ struct InboxPage: View {
     }
 
     @ViewBuilder private func inbox(_ copy: InboxCopy) -> some View {
-        if sizeClass == .regular {
-            List(selection: $model.selectedSessionID) { inboxRows(copy) }
-                .listStyle(.plain)
-        } else {
-            List { inboxRows(copy) }
-                .listStyle(.plain)
+        // C07 §11.2 R11: cancelling a search returns the user to where they were.
+        // The model records the anchor when the query becomes non-empty and bumps
+        // `searchRestoreToken` when it empties again; this scrolls once per bump.
+        ScrollViewReader { proxy in
+            Group {
+                if sizeClass == .regular {
+                    List(selection: $model.selectedSessionID) { inboxRows(copy) }
+                        .listStyle(.plain)
+                } else {
+                    List { inboxRows(copy) }
+                        .listStyle(.plain)
+                }
+            }
+            .onChange(of: model.searchRestoreToken) { _, token in
+                guard token != nil, let anchor = model.searchReturnAnchor else { return }
+                // One runloop turn so the unfiltered rows exist before scrolling.
+                Task { @MainActor in
+                    withAnimation(nil) { proxy.scrollTo(anchor, anchor: .top) }
+                }
+            }
         }
     }
 
@@ -383,6 +397,8 @@ struct InboxPage: View {
                 Section(copy.text(.filterAwaiting)) {
                     ForEach(pinned, id: \.sessionId) { session in
                         sessionRow(session, copy: copy, needle: "", keepsWorkspace: true)
+                            // Anchor for scroll restore after cancelling a search.
+                            .id(session.sessionId)
                     }
                 }
             }
@@ -395,6 +411,8 @@ struct InboxPage: View {
                         ForEach(shown, id: \.sessionId) { session in
                             sessionRow(session, copy: copy, needle: "")
                                 .padding(.leading, 16)
+                                // Anchor for scroll restore after cancelling a search.
+                                .id(session.sessionId)
                         }
                         if rest.count > 3 {
                             Button(copy.format(shown.count == rest.count ? .collapseAll : .showAllCount, rest.count)) {
