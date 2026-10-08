@@ -1,4 +1,4 @@
-# DeepLinks 推送网关 RFC（DLPUSH/1）
+# cetus 推送网关 RFC（DLPUSH/1）
 
 > 状态：草案（阶段 1 / I1.3，按 PLAN v1.3 修订）——停下等维护者安全审查后再进入 I6.2 实现。  
 > 写入：`docs/rfc/0002-push-gateway.md`  
@@ -161,7 +161,7 @@ NSE 规则：
 
 1. 解密成功且 `now - ts ≤ 15 * 60`：用明文替换通知标题与正文；`tool` **不**在锁屏展示。
 2. `ts` 超过 15 分钟：显示通用文案。
-3. 解密失败：显示「DeepLinks 有新的任务动态」。
+3. 解密失败：显示「cetus 有新的任务动态」。
 
 **共享测试数据** `testdata/push/content/`（阶段 6 由 Go 生成；本仓库先放占位）：正例、过期 / 失败兜底、以及「误用 token 前缀」负例。
 
@@ -235,7 +235,7 @@ NSE 规则：
 ```json
 {
   "aps": {
-    "alert": { "title": "DeepLinks", "body": "有新的任务动态" },
+    "alert": { "title": "cetus", "body": "有新的任务动态" },
     "mutable-content": 1,
     "thread-id": "<会话哈希，稳定短串>",
     "interruption-level": "time-sensitive"
@@ -326,7 +326,7 @@ Fork 使用自己的 bundle id、`.p8`、网关地址与公钥。App「高级」
 2. 设置 7.4：总开关默认关；开启前说明页写明内容端到端加密、网关看不到。
 3. 通知分类：`approval`、`question`、`completed`、`failed`；只有「打开」动作。
 4. 点击：打开对应会话；不在列表则刷新；仍找不到则停首页并提示。
-5. `hiddenPreviewsBodyPlaceholder` = `DeepLinks · 有新的任务动态`。
+5. `hiddenPreviewsBodyPlaceholder` = `cetus · 有新的任务动态`。
 6. NSE：**不联网**、不读设备 token；只读共享 Keychain 的 `K`；控制内存与耗时。
 
 ---

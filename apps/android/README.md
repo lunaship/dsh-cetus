@@ -1,10 +1,10 @@
-# deeplinks
+# cetus-android
 
-DeepLinks Android 客户端。
+cetus Android 客户端。
 
 - 工程根：本目录（Android Studio 打开这里）
 - 应用模块：`app/`
-- 配对的电脑插件：仓库根目录 `src/`（插件 `dsh-links`）
+- 配对的电脑插件：仓库根目录 `src/`（插件 `dsh-cetus`）
 - 远程中继：[`../../relay/`](../../relay/)
 
 版本基线、发布状态和已验证组合统一维护在
@@ -42,4 +42,4 @@ HyperOS/MIUI 真机还需在 安全中心 → 应用详情 → 权限管理 → 
 
 ## 品牌声明
 
-代码以 MIT 许可发布。"DeepLinks" 名称、logo 和应用图标不在 MIT 授权范围内；第三方 fork 请更换名称、图标和 `applicationId` 后再分发。
+代码以 MIT 许可发布。"cetus" 名称、logo 和应用图标不在 MIT 授权范围内；第三方 fork 请更换名称、图标和 `applicationId` 后再分发。

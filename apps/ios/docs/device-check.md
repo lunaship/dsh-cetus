@@ -11,7 +11,7 @@
 1. Mac 安装正式版 Xcode，并登录免费个人 Apple ID。
 2. iPhone 打开“设置 → 隐私与安全性 → 开发者模式”，然后用数据线连接。
 3. 在仓库根目录执行 `xcodegen generate --spec apps/ios/project.yml`。
-4. 用 Xcode 打开 `apps/ios/DeepLinks.xcodeproj`，选择 `DeepLinks` scheme 和这台 iPhone。
+4. 用 Xcode 打开 `apps/ios/Cetus.xcodeproj`，选择 `Cetus` scheme 和这台 iPhone。
 5. Signing 使用 Automatic 与个人团队。App 标识是 `dev.deeplinks.ios.debug`，三个扩展分别是 `notification-service`、`live-activity`、`share`。
 6. 只构建并运行 Debug。免费签名有效期约 7 天；推送、App Group 和 iCloud 钥匙串不在本次范围。
 7. 首次打开后到“设置 → 通用 → VPN 与设备管理”信任开发者。

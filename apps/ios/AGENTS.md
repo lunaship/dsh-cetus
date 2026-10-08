@@ -1,6 +1,6 @@
-# deeplinks-ios — AI 协作规则
+# cetus-ios — AI 协作规则
 
-DeepLinks iOS 客户端（`apps/ios/`）。配对插件源码在仓库根目录 `src/`；版本基线以 `../../docs/COMPATIBILITY.md` 为准。执行方案：`../../docs/ios/PLAN.md`。
+cetus iOS 客户端（`apps/ios/`）。配对插件源码在仓库根目录 `src/`；版本基线以 `../../docs/COMPATIBILITY.md` 为准。执行方案：`../../docs/ios/PLAN.md`。
 
 连接方式：局域网直连与 DLP/1 远程（`Packages/DLCore`）。两条路都钉扎同一张插件证书。中继转来的拒绝码只能提示，删除或改写本机凭据只认插件在内层 TLS 上的答复（RFC 0001 §7.4）。
 

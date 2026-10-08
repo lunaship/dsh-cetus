@@ -173,11 +173,14 @@ func (g *Gateway) handleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 // buildAlertBody constructs the APNs alert payload.
+//
+// The title here is the pre-decryption fallback the NSE replaces with the
+// decrypted title; it stays in sync with PushContent.generic on iOS.
 func (g *Gateway) buildAlertBody(ct, kid string) []byte {
 	body := map[string]any{
 		"aps": map[string]any{
 			"alert": map[string]string{
-				"title": "DeepLinks",
+				"title": "cetus",
 				"body":  "有新的任务动态",
 			},
 			"mutable-content": 1,

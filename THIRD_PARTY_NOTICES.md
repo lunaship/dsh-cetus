@@ -1,6 +1,6 @@
 # Third-party notices
 
-DeepLinks plugin (`dsh-links`) is an independent unofficial community project. It is not affiliated with, authorized by, or endorsed by DeepSeek. DeepSeek Harness names and related marks belong to their respective owners.
+Cetus plugin (`dsh-cetus`) is an independent unofficial community project. It is not affiliated with, authorized by, or endorsed by DeepSeek. DeepSeek Harness names and related marks belong to their respective owners.
 
 This repository is MIT. The Android client lives in `apps/android/`; its third-party notices are in [`apps/android/THIRD_PARTY_NOTICES.md`](apps/android/THIRD_PARTY_NOTICES.md).
 

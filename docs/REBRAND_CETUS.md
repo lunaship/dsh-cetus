@@ -70,6 +70,9 @@
 | 深链 scheme | `deeplinks://share/<id>` | 分享扩展与 App 的交接；改动需两端同时发版 |
 | 用户工作区名 / 真实历史会话 | 原样保留 | **不是品牌残留缺陷**，见 §5 |
 | 许可证、历史提交、CHANGELOG 历史条目 | 原样保留 | 历史记录 |
+| Android release 签名目录 | `~/Library/Application Support/DSH Links Signing/env` | **本机真实目录**，由 `apps/android/app/build.gradle.kts` 硬编码读取；改名会让 release 签名找不到材料。文档里出现该路径处保持原样 |
+| Go module path | `github.com/lunaship/dsh-links/push`、`github.com/lunaship/dsh-links/relay` | 内部工程标识；模块路径同时是 `go.mod` 声明与全部 import 前缀，改名是独立重构（须单独 PR + `go build ./...` 全量验证），不影响用户可见面 |
+| 历史 CI 运行 URL | `https://github.com/lunaship/dsh-links/actions/runs/<id>` | 指向**已发生**的运行记录；属历史证据（性能基线等），不改写 |
 
 **规则**：上表新增一行，必须有 PR 说明「为什么不能改」以及「改了会破坏什么」。白名单是合同，不是垃圾桶。
 
@@ -125,6 +128,20 @@ iOS 界面文案里出现品牌名的地方（例如 `Send to cetus`、`cetus ne
 - 插件 `dsh-cetus` 必须继续服务旧 App：新增字段是**加法**，旧字段保持。参考 `docs/MOBILE_SYNC_CONTRACT.md` 与 `docs/COMPATIBILITY.md`。
 - 旧 App 的旧显示名不构成缺陷，不在验收范围。验收只看「更新后的 App」。
 - 推送网关旧话题 / 旧 payload 结构保持可用；APNs 客户端身份不变。
+
+### 4.1 APNs 兜底 title（2026-10-08，B6 收尾）
+
+`push/internal/http/gateway.go` 的 `buildAlertBody` 里 `aps.alert.title` 由 `DeepLinks` 改为 `cetus`，
+`docs/rfc/0002-push-gateway.md` 的 §5.5 payload 示例、§5.x 兜底文案与 §7 第 5 条同步。
+
+- **为什么可以改**：该 title 是**解密前的占位文案**；iOS NSE 收到后一定用
+  `NotificationService.swift` 的 `content.title = PushContent.open(...)` **整体覆盖**。
+  解密成功显示明文标题，失败则用 `PushRegistration.swift` 的 `PushContent.generic`
+  —— 该常量**已经是** `"cetus 有新的任务动态"`。
+- **因此**：改这行只影响「NSE 未运行 / 解密失败」时的可见文案，不改变 APNs payload 结构、
+  不改 AAD / HPKE 域分离前缀、不需要客户端同步发版，**不是协议变更**。
+- Android 本地通知标题同样早已用 `"cetus"`（`CompletionNotice.kt`），两侧现已一致。
+- 若日后 NSE 之外的消费者依赖该字段值，须新增白名单行并说明，不得静默回退。
 
 ---
 
