@@ -57,6 +57,7 @@ HEAD `a91562ae`：
 |---|---|
 | 路径 | `.local/release-builds/0.5.0-beta.31-a91562ae/cetus-android-0.5.0-beta.31-a91562ae.apk` |
 | 源提交 | `a91562ae`（干净 worktree，`git status` 与 main 一致） |
+| 与当前 main 的关系 | `apps/android/` 自 `a91562ae` 起**无改动**（已 `git diff --stat a91562ae..origin/main -- apps/android/` 核验为空），故该包仍对应当前 main 的 Android 源码 |
 | applicationId | `dev.deeplinks`（**保持安装身份，可覆盖升级**） |
 | versionName / versionCode | `0.5.0-beta.31` / `39` |
 | 显示名 | `cetus`（全部 locale） |
