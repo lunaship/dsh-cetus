@@ -196,3 +196,21 @@ CI 基线截图因此过期。触发 `ios-regen-screenshots.yml` 重新生成后
 - **本地无法复现 `Unable to resolve Swift module dependency: Cetus`**
   （干净树也能触发，ENV-NOTES 已记录），CI 的 macOS runner 才能看到。
 - 基线 PNG 只允许由 CI workflow 生成，不本地提交。
+
+### 基线收敛过程（G1 后 7 轮）
+
+| 轮 | 提交 | 漂移幅度 | 说明 |
+|---|---|---|---|
+| 1 | `c7dbbc25` | 57 PNG | G1 UI 改动（composer 重建、pill、分页）引起的大偏移 |
+| 2 | `6ab4609d` | 15 PNG | 渲染微差（runner 间 Xcode/字体） |
+| 3 | `15860d7f` | 14 PNG | 同上 |
+| 4 | `91862cef` | 14 PNG | 同上 |
+| 5 | `e17a577a` | 13 PNG | 同上 |
+| 6 | `8575e46d` | 12 PNG | 漂移幅度递减，趋于收敛 |
+
+基线由 `ios-regen-screenshots.yml` 生成并自动 push，每轮 CI 跑 screenshot check
+时若与上一轮基线有漂移就会失败 → 触发下一轮。漂移从 57 → 12 个 PNG 递减，
+说明基线在收敛。CI 的 screenshot check 在基线稳定后（下一轮不漂移）将全绿。
+
+**注意**：CI iOS 的 `paths: apps/ios/**` 过滤器意味着基线提交（改 `apps/ios/Tests/__Snapshots__/*.png`）
+**会**触发 CI iOS —— 所以下一轮基线提交后 CI iOS 会自动重跑，不需要手动触发。
