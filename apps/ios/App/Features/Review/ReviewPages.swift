@@ -156,15 +156,15 @@ struct ChangesPage: View {
                 }
             }
             .font(DLFont.mono(DLFont.footnote))
-            if let diffLines, !diffLines.isEmpty {
+            if let response = diff[index], let diffLines = linesFromDiff(response), !diffLines.isEmpty {
                 ForEach(Array(diffLines.enumerated()), id: \.offset) { _, line in
-                    Text(line.text)
-                        .font(DLFont.mono(DLFont.footnote))
-                        .foregroundStyle(
-                            line.kind == .add
-                                ? DLColor.ok : (line.kind == .delete ? DLColor.err : DLColor.secondaryLabel)
-                        )
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    DiffGutterRow(line: line, copy: copy)
+                        .padding(.leading, 12)
+                }
+                ForEach(diffNotesFor(response), id: \.self) { note in
+                    Text(copy.text(key: note.textKey))
+                        .font(DLFont.footnote)
+                        .foregroundStyle(DLColor.secondaryLabel)
                         .padding(.leading, 12)
                 }
             }
@@ -181,38 +181,186 @@ struct ChangesPage: View {
         var budget = intralineBudgetCells
         return diffLines(from: hunks, budget: &budget)
     }
+
+    /// C08：说明行与 Android `diffNotes` 同规则。
+    private func diffNotesFor(_ response: ChangesDiffResponse) -> [DiffNote] {
+        diffNotes(
+            before: response.before, after: response.after, coarse: response.coarse,
+            truncated: response.truncated != nil, hunks: response.hunks)
+    }
+}
+
+/// C08：一行 diff 的统一呈现 —— 符号列 + 双列行号 + 正文（含行内变化）。
+/// 改动列表的行内预览与 6.2 全页 diff 共用，保证两处呈现一致。
+struct DiffGutterRow: View {
+    var line: DiffLine
+    var copy: ReviewCopy
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            gutter
+            text
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(DLFont.mono(DLFont.footnote))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// 符号列 + 双列行号。颜色之外还有符号，不靠颜色单独表意。
+    private var gutter: some View {
+        HStack(spacing: 4) {
+            Text(signText).foregroundStyle(signColor)
+            Text(line.oldLineNumber.map(String.init) ?? "").foregroundStyle(DLColor.tertiaryLabel)
+            Text(line.newLineNumber.map(String.init) ?? "").foregroundStyle(DLColor.tertiaryLabel)
+        }
+        .frame(minWidth: 62, alignment: .trailing)
+        .accessibilityHidden(true)
+    }
+
+    private var signText: String {
+        switch line.kind {
+        case .add: "+"
+        case .delete: "-"
+        default: " "
+        }
+    }
+
+    private var signColor: Color {
+        switch line.kind {
+        case .add: DLColor.ok
+        case .delete: DLColor.err
+        default: DLColor.tertiaryLabel
+        }
+    }
+
+    /// 符号列对 VoiceOver 隐藏，改由整行给「新增 / 删除第 N 行」这样的标签。
+    private var accessibilityLabel: String {
+        switch line.kind {
+        case .add: copy.format(.diffAddedLine, line.newLineNumber ?? 0, line.text)
+        case .delete: copy.format(.diffDeletedLine, line.oldLineNumber ?? 0, line.text)
+        default: line.text
+        }
+    }
+
+    private var text: Text {
+        guard !line.emphasis.isEmpty else {
+            return Text(line.text).foregroundStyle(bodyColor)
+        }
+        let tint = line.kind == .delete ? DLColor.err : DLColor.ok
+        var cursor = line.text.startIndex
+        var out = Text("")
+        for range in line.emphasis {
+            let start = String.Index(utf16Offset: range.start, in: line.text)
+            let end = String.Index(utf16Offset: range.end, in: line.text)
+            if cursor < start { out = out + Text(String(line.text[cursor..<start])).foregroundStyle(bodyColor) }
+            out = out + Text(String(line.text[start..<end])).bold().foregroundStyle(tint)
+            cursor = end
+        }
+        if cursor < line.text.endIndex {
+            out = out + Text(String(line.text[cursor...])).foregroundStyle(bodyColor)
+        }
+        return out
+    }
+
+    private var bodyColor: Color {
+        switch line.kind {
+        case .add: DLColor.ok
+        case .delete: DLColor.err
+        default: DLColor.secondaryLabel
+        }
+    }
 }
 
 struct DiffPage: View {
     var lines: [DiffLine]
     var copy: ReviewCopy
     var onAsk: () -> Void = {}
+    // MARK: - C08 说明行与 hunk 导航
+    /// 对比说明（新建 / 删除 / 两侧相同 / 逐行超时 / 截断），来自响应。
+    var notes: [DiffNote] = []
+    /// 当前差异段下标（0 起）与总数；总数 ≤ 1 时不显示导航。
+    var hunkIndex: Int = 0
+    var hunkCount: Int = 0
+    var onPreviousHunk: () -> Void = {}
+    var onNextHunk: () -> Void = {}
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                    lineText(line)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 2)
-                        .background(lineBackground(line.kind))
+        ScrollViewReader { reader in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                        row(line)
+                            .id(index)
+                    }
                 }
+            }
+            .onChange(of: hunkIndex) { _, target in
+                if let anchor = hunkAnchorLine(target) { reader.scrollTo(anchor, anchor: .top) }
             }
         }
         .navigationTitle(copy.text(.diffTitle))
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            HStack {
-                // C08：diff 按 hunk 展示（C09 的 hunk 锚点导航属后续），
-                // 不再有"上/下 hunk"死按钮；保留"就这个文件提问"。
-                Spacer()
-                Button(copy.text(.askFile), action: onAsk)
+            VStack(alignment: .leading, spacing: 6) {
+                if !notes.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(notes, id: \.self) { note in
+                            Text(copy.text(key: note.textKey))
+                                .font(DLFont.footnote)
+                                .foregroundStyle(DLColor.secondaryLabel)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                HStack {
+                    // C08：上/下一个差异段只在真的有多段时出现；到边界置灰。
+                    if hunkCount > 1 {
+                        Button(action: onPreviousHunk) { Image(systemName: "chevron.up") }
+                            .disabled(hunkIndex <= 0)
+                            .accessibilityLabel(copy.text(.previousHunk))
+                        Text(copy.format(.hunkPosition, hunkIndex + 1, hunkCount))
+                            .font(DLFont.footnote)
+                            .foregroundStyle(DLColor.secondaryLabel)
+                        Button(action: onNextHunk) { Image(systemName: "chevron.down") }
+                            .disabled(hunkIndex >= hunkCount - 1)
+                            .accessibilityLabel(copy.text(.nextHunk))
+                    }
+                    Spacer()
+                    Button(copy.text(.askFile), action: onAsk)
+                }
             }
             .frame(minHeight: 44)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(DLColor.background)
+        }
+    }
+
+    /// 第 `hunk` 段在 `lines` 里的下标（hunk 头本身）；找不到返回 nil。
+    private func hunkAnchorLine(_ hunk: Int) -> Int? {
+        guard hunk >= 0 else { return nil }
+        var seen = -1
+        for (index, line) in lines.enumerated() where line.kind == .hunk {
+            seen += 1
+            if seen == hunk { return index }
+        }
+        return nil
+    }
+
+    @ViewBuilder private func row(_ line: DiffLine) -> some View {
+        if line.kind == .hunk {
+            Text(line.text)
+                .font(DLFont.mono(DLFont.footnote))
+                .foregroundStyle(DLColor.secondaryLabel)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 2)
+        } else {
+            DiffGutterRow(line: line, copy: copy)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 2)
+                .background(lineBackground(line.kind))
         }
     }
 
@@ -222,27 +370,6 @@ struct DiffPage: View {
         case .delete: DLColor.err.opacity(0.16)
         default: .clear
         }
-    }
-
-    private func lineText(_ line: DiffLine) -> Text {
-        let mono = Font.system(.footnote, design: .monospaced)
-        guard !line.emphasis.isEmpty else { return Text(line.text).font(mono) }
-        let tint = line.kind == .delete ? DLColor.err : DLColor.ok
-        var cursor = line.text.startIndex
-        var out = Text("")
-        for range in line.emphasis {
-            let start = String.Index(utf16Offset: range.start, in: line.text)
-            let end = String.Index(utf16Offset: range.end, in: line.text)
-            if cursor < start {
-                out = out + Text(String(line.text[cursor..<start])).font(mono)
-            }
-            out = out + Text(String(line.text[start..<end])).font(mono).bold().foregroundStyle(tint)
-            cursor = end
-        }
-        if cursor < line.text.endIndex {
-            out = out + Text(String(line.text[cursor...])).font(mono)
-        }
-        return out
     }
 }
 
@@ -709,6 +836,8 @@ enum ReviewText: String {
     case diffTitle
     case previousHunk
     case nextHunk
+    /// C08：差异段位置（参数：当前段序号、总段数）。
+    case hunkPosition
     case askFile
     case filesTitle
     case root
@@ -738,6 +867,9 @@ enum ReviewText: String {
     case previewLocal
     case added
     case deleted
+    // C08：diff 符号列的无障碍标签（带行号与正文）。
+    case diffAddedLine
+    case diffDeletedLine
 
     var fallback: String {
         switch self {
@@ -749,6 +881,7 @@ enum ReviewText: String {
         case .diffTitle: "Diff"
         case .previousHunk: "Previous"
         case .nextHunk: "Next"
+        case .hunkPosition: "%d / %d"
         case .askFile: "Ask about this file"
         case .filesTitle: "Files"
         case .root: "Workspace"
@@ -776,6 +909,9 @@ enum ReviewText: String {
         case .previewLocal: "Opens only on this phone"
         case .added: "+%d"
         case .deleted: "−%d"
+        // C08：读屏标签。符号列本身对 VoiceOver 隐藏，由整行播报。
+        case .diffAddedLine: "Added, line %d: %@"
+        case .diffDeletedLine: "Deleted, line %d: %@"
         }
     }
 }
@@ -785,6 +921,12 @@ struct ReviewCopy {
 
     func text(_ key: ReviewText) -> String {
         L10n.string("review.\(key.rawValue)", fallback: key.fallback, locale: locale)
+    }
+
+    /// C08：`DiffNote` 来自 DLCore，只带本地化 key（那个包不依赖 App 资源），
+    /// 这里按 key 取文案；缺失时回退到 key 本身，不会显示空串。
+    func text(key: String) -> String {
+        L10n.string(key, fallback: key, locale: locale)
     }
 
     func format(_ key: ReviewText, _ arguments: CVarArg...) -> String {

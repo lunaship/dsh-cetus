@@ -31,24 +31,69 @@ public func breadcrumbPaths(_ path: String) -> [String] {
     return crumbs
 }
 
+/// C08：把 hunk 转成渲染行，并按 Android `plainDiffRows`（`WorkspaceChanges.kt`）逐条对齐行号：
+/// hunk 头无行号；`+` 只推进新侧；`-` 只推进旧侧；上下文（含空行 / 缺前缀）两侧都推进。
 public func diffLines(from hunks: [DiffHunk], budget: inout Int) -> [DiffLine] {
     var rows: [DiffLine] = []
     for hunk in hunks {
         let header =
             "@@ -\(hunk.oldStart ?? 0),\(hunk.oldLines ?? 0) +\(hunk.newStart ?? 0),\(hunk.newLines ?? 0) @@"
         rows.append(DiffLine(kind: .hunk, text: header))
+        var oldNumber = hunk.oldStart ?? 0
+        var newNumber = hunk.newStart ?? 0
         for line in hunk.lines ?? [] {
             if line.hasPrefix("+") {
-                rows.append(DiffLine(kind: .add, text: String(line.dropFirst())))
+                rows.append(
+                    DiffLine(kind: .add, text: String(line.dropFirst()), newLineNumber: newNumber))
+                newNumber += 1
             } else if line.hasPrefix("-") {
-                rows.append(DiffLine(kind: .delete, text: String(line.dropFirst())))
+                rows.append(
+                    DiffLine(kind: .delete, text: String(line.dropFirst()), oldLineNumber: oldNumber))
+                oldNumber += 1
             } else {
                 let body = line.hasPrefix(" ") ? String(line.dropFirst()) : line
-                rows.append(DiffLine(kind: .context, text: body))
+                rows.append(
+                    DiffLine(
+                        kind: .context, text: body, oldLineNumber: oldNumber, newLineNumber: newNumber))
+                oldNumber += 1
+                newNumber += 1
             }
         }
     }
     return withIntralineEmphasis(rows, budget: &budget)
+}
+
+/// C08：对比说明行。与 Android `DiffNote` / `diffNotes` 一一对应（含判定顺序）。
+public enum DiffNote: String, Equatable, Sendable, CaseIterable {
+    case created
+    case deleted
+    case unchanged
+    case coarse
+    case truncated
+
+    /// 说明行对应的本地化 key（`App/Resources/Localizable.xcstrings`）。
+    /// 放在 DLCore 只回报 key，文案由 App 层解析，避免这个包依赖 UI 资源。
+    public var textKey: String {
+        switch self {
+        case .created: "review.diffNoteCreated"
+        case .deleted: "review.diffNoteDeleted"
+        case .unchanged: "review.diffNoteUnchanged"
+        case .coarse: "review.diffNoteCoarse"
+        case .truncated: "review.diffNoteTruncated"
+        }
+    }
+}
+
+public func diffNotes(
+    before: Bool?, after: Bool?, coarse: Bool?, truncated: Bool?, hunks: [DiffHunk]?
+) -> [DiffNote] {
+    var notes: [DiffNote] = []
+    if before != true, after == true { notes.append(.created) }
+    if before == true, after != true { notes.append(.deleted) }
+    if (hunks ?? []).isEmpty { notes.append(.unchanged) }
+    if coarse == true { notes.append(.coarse) }
+    if truncated == true { notes.append(.truncated) }
+    return notes
 }
 
 /// 空的期望值表示旧插件没给校验头，照单收下。有值就必须是 SHA-256 的十六进制，大小写不敏感。

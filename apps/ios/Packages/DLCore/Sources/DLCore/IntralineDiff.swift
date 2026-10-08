@@ -28,11 +28,20 @@ public struct DiffLine: Equatable, Sendable {
     public var kind: DiffLineKind
     public var text: String
     public var emphasis: [TextRange]
+    /// C08：旧侧行号（新增行为 nil）。规则与 Android `DiffRow.oldNo` 对齐。
+    public var oldLineNumber: Int?
+    /// C08：新侧行号（删除行为 nil）。规则与 Android `DiffRow.newNo` 对齐。
+    public var newLineNumber: Int?
 
-    public init(kind: DiffLineKind, text: String, emphasis: [TextRange] = []) {
+    public init(
+        kind: DiffLineKind, text: String, emphasis: [TextRange] = [],
+        oldLineNumber: Int? = nil, newLineNumber: Int? = nil
+    ) {
         self.kind = kind
         self.text = text
         self.emphasis = emphasis
+        self.oldLineNumber = oldLineNumber
+        self.newLineNumber = newLineNumber
     }
 }
 
