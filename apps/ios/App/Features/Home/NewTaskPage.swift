@@ -236,13 +236,19 @@ private struct NewTaskComposer: UIViewRepresentable {
 }
 
 enum NewTaskDraftStore {
+    /// 新任务还没有会话，所以键用 `draftID`（固定的"新任务"槽位）而不是 sessionID。
+    /// 这样它不会跟任何已存在会话的草稿混在一起（C02 要求 1）。
     static func load(hostID: String) -> String {
-        ComposerDraftStore(directory: directory).load(hostID: hostID)
+        ComposerDraftStore(directory: directory).load(
+            ComposerDraftKey(hostID: hostID, draftID: newTaskDraftID))?.text ?? ""
     }
 
     static func save(hostID: String, text: String) {
-        ComposerDraftStore(directory: directory).save(hostID: hostID, text: text)
+        ComposerDraftStore(directory: directory).save(
+            ComposerDraftKey(hostID: hostID, draftID: newTaskDraftID), text: text)
     }
+
+    static let newTaskDraftID = "new-task"
 
     private static var directory: URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("deeplinks-new-task", isDirectory: true)

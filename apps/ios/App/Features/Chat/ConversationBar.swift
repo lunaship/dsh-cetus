@@ -32,6 +32,11 @@ struct ConversationBar: UIViewRepresentable {
         return CGSize(width: width, height: height)
     }
 
+    /// SwiftUI 连续更新时少做一次模式切换：只有进入/离开 decision 才需要。
+    /// 同模式（composer→composer）下重新调用只是无害 no-op，但避开可以
+    /// 让键盘焦点路径少走一次 install。
+    private static var lastMode: [ObjectIdentifier: Bool] = [:]
+
     func updateUIView(_ view: DLComposerView, context: Context) {
         view.pinsToKeyboard = false
         view.usesSolidSnapshotBackground = solidSnapshot
@@ -45,28 +50,38 @@ struct ConversationBar: UIViewRepresentable {
         view.showsAttachButton = showsAttach
         view.attachTitle = attachTitle
         view.onAttach = onAttach
+        let inDecision = decision != nil
+        let key = ObjectIdentifier(view)
+        let wasInDecision = Self.lastMode[key] ?? false
         if let decision {
-            switch decision {
-            case .approval(let message):
-                view.showDecision(
-                    status: copy.text(.waitApproval),
-                    question: message.text.isEmpty ? (message.toolName ?? copy.text(.approval)) : message.text,
-                    secondaryTitle: copy.text(.reject),
-                    primaryTitle: copy.text(.allowOnce),
-                    command: approvalCommand(from: message.toolArgs),
-                    animated: false)
-            case .question(let message):
-                view.showDecision(
-                    status: copy.text(.waitAnswer),
-                    question: message.text.isEmpty ? copy.text(.question) : message.text,
-                    secondaryTitle: copy.text(.reject),
-                    primaryTitle: copy.text(.send),
-                    command: nil,
-                    animated: false)
+            if !wasInDecision {
+                switch decision {
+                case .approval(let message):
+                    view.showDecision(
+                        status: copy.text(.waitApproval),
+                        question: message.text.isEmpty ? (message.toolName ?? copy.text(.approval)) : message.text,
+                        secondaryTitle: copy.text(.reject),
+                        primaryTitle: copy.text(.allowOnce),
+                        command: approvalCommand(from: message.toolArgs),
+                        animated: false)
+                case .question(let message):
+                    view.showDecision(
+                        status: copy.text(.waitAnswer),
+                        question: message.text.isEmpty ? copy.text(.question) : message.text,
+                        secondaryTitle: copy.text(.reject),
+                        primaryTitle: copy.text(.send),
+                        command: nil,
+                        animated: false)
+                }
+                Self.lastMode[key] = true
             }
         } else {
-            if view.text != draft { view.text = draft }
-            view.showComposer(animated: false)
+            if wasInDecision {
+                view.showComposer(animated: false)
+                Self.lastMode[key] = false
+            } else {
+                view.text = draft
+            }
         }
     }
 }

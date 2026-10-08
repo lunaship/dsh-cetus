@@ -264,7 +264,9 @@ struct ConversationPage: View {
                         onDraft: { text in
                             draft = text
                             if let draftDirectory {
-                                ComposerDraftStore(directory: draftDirectory).save(hostID: model.hostID, text: text)
+                                ComposerDraftStore(directory: draftDirectory).save(
+                                    ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
+                                    text: text)
                             }
                         },
                         onSend: { Task { await send(copy) } },
@@ -291,7 +293,9 @@ struct ConversationPage: View {
                     return
                 }
                 guard draft.isEmpty, let draftDirectory else { return }
-                draft = ComposerDraftStore(directory: draftDirectory).load(hostID: model.hostID)
+                draft =
+                    ComposerDraftStore(directory: draftDirectory).load(
+                        ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID))?.text ?? ""
             }
             .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
             .onChange(of: model.status.goal?.ref?.id) { _, _ in statusExpanded = false }
@@ -514,7 +518,9 @@ struct ConversationPage: View {
             draft = ""
             attachments = []
             if let draftDirectory {
-                ComposerDraftStore(directory: draftDirectory).save(hostID: model.hostID, text: "")
+                ComposerDraftStore(directory: draftDirectory).save(
+                    ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
+                    text: "")
             }
         } catch {
             // 失败或中途被回收都留着草稿，回来后回填，不自动重发。
