@@ -25,6 +25,46 @@ internal fun approvalActionKinds(quickApprove: Boolean, sdkInt: Int): List<Boole
     if (quickApprove && sdkInt >= Build.VERSION_CODES.S) listOf(false, true) else emptyList()
 
 /**
+ * 「审批已被处理」的幂等窗口（方案 §18「通知」：状态可信、去重）。
+ *
+ * 背景：用户在通知栏点了「允许一次」后，App 会立刻把通知换成「已允许发送」。但与此同时
+ * 会话的 `approval/decided` 事件也会到达并触发 [DshNotifier.cancelApproval]；如果无条件取消，
+ * 用户刚点完就看不到任何结果反馈（点没点上无从判断），甚至可能重复点。
+ *
+ * 所以这里给一个短窗口：窗口内 [shouldSuppressCancel] 为 true —— 迟到的取消请求被压住，
+ * 「已处理」的反馈能留一会儿；窗口过后恢复正常取消语义。
+ *
+ * 抽成纯函数是为了能注入时钟做确定性单测（真实实现用 `SystemClock.elapsedRealtime`）。
+ */
+internal object ApprovalIdempotency {
+    /** 反馈保留时长：约等于用户扫一眼通知栏的时间。 */
+    const val WINDOW_MS = 4_000L
+
+    /**
+     * 记下窗口到期时刻。`now` 与返回值都用同一时钟的毫秒刻度（生产为 elapsedRealtime）。
+     */
+    fun deadline(now: Long): Long = now + WINDOW_MS
+
+    /**
+     * 迟到的取消是否应被压住。
+     *
+     * @param deadline [deadline] 记录的到期时刻；null 表示这条审批没有「刚被处理」的记录。
+     * @param now 当前时刻（同一时钟）。
+     * @return true = 还在窗口内，压住这次取消。
+     */
+    fun shouldSuppressCancel(deadline: Long?, now: Long): Boolean =
+        deadline != null && now < deadline
+
+    /**
+     * 窗口到期回调是否仍应生效。
+     *
+     * 用「比对到期时刻」而不是「无条件删除」：如果期间用户又处理了一次，[deadline] 已被
+     * 更新成更晚的值，旧的延时回调就不该把新的窗口取消掉 —— 否则第二次反馈会被第一次的回调吃掉。
+     */
+    fun shouldApplyExpiry(recorded: Long?, expired: Long): Boolean = recorded != null && recorded == expired
+}
+
+/**
  * DSH 会话事件系统通知：审批请求（会话在后台等你处理）与任务完成 / 已停止。
  * 点击回到对应主机的工作台并直接打开该会话；仅当 App 不在前台时发（前台已有审批卡与运行状态）。
  */
@@ -254,7 +294,7 @@ object DshNotifier {
     /** 审批已被处理：通知文字改成结果，几秒后自己消失（方案 8）。 */
     fun markApprovalAnswered(context: Context, host: Host, sessionId: String, approve: Boolean) {
         val id = notificationId(host, sessionId, 1)
-        val expiresAt = android.os.SystemClock.elapsedRealtime() + 4_000
+        val expiresAt = ApprovalIdempotency.deadline(android.os.SystemClock.elapsedRealtime())
         answeredApprovalUntil[id] = expiresAt
         val notification = base(context, host, sessionId, CHANNEL_ID_APPROVAL)
             .setContentTitle(L.notifNeedApproval)
@@ -264,9 +304,13 @@ object DshNotifier {
         postNotification(context, id, notification)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
             {
-                if (answeredApprovalUntil.remove(id, expiresAt)) NotificationManagerCompat.from(context).cancel(id)
+                // 只在窗口没被后续处理刷新时才取消，避免旧的延时回调吃掉新的反馈。
+                if (ApprovalIdempotency.shouldApplyExpiry(answeredApprovalUntil[id], expiresAt)) {
+                    answeredApprovalUntil.remove(id, expiresAt)
+                    NotificationManagerCompat.from(context).cancel(id)
+                }
             },
-            4_000,
+            ApprovalIdempotency.WINDOW_MS,
         )
     }
 
@@ -366,7 +410,12 @@ object DshNotifier {
 
     fun cancelApproval(context: Context, host: Host, sessionId: String) {
         val id = notificationId(host, sessionId, 1)
-        if (android.os.SystemClock.elapsedRealtime() >= (answeredApprovalUntil[id] ?: 0L)) {
+        // 刚被用户处理过（窗口内）时压住这次取消，让「已允许/已拒绝」的反馈留一会儿。
+        if (!ApprovalIdempotency.shouldSuppressCancel(
+                answeredApprovalUntil[id],
+                android.os.SystemClock.elapsedRealtime(),
+            )
+        ) {
             NotificationManagerCompat.from(context).cancel(id)
         }
     }
