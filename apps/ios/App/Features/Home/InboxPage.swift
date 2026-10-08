@@ -23,18 +23,23 @@ struct InboxFlowView: View {
         if let model {
             _model = State(initialValue: model)
         } else {
-            _model = State(
-                initialValue: InboxModel(
+            let live = InboxModel(
+                hostID: hostID,
+                service: InboxLiveService(
                     hostID: hostID,
-                    service: InboxLiveService(
-                        hostID: hostID,
-                        store: PerformanceLaunchFixture.isRequested
-                            || PerformanceLaunchFixture.unsignedStorage != nil
-                            ? PerformanceLaunchFixture.hostStore() : HostStore(),
-                        backgroundTasks: SystemBackgroundTasks()),
-                    cache: PerformanceLaunchFixture.isRequested
-                        ? InboxDiskCache(directory: PerformanceLaunchFixture.inboxDirectory())
-                        : InboxDiskCache()))
+                    store: PerformanceLaunchFixture.isRequested
+                        || PerformanceLaunchFixture.unsignedStorage != nil
+                        ? PerformanceLaunchFixture.hostStore() : HostStore(),
+                    backgroundTasks: SystemBackgroundTasks()),
+                cache: PerformanceLaunchFixture.isRequested
+                    ? InboxDiskCache(directory: PerformanceLaunchFixture.inboxDirectory())
+                    : InboxDiskCache())
+            // Lock-screen Live Activity follows the Settings 7.4 switch (off by default).
+            live.liveActivity = InboxLiveActivitySync(
+                controller: LiveActivityController(
+                    adapter: ActivityKitLiveActivityAdapter(),
+                    isEnabled: { UserDefaults.standard.bool(forKey: "settings.liveActivity") }))
+            _model = State(initialValue: live)
         }
     }
 

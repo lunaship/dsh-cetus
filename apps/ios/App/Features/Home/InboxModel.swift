@@ -338,6 +338,8 @@ final class InboxModel {
     var clock: @MainActor () -> Date = { Date() }
     /// 会话删除成功后丢弃该会话的草稿（C02 要求 9）。归档不调用：归档可恢复，草稿保留。
     var discardDrafts: @MainActor (_ hostID: String, _ sessionID: String) -> Void = { _, _ in }
+    /// Lock-screen Live Activity (RFC 0002 §5.6). Nil until the page wires it.
+    var liveActivity: InboxLiveActivitySync?
 
     var computerName = ""
     var link: InboxLink = .checking(nil)
@@ -483,6 +485,7 @@ final class InboxModel {
     func start() async {
         guard autostart, !started else { return }
         started = true
+        await liveActivity?.restore()
         await refresh()
         await withTaskCancellationHandler {
             await withTaskGroup(of: Void.self) { group in
@@ -878,6 +881,7 @@ final class InboxModel {
                     sessions: sessions, archivedIDs: payload.archivedIDs, workspaces: workspaces,
                     hostName: computerName, route: payload.route, eventsEnabled: payload.eventsEnabled))
             syncSuggestions()
+            await liveActivity?.sync(hostID: hostID, sessions: sessions, now: now)
             await refreshAction()
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { await applyQuery() }
         } catch {
