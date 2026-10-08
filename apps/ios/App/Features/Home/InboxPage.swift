@@ -820,8 +820,11 @@ struct InboxDestinationPage: View {
         case .settings:
             SettingsHomePage(
                 computerName: model.computerName.isEmpty ? model.hostID : model.computerName,
-                computerAddress: model.hostID,
+                // C10 要求 3：显示**实际连上的地址**。以前这里是 hostID（内部标识），
+                // 用户看到的是一串无意义字符。没连上时留空，由设置页显示「未知」而不是编造。
+                computerAddress: model.hostAddress ?? "",
                 online: model.link.isOnline,
+                route: model.settingsRoute,
                 models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)),
                 push: PushSettingsRegistration(
                     hostID: model.hostID, pushVersion: model.pushVersion, pairedDeviceID: model.pairedDeviceID))

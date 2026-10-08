@@ -78,6 +78,11 @@ struct InboxPayload: Equatable, Sendable {
     var eventsEnabled: Bool
     var pushVersion: Int = 0
     var pairedDeviceID: String?
+    /// 本次实际连上的地址（局域网直连是 `host:port`，远程是 relay 端点）。
+    ///
+    /// C10 要求 3：设置页必须显示**实际选路与连接信息**，不能用 hostID 冒充地址 ——
+    /// hostID 是内部标识（形如 `host-1a2b`），对用户没有任何意义。
+    var hostAddress: String?
 }
 
 struct InboxSearchPayload: Equatable, Sendable {
@@ -386,6 +391,8 @@ final class InboxModel {
     var missingHost = false
     var pushVersion = 0
     var pairedDeviceID: String?
+    /// 本次实际连上的地址（C10 要求 3）。nil = 还没成功连过，设置页显示未知。
+    var hostAddress: String?
     var starter = ""
     var sharePrefill: SharePrefill?
     var pendingShare: ShareInboxRecord?
@@ -435,6 +442,16 @@ final class InboxModel {
     }
 
     var actionsEnabled: Bool { link.isOnline }
+
+    /// 设置页要显示的路线（C10 要求 3）。设置页在纯 UI 层，用独立的等价枚举，
+    /// 避免 DLUI/Settings 依赖 Home 的类型。
+    var settingsRoute: SettingsRouteKind? {
+        switch link {
+        case .online(.local), .checking(.local): .local
+        case .online(.remote), .checking(.remote): .remote
+        case .online, .checking, .offline: nil
+        }
+    }
     var collapsedFolders: Set<String> = []
     var expandedPreviews: Set<String> = []
     var folderPaths: [String] { inboxVisibleWorkspaces(workspaces) }
@@ -899,6 +916,7 @@ final class InboxModel {
             link = .online(payload.route)
             pushVersion = payload.pushVersion
             pairedDeviceID = payload.pairedDeviceID
+            hostAddress = payload.hostAddress
             loading = false
             if notice == .unauthorized || notice == .certificate || notice == .load { notice = nil }
             preferences.setLastOnline(now, hostID: hostID)

@@ -7,6 +7,13 @@ import SwiftUI
     import UIKit
 #endif
 
+/// 设置页要显示的连接路线。与首页 `InboxRouteKind` 一一对应，
+/// 但设置页属于纯 UI 层，不依赖 Home 的类型。
+enum SettingsRouteKind: Equatable, Sendable {
+    case local
+    case remote
+}
+
 enum SettingsPage: Hashable {
     case computer
     case diagnostics
@@ -25,6 +32,9 @@ struct SettingsHomePage: View {
     var computerName: String
     var computerAddress: String
     var online = true
+    /// 本次实际走通的路线（局域网直连 / 远程）。nil = 尚未连上。
+    /// C10 要求 3：局域网/远程/离线必须来自**同一状态源**，不能各行其是。
+    var route: SettingsRouteKind?
     var account: (any SettingsAccountServing)?
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
@@ -67,7 +77,8 @@ struct SettingsHomePage: View {
         .navigationTitle(copy.text(.title))
         .navigationDestination(for: SettingsPage.self) { page in
             SettingsDetailPage(
-                page: page, account: account, crashReport: crashReport, models: models, push: push)
+                page: page, route: route, account: account, crashReport: crashReport, models: models,
+                push: push)
         }
         .task {
             if let models {
@@ -81,6 +92,8 @@ struct SettingsHomePage: View {
 struct SettingsDetailPage: View {
     var page: SettingsPage
     var checks: [DiagnosticCheck] = SettingsDetailPage.sampleChecks
+    /// 本次实际走通的路线；由 `SettingsHomePage` 传入，与首页同一状态源（C10 要求 3）。
+    var route: SettingsRouteKind?
     /// 构建元数据可注入：截图基线必须固定取值，否则「关于」页每次提交/每天都会变，
     /// 基线永远追不上（与 Android 关于页同一处理）。
     var buildInfo: BuildInfo = .from()
@@ -117,9 +130,17 @@ struct SettingsDetailPage: View {
         Form {
             switch page {
             case .computer:
-                LabeledContent(copy.text(.lan), value: copy.text(.online))
-                LabeledContent(copy.text(.tailscale), value: copy.text(.notPaired))
-                LabeledContent(copy.text(.relay), value: copy.text(.notPaired))
+                // C10 要求 3：三条路线显示**真实**状态。以前三条里两条写死
+                // 「未连接」、剩下一条写死「已连接」，与实际走哪条路无关。
+                LabeledContent(
+                    copy.text(.lan),
+                    value: copy.text(route == .local ? .online : .notPaired))
+                LabeledContent(
+                    copy.text(.tailscale),
+                    value: copy.text(.notPaired))
+                LabeledContent(
+                    copy.text(.relay),
+                    value: copy.text(route == .remote ? .online : .notPaired))
                 NavigationLink(copy.text(.diagnostics), value: SettingsPage.diagnostics)
                 if account != nil {
                     TextField(copy.text(.renameComputer), text: $computerName)

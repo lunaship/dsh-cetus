@@ -269,7 +269,22 @@ actor InboxLiveService: InboxServing {
             route: route,
             eventsEnabled: bootstrap?.capabilities?.events?.host == true,
             pushVersion: bootstrap?.capabilities?.push?.v ?? 0,
-            pairedDeviceID: bootstrap?.host?.deviceId)
+            pairedDeviceID: bootstrap?.host?.deviceId,
+            // 取本次真正连上的地址，而不是 hostID（C10 要求 3）。
+            hostAddress: Self.displayAddress(http.baseURL, host: host, route: route))
+    }
+
+    /// 设置页要显示的地址：本次实际连上的那个，而不是配对所有候选。
+    ///
+    /// 局域网直连返回 `host:port`；远程（DLP/1）不暴露内网地址，回退到 relay/公网端点，
+    /// 这样用户看到的是**真的在用**的那条路，而不是猜出来的值。
+    static func displayAddress(_ base: URL, host: PairedHost, route: InboxRouteKind) -> String? {
+        if route == .remote {
+            return host.remote?.endpoint ?? host.tailnetUrl ?? host.primaryUrl
+        }
+        guard let hostPart = base.host, !hostPart.isEmpty else { return base.absoluteString }
+        if let port = base.port { return "\(hostPart):\(port)" }
+        return hostPart
     }
 
     private func requireClient() throws -> HostClient {
