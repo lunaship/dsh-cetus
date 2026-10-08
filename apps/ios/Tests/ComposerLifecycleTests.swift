@@ -128,8 +128,9 @@ final class ComposerLifecycleTests: XCTestCase {
         // 流事件导致 SwiftUI 侧把绑定文本刷成旧值 —— 必须被挡住。
         view.text = "older-from-server"
 
-        XCTAssertEqual(tv.text, markedBefore,
-                       "组词期间外部刷新不得替换编辑器内容")
+        XCTAssertEqual(
+            tv.text, markedBefore,
+            "组词期间外部刷新不得替换编辑器内容")
         XCTAssertNotNil(tv.markedTextRange, "组词状态必须保留")
         XCTAssertEqual(tv.text, "zhang")
     }
@@ -143,8 +144,9 @@ final class ComposerLifecycleTests: XCTestCase {
         tv.becomeFirstResponder()
         tv.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0))
         // 中文候选确认会走 shouldChangeTextIn，带普通文本而非 "\n"
-        _ = tv.delegate?.textView?(tv, shouldChangeTextIn: NSRange(location: 2, length: 0),
-                                   replacementText: "你")
+        _ = tv.delegate?.textView?(
+            tv, shouldChangeTextIn: NSRange(location: 2, length: 0),
+            replacementText: "你")
         XCTAssertEqual(sent, 0, "确认中文候选不得触发发送")
     }
 }
