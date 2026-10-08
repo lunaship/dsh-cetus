@@ -53,18 +53,24 @@ public struct HostClient: Sendable {
     public let token: String
     public let session: URLSession
     public let timeouts: Timeouts
+    /// 实际使用的传输。默认是 `URLSessionHostTransport`（局域网 / Tailscale）；
+    /// 远程（DLP/1）注入 `RemoteHostTransport`。上层 API 与错误分类不因它而变。
+    public let transport: any HostTransport
 
     /// - Parameters:
     ///   - baseURL: 主机 API 根地址（如 `https://192.168.1.5:18640`），不带路径。
     ///   - token: 设备 token（来自 `HostStore`）。
     ///   - expectedFingerprint: 配对时记录的叶证书指纹，只在使用默认 session 时生效。
     ///   - session: 注入自定义 session（测试）；默认用 `PinnedSessionDelegate` 构造。
+    ///   - transport: 注入传输（远程路径）。传 nil 时按 `session` 走 `URLSession`。
+    ///     远程路径下 `baseURL` 只用于拼路径与 Host 展示，实际连接由传输决定。
     public init(
         baseURL: URL,
         token: String,
         expectedFingerprint: String? = nil,
         timeouts: Timeouts = .init(),
-        session: URLSession? = nil
+        session: URLSession? = nil,
+        transport: (any HostTransport)? = nil
     ) {
         self.baseURL = baseURL
         self.token = token
@@ -83,6 +89,7 @@ public struct HostClient: Sendable {
                 delegateQueue: nil
             )
         }
+        self.transport = transport ?? URLSessionHostTransport(session: self.session)
     }
 
     /// GET 并解码为 DLModels 类型。
@@ -109,21 +116,17 @@ public struct HostClient: Sendable {
     public func exchange(method: String, path: String, body: Data?) async throws -> (
         status: Int, data: Data, contentType: String
     ) {
-        let pinBefore = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
+        let request = Self.makeRequest(
+            method: method, url: Self.url(baseURL: baseURL, path: path, query: [:]), body: body, token: token)
+        let pinBefore = Self.pinFailureCount(transport)
         do {
-            let (data, response) = try await session.data(
-                for: Self.makeRequest(
-                    method: method, url: Self.url(baseURL: baseURL, path: path, query: [:]), body: body, token: token))
-            guard let http = response as? HTTPURLResponse else {
-                throw HostClientError.transport(URLError(.badServerResponse))
-            }
-            let type = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
-            return (http.statusCode, data, type)
+            let response = try await transport.send(request)
+            let type = Self.headerValue(response.headers, "content-type") ?? "application/octet-stream"
+            return (response.statusCode, response.body, type)
         } catch let error as HostClientError {
             throw error
         } catch {
-            let pinAfter = (session.delegate as? PinnedSessionDelegate)?.pinFailureCount
-            throw Self.mapTransportError(error, pinErrorChanged: pinAfter != pinBefore)
+            throw Self.mapTransportError(error, pinErrorChanged: Self.pinFailed(transport, before: pinBefore))
         }
     }
 
@@ -194,6 +197,32 @@ public struct HostClient: Sendable {
     }
 
     // MARK: - 错误映射（纯函数，供测试与后续 DLRemote 复用）
+
+    /// 大小写不敏感地取一个响应头。
+    ///
+    /// `URLSession` 与隧道两条路径交回的键大小写不同（HTTP/1.1 头名不区分大小写），
+    /// 这里统一成小写比较，避免调用方各写一遍。
+    static func headerValue(_ headers: [String: String], _ name: String) -> String? {
+        let wanted = name.lowercased()
+        for (key, value) in headers where key.lowercased() == wanted { return value }
+        return nil
+    }
+
+    /// 请求期间是否发生了证书钉扎失败。
+    ///
+    /// `pinFailureCount` 是**累计**计数（只增不减），所以必须传请求前读到的值做前后比较 ——
+    /// 单看当前值会把"以前失败过一次"误判成"这次失败了"。
+    ///
+    /// 远程路径没有 `PinnedSessionDelegate`：它的钉扎失败已在 `RemoteHostTransport.map`
+    /// 里直接映射成 `.certificateChanged`，因此这里返回 false，不重复判定。
+    static func pinFailed(_ transport: any HostTransport, before: Int) -> Bool {
+        (transport as? URLSessionHostTransport)?.pinFailureCount ?? 0 > before
+    }
+
+    /// 读当前钉扎失败计数（请求前调用，交给 `pinFailed` 做前后比较）。
+    static func pinFailureCount(_ transport: any HostTransport) -> Int {
+        (transport as? URLSessionHostTransport)?.pinFailureCount ?? 0
+    }
 
     /// 状态码 + 错误体 → `HostClientError`。
     public static func mapStatus(_ status: Int, body: Data) -> HostClientError {

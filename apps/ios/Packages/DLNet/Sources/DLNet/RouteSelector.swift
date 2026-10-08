@@ -1,9 +1,18 @@
 import DLSecurity
 import Foundation
 
-/// I3.7 的直连结果。阶段 5 才增加 relay；这里绝不建立中继连接或返回虚假的远程成功。
+/// 选路结果（RFC 0001 §7.2）。
+///
+/// `direct` 覆盖 LAN 与 Tailscale —— 两者都是「钉扎同一张插件证书、直连主机地址」，
+/// 差别只在候选来源与 TTL，选路语义相同。
+/// `remote` 表示没有可用直连地址、但主机**有远程能力**，应走 DLP/1 隧道（§7.2 第 5 条）。
+///
+/// `remote` **不代表中继在线**：它只说明"该走这条"，真正的连接结果由隧道层给出
+/// （`RemoteTunnelError`）。§15.2 明确要求「在线 · 远程」只在 bootstrap/SSE 真正可用后显示，
+/// 因此调用方**不得**仅凭本结果点亮在线态。
 public enum RouteSelection: Equatable, Sendable {
     case direct(String)
+    case remote
     case noDirectAvailable
 }
 
@@ -17,11 +26,16 @@ public actor RouteSelector {
     public typealias Clock = @Sendable () -> TimeInterval
 
     public static let directTTL: TimeInterval = 30
+    /// RFC §7.2 第 2 条：REMOTE 结果只保留 15 秒，回家后能较快切回 LAN。
+    public static let remoteTTL: TimeInterval = 15
     public private(set) var currentGeneration: UInt64 = 0
 
+    /// 缓存项。`selection` 要么是直连地址、要么是 `.remote`（§7.2 第 2 条两种都缓存）。
+    /// 不再用「地址字符串」表达远程：`.remote` 没有地址，用哨兵字符串会在展示层泄漏成
+    /// 一个假地址。
     private struct Cached {
         let generation: UInt64
-        let address: String
+        let selection: RouteSelection
         let until: TimeInterval
     }
 
@@ -60,10 +74,17 @@ public actor RouteSelector {
     ///   - candidates: 主地址在前、Tailscale 备用在后；空白跳过，其余地址原样交给探测。
     ///   - probe: 必须仅做有超时预算的 TCP + 钉扎 TLS 握手，不发 HTTP、token 或配对码。
     ///     两个地址校验同一插件证书；证书不符算该候选不通，不能删除凭据。
+    ///   - hasRemote: 该主机是否具备远程能力（§7.2 第 5 条）。`false` 时保持旧行为：
+    ///     全部直连失败返回 `.noDirectAvailable`，**绝不**返回虚假的远程成功。
     /// 同 key 的调用共享第一位调用者的探测；取消一位等待者不取消共享探测。
-    public func select(key: String, candidates: [String], probe: @escaping Probe) async -> RouteSelection {
+    public func select(
+        key: String,
+        candidates: [String],
+        hasRemote: Bool = false,
+        probe: @escaping Probe
+    ) async -> RouteSelection {
         while true {
-            if let hit = fresh(key) { return .direct(hit.address) }
+            if let hit = fresh(key) { return hit.selection }
             let flight: Flight
             if let existing = flights[key] {
                 flight = existing
@@ -73,7 +94,9 @@ public actor RouteSelector {
                         if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
                         if await probe(address) { return .direct(address) }
                     }
-                    return .noDirectAvailable
+                    // §7.2 第 4–5 条：所有直连候选都不可用（含证书不符），且主机有远程能力 → 走远程。
+                    // 两条路径钉扎同一张插件证书，所以这里不存在降级攻击面。
+                    return hasRemote ? .remote : .noDirectAvailable
                 }
                 flight = Flight(
                     id: UUID(), generation: currentGeneration, revision: revisions[key, default: 0], task: task)
@@ -84,26 +107,39 @@ public actor RouteSelector {
             // 只有一个等待者提交结果。网络变化 / forget / noteSuccess 后的旧任务不能填回缓存。
             if flights[key]?.id == flight.id {
                 flights.removeValue(forKey: key)
-                if stillValid, case .direct(let address) = result { remember(key, address: address) }
+                if stillValid, result != .noDirectAvailable { remember(key, selection: result) }
             }
             if stillValid { return result }
             // 先等旧探测结束，再按新代重探；即使换网，同一台电脑也不并行探测两次。
         }
     }
 
-    /// Android `lanAddress`：仅当前网络代、尚未过期的成功直连地址。
-    public func lanAddress(key: String) -> String? { fresh(key)?.address }
+    /// Android `lanAddress`：仅当前网络代、尚未过期的成功直连地址。远程结果不返回地址。
+    public func lanAddress(key: String) -> String? {
+        guard case .direct(let address)? = fresh(key)?.selection else { return nil }
+        return address
+    }
 
-    /// Android `noteSuccess` / `remember`：实际成功地址成为缓存选择，TTL 从此次成功起算。
+    /// Android `noteSuccess` / `remember`：实际成功的路成为缓存选择，TTL 从此次成功起算。
     /// 不传地址时只沿用仍有效的直连地址；已过期/已 forget 的地址不复活。
     /// 若上层持续调用此方法会续期，因此应由上层决定何时需要更新实际成功的路。
     public func noteSuccess(key: String, address: String? = nil) {
-        guard let address = address ?? fresh(key)?.address,
+        guard let address = address ?? lanAddress(key: key),
             !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return }
         lastRoutes[key] = .direct(address)
         revisions[key, default: 0] += 1
-        remember(key, address: address)
+        remember(key, selection: .direct(address))
+    }
+
+    /// 远程隧道真正建成（`ready` 已收到）时登记，使后续新建连接优先复用远程判定（§7.2 第 2 条）。
+    ///
+    /// **语义边界**：这只影响「下次选路」，**不是**「电脑在线」的依据。
+    /// §15.2 要求在线态必须等 bootstrap/SSE 真正可用，由上游决定，不在选路层表达。
+    public func noteSuccessRemote(key: String) {
+        lastRoutes[key] = .remote
+        revisions[key, default: 0] += 1
+        remember(key, selection: .remote)
     }
 
     /// Android `lastRoute`：最后实际成功的路，仅供显示；不是当前可用性或新连接的选路依据。
@@ -126,7 +162,10 @@ public actor RouteSelector {
         return hit
     }
 
-    private func remember(_ key: String, address: String) {
-        cache[key] = Cached(generation: currentGeneration, address: address, until: clock() + Self.directTTL)
+    /// 记入缓存。TTL 按路型区分（§7.2 第 2 条）：直连 30 秒，远程 15 秒。
+    /// 远程更短是为了让「回到 LAN」能较快被重新探测到。
+    private func remember(_ key: String, selection: RouteSelection) {
+        let ttl = selection == .remote ? Self.remoteTTL : Self.directTTL
+        cache[key] = Cached(generation: currentGeneration, selection: selection, until: clock() + ttl)
     }
 }
