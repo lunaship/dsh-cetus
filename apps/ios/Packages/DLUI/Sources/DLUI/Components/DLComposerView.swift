@@ -83,6 +83,15 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         set { applyExternalText(newValue) }
     }
 
+    /// C03：提交在途时禁用发送按钮并改文案，防止重复提交。
+    public var isSending = false {
+        didSet {
+            guard didFinishInit, isSending != oldValue else { return }
+            sendButton.isEnabled = isEnabled && !isSending
+            sendButton.alpha = isSending ? 0.5 : 1
+        }
+    }
+
     public var isEnabled = true {
         didSet {
             guard didFinishInit, isEnabled != oldValue else { return }

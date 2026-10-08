@@ -213,6 +213,15 @@ enum ChatText: String {
     case loadOlderFailed
     case selectTitle
     case selectText
+    // MARK: - C03 提交状态与失败文案
+    /// 发送失败但输入已保留。
+    case sendFailedKeepDraft
+    /// 结果未知（超时/断连）：服务端可能已接受，不自动重发。
+    case sendOutcomeUnknown
+    /// 审批/问题已在别处处理完。
+    case decisionAlreadyHandled
+    case retry
+    case sending
 
     var fallback: String {
         switch self {
@@ -424,6 +433,14 @@ enum ChatText: String {
         case .loadOlderFailed: "Couldn't load earlier messages"
         case .selectTitle: "Select text"
         case .selectText: "Select text"
+        // C03 提交状态与失败文案
+        case .sendFailedKeepDraft:
+            "Message not sent. Your text is kept — tap send to retry."
+        case .sendOutcomeUnknown:
+            "Unknown result — the computer may already have received it. Not resending automatically."
+        case .decisionAlreadyHandled: "Already handled elsewhere."
+        case .retry: "Retry"
+        case .sending: "Sending…"
         }
     }
 }

@@ -119,6 +119,11 @@ struct ConversationPage: View {
     @State private var photo: PhotosPickerItem?
     @State private var attachments: [PromptImage] = []
     @State private var attachmentNotice: ChatText?
+    // MARK: - C03 提交状态
+    /// 当前 draft 的修订号：每次用户编辑都会前进，用来区分"提交的那份"与"提交期间新写的"。
+    @State private var draftRevision = 0
+    @State private var submission: SubmissionState = .idle
+    @State private var submissionNotice: ChatText?
     @State private var selectedText = ""
     @State private var permission = PermissionPreset.workspaceWrite
     @State private var modelRowsLive: [ModelRow] = []
@@ -228,6 +233,17 @@ struct ConversationPage: View {
                 ) {
                     Button(copy.text(.cancel), role: .cancel) { attachmentNotice = nil }
                 }
+                // C03：发送失败要给可见、可操作的反馈。输入一律保留。
+                .alert(
+                    submissionNoticeText(copy),
+                    isPresented: Binding(
+                        get: { submissionNotice != nil },
+                        set: { if !$0 { submissionNotice = nil } }
+                    )
+                ) {
+                    Button(copy.text(.retry)) { Task { await send(copy) } }
+                    Button(copy.text(.cancel), role: .cancel) { submissionNotice = nil }
+                }
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
                 .onChange(of: sheet) { _, item in
@@ -264,6 +280,9 @@ struct ConversationPage: View {
                         draft: draft,
                         copy: copy,
                         onDraft: { text in
+                            // 用户每次编辑都前进修订号：提交期间新写的内容
+                            // 因此与"被提交的那份快照"区分开（C03 要求 2）。
+                            if text != draft { draftRevision += 1 }
                             draft = text
                             draftStore.save(
                                 ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
@@ -504,6 +523,18 @@ struct ConversationPage: View {
         return .ignored
     }
 
+    /// 失败文案：未知结果要明说"不自动重发"，别让用户以为没发出去而重复点。
+    private func submissionNoticeText(_ copy: ConversationCopy) -> String {
+        switch submission {
+        case .failedBeforeAccept(_, let message):
+            message.isEmpty ? copy.text(.sendFailedKeepDraft) : message
+        case .outcomeUnknown:
+            copy.text(.sendOutcomeUnknown)
+        default:
+            copy.text(.sendFailedKeepDraft)
+        }
+    }
+
     private func send(_ copy: ConversationCopy) async {
         _ = copy
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -513,16 +544,55 @@ struct ConversationPage: View {
             confirmFull = true
             return
         }
+        // 本地提交锁：在途时重复点击不产生第二次提交（方案 §7 要求 2）。
+        guard !submission.busy else { return }
+
+        let snapshot = SubmissionSnapshot(
+            revision: draftRevision, text: text, attachmentCount: images.count)
+        submission = .submitting(revision: snapshot.revision)
+        submissionNotice = nil
         do {
-            try await model.serviceSend(text, images: images)
-            draft = ""
-            attachments = []
-            draftStore.save(
-                ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
-                text: "")
+            try await model.serviceSend(snapshot.text, images: images)
+            submission = .accepted(revision: snapshot.revision)
+            // 关键：只清"提交过且之后没被改动"的那一份。
+            // 提交期间用户若又写了新内容（revision 已前进），绝不清空。
+            if SubmissionResolver.shouldClear(submitted: snapshot.revision, current: draftRevision) {
+                draft = ""
+                if SubmissionResolver.shouldClearAttachments(
+                    submitted: snapshot.revision, current: draftRevision)
+                {
+                    attachments = []
+                }
+                draftStore.save(
+                    ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
+                    text: "")
+            }
         } catch {
-            // 失败或中途被回收都留着草稿，回来后回填，不自动重发。
+            // 结果未知（超时/断连）与确定失败都不清输入，也**不自动重发**。
+            let timedOut = isTimeoutLike(error)
+            submission =
+                timedOut
+                ? .outcomeUnknown(revision: snapshot.revision)
+                : .failedBeforeAccept(
+                    revision: snapshot.revision,
+                    message: error.localizedDescription)
+            submissionNotice = timedOut ? .sendOutcomeUnknown : .sendFailedKeepDraft
         }
+    }
+
+    /// 超时/连接中断这类"发出去了但不知道结果"的错误。
+    /// 与"确定没发出"（连不上、被拒）区分开——前者不能自动重发，否则可能重复提交。
+    private func isTimeoutLike(_ error: Error) -> Bool {
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain {
+            return [
+                NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost,
+                NSURLErrorNotConnectedToInternet,
+            ].contains(ns.code)
+        }
+        let text = error.localizedDescription.lowercased()
+        return text.contains("timeout") || text.contains("timed out")
+            || text.contains("connection lost")
     }
 
     private func decide(allow: Bool) async {
@@ -633,8 +703,10 @@ struct ConversationPage: View {
         guard let command = entries.first(where: { $0.command.trigger == trigger })?.command else { return }
         switch resolvedPick(command) {
         case .insert(let text):
+            draftRevision += 1
             draft = text
         case .submit(let text):
+            draftRevision += 1
             draft = text
             Task { await send(copy) }
         case .local(let kind):

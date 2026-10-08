@@ -17,6 +17,8 @@ struct ConversationBar: UIViewRepresentable {
     var showsAttach = false
     var attachTitle = ""
     var onAttach: () -> Void = {}
+    /// C03：提交在途时发送按钮进忙碌态，阻止重复点击。
+    var isSending = false
 
     func makeUIView(context: Context) -> DLComposerView {
         let view = DLComposerView(sendTitle: copy.text(.send))
@@ -50,6 +52,7 @@ struct ConversationBar: UIViewRepresentable {
         view.showsAttachButton = showsAttach
         view.attachTitle = attachTitle
         view.onAttach = onAttach
+        view.isSending = isSending
         let inDecision = decision != nil
         let key = ObjectIdentifier(view)
         let wasInDecision = Self.lastMode[key] ?? false
