@@ -13,6 +13,9 @@ struct RootView: View {
 
     var body: some View {
         content
+            // 草稿仓库从依赖根注入一次，紧凑导航 / 宽屏详情 / 分享预填三条路
+            // 都取到同一份（C02 要求 4）。测试可用 .composerDraftStore(_:) 覆盖。
+            .composerDraftStore(ComposerDraftStore.live(keys: KeychainStore()))
             .overlay {
                 if PrivacyCover.covers(visibility, screenshots: screenshots) {
                     Rectangle().fill(.background).ignoresSafeArea()

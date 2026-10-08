@@ -127,7 +127,9 @@ struct ConversationPage: View {
     @State private var contextPercent: Int?
     @State private var schedules: [ScheduleTask] = []
     @State private var scope = ScheduleScope.session
-    var draftDirectory: URL?
+    /// 草稿仓库走环境值注入（C02）。旧代码这里是 `draftDirectory: URL?`，
+    /// 但生产路径 `ConversationFlowView` 不传它 → 恒为 nil → 草稿静默不落盘。
+    @Environment(\.composerDraftStore) private var draftStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -263,11 +265,9 @@ struct ConversationPage: View {
                         copy: copy,
                         onDraft: { text in
                             draft = text
-                            if let draftDirectory {
-                                ComposerDraftStore(directory: draftDirectory).save(
-                                    ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
-                                    text: text)
-                            }
+                            draftStore.save(
+                                ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
+                                text: text)
                         },
                         onSend: { Task { await send(copy) } },
                         onEscape: { _ = dismissPresented() },
@@ -292,9 +292,9 @@ struct ConversationPage: View {
                     attachments = sharePrefill.images
                     return
                 }
-                guard draft.isEmpty, let draftDirectory else { return }
+                guard draft.isEmpty else { return }
                 draft =
-                    ComposerDraftStore(directory: draftDirectory).load(
+                    draftStore.load(
                         ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID))?.text ?? ""
             }
             .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
@@ -517,11 +517,9 @@ struct ConversationPage: View {
             try await model.serviceSend(text, images: images)
             draft = ""
             attachments = []
-            if let draftDirectory {
-                ComposerDraftStore(directory: draftDirectory).save(
-                    ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
-                    text: "")
-            }
+            draftStore.save(
+                ComposerDraftKey(hostID: model.hostID, sessionID: model.sessionID),
+                text: "")
         } catch {
             // 失败或中途被回收都留着草稿，回来后回填，不自动重发。
         }
