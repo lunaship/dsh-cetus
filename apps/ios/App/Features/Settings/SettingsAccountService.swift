@@ -11,6 +11,8 @@ struct SettingsAccountService: SettingsAccountServing, Sendable {
     var alias: @Sendable () -> String?
     var phoneName: @Sendable () -> String?
     var deleteHost: @Sendable () async throws -> Void
+    /// 解绑成功后只丢弃这台电脑的本地草稿（C02 要求 9）；生产传 `ComposerDraftStore.removeHost`。
+    var discardDrafts: @Sendable (_ hostID: String) -> Void = { _ in }
 
     func loadComputer() async -> ComputerAccountSnapshot {
         let current = await host()
@@ -84,8 +86,10 @@ struct SettingsAccountService: SettingsAccountServing, Sendable {
     }
 
     private func delete(_ success: ComputerUnpairOutcome) async -> ComputerUnpairOutcome {
+        let hostID = await host()?.hostId
         do {
             try await deleteHost()
+            if let hostID, !hostID.isEmpty { discardDrafts(hostID) }
             return success
         } catch {
             return .kept(.storage)

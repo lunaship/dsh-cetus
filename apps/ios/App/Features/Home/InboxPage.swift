@@ -7,6 +7,7 @@ import SwiftUI
 
 struct InboxFlowView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.composerDraftStore) private var draftStore
     @State private var model: InboxModel
     var onMissing: () -> Void
     var onSwitch: (String) -> Void
@@ -39,7 +40,12 @@ struct InboxFlowView: View {
 
     var body: some View {
         InboxPage(model: model)
-            .onAppear { model.onSwitch = onSwitch }
+            .onAppear {
+                model.onSwitch = onSwitch
+                model.discardDrafts = { [draftStore] hostID, sessionID in
+                    draftStore.removeAll(hostID: hostID, sessionID: sessionID)
+                }
+            }
             .onChange(of: model.missingHost) { _, missing in
                 if missing { onMissing() }
             }

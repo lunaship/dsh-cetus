@@ -309,6 +309,37 @@ extension ComposerDraftKey {
             #expect(store.text(base.with(kind: kind)) == "")
         }
     }
+
+    /// 解绑一台电脑：它的所有草稿（含附件与旧版孤儿草稿）一起没，另一台完好。
+    @Test func removingHostClearsOnlyThatHost() {
+        let directory = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = makeStore(directory)
+        let a = ComposerDraftKey(hostID: "host", sessionID: "s-A")
+        let draft = ComposerDraftKey(hostID: "host", draftID: "d1", workspaceID: "/w")
+        let other = ComposerDraftKey(hostID: "host-2", sessionID: "s-A")
+        guard let handleA = store.writeAttachment(a, mediaType: "image/png", data: Data([1])),
+            let handleOther = store.writeAttachment(other, mediaType: "image/png", data: Data([2]))
+        else {
+            Issue.record("附件写入应当成功")
+            return
+        }
+        store.save(a, record: ComposerDraftRecord(text: "A", attachments: [handleA]))
+        store.save(draft, text: "新任务")
+        store.save(other, record: ComposerDraftRecord(text: "另一台", attachments: [handleOther]))
+        let legacy = store.legacyDirectory(hostID: "host")
+        try? FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+        try? "旧草稿".write(to: legacy.appendingPathComponent("old.txt"), atomically: true, encoding: .utf8)
+
+        store.removeHost(hostID: "host")
+
+        #expect(store.text(a) == "")
+        #expect(store.text(draft) == "")
+        #expect(store.orphanDrafts(hostID: "host").isEmpty)
+        #expect(store.readAttachment(a, bookmark: handleA.bookmark) == nil)
+        #expect(store.text(other) == "另一台")
+        #expect(store.readAttachment(other, bookmark: handleOther.bookmark) == Data([2]))
+    }
 }
 
 // MARK: - 附件引用

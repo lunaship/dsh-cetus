@@ -93,6 +93,8 @@ import Testing
         let script = Script(load: .success(payload([session("s", updatedAt: 1)])))
         await script.setArchiveError(.failed)
         let model = make("h", script: script, cache: InboxMemoryCache())
+        var discarded = 0
+        model.discardDrafts = { _, _ in discarded += 1 }
         await model.refresh()
         await model.archive(session("s", updatedAt: 1))
         #expect(model.visibleSessions.map(\.sessionId) == ["s"])
@@ -101,6 +103,8 @@ import Testing
         await model.archive(session("s", updatedAt: 1))
         #expect(model.visibleSessions.isEmpty)
         #expect(await script.archiveCount() == 1)
+        // 归档可恢复，草稿必须保留。
+        #expect(discarded == 0)
         await script.setLoad(.success(payload([session("s", updatedAt: 1)], archived: ["s"])))
         await model.refresh()
         #expect(model.archivedSessions.map(\.sessionId) == ["s"])
@@ -113,6 +117,8 @@ import Testing
     @Test func deleteWaitsForConfirmationAndStaysDeleted() async {
         let script = Script(load: .success(payload([session("s", updatedAt: 1, title: "Notes")])))
         let model = make("h", script: script, cache: InboxMemoryCache())
+        var discarded: [String] = []
+        model.discardDrafts = { hostID, sessionID in discarded.append("\(hostID)/\(sessionID)") }
         await model.refresh()
         model.askDelete(session("s", updatedAt: 1, title: "Notes"))
         #expect(model.visibleSessions.map(\.sessionId) == ["s"])
@@ -120,6 +126,8 @@ import Testing
         await model.commitDelete()
         #expect(model.visibleSessions.isEmpty)
         #expect(model.archivedSessions.isEmpty)
+        // C02 要求 9：删除成功后只丢弃这一个会话的草稿。
+        #expect(discarded == ["h/s"])
         await script.setLoad(.success(payload([session("s", updatedAt: 1, title: "Notes")])))
         await model.refresh()
         #expect(model.visibleSessions.isEmpty)

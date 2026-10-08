@@ -336,6 +336,8 @@ final class InboxModel {
     private let preferences: InboxPreferences
     var onSwitch: ((String) -> Void)?
     var clock: @MainActor () -> Date = { Date() }
+    /// 会话删除成功后丢弃该会话的草稿（C02 要求 9）。归档不调用：归档可恢复，草稿保留。
+    var discardDrafts: @MainActor (_ hostID: String, _ sessionID: String) -> Void = { _, _ in }
 
     var computerName = ""
     var link: InboxLink = .checking(nil)
@@ -922,6 +924,7 @@ final class InboxModel {
             if deleted {
                 deletedIDs.insert(id)
                 preferences.setDeletedIDs(deletedIDs, hostID: hostID)
+                discardDrafts(hostID, id)
             }
             if phoneAction?.sessionID == id { phoneAction = nil }
             if notice == noticeOnFailure { notice = nil }

@@ -126,6 +126,25 @@ public struct ComposerDraftStore: Sendable {
         }
     }
 
+    /// 解绑这台电脑：只删它自己的新旧草稿目录，其它电脑的草稿不动（C02 要求 9）。
+    /// 附件按槽位存在共享目录里，先经草稿记录逐个删。
+    public func removeHost(hostID: String) {
+        let current = currentDirectory(hostID: hostID)
+        if let names = try? fileManager.contentsOfDirectory(atPath: current.path) {
+            for name in names where name.hasSuffix(".bin") {
+                guard let raw = try? Data(contentsOf: current.appendingPathComponent(name)),
+                    let plaintext = try? decrypt(raw),
+                    let record = try? JSONDecoder().decode(ComposerDraftRecord.self, from: plaintext)
+                else { continue }
+                let slot = ComposerDraftKey(hostID: hostID, sessionID: record.sessionID)
+                for attachment in record.attachments {
+                    try? fileManager.removeItem(at: attachmentFile(slot, bookmark: attachment.bookmark))
+                }
+            }
+        }
+        try? fileManager.removeItem(at: directory.appendingPathComponent(digest(hostID), isDirectory: true))
+    }
+
     /// 用户从"恢复的草稿"里选了目标会话后，把草稿搬过去并清掉孤儿条目。
     public func adopt(_ orphan: OrphanDraft, to key: ComposerDraftKey) -> ComposerDraftWriteResult {
         let result = save(

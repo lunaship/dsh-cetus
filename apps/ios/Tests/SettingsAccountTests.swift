@@ -84,12 +84,15 @@ import Testing
 
         let failed = await fixture.service.unpair()
         #expect(failed == .kept(.transport))
+        // C02 要求 9：解绑失败不动草稿。
+        #expect(fixture.discarded.hosts.isEmpty)
         #expect(await fixture.store.get(hostId: fixture.hostID) != nil)
         #expect(await fixture.store.token(for: fixture.hostID) == fixture.token)
 
         fixture.transport.routes["/dsh-link/mobile/revoke"] = .json("{\"ok\":true,\"removed\":1}")
         let revoked = await fixture.service.unpair()
         #expect(revoked == .revoked)
+        #expect(fixture.discarded.hosts == [fixture.hostID])
         #expect(await fixture.store.get(hostId: fixture.hostID) == nil)
         #expect(await fixture.store.token(for: fixture.hostID) == nil)
         let bodies = fixture.transport.bodies(for: "/dsh-link/mobile/revoke")
@@ -179,6 +182,7 @@ private struct AccountFixture {
     let names: ComputerLocalNames
     let transport: SettingsScriptedTransport
     let service: SettingsAccountService
+    let discarded = DiscardedDraftHosts()
 
     init() async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -209,7 +213,8 @@ private struct AccountFixture {
             rename: { alias in names.setAlias(alias, hostID: "host-1") },
             alias: { names.alias(hostID: "host-1") },
             phoneName: { names.phoneName(hostID: "host-1") },
-            deleteHost: { try await store.delete(hostId: "host-1") }
+            deleteHost: { try await store.delete(hostId: "host-1") },
+            discardDrafts: { [discarded] hostID in discarded.append(hostID) }
         )
     }
 }
@@ -307,4 +312,11 @@ private final class SettingsTransportRegistry: @unchecked Sendable {
     func transport(id: String) -> SettingsScriptedTransport? {
         lock.withLock { transports[id] }
     }
+}
+
+private final class DiscardedDraftHosts: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [String] = []
+    var hosts: [String] { lock.withLock { values } }
+    func append(_ hostID: String) { lock.withLock { values.append(hostID) } }
 }
