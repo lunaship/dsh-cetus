@@ -1,3 +1,4 @@
+import DLCore
 import SnapshotTesting
 import SwiftUI
 import UIKit
@@ -21,10 +22,25 @@ import XCTest
     func testCrash() { matrix("7_15_crash") { language in detail(.crash, language: language) } }
 
     private func detail(_ page: SettingsPage, language: String) -> some View {
-        NavigationStack { SettingsDetailPage(page: page) }
-            .environment(\.locale, Locale(identifier: language))
-            .transaction { $0.disablesAnimations = true }
+        NavigationStack {
+            SettingsDetailPage(
+                page: page,
+                // 「关于」页会渲染真实构建元数据（commit/date/configuration）。
+                // 基线必须用固定值，否则每次提交、每天都会漂移，基线永远追不上。
+                buildInfo: Self.fixedBuildInfo)
+        }
+        .environment(\.locale, Locale(identifier: language))
+        .transaction { $0.disablesAnimations = true }
     }
+
+    /// 固定的构建元数据，只为截图稳定；不代表任何真实构建。
+    private static let fixedBuildInfo = BuildInfo(
+        commit: "f85155b6",
+        date: "2026-10-08",
+        configuration: "Debug",
+        contractVersion: "1",
+        marketingVersion: "1.0",
+        buildNumber: "1")
 
     private func home(_ language: String) -> some View {
         NavigationStack {

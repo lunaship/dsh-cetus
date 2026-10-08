@@ -81,6 +81,9 @@ struct SettingsHomePage: View {
 struct SettingsDetailPage: View {
     var page: SettingsPage
     var checks: [DiagnosticCheck] = SettingsDetailPage.sampleChecks
+    /// 构建元数据可注入：截图基线必须固定取值，否则「关于」页每次提交/每天都会变，
+    /// 基线永远追不上（与 Android 关于页同一处理）。
+    var buildInfo: BuildInfo = .from()
     var account: (any SettingsAccountServing)?
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
@@ -361,9 +364,6 @@ struct SettingsDetailPage: View {
         DiagnosticCheck(id: "remote.relay", status: .skip, code: "REMOTE_DISABLED"),
     ]
 
-    /// 内部构建元数据（方案 §4 C00）。只在「关于」页展示，不进首页。
-    private let buildInfo = BuildInfo.from()
-
     @ViewBuilder private func defaultsSection(_ copy: SettingsCopy) -> some View {
         if let models {
             Picker(copy.text(.preset), selection: $presetID) {
@@ -588,11 +588,47 @@ func diagnosticsClipboard(_ checks: [DiagnosticCheck]) -> String {
     .joined(separator: "\n")
 }
 
+/// 诊断导出里**唯一**允许出现的明细形状：数字、布尔、短枚举码。
+///
+/// C16 §20.3 要求导出「不带 token、二维码凭据、API key、正文或完整敏感路径」。
+/// 插件侧在生成报告时用 `PRIVATE_TEXT`（`src/diagnostics.js:361`）强制拦截；
+/// 手机侧此前把 `.text` 明细**原样**写进剪贴板 —— 上游一旦把 token 或路径当明细塞进来，
+/// 就会随「复制诊断」一起泄露。
+///
+/// 这里两道一起用，缺一不可：
+/// 1. **形状白名单**：短、只含 `A–Z a–z 0–9 . _ -`。挡路径、URL、正文、带空格的凭据。
+/// 2. **敏感形状黑名单**：与插件同一组正则。挡 `ghp_…` 这类只含合法字符的长凭据，
+///    以及 `10.255.255.1` 这种纯数字点的 IP —— 它们能过白名单，只有黑名单认得。
+private enum DiagnosticDetailPrivacy {
+    /// 允许的字符集：字母、数字、点、下划线、连字符。刻意**不含**空白与斜杠。
+    private static let allowed = CharacterSet(
+        charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+
+    /// 与插件 `src/diagnostics.js:361` 的 `PRIVATE_TEXT` 同一组规则，
+    /// 另加常见凭据前缀（`ghp_`/`gho_`/`sk-` 等）与长十六进制串：
+    /// 这些只含合法字符，白名单认不出，必须按形状拦。
+    private static let sensitive = try? NSRegularExpression(
+        pattern:
+            #"[/\\]|token|secret|password|bearer|key|credential|\b(?:\d{1,3}\.){3}\d{1,3}\b|\d{16,}|\b(?:gh[pousr]_|sk-|xox[baprs]-)[A-Za-z0-9_-]{8,}"#,
+        options: [.caseInsensitive])
+
+    /// 明细值是否可安全导出。宁少不多：拒绝只是少一条明细，误放行会泄露。
+    static func isSafe(_ text: String) -> Bool {
+        // 枚举码很短；放宽到 64 只为容下较长的诊断码，仍远小于任何凭据/正文。
+        guard !text.isEmpty, text.count <= 64 else { return false }
+        guard text.unicodeScalars.allSatisfy({ allowed.contains($0) }) else { return false }
+        guard let sensitive else { return false }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return sensitive.firstMatch(in: text, options: [], range: range) == nil
+    }
+}
+
 private func diagnosticDetailText(_ value: DiagnosticDetailValue) -> String {
     switch value {
     case .number(let number): String(number)
     case .flag(let flag): flag ? "true" : "false"
-    case .text(let text): text
+    case .text(let text): DiagnosticDetailPrivacy.isSafe(text) ? text : "redacted"
     }
 }
 
