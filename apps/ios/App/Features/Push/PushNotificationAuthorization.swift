@@ -114,3 +114,34 @@ enum PushTokenError: Error {
     case denied
     case unavailable
 }
+
+/// 系统通知授权状态的只读查询（C10 要求 8）。
+///
+/// 设置页必须把**三个维度**分开显示，因为它们各自独立、失败方式也不同：
+/// 1. **系统授权**（本类型）：用户是否允许这台手机弹通知。App 内的开关开了也拿不到它。
+/// 2. **App 偏好**：用户想不想收（`settings.notify*`）。
+/// 3. **网关可用性**：电脑那侧是否有推送能力（`pushVersion`）。
+///
+/// 把三者塞进一个布尔量，用户就会看到「开关是开的但收不到通知」而无法定位。
+enum PushSystemAuthorization {
+    /// 供 UI 显示的归一化结果。刻意不含 `.provisional` 等细节：
+    /// 对用户而言「会弹 / 不会弹 / 还没问过」才是可行动的区分。
+    enum Status: Equatable, Sendable {
+        /// 还没问过——打开开关时系统会弹权限框。
+        case notDetermined
+        /// 已授权。
+        case authorized
+        /// 用户拒绝了。**只能去系统设置改**，App 内改不了。
+        case denied
+    }
+
+    static func current() async -> Status {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: return .authorized
+        case .denied: return .denied
+        case .notDetermined: return .notDetermined
+        @unknown default: return .notDetermined
+        }
+    }
+}

@@ -8637,6 +8637,23 @@
         }
       }
     },
+    "settings.diagnosticsTestedAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tested %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试时间 %@"
+          }
+        }
+      }
+    },
     "settings.diagnosticsUnavailable": {
       "extractionState": "manual",
       "localizations": {
@@ -9419,6 +9436,57 @@
         }
       }
     },
+    "settings.pushAuthAuthorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已允许"
+          }
+        }
+      }
+    },
+    "settings.pushAuthDenied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拒绝"
+          }
+        }
+      }
+    },
+    "settings.pushAuthNotDetermined": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not asked yet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未询问"
+          }
+        }
+      }
+    },
     "settings.pushFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -9432,6 +9500,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "通知没有注册成功。"
+          }
+        }
+      }
+    },
+    "settings.pushGateway": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Computer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑"
+          }
+        }
+      }
+    },
+    "settings.pushGatewayReady": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can send"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可发送"
+          }
+        }
+      }
+    },
+    "settings.pushGatewayUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not supported"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支持"
           }
         }
       }
@@ -9466,6 +9585,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "通知经过网关转发，内容端到端加密；只能打开 App，不能直接批准。"
+          }
+        }
+      }
+    },
+    "settings.pushSystemAuthorization": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System permission"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统权限"
+          }
+        }
+      }
+    },
+    "settings.pushSystemDeniedHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications are turned off for cetus in system settings. The switch below cannot override that."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统设置里已关闭 cetus 的通知，下面的开关覆盖不了它。"
           }
         }
       }

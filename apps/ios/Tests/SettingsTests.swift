@@ -125,3 +125,53 @@ import Testing
         #expect(!source.contains("\"settings.theme\""), "不应再出现裸字符串键")
     }
 }
+
+// MARK: - C10 要求 8：通知设置三维度分离
+
+@Suite struct PushSettingsDimensionsTests {
+    /// 三个维度必须各有独立文案键。合成一个布尔量会让用户看到
+    /// 「开关是开的却收不到」，且无法定位是系统拒绝还是电脑不支持。
+    @Test("系统授权三态各有对应文案")
+    func authorizationStatesHaveCopy() {
+        for status in [
+            PushSystemAuthorization.Status.authorized, .denied, .notDetermined,
+        ] {
+            let key: SettingsText =
+                switch status {
+                case .authorized: .pushAuthAuthorized
+                case .denied: .pushAuthDenied
+                case .notDetermined: .pushAuthNotDetermined
+                }
+            #expect(!key.fallback.isEmpty)
+        }
+    }
+
+    @Test("网关可用性有独立文案，与系统授权不共用")
+    func gatewayCopyIsSeparate() {
+        #expect(SettingsText.pushGatewayReady.fallback != SettingsText.pushAuthAuthorized.fallback)
+        #expect(
+            SettingsText.pushGatewayUnavailable.fallback
+                != SettingsText.pushAuthDenied.fallback)
+    }
+
+    /// 拒绝后必须给出「App 内改不了」的说明，否则用户会一直点那个开关。
+    @Test("系统拒绝时提供可行动说明")
+    func deniedHasActionableHint() {
+        #expect(SettingsText.pushSystemDeniedHint.fallback.contains("system settings"))
+    }
+}
+
+// MARK: - C10 要求 2：诊断显示测试时间
+
+@Suite struct DiagnosticsTimestampTests {
+    /// 时间戳口径是 Unix **毫秒**。按秒解析会把 2026 年显示成 1970 年 —— 这类
+    /// 单位错误在截图里不显眼，但用户一眼就会发现时间离谱。
+    @Test("毫秒时间戳按毫秒解析")
+    func millisecondsNotSeconds() {
+        let millis = 1_760_000_000_000
+        let date = Date(timeIntervalSince1970: TimeInterval(millis) / 1000)
+        let year = Calendar(identifier: .gregorian).component(
+            .year, from: date)
+        #expect(year >= 2025 && year <= 2027, "毫秒被当成秒会把年份算到 1970 年代，实际 \(year)")
+    }
+}

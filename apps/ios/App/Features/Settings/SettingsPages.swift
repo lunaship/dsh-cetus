@@ -112,6 +112,11 @@ struct SettingsDetailPage: View {
     @State private var apiKey = ""
     @State private var computerName = ""
     @State private var loadedChecks: [DiagnosticCheck]?
+    /// 系统通知授权状态（C10 要求 8 的维度①）。独立于 App 偏好与网关能力。
+    @State private var systemAuthorization: PushSystemAuthorization.Status = .notDetermined
+    /// 诊断报告的生成时间（Unix 毫秒）。C10 要求 2：要显示**测试时间**，
+    /// 否则用户无法判断这份结果是刚测的还是缓存里的。
+    @State private var generatedAt: Int?
     @State private var notice: String?
     @State private var busy = false
     @State private var unpaired = false
@@ -172,6 +177,12 @@ struct SettingsDetailPage: View {
                     }
                     .frame(minHeight: 44)
                 }
+                // C10 要求 2：显示**测试时间**，用户才能判断这份结果是刚测的还是缓存。
+                if let stamp = diagnosticsTestedAtText(copy) {
+                    Text(stamp)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 // C10 要求 2：没有真实结果时**明确说明**，不留空白，也不用样例填充。
                 if displayedChecks.isEmpty {
                     Text(copy.text(.diagnosticsEmpty))
@@ -181,10 +192,25 @@ struct SettingsDetailPage: View {
             case .language:
                 LabeledContent(copy.text(.language), value: copy.text(.languageValue))
             case .notifications:
+                // C10 要求 8：三个维度分开显示，用户才能定位「开了但收不到」。
+                // ① 系统授权（App 内改不了）
+                LabeledContent(
+                    copy.text(.pushSystemAuthorization),
+                    value: copy.text(systemAuthorizationCopyKey))
+                // ③ 网关可用性（电脑那侧的能力）
+                LabeledContent(
+                    copy.text(.pushGateway),
+                    value: copy.text(pushAvailable ? .pushGatewayReady : .pushGatewayUnavailable))
+                // ② App 偏好
                 Toggle(copy.text(.notifyMaster), isOn: notifyMasterBinding)
                     .disabled(!pushAvailable)
                 if !pushAvailable {
                     Text(copy.text(.pushUnavailable))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if systemAuthorization == .denied {
+                    Text(copy.text(.pushSystemDeniedHint))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -299,10 +325,12 @@ struct SettingsDetailPage: View {
             do {
                 let report = try await account.diagnostics()
                 loadedChecks = report.checks ?? []
+                generatedAt = report.generatedAt
                 notice = nil
             } catch {
                 // 明确置空，避免回退到样例（见 displayedChecks 注释）。
                 loadedChecks = []
+                generatedAt = nil
                 notice = copy.text(.diagnosticsUnavailable)
             }
         }
@@ -317,8 +345,31 @@ struct SettingsDetailPage: View {
             })
     }
 
+    /// 诊断报告的测试时间（C10 要求 2）。没有时间戳时返回 nil，不编造一个。
+    ///
+    /// 时间戳口径与合同其他时间戳一致：Unix **毫秒**（见 `DiagnosticsReport.generatedAt`）。
+    private func diagnosticsTestedAtText(_ copy: SettingsCopy) -> String? {
+        guard let generatedAt, generatedAt > 0 else { return nil }
+        let date = Date(timeIntervalSince1970: TimeInterval(generatedAt) / 1000)
+        let formatted = date.formatted(
+            .dateTime.year().month().day().hour().minute().locale(locale))
+        // `SettingsCopy` 目前没有 format；这里直接替换占位符，保持单点简单。
+        return copy.text(.diagnosticsTestedAt).replacingOccurrences(of: "%@", with: formatted)
+    }
+
+    /// 授权状态 → 文案 key（C10 要求 8）。
+    private var systemAuthorizationCopyKey: SettingsText {
+        switch systemAuthorization {
+        case .authorized: .pushAuthAuthorized
+        case .denied: .pushAuthDenied
+        case .notDetermined: .pushAuthNotDetermined
+        }
+    }
+
     private func refreshPush(_ copy: SettingsCopy) async {
         guard page == .notifications else { return }
+        // 系统授权与网关能力是两个独立维度，同时刷新（C10 要求 8）。
+        systemAuthorization = await PushSystemAuthorization.current()
         let capabilities = LocalPushCapabilities(
             version: push?.pushVersion ?? 0, apnsBuildEnabled: APNsBuild.enabled)
         pushAvailable = capabilities.canEnable
@@ -743,6 +794,17 @@ enum SettingsText: String {
     case diagnosticsUnavailable
     /// C10 要求 2：没有真实诊断结果时的明确说明（不用样例填充）。
     case diagnosticsEmpty
+    /// C10 要求 2：诊断的测试时间（参数：已本地化的时间串）。
+    case diagnosticsTestedAt
+    /// C10 要求 8：通知设置三维度。
+    case pushSystemAuthorization
+    case pushGateway
+    case pushGatewayReady
+    case pushGatewayUnavailable
+    case pushAuthAuthorized
+    case pushAuthDenied
+    case pushAuthNotDetermined
+    case pushSystemDeniedHint
     case errorOffline
     case errorMissingHost
     case errorUnauthorized
@@ -837,6 +899,16 @@ enum SettingsText: String {
         case .unpairFailed: "Couldn't unpair. The saved credential was kept."
         case .diagnosticsUnavailable: "Diagnostics are unavailable on this computer."
         case .diagnosticsEmpty: "No diagnostics yet. Connect to your computer and try again."
+        case .diagnosticsTestedAt: "Tested %@"
+        case .pushSystemAuthorization: "System permission"
+        case .pushGateway: "Computer"
+        case .pushGatewayReady: "Can send"
+        case .pushGatewayUnavailable: "Not supported"
+        case .pushAuthAuthorized: "Allowed"
+        case .pushAuthDenied: "Denied"
+        case .pushAuthNotDetermined: "Not asked yet"
+        case .pushSystemDeniedHint:
+            "Notifications are turned off for cetus in system settings. The switch below cannot override that."
         case .errorOffline: "This computer is offline."
         case .errorMissingHost: "This computer is not paired."
         case .errorUnauthorized: "Sign in again on this computer."
