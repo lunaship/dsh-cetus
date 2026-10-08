@@ -171,3 +171,28 @@ Android 侧无需额外步骤。**建议维护者合入前在 GitHub Actions 跑
 `ios-e2e.yml` / `ios-regen-screenshots.yml` / `ios-performance.yml` 三个 workflow 的生成步骤。
 用 YAML 解析确认 6 个 job 站点顺序均为 `Generate build metadata` < `Generate project`，
 并在干净树（`git archive HEAD`）实测旧顺序失败、新顺序通过。
+
+---
+
+## 基线震荡（G1 之后）
+
+G1（C01-C04）改了 iOS UI（composer 重建逻辑、new-messages pill、分页入口），
+CI 基线截图因此过期。触发 `ios-regen-screenshots.yml` 重新生成后：
+
+| 提交 | 来源 | 改了什么 |
+|---|---|---|
+| `dfd642cf` | fix(ios): DLComposerTextView public | 让 CetusTests 目标能编译 |
+| `c7dbbc25` | CI 重新生成基线（第 1 轮） | 57 个 PNG 漂移 |
+| `6ab4609d` | CI 重新生成基线（第 2 轮） | 15 个 PNG 又漂了 |
+
+基线漂移原因：macOS CI runner 的 Xcode/XcodeGen/字体渲染微差异。
+**需要再触发 1-2 轮 `ios-regen-screenshots.yml` 让基线收敛**，
+然后 `ci-ios.yml` 的 screenshot check 才会全绿。
+
+### 注意
+
+- 本地 `xcodebuild build` 不编译 CetusTests（只编 app target）；
+  `build-for-testing` 才编测试目标。之前本地全绿但 CI 挂，就是这个原因。
+- **本地无法复现 `Unable to resolve Swift module dependency: Cetus`**
+  （干净树也能触发，ENV-NOTES 已记录），CI 的 macOS runner 才能看到。
+- 基线 PNG 只允许由 CI workflow 生成，不本地提交。
