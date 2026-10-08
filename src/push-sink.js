@@ -188,10 +188,23 @@ export function createPushSink({
       await clear(device, "disabled")
       return { status: 200, body: { ok: true, push: { enabled: false } } }
     },
-    notify(event) {
-      return Promise.all((state.devices ?? [])
-        .filter((device) => device.push)
-        .map((device) => enqueue(device.deviceId, () => send(device, event))))
+    /// 逐设备独立投递：RFC §16.3.4 要求「某设备失败不阻塞其他设备，也不影响任务运行」。
+    /// 因此这里刻意不用 Promise.all —— 任一设备在构造密文或写 state 时抛错，
+    /// 都不允许把整批通知拖垮（那会让一台坏设备静默吞掉其他设备的推送）。
+    async notify(event) {
+      const targets = (state.devices ?? []).filter((device) => device.push)
+      const results = await Promise.all(
+        targets.map((device) =>
+          enqueue(device.deviceId, async () => {
+            try {
+              return await send(device, event)
+            } catch (err) {
+              log(device.deviceId, "failed", "error")
+              logger?.warn?.(`dsh-cetus: push failed device=${String(device.deviceId).slice(0, 8)}: ${err?.message ?? err}`)
+              return { sent: false, reason: "error" }
+            }
+          })))
+      return results
     },
     dropDevice(device) {
       if (device?.push) delete device.push

@@ -139,3 +139,35 @@ test("吊销后不再重试，公开状态不带密钥", async () => {
   assert.deepEqual(publicPush(registration()), { enabled: true })
   assert.equal(JSON.stringify(publicPush(registration())).includes(vector.key), false)
 })
+
+test("单台设备抛错不阻塞其他设备投递", async () => {
+  // RFC §16.3.4：某设备失败不阻塞其他设备，也不影响任务运行。
+  // 修复前 notify() 用 Promise.all 且 send() 内会抛（构造密文/写 state），
+  // 一台坏设备会让整批通知一起失败。
+  const delivered = []
+  let nonceCalls = 0
+  const bad = { deviceId: "bad-device", push: registration({ kid: "kid-bad", sealed: { v: 1, kid: "kid-bad", enc: "encb", ct: "ctb" } }) }
+  const good = { deviceId: "good-device", push: registration({ kid: "kid-good", sealed: { v: 1, kid: "kid-good", enc: "encg", ct: "ctg" } }) }
+  const sink = createPushSink({
+    state: { devices: [bad, good] },
+    stateFile: "memory",
+    saveState() {},
+    isDeviceAuthorized: () => true,
+    hasForegroundSse: () => false,
+    now: () => 1_728_000_000_000,
+    sleep: async () => {},
+    // 第二次构造 nonce 时抛错，模拟单台设备侧失败
+    random: (len) => {
+      nonceCalls += 1
+      if (nonceCalls === 2) throw new Error("device-local failure")
+      return Buffer.alloc(len)
+    },
+    transport: async (_url, payload) => { delivered.push(payload); return { status: 200 } },
+  })
+
+  const results = await sink.notify({ sessionId: "sess-1", state: "awaitingApproval", title: "Need approval" })
+  assert.equal(results.length, 2)
+  assert.equal(results.some((item) => item.sent === true), true, "好设备必须仍然投递成功")
+  assert.equal(results.some((item) => item.reason === "error"), true, "坏设备降级为 error 而不是抛出")
+  assert.equal(delivered.length, 1, "好设备只投递一次")
+})
