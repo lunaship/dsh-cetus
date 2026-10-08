@@ -75,4 +75,9 @@ jobs:
             exit 0
           fi
           git commit -m "test(ios): 由 CI 重生成截图基线"
-          git push
+          # 生成期间分支可能已前进；只提交了基线文件，变基后重试。
+          for attempt in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push && exit 0
+            sleep 5
+          done
+          exit 1
