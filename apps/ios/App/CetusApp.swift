@@ -9,6 +9,10 @@ struct RootView: View {
     let pairing: PairingFlowModel
     var screenshots = false
     @State private var selectedHostId: String?
+    /// 遮罩是何时盖上的。用于判断「卡住」并给出手动出口（C13 要求 6）。
+    @State private var coveredSince: Date?
+    /// 用户手动解除后，本次前台周期内不再重盖（避免一解除就被重新盖住）。
+    @State private var escapedThisCycle = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -17,10 +21,35 @@ struct RootView: View {
             // 都取到同一份（C02 要求 4）。测试可用 .composerDraftStore(_:) 覆盖。
             .composerDraftStore(ComposerDraftStore.live(keys: KeychainStore()))
             .overlay {
-                if PrivacyCover.covers(visibility, screenshots: screenshots) {
-                    Rectangle().fill(.background).ignoresSafeArea()
+                if showsCover {
+                    PrivacyCoverView(
+                        canEscape: PrivacyCover.canEscapeManually(coveredSince: coveredSince, now: now),
+                        onEscape: {
+                            escapedThisCycle = true
+                            coveredSince = nil
+                        }
+                    )
+                    // 显式标识，便于 UI 测试断言「遮罩已解除」
+                    .accessibilityIdentifier("privacy-cover")
                 }
             }
+            .onChange(of: scenePhase) { _, phase in
+                let next = visibility(for: phase)
+                if PrivacyCover.shouldRelease(next, screenshots: screenshots) {
+                    // 回到前台：**一定**解除，避免截图保护变成永久白屏
+                    coveredSince = nil
+                    escapedThisCycle = false
+                } else if coveredSince == nil {
+                    coveredSince = Date()
+                }
+            }
+    }
+
+    /// 供 `PrivacyCoverView` 判断是否已卡住；用 `Date()` 而非 TimelineView 以保持简单。
+    private var now: Date { Date() }
+
+    private var showsCover: Bool {
+        PrivacyCover.covers(visibility, screenshots: screenshots) && !escapedThisCycle
     }
 
     @ViewBuilder private var content: some View {
@@ -41,12 +70,44 @@ struct RootView: View {
         }
     }
 
-    private var visibility: AppVisibility {
-        switch scenePhase {
+    private var visibility: AppVisibility { visibility(for: scenePhase) }
+
+    private func visibility(for phase: ScenePhase) -> AppVisibility {
+        switch phase {
         case .active: .active
         case .background: .background
         default: .inactive
         }
+    }
+}
+
+/// App 切换器隐私遮罩（C13 要求 6）。
+///
+/// 设计要点：
+/// - 默认是**纯遮挡**，不泄漏任何页面内容（也不用模糊，模糊可被反推）。
+/// - 卡住超过 `PrivacyCover.manualEscapeAfter` 后给出手动出口 —— 否则一旦
+///   `scenePhase` 没能自己回到 active，用户面对的就是一块**无法消除的白屏**，
+///   只能杀 App。这是「不能让截图保护变成永久白屏」的兜底。
+@MainActor
+struct PrivacyCoverView: View {
+    var canEscape: Bool
+    var onEscape: () -> Void
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.background).ignoresSafeArea()
+            if canEscape {
+                VStack(spacing: 12) {
+                    Text(String(localized: "cetus 正在后台"))
+                        .font(.headline)
+                    Button(String(localized: "继续使用"), action: onEscape)
+                        .buttonStyle(.borderedProminent)
+                }
+                .padding(24)
+            }
+        }
+        // 未到可解除时间时不吃事件，保持与「纯遮挡」一致的行为
+        .allowsHitTesting(canEscape)
     }
 }
 
