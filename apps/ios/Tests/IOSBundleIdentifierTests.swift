@@ -43,6 +43,8 @@ struct IOSBundleIdentifierTests {
         }
     }
 
+    /// 这条同时守住「xcodegen 能解析 project.yml」：`configs` 块若被写错位置
+    /// （设置掉进 configs 里），`xcodegen generate` 会直接失败，CI 构建就红了。
     @Test("Release 不再使用 .debug 后缀（配置已分离）")
     func releaseIdentifiersDifferFromDebug() throws {
         let yaml = try Self.projectYAML()
