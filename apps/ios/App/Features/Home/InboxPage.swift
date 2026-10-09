@@ -305,8 +305,64 @@ struct InboxPage: View {
         inbox(copy)
             .navigationTitle(model.displayName)
             .navigationSubtitle(copy.subtitle(name: model.displayName, link: model.link))
-            .navigationBarTitleDisplayMode(.inline)
+            // 设计稿 2.1：手机上是大标题 + 电脑状态副标题；iPad 侧栏仍用行内标题。
+            // 手机截图的大标题由 `snapshotHeader` 画在内容里，系统栏保持行内，免得顶部多留一段空白。
+            .navigationBarTitleDisplayMode(sizeClass == .regular || staticSnapshot ? .inline : .large)
             .toolbar { toolbar(copy) }
+            // 手机截图里系统导航栏的文字取色不稳（浅色下是白字，深色下又会和替身标题重复），
+            // 截图直接隐藏系统栏，只留内容里的替身标题。
+            .toolbar(snapshotsPhoneChrome ? .hidden : .automatic, for: .navigationBar)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if snapshotsPhoneChrome { snapshotBottomBar(copy) }
+            }
+    }
+
+    /// 截图里系统导航栏和底部玻璃工具栏画不出来（整页截图拿到的是空白）。
+    /// 手机截图在内容里按同样的层级画一份：大标题 + 副标题、底部搜索框 + 品牌色「新任务」。
+    /// 生产路径始终用系统大标题和 `.bottomBar` 工具栏。
+    private var snapshotsPhoneChrome: Bool { staticSnapshot && sizeClass != .regular }
+
+    private func snapshotHeader(_ copy: InboxCopy) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(model.displayName)
+                .font(.largeTitle.bold())
+                .foregroundStyle(DLColor.label)
+            Text(copy.subtitle(name: model.displayName, link: model.link))
+                .font(.subheadline)
+                .foregroundStyle(DLColor.secondaryLabel)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    private func snapshotBottomBar(_ copy: InboxCopy) -> some View {
+        let fill = Color(uiColor: .secondarySystemBackground)
+        return HStack(spacing: 12) {
+            Image(systemName: "line.3.horizontal.decrease")
+                .frame(width: 44, height: 44)
+                .background(fill, in: Circle())
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                Text(model.query.isEmpty ? copy.text(.searchPrompt) : model.query)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(DLColor.secondaryLabel)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(fill, in: Capsule())
+            Image(systemName: "square.and.pencil")
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(DLColor.brandFill, in: Circle())
+                .accessibilityLabel(copy.text(.newTask))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(DLColor.background)
     }
 
     private var renamePresented: Binding<Bool> {
@@ -352,6 +408,9 @@ struct InboxPage: View {
     }
 
     @ViewBuilder private func inboxRows(_ copy: InboxCopy) -> some View {
+        if snapshotsPhoneChrome {
+            Section { snapshotHeader(copy) }
+        }
         if let banner = banner(copy) {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
@@ -518,19 +577,21 @@ struct InboxPage: View {
         let content = inboxRowContent(session: session, action: model.phoneAction, offline: offline)
         let title = displayTitle(session, copy: copy)
         let compact = snippet == nil && content.pending == .none
+        // 设计稿 2.1：普通会话行也要有时间和当前步骤（「正在运行 … · 第 12 步」）。
+        // 文件夹分组里工作区名已在组头，行内只留子任务数和状态。
         let meta =
             keepsWorkspace || !compact
             ? copy.meta(workspace: content.workspace, subagents: content.subagentCount, status: content.status)
-            : ""
-        let preview = compact ? nil : snippet ?? content.preview.map { copy.preview($0) }
+            : copy.meta(workspace: nil, subagents: content.subagentCount, status: content.status)
+        let preview = snippet ?? content.preview.map { copy.preview($0) }
         return VStack(alignment: .leading, spacing: 8) {
             DLInboxRow(
                 mailMeta: meta,
                 title: title,
-                time: compact ? "" : copy.time(inboxTime(session.updatedAt, now: model.now, calendar: model.calendar)),
+                time: copy.time(inboxTime(session.updatedAt, now: model.now, calendar: model.calendar)),
                 preview: preview,
                 command: compact ? nil : content.command,
-                dot: compact ? nil : dot(content.dot),
+                dot: dot(content.dot),
                 needle: needle,
                 isEnabled: true
             )
@@ -556,10 +617,14 @@ struct InboxPage: View {
 
     @ViewBuilder private func actions(_ content: InboxRowContent, session: SessionSummary, copy: InboxCopy) -> some View
     {
+        // 设计稿 2.1：首页的品牌实心按钮留给「新任务」，所以「允许一次」是浅色着色按钮，
+        // 「拒绝 / 回答」是灰色按钮；按钮靠右排。
         if content.pending == .approval {
             HStack(spacing: 8) {
+                Spacer(minLength: 0)
                 Button(copy.text(.reject)) { Task { await model.decide(allow: false) } }
                     .buttonStyle(.bordered)
+                    .tint(DLColor.label)
                 Button(copy.text(.allowOnce)) { Task { await model.decide(allow: true) } }
                     .buttonStyle(.bordered)
                     .tint(DLColor.accent)
@@ -567,9 +632,13 @@ struct InboxPage: View {
             .disabled(!model.actionsEnabled)
             .accessibilityHint(model.actionsEnabled ? "" : copy.text(.approveBlocked))
         } else if content.pending == .question {
-            Button(copy.text(.answer)) { model.open(session) }
-                .buttonStyle(.bordered)
-                .disabled(!model.actionsEnabled)
+            HStack {
+                Spacer(minLength: 0)
+                Button(copy.text(.answer)) { model.open(session) }
+                    .buttonStyle(.bordered)
+                    .tint(DLColor.label)
+                    .disabled(!model.actionsEnabled)
+            }
         }
     }
 
@@ -661,20 +730,24 @@ struct InboxPage: View {
             }
             .accessibilityLabel(copy.text(.more))
         }
-        ToolbarItem(placement: .bottomBar) {
-            Menu {
-                Picker(copy.text(.filter), selection: $model.filter) {
-                    ForEach(InboxListFilter.allCases, id: \.self) { item in
-                        Text(copy.filter(item)).tag(item)
+        // 设计稿 2.1：iOS 26 邮件式底部工具栏——筛选 · 玻璃搜索框 · 品牌色「新任务」。
+        // 手机截图里由 `snapshotBottomBar` 代画（系统工具栏截不出来）。
+        if !snapshotsPhoneChrome {
+            ToolbarItem(placement: .bottomBar) {
+                Menu {
+                    Picker(copy.text(.filter), selection: $model.filter) {
+                        ForEach(InboxListFilter.allCases, id: \.self) { item in
+                            Text(copy.filter(item)).tag(item)
+                        }
                     }
+                } label: {
+                    Label(copy.text(.filter), systemImage: "line.3.horizontal.decrease")
                 }
-            } label: {
-                Label(copy.text(.filter), systemImage: "line.3.horizontal.decrease")
             }
-        }
-        DefaultToolbarItem(kind: .search, placement: .bottomBar)
-        ToolbarItem(placement: .bottomBar) {
-            newTask(copy)
+            DefaultToolbarItem(kind: .search, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
+                newTask(copy)
+            }
         }
     }
 
