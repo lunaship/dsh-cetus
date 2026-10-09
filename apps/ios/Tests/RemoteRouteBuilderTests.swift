@@ -215,3 +215,40 @@ import Testing
         #expect(route.clockOffsetSec == 42)
     }
 }
+
+// MARK: - RFC §5.7：CLOCK_SKEW 偏移量重试
+
+@Suite struct RemoteClockSkewRetryTests {
+    /// 偏移量必须是 `hostNow − 本机时间`。方向搞反会让重试偏得更远，
+    /// 而且现象是「重试了仍然失败」，从日志上很难看出算错了。
+    @Test("手机落后时偏移为正")
+    func phoneBehindGivesPositiveOffset() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        // 主机时间比手机快 90 秒 → 需要 +90 才能对齐。
+        #expect(NWRemoteTunnelTransport.clockOffset(hostNow: 1_000_090, now: now) == 90)
+    }
+
+    @Test("手机超前时偏移为负")
+    func phoneAheadGivesNegativeOffset() {
+        let now = Date(timeIntervalSince1970: 1_000_090)
+        #expect(NWRemoteTunnelTransport.clockOffset(hostNow: 1_000_000, now: now) == -90)
+    }
+
+    @Test("已对齐时偏移为零")
+    func alignedGivesZero() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        #expect(NWRemoteTunnelTransport.clockOffset(hostNow: 1_000_000, now: now) == 0)
+    }
+
+    /// 偏移量必须真的能消掉偏差：把偏移加回本机时间应当约等于 hostNow。
+    /// 这条是「重试会成功」的算术前提。
+    @Test("偏移补偿后时间与主机对齐")
+    func offsetReAlignsClock() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let hostNow = 1_000_090
+        let offset = NWRemoteTunnelTransport.clockOffset(hostNow: hostNow, now: now)
+        let corrected = Int(now.timeIntervalSince1970) + offset
+        // RFC §5.3 允许 |ts − now| ≤ 60，这里应当是完全相等。
+        #expect(corrected == hostNow)
+    }
+}

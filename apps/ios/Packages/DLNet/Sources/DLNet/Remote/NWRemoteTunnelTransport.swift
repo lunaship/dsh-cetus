@@ -24,7 +24,38 @@ public struct NWRemoteTunnelTransport: RemoteTunnelTransport {
 
     public init() {}
 
+    /// 建立隧道。`CLOCK_SKEW` 时按 RFC §5.7 **自动重试一次**（见 `openOnce` 的注释）。
     public func open(_ route: RemoteTunnelRoute) async throws -> any RemoteTunnel {
+        do {
+            return try await openOnce(route)
+        } catch let error as RemoteTunnelError {
+            // RFC §5.7／§7.5：`CLOCK_SKEW` →「用 hostNow − 本机时间 作为本主机的偏移量
+            // 重试一次；仍失败则提示『手机时间不准』」。
+            //
+            // Android 一直这么做（`HostHttp.kt` 的 clockRetried 分支），iOS 之前只把
+            // `clockOffsetSec` 一路透传下来却**从没有人设置它** —— 时间偏差的手机
+            // 会永久连不上远程，而 Android 能自愈。这是明确的两端行为不一致。
+            guard case .rejected(let code, let hostNow) = error,
+                code == DlpWire.Reject.clockSkew,
+                let hostNow
+            else { throw error }
+
+            var corrected = route
+            corrected.clockOffsetSec = Self.clockOffset(hostNow: hostNow, now: Date())
+            // 只重试一次；再失败就把 `CLOCK_SKEW` 原样抛出，由上层提示"手机时间不准"。
+            return try await openOnce(corrected)
+        }
+    }
+
+    /// RFC §5.7 规定的偏移量：`hostNow − 本机时间`（Unix 秒）。
+    ///
+    /// 抽成纯函数是为了能直接断言 —— 重试本身需要一条真实隧道，但算错偏移
+    /// 会让重试同样失败且难排查，所以这一步必须可单测。
+    public static func clockOffset(hostNow: Int, now: Date) -> Int {
+        hostNow - Int(now.timeIntervalSince1970)
+    }
+
+    private func openOnce(_ route: RemoteTunnelRoute) async throws -> any RemoteTunnel {
         try Self.validate(route)
 
         // 1) 外层 WSS：NWProtocolWebSocket + 可选 outerPin。
