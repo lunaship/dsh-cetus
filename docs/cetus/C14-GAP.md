@@ -37,6 +37,20 @@
 | 草稿按会话隔离 | **一致** | iOS 落盘键 `(hostID, sessionID, kind)`；Android 用 `slotKey`（每主机一条）+ 会话 `ownerKey`；两端都按主机与会话两级隔离 |
 | 问题必填语义 | **修后一致**（见下表 #4） | 插件 `question-answers.js:70` 与 Android `QuestionAnswers.kt:63` 都把 `required === false` 当作可选；**iOS 之前只看 `optional`** |
 
+## 配对维度对照结论（本轮补完）
+
+| 阶段 | 契约 | iOS 实现 | 判定 |
+|---|---|---|---|
+| 等待 | `POST /dsh-link/pair` 返回 pending 时停留在等待页并轮询 | `PairingFlowModel` 的 `.pending` 分支 → `page = .pending` + `startPolling()` | **一致** |
+| 批准 | 轮询到 `approved` 才保存并进入首页 | 轮询终态 `.approved` → `finish(host)`；`.rejected` 走失败页 | **一致** |
+| 保存 | 非机密检查点先写、可跨重启恢复 | `pending-pairing.json` 检查点 + `restore()` 恢复 pending 页 | **一致** |
+| 导航 | 批准后进首页；拒绝/超时留失败页 | `finish` / `showFailure` 两条出口 | **一致** |
+| 错误阶段 | 各错误可区分且可操作 | `PairingFailure` 分类 + 文案 | **一致** |
+| 同名冲突（`SAME_NAME`） | 弹对话框「[替换它] [换个名字]」 | `conflictPresented` + `replace()` / `chooseNewName()`；`replace()` 复用原 requestId 而不是新建请求 | **一致** |
+| `replacing` 字段 | 「面板/**App** 用它提示『批准即替换』」 | iOS **解码并测试**（`DeviceRow.replacing`、`MobileModelsContractTests`），但**没有设备列表 UI 去渲染它** | **按设计**：设备列表由插件面板提供（`src/panel.js:297` 已渲染该提示）；方案与设计稿都没有要求 App 内建设备管理页。iOS 拉 `/mobile/devices` 只用于解绑时识别本机设备 |
+
+> 平台可不同的部分（CameraX vs 系统扫码）按方案允许保留差异，未做统一。
+
 ## 已满足（核对确认，未改）
 
 | 要求 | 证据 |
@@ -57,6 +71,6 @@
 | 小屏 / 横屏 / 单手返回 / 键盘手势 / VoiceOver / 大字号**随模块验收** | 部分：截图矩阵覆盖大字号与无障碍变体；横屏、键盘手势、VoiceOver 实际朗读顺序未在真机验证 |
 | 无网络 / 低电量 / 低内存 / 长会话 / 巨大代码块 | **未做**：属于性能与真机场景，本地无法构造（模拟器在本环境也起不来） |
 | 自动更新入口、安装说明、隐私文档重命名后不指向失效地址 | 插件侧白名单已过渡期兼容新旧仓库（`dfaa13c5`）；文档域名迁移未启动 |
-| 配对流程的阶段语义 | **未对照**：等待/批准/保存/导航/错误阶段未与 Android 逐项比 |
+| 配对流程的阶段语义 | **已对照**（本轮，见下节） |
 | 文件与改动的路径/范围/统计/权限 | **部分**：diff 行号推进已逐条对齐；路径规范化、范围统计、权限差异未对照 |
 | 更名后两端行为 | **部分**：插件白名单过渡期已兼容；两端文案与安装身份未逐项比 |
