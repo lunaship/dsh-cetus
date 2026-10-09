@@ -31,7 +31,7 @@
 |---|---|---|
 | T01 新装→欢迎→演示→退出 | 部分 | 品牌已统一为 cetus（`ProductNamingContractTests` 断言本地化目录 + Info.plist + 安装身份）；Demo 与真实服务由 `PerformanceLaunchFixture` 启动参数隔离。**缺**：真机双端截图与导航录像 |
 | T02 相机扫码、相册识别 | 部分 | `PairingPhotoDecoderTests`、`PairingQRPayload` 解析与拒绝路径有测试；**缺**真机相机权限与实拍 |
-| T03 远程/需确认配对 | 部分 | `PairingFlowModel` 的 pending/approved/rejected 与检查点恢复有测试（C14 配对维度已逐条对照）；**缺**真实 Relay 链路 |
+| T03 远程/需确认配对 | 部分 | `PairingFlowModel` 的 pending/approved/rejected 与检查点恢复有测试（C14 配对维度已逐条对照）；远程**生产选路已接线**（见 T28）。**缺**真实 Relay 链路 |
 | T04 权限拒绝后重试 | 未验证 | 需真机（相机/本地网络/通知三种授权）。代码有分类文案，无真机录像 |
 | T05 两电脑/同名工作区 | 已验 | `inboxWorkspaceLabels` 最短可区分后缀 + 既有测试 `pinnedAwaitingIsNotRepeatedAndSameNamesKeepParents` |
 | T06 收起有待处理的工作区 | 已验 | `InboxFlowTests` 覆盖计数与置顶不重复；截图变体覆盖收起态 |
@@ -56,7 +56,7 @@
 | T25 已批准/未批准/过期预览 | 已验 | `PreviewProxyTests` 用独立服务端验证 502/501/过期；token 只在主机请求头 |
 | T26 主题/语言/设置写失败 | 已验 | 外观根层生效（C10 修复 #5，`ThemePreferenceTests`）；写失败不更新展示值（`save()` 只在服务端返回后合并） |
 | T27 诊断/余额/崩溃空状态 | 已验 | 移除生产样例诊断 + 空态说明（C10 修复 #2）；诊断脱敏（`DiagnosticsRedactionTests`）；余额为十进制字符串 |
-| T28 远程 bootstrap 与 SSE | 部分 | `RemoteInnerTLSTests`、`RemoteHTTP1WireTests`、`DlpVectorTests` 覆盖协议与钉扎；**缺**隔离 Relay 端到端 |
+| T28 远程 bootstrap 与 SSE | 部分 | **本轮进展**：生产选路已接线（`HostConnectionFactory`，5 个调用点），传输组件 `LoopbackURLSessionTransport` 10 例测试 + `HostConnectionFactoryTests` 6 例；`RemoteInnerTLSTests`、`DlpVectorTests` 覆盖协议与钉扎。**缺**隔离 Relay 端到端与真机网络切换（§15.1 第 7 条的 60 秒门槛未做） |
 | T29 五次 Wi-Fi/蜂窝切换 | 未验证 | 需真机网络记录 |
 | T30 Relay 拒绝/证书错/断网 | 已验 | RFC §7.4「拒绝码只提示、不删凭据」；`SSL alert 46` 负例在 `RemoteInnerTLSTests` 中实测 |
 | T31 真实审批/提问/完成/失败推送 | 未验证 | **需真实 APNs（无 Apple 付费账号）**。本地已验：payload 顶层仅 `aps`/`e`/`k`（`TestAlertPayloadTopLevelIsExactlyApsEK`）、通用锁屏文案、NSE 不联网 |
