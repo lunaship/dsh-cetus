@@ -94,7 +94,7 @@ HEAD `a91562ae`：
 | C12 推送 | token 生命周期、APNs 环境按 profile 解析、payload 链单测 | **真实 APNs**（无付费账号）、真机锁屏 |
 | C12 Live Activity | 真实 ActivityKit 调用链、字段合 RFC、离线显示最后更新 | **真实锁屏/灵动岛外观** |
 | C13 分享 | 原子消费、合并不覆盖、security-scoped、双 scheme、隐私遮罩可解除 | — |
-| C14 跨端一致 | diff 行号推进规则与 Android 逐条对齐并有 fixture | 其余端到端一致性 |
+| C14 跨端一致 | diff 行号推进规则与 Android 逐条对齐并有 fixture；删除/归档后清理返回栈与当前目标；离线空态按原因区分（配对失效 vs 连不上）；模型/权限切换失败不更新展示值 | 九个维度的逐项两端对照、时钟偏差、横屏/键盘/VoiceOver、真机性能场景 |
 | C15/C16 | GAP 文档已出；诊断导出脱敏；Debug/Release bundle id 分离 | 部分项按 GAP 文档 |
 
 ## 截图基线
