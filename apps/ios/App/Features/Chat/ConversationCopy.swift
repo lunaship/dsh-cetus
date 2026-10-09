@@ -250,6 +250,8 @@ enum ChatText: String {
     case decisionPosition
     /// C06：问题自由回答的提示，与普通消息草稿分开。
     case questionAnswerPlaceholder
+    /// 设计稿 4.4：有选项时，自由回答输入框的提示。
+    case questionOwnAnswer
     /// C02：草稿写盘失败。内存副本还在，但不能让用户以为已保存。
     case draftNotSaved
 
@@ -492,6 +494,7 @@ enum ChatText: String {
         case .questionInvalidGeneric: "The computer rejected the answers. Check them and try again."
         case .decisionPosition: "Request %d of %d"
         case .questionAnswerPlaceholder: "Your answer"
+        case .questionOwnAnswer: "Write your own answer"
         case .draftNotSaved: "Draft not saved — it stays on screen. Check storage and try again."
         }
     }
