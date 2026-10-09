@@ -176,7 +176,7 @@ public struct RemoteHostTransport: HostTransport {
     /// - 钉扎失败 → `.certificateChanged`：§7.2 第 8 条的**硬停止**，不换路径、不自动重试。
     /// - 远程拒绝码（`BAD_MAC` / `UNKNOWN_KEY` 等）：只提示，**不删凭据**（§7.4）。
     ///   包成 `URLError` 是因为 `HostClientError.transport` 只收 `URLError`；
-    ///   拒绝码原文放进 `userInfo`（键 `RemoteRejectCodeKey`）便于诊断，不改变错误分类。
+    ///   拒绝码原文放进 `userInfo`（键 `remoteRejectCodeKey`）便于诊断，不改变错误分类。
     /// - 取消 → `CancellationError`，保留调用方的取消语义。
     /// - 其余隧道失败 → `URLError(.cannotConnectToHost)`，由上层按「连不上中继/电脑」呈现。
     static func map(_ error: any Error) -> any Error {
@@ -189,7 +189,7 @@ public struct RemoteHostTransport: HostTransport {
                 return CancellationError()
             case .rejected(let code, _):
                 return HostClientError.transport(
-                    URLError(.badServerResponse, userInfo: [RemoteRejectCodeKey: code]))
+                    URLError(.badServerResponse, userInfo: [remoteRejectCodeKey: code]))
             default:
                 return HostClientError.transport(URLError(.cannotConnectToHost))
             }
@@ -199,4 +199,4 @@ public struct RemoteHostTransport: HostTransport {
 }
 
 /// 远程拒绝码在 `URLError.userInfo` 里的键（只用于诊断，不参与错误分类）。
-let RemoteRejectCodeKey = "cetus.remote.rejectCode"
+let remoteRejectCodeKey = "cetus.remote.rejectCode"
