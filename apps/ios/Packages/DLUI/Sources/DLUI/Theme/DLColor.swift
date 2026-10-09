@@ -27,4 +27,6 @@ public enum DLUIKitColor {
     public static let ok = UIColor.systemGreen
     public static let err = UIColor.systemRed
     public static var brandFill: UIColor { UIColor(named: "BrandFill") ?? .label }
+    /// 与 SwiftUI `DLColor.accent` 同一资源（App 的 AccentColor）。
+    public static var accent: UIColor { UIColor(named: "AccentColor") ?? .tintColor }
 }
