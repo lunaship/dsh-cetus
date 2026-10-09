@@ -390,3 +390,107 @@ private actor ScriptedConversationService: ConversationServing {
         return model
     }
 }
+
+// MARK: - C14 §4.4：Host 返回的对比必须是这份文件的
+
+/// Android 有 `diffMatchesFile`（`WorkspaceChanges.kt:53`），iOS 此前**没有校验**：
+/// 把 Host 返回的任何内容按下标直接写进缓存。
+///
+/// 为什么这条重要：摘要是按**下标**索引文件的，而摘要在「列出文件」与「请求对比」
+/// 之间可能变化。下标错位时，不校验就会把**别的文件**的差异显示在这个文件名下面，
+/// 而且因为进了缓存会一直错下去。
+@MainActor @Suite(.serialized) struct DiffPathValidationTests {
+    /// 按脚本返回不同 diff 的服务。
+    private final class ScriptedDiffService: ConversationServing {
+        var response: ChangesDiffResponse?
+        private(set) var calls = 0
+        func changesDiff(sessionID: String, seq: Int, index: Int) async throws -> ChangesDiffResponse? {
+            calls += 1
+            return response
+        }
+    }
+
+    private func makeModel(_ service: ScriptedDiffService) -> ConversationModel {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session", service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+        model.seedChangesForTest(
+            ChangesSummary(
+                turn: 1, total: 2, added: 3, deleted: 1,
+                files: [
+                    ChangedFile(path: "a.swift", display: "a.swift", added: 2, deleted: 1),
+                    ChangedFile(path: "b.swift", display: "b.swift", added: 1, deleted: 0),
+                ]),
+            seq: 7)
+        return model
+    }
+
+    /// path 一致 → 正常缓存并使用。
+    @Test func matchingPathIsCached() async {
+        let service = ScriptedDiffService()
+        service.response = ChangesDiffResponse(ok: true, seq: 7, index: 0, path: "a.swift")
+        let model = makeModel(service)
+        model.loadFileDiff(seq: 7, index: 0)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        #expect(model.fileDiffs[0] != nil, "匹配时应正常缓存")
+        #expect(model.unavailableDiffs.isEmpty)
+    }
+
+    /// **path 不一致 → 判定不可用，且绝不写缓存。**
+    @Test func mismatchedPathIsRejectedAndNotCached() async {
+        let service = ScriptedDiffService()
+        // 请求的是 index 0（a.swift），Host 却返回 b.swift 的对比。
+        service.response = ChangesDiffResponse(ok: true, seq: 7, index: 0, path: "b.swift")
+        let model = makeModel(service)
+        model.loadFileDiff(seq: 7, index: 0)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        #expect(model.fileDiffs[0] == nil, "错位的对比绝不能进缓存（否则会一直显示错的文件）")
+        #expect(model.diffUnavailable(index: 0), "应标记为不可用，让 UI 给出说明")
+    }
+
+    /// 已判定不可用后不再重复请求 —— 重试只会拿到同一份错位响应。
+    @Test func unavailableIsNotRetried() async {
+        let service = ScriptedDiffService()
+        service.response = ChangesDiffResponse(ok: true, seq: 7, index: 1, path: "a.swift")
+        let model = makeModel(service)
+        model.loadFileDiff(seq: 7, index: 1)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        let afterFirst = service.calls
+        model.loadFileDiff(seq: 7, index: 1)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        #expect(service.calls == afterFirst, "不可用的下标不该被反复请求")
+    }
+
+    /// Host 没给 path 时不做判断（保持旧行为，避免把正常响应误判成不可用）。
+    @Test func missingReturnedPathIsNotTreatedAsMismatch() async {
+        let service = ScriptedDiffService()
+        service.response = ChangesDiffResponse(ok: true, seq: 7, index: 0, path: nil)
+        let model = makeModel(service)
+        model.loadFileDiff(seq: 7, index: 0)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        #expect(model.fileDiffs[0] != nil, "返回体缺 path 时不应误判")
+        #expect(model.unavailableDiffs.isEmpty)
+    }
+
+    /// 摘要里取不到该下标时也不误判。
+    @Test func unknownIndexIsNotTreatedAsMismatch() async {
+        let service = ScriptedDiffService()
+        service.response = ChangesDiffResponse(ok: true, seq: 7, index: 9, path: "z.swift")
+        let model = makeModel(service)
+        // index 9 不在摘要（只有 0/1）里 → 无法核对，按旧行为接受。
+        model.loadFileDiff(seq: 7, index: 9)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        #expect(model.fileDiffs[9] != nil)
+        #expect(model.unavailableDiffs.isEmpty)
+    }
+}

@@ -81,6 +81,8 @@ struct ChangesPage: View {
     var onOpenDiff: (Int) -> Void = { _ in }
     /// 已拉取的单文件对比（index → diff）。
     var diff: [Int: ChangesDiffResponse] = [:]
+    /// 已判定「不可用」的对比下标（§4.4：Host 返回的 path 与请求的文件不符）。
+    var diffUnavailable: Set<Int> = []
 
     var body: some View {
         List {
@@ -156,6 +158,13 @@ struct ChangesPage: View {
                 }
             }
             .font(DLFont.mono(DLFont.footnote))
+            if diffUnavailable.contains(index) {
+                // §4.4：给出说明，而不是让这一行一直空着 —— 用户会以为是 App 坏了。
+                Text(copy.text(.changesUnavailable))
+                    .font(DLFont.footnote)
+                    .foregroundStyle(DLColor.secondaryLabel)
+                    .padding(.leading, 12)
+            }
             if let response = diff[index], let diffLines = linesFromDiff(response), !diffLines.isEmpty {
                 ForEach(Array(diffLines.enumerated()), id: \.offset) { _, line in
                     DiffGutterRow(line: line, copy: copy)

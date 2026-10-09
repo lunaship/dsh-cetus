@@ -1092,7 +1092,8 @@ private struct ChangesPresentation: ViewModifier {
                 guard let seq = model.changesSeq else { return }
                 model.loadFileDiff(seq: seq, index: index)
             },
-            diff: model.fileDiffs)
+            diff: model.fileDiffs,
+            diffUnavailable: model.unavailableDiffs)
         if regular {
             content.inspector(isPresented: $presented) {
                 page

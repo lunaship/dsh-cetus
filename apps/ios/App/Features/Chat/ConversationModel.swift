@@ -245,6 +245,11 @@ final class ConversationModel {
         self.hasOlder = hasOlder
         olderBeforeSeq = beforeSeq
     }
+    /// 测试用：直接落一份改动摘要（跳过网络）。
+    func seedChangesForTest(_ summary: ChangesSummary, seq: Int) {
+        changes = summary
+        changesSeq = seq
+    }
     private(set) var title: String
     private(set) var workspacePath: String
     private(set) var messages: [HistoryMessage] = []
@@ -274,6 +279,9 @@ final class ConversationModel {
     private(set) var changesError = false
     /// 单文件对比（`index` → diff）。
     private(set) var fileDiffs: [Int: ChangesDiffResponse] = [:]
+    /// 已判定「不可用」的对比下标（§4.4：Host 返回的 path 与请求的文件不符）。
+    /// 不写 `fileDiffs`，也不重试 —— 重试只会拿到同一份错位的响应。
+    private(set) var unavailableDiffs: Set<Int> = []
     // MARK: - C09 文件 / 预览 数据
     /// 当前文件树目录（相对会话 cwd）。"" 是根。
     private(set) var filesPath = ""
@@ -556,17 +564,42 @@ final class ConversationModel {
     }
 
     /// C08：拉取单文件对比（按摘要数组下标）。
+    ///
+    /// C14 §4.4（对齐 Android `diffMatchesFile`）：**Host 返回的对比必须是这份文件的**
+    /// （`path` 一致），否则视为不可用且**不写缓存**。
+    ///
+    /// 为什么必须校验：摘要是按**下标**索引文件的，而摘要在「列出文件」与「请求对比」
+    /// 之间可能变化（新一轮改动、SSE 增量、重新拉取）。下标一旦错位，不校验就会把
+    /// **别的文件**的差异显示在这个文件名下面；更糟的是它进了 `fileDiffs` 缓存
+    /// （`guard fileDiffs[index] == nil`），错的内容会一直留着。Android 有这条校验，
+    /// iOS 没有 —— 属于两端行为不一致。
     func loadFileDiff(seq: Int, index: Int) {
-        guard fileDiffs[index] == nil else { return }
+        guard fileDiffs[index] == nil, !unavailableDiffs.contains(index) else { return }
+        // 请求前记下这份文件的 path。取不到就不校验（保持旧行为），避免误判成不可用。
+        let expected = expectedPath(index: index)
         Task { [weak self] in
             guard let self else { return }
-            if let diff = try? await self.service.changesDiff(
-                sessionID: self.sessionID, seq: seq, index: index)
-            {
-                self.fileDiffs[index] = diff
+            guard
+                let diff = try? await self.service.changesDiff(
+                    sessionID: self.sessionID, seq: seq, index: index)
+            else { return }
+            if let expected, let returned = diff.path, !returned.isEmpty, returned != expected {
+                self.unavailableDiffs.insert(index)
+                return
             }
+            self.fileDiffs[index] = diff
         }
     }
+
+    /// 摘要里第 `index` 个文件的 path。
+    func expectedPath(index: Int) -> String? {
+        guard let files = changes?.files, files.indices.contains(index) else { return nil }
+        let path = files[index].path ?? ""
+        return path.isEmpty ? nil : path
+    }
+
+    /// 该下标的对比是否已判定为「不可用」（§4.4）。UI 据此给出说明而不是一直空着。
+    func diffUnavailable(index: Int) -> Bool { unavailableDiffs.contains(index) }
 
     func noteDiff() {
         diffRequested = true
