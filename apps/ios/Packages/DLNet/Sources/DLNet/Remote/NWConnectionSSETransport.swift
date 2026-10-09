@@ -126,18 +126,20 @@ public struct NWConnectionSSETransport: SSETransport {
 /// 响应头信号：行泵置位，`open(_:)` 等待。
 ///
 /// 不用 `AsyncStream` 是因为等待方要带超时轮询，而 `AsyncStream` 是消费型的。
-final class HeadSignal: @unchecked Sendable {
+public final class HeadSignal: @unchecked Sendable {
     private struct State {
         var head: HTTP1StreamParser.Head?
         var closed = false
     }
     private let lock = OSAllocatedUnfairLock<State>(initialState: State())
 
-    func set(_ head: HTTP1StreamParser.Head) { lock.withLock { $0.head = head } }
-    func markClosed() { lock.withLock { $0.closed = true } }
+    public init() {}
+
+    public func set(_ head: HTTP1StreamParser.Head) { lock.withLock { $0.head = head } }
+    public func markClosed() { lock.withLock { $0.closed = true } }
 
     /// 等到响应头或超时；超时返回 nil（交由上游按「无状态码」重试）。
-    func wait(timeout: TimeInterval) async -> HTTP1StreamParser.Head? {
+    public func wait(timeout: TimeInterval) async -> HTTP1StreamParser.Head? {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             let state = lock.withLock { $0 }
