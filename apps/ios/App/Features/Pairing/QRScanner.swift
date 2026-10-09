@@ -3,6 +3,25 @@ import SwiftUI
 import UIKit
 import VisionKit
 
+/// 设计稿 1.3：扫码页右上角的手电筒。直接控制后置摄像头的补光灯，
+/// 与正在运行的扫码会话互不影响；页面消失时关掉。
+enum PairingTorch {
+    static var isAvailable: Bool {
+        AVCaptureDevice.default(for: .video)?.hasTorch == true
+    }
+
+    static func set(_ on: Bool) {
+        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else { return }
+        do {
+            try device.lockForConfiguration()
+            device.torchMode = on ? .on : .off
+            device.unlockForConfiguration()
+        } catch {
+            // 拿不到配置锁（例如相机被系统占用）时什么都不做：手电筒只是辅助。
+        }
+    }
+}
+
 struct QRScanner: UIViewControllerRepresentable {
     var receive: @MainActor (String) -> Bool
     var failure: @MainActor (PairingFailure) -> Void
