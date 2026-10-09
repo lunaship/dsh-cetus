@@ -40,6 +40,8 @@ struct NewTaskPage: View {
     @State private var addPath = ""
     @State private var pendingPath: String?
     @State private var knownWorkspaces: [WorkspaceInfo] = []
+    /// 提交工作区失败时的可操作说明（C15 §19.2 R3：动作要有结果）。
+    @State private var submitError: String?
 
     var body: some View {
         let copy = NewTaskCopy(locale: locale)
@@ -149,6 +151,11 @@ struct NewTaskPage: View {
                     Text(copy.format(.pending, pendingPath))
                         .foregroundStyle(DLColor.secondaryLabel)
                 }
+                if let submitError {
+                    Text(submitError)
+                        .font(DLFont.footnote)
+                        .foregroundStyle(DLColor.err)
+                }
                 Section(copy.text(.recent)) {
                     ForEach(knownWorkspaces, id: \.path) { room in
                         Button(room.path ?? "") { addPath = room.path ?? "" }
@@ -194,8 +201,13 @@ struct NewTaskPage: View {
         } catch {}
     }
 
+    /// 提交新工作区路径。
+    ///
+    /// C15 §19.2 R3：动作必须给出**结果**，不能只把按钮画出来。
+    /// 旧实现是 `catch {}` —— 路径非法、没权限、电脑离线全都静默失败，
+    /// 用户点了「提交」什么也没发生，也不知道为什么。现在失败会落到 `pendingPath`
+    /// 之外的显式错误行上（`submitError`），与「已提交等待确认」区分开。
     private func submitWorkspace(_ copy: NewTaskCopy) async {
-        _ = copy
         let path = addPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !path.isEmpty, !staticSnapshot else { return }
         do {
@@ -204,10 +216,15 @@ struct NewTaskPage: View {
                 knownWorkspaces.append(room)
                 workspace = room
                 pendingPath = nil
+                submitError = nil
             case .pending(let submitted):
                 pendingPath = submitted
+                submitError = nil
             }
-        } catch {}
+        } catch {
+            // 保留用户输入（不清空 addPath），只显示可操作说明。
+            submitError = copy.text(.addWorkspaceFailed)
+        }
     }
 }
 
@@ -284,6 +301,8 @@ enum NewTaskText: String {
     case pending
     case recent
     case submit
+    /// C15 §19.2 R3：提交失败要有可操作说明，不能静默。
+    case addWorkspaceFailed
 
     var fallback: String {
         switch self {
@@ -299,6 +318,7 @@ enum NewTaskText: String {
         case .pending: "Submitted %@. Waiting for the computer."
         case .recent: "Recent"
         case .submit: "Submit"
+        case .addWorkspaceFailed: "Couldn't add this folder. Check the path and the connection."
         }
     }
 }

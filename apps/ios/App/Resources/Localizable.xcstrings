@@ -5815,6 +5815,23 @@
         }
       }
     },
+    "newTask.addWorkspaceFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't add this folder. Check the path and the connection."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没能添加这个目录。请检查路径与连接。"
+          }
+        }
+      }
+    },
     "newTask.chooseWorkspace": {
       "extractionState": "manual",
       "localizations": {
