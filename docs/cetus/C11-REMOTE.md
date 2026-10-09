@@ -94,7 +94,7 @@ guard case .direct(let address) = selection, let base = URL(string: address) els
    `bridge.listen()` → 后台跑 `acceptAndPump()` → 返回端口与关闭句柄。
    （`InnerTLSChannel.open` 的编排顺序可直接复用：**先 listen 拿端口、再发起连接、
    最后等桥接受**，顺序反了会互等。）
-2. **实现 URLSession 版 `RemoteHostTransport`**：
+2. **实现 URLSession 版 `RemoteHostTransport`**（注意 §3.1 的 SSE 坑）：
    - `send`：`URLSession.data(for:)` 指向 `https://127.0.0.1:<port><path>`，
      用与局域网**同一个** `PinnedSessionDelegate`（保证两条路径钉扎同源，§15.2 第 2 条）；
    - `stream`：`URLSession.bytes(for:)` → `SSELineSplitter` → 行流，**不攒 body**；
