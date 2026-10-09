@@ -70,22 +70,54 @@ SPIKE-A2 pinnedURLSessionStatus=200 error=none pinFailures=0 pluginSawRequests=1
 | 第 7 条 60 秒稳定是**最小**门槛 | ⏳ 未做：需隔离 Relay + 假 host |
 | 第 1 条 一个 WSS 一条 flow | ✅ 未把多路复用写进 v1：池按 `host+kind` 限额，数据连接每流一条（§5.4.3） |
 
-## 3. 当前缺口（用户可见后果）
+## 3. 生产选路：**已接线**（本轮）
 
-**`RouteSelector` 已能返回 `.remote`，但没有任何调用点消费它。**
-
-`InboxLiveService.swift:52`（以及另外 4 处）写的是：
+接线前：`RouteSelector` 已能返回 `.remote`，但**没有任何调用点消费它**。
+五个服务各自写死了同一段：
 
 ```swift
 guard case .direct(let address) = selection, let base = URL(string: address) else {
-    await routes.forget(key: hostID)
-    throw InboxServiceError.offline
+    throw ...offline      // ← 局域网与 Tailscale 都不可达就到此为止
 }
 ```
 
-即：**局域网与 Tailscale 都不可达时，直接抛「离线」** —— 即便该主机已经配对好远程、
-手机也能连上 Relay。也就是说**远程能力目前对用户完全不可见**，
-`ConversationLiveService.connect()` 同样只接受 `.direct`（方案 §15 原文点名的缺口）。
+后果：**即便主机已配对远程、手机也能连上 Relay，App 仍直接报「离线」** ——
+远程能力对用户完全不可见。
+
+现在五个调用点（首页 / 会话 / 设置-模型 / 设置-账户 / 推送注册）统一走
+`HostConnectionFactory.open(host:token:routes:)`：
+
+- 直连可达 → `HostClient(baseURL: 直连地址)`
+- 全部直连不可达且 `RemoteRouteBuilder.hasRemoteCapability(host)` →
+  `HostClient(baseURL: 展示地址, transport: LoopbackURLSessionTransport)`
+- 都不行 → 返回 nil，调用点呈现离线
+
+配套：
+- `RemoteTransportRegistry`（actor）**全局共用**一个 `RemoteTunnelPool` ——
+  每主机并发额度必须全局生效，各建一个会让额度翻倍并可能触发中继 `DEVICE_LIMIT`；
+  传输实例按主机缓存（`cachedHostCount` 可诊断）。
+- 远程路径的 `InboxRouteKind` 显式标 `.remote` —— 远程复用的是主机的局域网地址，
+  只看地址的 `routeKind` 会把它误判成 `.local`。
+- 探测逻辑（`probe`）从两个私有副本收敛到 `HostReachability` 一处。
+
+### 验证
+
+| 证据 | 结果 |
+|---|---|
+| `HostConnectionFactoryTests` | **6/6**：直连不可达 + 有远程能力 → **落到远程**（核心断言）；无远程能力 → 离线；远程凭据不全 → 离线；`baseURL` 兜底用保留后缀 `.invalid`；传输按主机缓存；时钟偏移按主机记录 |
+| **反向验证** | 把 `hasRemote` 写死 false（等价于接线前）→ 核心断言**确实失败**，证明它是承重的 |
+| 回归 | `InboxFlowTests` / `ConversationFlowTests` / `SettingsAccountTests` / `RouteSelectorContractTests` / `RemoteRouteBuilderTests` / `LoopbackURLSessionTransportTests` 共 **74 例全过** |
+| CI | CI / CI iOS / CI iOS e2e **全绿** |
+
+### 仍然未验证
+
+接线完成**不等于远程已验收**：
+
+- 真实 Relay 上的端到端（本环境无法起隔离 Relay + 真实中继）
+- 五次 Wi-Fi/蜂窝切换矩阵（真机）
+- 长连接 60 秒以上的稳定性（§15.1 第 7 条的**最小**门槛）
+- 「在线 · 远程」文案：目前只连上 Relay **不会**显示电脑在线（符合 §15.2 末条），
+  但真机上的实际呈现未验
 
 ## 3.1 曾卡住的坑：`URLSession.bytes(for:)` 的任务级证书挑战（已修）
 
@@ -146,11 +178,7 @@ public final class PinnedSessionDelegate: NSObject, URLSessionTaskDelegate, @unc
 
 ## 4. 待办（按顺序）
 
-1. **把回环端口暴露给 URLSession**：给 `NWRemoteTunnelTransport` 加一个
-   `openLoopback(over:host:expectedFingerprint:)`，内部做
-   `bridge.listen()` → 后台跑 `acceptAndPump()` → 返回端口与关闭句柄。
-   （`InnerTLSChannel.open` 的编排顺序可直接复用：**先 listen 拿端口、再发起连接、
-   最后等桥接受**，顺序反了会互等。）
+1. ~~把回环端口暴露给 URLSession~~ ✅ **已完成**（`NWRemoteTunnelTransport.openLoopback`）。
 2. ~~实现 URLSession 版传输~~ ✅ **已完成**（`LoopbackURLSessionTransport`，10 例测试；
    根因见 §3.1）。保留原设计要求备查：
    - `send`：`URLSession.data(for:)` 指向 `https://127.0.0.1:<port><path>`，
@@ -160,10 +188,7 @@ public final class PinnedSessionDelegate: NSObject, URLSessionTaskDelegate, @unc
    - 错误映射：钉扎失败 → `.certificateChanged`（硬停止，§7.2 第 8 条）；
      远程拒绝码只提示、**不删凭据**（§7.4）。
    - 每请求一条桥 + 一个 lease；`Connection` 语义交给 URLSession。
-3. **接选路**：`.direct` 失败且 `RemoteRouteBuilder.hasRemoteCapability(host)` 时，
-   用远程传输重试一次；5 个调用点（`InboxLiveService`、`ConversationLiveService`、
-   `SettingsModelsService`、`SettingsAccountService`、`PushSettingsRegistration`）
-   通过一个共享工厂取传输，避免各自实现。
+3. ~~接选路~~ ✅ **已完成**（`HostConnectionFactory`，5 个调用点统一接入）。
 4. **在线态文案**：只有 bootstrap/SSE 真正可用才显示「在线 · 远程」；
    只连上 Relay **不得**显示电脑在线（§15.2 末条）。
 5. **隔离 Relay + 假 host 的 60 秒稳定测试**（§15.1 第 7 条），再做长连接、
