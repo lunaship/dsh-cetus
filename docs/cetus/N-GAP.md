@@ -39,6 +39,21 @@
 - 写到**独立目录** `build/outputs/cetus/`：初版写回 `outputs/apk/release/` 被 Gradle 判定与
   `createReleaseApkListingFileRedirect` 冲突（产物顺序不确定），已按 Gradle 报错改正
 
+**本轮补充（iOS 守护测试）**：Android 侧早有 `ProductNamingTest` 守用户可见文案与安装身份，
+**iOS 侧此前没有**。已补 `apps/ios/Tests/Contract/ProductNamingContractTests.swift`（4 项）：
+
+1. 本地化目录（`Localizable.xcstrings`）不含 `dsh-links` / `DeepLinks`
+2. `App/Info.plist` 的 `CFBundleDisplayName == cetus`
+3. 三个扩展的 `CFBundleDisplayName` **保持技术名**（Share / NotificationService / LiveActivity）
+4. 安装身份保持 `dev.deeplinks.ios`，且 Release 不继承 `.debug` 后缀
+
+第 3 条值得说明：我第一版断言的是「扩展显示名必须是 cetus」，跑起来才发现**假设是错的** ——
+iOS 在分享菜单与通知设置里显示的是**宿主 App 的名字**，扩展名只在开发者视角出现
+（Xcode target 列表、崩溃日志）。改成 cetus 反而让三个扩展无法区分。
+所以这条测试钉的是「保持技术名」，并在注释里写明原因与我自己踩过的坑。
+
+**已做反向验证**：往 `Localizable.xcstrings` 注入一条含 `dsh-links` 的文案后，第 1 条确实失败。
+
 ### N01.2 三类字段（§21.2）
 
 | 类型 | 状态 |
