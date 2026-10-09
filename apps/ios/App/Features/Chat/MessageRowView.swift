@@ -37,9 +37,13 @@ struct MessageRowView: View {
                 .font(DLFont.body)
                 .foregroundStyle(DLColor.label)
                 .accessibilityIdentifier(bubble.id)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(uiColor: .secondarySystemFill), in: ConcentricRectangle())
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                // 设计稿 4.1：用户气泡是约 18pt 的连续圆角。ConcentricRectangle 在列表里
+                // 找不到外层容器形状，会退化成直角。
+                .background(
+                    Color(uiColor: .secondarySystemFill),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
