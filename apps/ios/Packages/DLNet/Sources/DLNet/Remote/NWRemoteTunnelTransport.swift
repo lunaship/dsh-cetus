@@ -109,6 +109,28 @@ public struct NWRemoteTunnelTransport: RemoteTunnelTransport {
         return try await InnerTLSChannel.open(tunnel: tunnel, host: host, expectedFingerprint: pin)
     }
 
+    /// 打开一条**回环桥 + 后台泵**，交给 `URLSession` 使用（方案 §15.1 第 2 条）。
+    ///
+    /// 与 `openInnerTLS` 的区别：这里**不做内层 TLS** —— 那一步交给 `URLSession`
+    /// 与 `PinnedSessionDelegate`，于是上层复用系统的 HTTP/1.1 / 分块 / SSE 实现。
+    ///
+    /// 顺序是硬要求：**先 `listen()` 拿到端口，再让调用方发起连接**；
+    /// `acceptAndPump()` 必须在后台跑着，否则调用方永远拿不到端口。
+    public static func openLoopback(
+        over tunnel: any RemoteTunnel,
+        host: String,
+        expectedFingerprint: String?
+    ) async throws -> LoopbackEndpoint {
+        let pin = CertificateFingerprint.normalize(expectedFingerprint)
+        guard CertificateFingerprint.isValid(pin) else {
+            throw CertificatePinError.certificateChanged
+        }
+        let bridge = try LoopbackTunnelBridge(tunnel: tunnel)
+        let port = try await bridge.listen()
+        let pump = Task { try await bridge.acceptAndPump() }
+        return LoopbackEndpoint(bridge: bridge, port: port, host: host, pump: pump)
+    }
+
     /// 装一个「只认这个叶证书指纹」的 verify block。
     ///
     /// 这完全替换系统校验：不匹配就 `complete(false)`，握手失败，不会回退到 CA。

@@ -7,6 +7,9 @@ import Foundation
 ///
 /// # ⚠️ 状态：**未接线**，作为**替代方案**保留
 ///
+/// **主实现是 **（DLNet）：回环桥 + 钉扎 URLSession，
+/// 即方案 §15.1 第 2 条指定的路线。本文件是它的备选。
+///
 /// 方案 §15.1 第 2 条指定的内层实现是 **URLSession**。本文档开头那段
 /// 「URLSession 不可行」的理由**已被实验推翻** —— 第一版 spike 用的是**未钉扎**的
 /// `URLSession(configuration: .ephemeral)`，它拒绝自签证书是必然的，但那**只能**
@@ -42,7 +45,7 @@ import Foundation
 /// - SSE：`Connection: keep-alive`，边读边切行，**不把 body 攒进内存**。
 /// - 证书钉扎：`openInnerTLS` 内用 `installPin` 对**插件证书**做，与局域网路径同源（§4.3）。
 ///   拿不到合法指纹时它 fail-closed，不回落系统 PKI。
-public struct RemoteHostTransport: HostTransport {
+public struct ChannelRemoteHostTransport: HostTransport {
     /// 按 host 取会合参数；nil 表示该主机不可远程。
     private let routeProvider: @Sendable (String) -> RemoteTunnelRoute?
     /// 按 host 取内层证书指纹（配对时记录）。

@@ -22,7 +22,7 @@ public enum HostConnectionError: Error, Equatable, Sendable {
 /// 红线：证书变更只取消连接、只提示，不自动删除凭据。本委托只应用于已通过
 /// `PinEvaluation.requirePin` 的钉扎连接（公网无指纹走系统 PKI 的场景不要用它）。
 /// `@unchecked Sendable` 是安全的：除上锁保护的 `lastError` / `failures` 外没有可变状态。
-public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, @unchecked Sendable {
+public final class PinnedSessionDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     /// 已规范化的期望指纹；空串表示没有指纹（缺指纹同样 fail-closed）。
     private let expectedFingerprint: String
     private let lastError = OSAllocatedUnfairLock<HostConnectionError?>(initialState: nil)
@@ -48,6 +48,31 @@ public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, @uncheck
         _ session: URLSession,
         didReceive challenge: URLAuthenticationChallenge,
         completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        evaluate(challenge, completionHandler)
+    }
+
+    /// **任务级**挑战回调。
+    ///
+    /// 必须实现：`URLSession.bytes(for:)`（`AsyncBytes`，SSE 用）不会把 server-trust
+    /// 挑战送到 session 级方法，而走任务级。只在 session 级实现时，`data(for:)`
+    /// 能通过钉扎、`bytes(for:)` 却被系统默认校验拒绝自签证书并报
+    /// `NSURLErrorServerCertificateUntrusted (-1202)` —— 现象是「同一个 session、
+    /// 同一张指纹，一次性请求成功、SSE 失败」，从错误信息几乎看不出原因。
+    ///
+    /// 两个入口共用同一套判定，保证两条路钉扎语义一致。
+    public func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        evaluate(challenge, completionHandler)
+    }
+
+    private func evaluate(
+        _ challenge: URLAuthenticationChallenge,
+        _ completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
             let trust = challenge.protectionSpace.serverTrust

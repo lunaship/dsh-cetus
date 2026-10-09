@@ -234,6 +234,50 @@ import Testing
         #expect(server.completedRequests == 2, "两次请求都应送达插件，实际 \(server.completedRequests)")
     }
 
+    // MARK: - Spike A3：同一个桥，改用 `bytes(for:)`（SSE 用的 API）
+
+    /// 决定性对照：与 Spike A2 完全相同的桥、服务器与钉扎 delegate，
+    /// **唯一差别**是换成 `URLSession.bytes(for:)`。
+    ///
+    /// 若这里也以 -1202 失败，说明问题在 `bytes` 这条 API 与钉扎 delegate 的配合，
+    /// 与传输实现无关；若成功，则问题在传输实现里。
+    @Test func pinnedURLSessionBytesAPIOnSameBridge() async throws {
+        let fixture = try Self.loadIdentity()
+        let server = FakeTLSServer()
+        let serverPort = try await server.start(identity: fixture.identity)
+        defer { server.stop() }
+
+        let tunnel = DirectTunnel(port: serverPort)
+        let bridge = try LoopbackTunnelBridge(tunnel: tunnel)
+        let bridgePort = try await bridge.listen()
+        let pump = Task { try await bridge.acceptAndPump() }
+
+        let fingerprint = CertificateFingerprint.sha256(der: fixture.der)
+        let delegate = PinnedSessionDelegate(expectedFingerprint: fingerprint)
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+
+        let url = URL(string: "https://127.0.0.1:\(bridgePort)/dsh-link/mobile/bootstrap")!
+        var status: Int?
+        var failure: String?
+        do {
+            let (bytes, response) = try await session.bytes(for: URLRequest(url: url))
+            status = (response as? HTTPURLResponse)?.statusCode
+            var received = 0
+            for try await _ in bytes { received += 1 }
+            print(
+                "SPIKE-A3 bytesStatus=\(status.map(String.init) ?? "nil") received=\(received) pinFailures=\(delegate.pinFailureCount)"
+            )
+        } catch {
+            failure = "\(error)"
+            print("SPIKE-A3 bytesFAILED=\(failure ?? "") pinFailures=\(delegate.pinFailureCount)")
+        }
+        session.invalidateAndCancel()
+        await bridge.close()
+        _ = try? await pump.value
+        // 证据打到日志；这里不硬断言，避免把「已确认的失败」变成随机红。
+        #expect(status == 200 || failure != nil, "必须给出明确结果")
+    }
+
     // MARK: - Spike B：现有可用路线（HTTP over channel，无 URLSession）
 
     @Test func existingChannelRouteSpeaksHTTPWithoutURLSession() throws {
