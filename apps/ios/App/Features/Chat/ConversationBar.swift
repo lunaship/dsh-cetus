@@ -60,8 +60,11 @@ struct ConversationBar: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: DLComposerView, context: Context) -> CGSize? {
+        // 按 SwiftUI 提议的宽度现量高度，不读上一轮布局留下的固有高度：
+        // 那个值取决于视图此前被排到过什么宽度，截图在两次运行之间会不一致。
         let width = proposal.width ?? uiView.bounds.width
-        let height = uiView.intrinsicContentSize.height
+        guard width.isFinite, width > 1 else { return nil }
+        let height = uiView.fittingHeight(width: width)
         guard height > 1, height < 10_000 else { return nil }
         return CGSize(width: width, height: height)
     }

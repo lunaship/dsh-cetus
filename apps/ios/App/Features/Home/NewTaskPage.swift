@@ -248,6 +248,13 @@ private struct NewTaskComposer: UIViewRepresentable {
         return view
     }
 
+    /// 输入区高度只由内容决定：不交给固有尺寸 + 优先级去协商，否则 SwiftUI 会把多出的空间
+    /// 分给它，内部谁被拉高不确定，截图在两次运行之间不一致。
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: DLComposerView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width.isFinite, width > 1 else { return nil }
+        return CGSize(width: width, height: uiView.fittingHeight(width: width))
+    }
+
     func updateUIView(_ view: DLComposerView, context: Context) {
         view.pinsToKeyboard = false
         view.usesSolidSnapshotBackground = solid

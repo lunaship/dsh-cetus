@@ -55,11 +55,18 @@ final class DLGlassBar: UIView {
                 view.removeFromSuperview()
             }
             holder.addSubview(content)
+            // 右、下两边用 999：外框还没定（init 时 0×0、截图前的固定小框）时内容放不下，
+            // 只是这两条暂不满足，而不是让引擎临时砍掉一条必需约束。被砍的是哪一条随运行而变，
+            // 之后整块的高度也跟着不同，截图在重生成与对比之间来回差一行。
+            let trailing = content.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -12)
+            trailing.priority = UILayoutPriority(999)
+            let bottom = content.bottomAnchor.constraint(equalTo: holder.bottomAnchor, constant: -12)
+            bottom.priority = UILayoutPriority(999)
             NSLayoutConstraint.activate([
                 content.leadingAnchor.constraint(equalTo: holder.leadingAnchor, constant: 12),
-                content.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -12),
+                trailing,
                 content.topAnchor.constraint(equalTo: holder.topAnchor, constant: 12),
-                content.bottomAnchor.constraint(equalTo: holder.bottomAnchor, constant: -12),
+                bottom,
             ])
             self.layoutIfNeeded()
         }

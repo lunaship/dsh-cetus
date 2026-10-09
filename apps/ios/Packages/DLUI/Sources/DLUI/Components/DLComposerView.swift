@@ -217,6 +217,10 @@ public final class DLComposerView: UIView, UITextViewDelegate {
 
     private static let editorMinimumHeight: CGFloat = 44
     private static let editorMaximumHeight: CGFloat = 132
+    /// 内容到玻璃边的内距（DLGlassBar.install 四边各 12）。编辑器宽度 = 本视图宽度 − 2 × 12。
+    private static let contentInset: CGFloat = 12
+    /// 还没拿到真实宽度（SwiftUI 先要尺寸）时按这个宽度量。
+    private static let fallbackWidth: CGFloat = 378
 
     private enum Mode {
         case composer
@@ -263,8 +267,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private func configurePlaceholder() {
         field.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
-        composerRoot.addArrangedSubview(placeholderLabel)
-        // placeholder 叠在 field 上（同位置，不占额外空间）
+        // placeholder 叠在 field 上（同位置，不占额外空间），不进 composerRoot 的排列。
         field.addSubview(placeholderLabel)
         NSLayoutConstraint.activate([
             // 与 textContainerInset（上 8）和 lineFragmentPadding（5）对齐，提示与光标同一位置。
@@ -296,13 +299,29 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     }
 
     public override func layoutSubviews() {
+        // 先按本视图自己的宽度和当前字号量好编辑器高度、改好约束，再交给 super 一次排完。
+        // 量高只看文字、字号和本视图宽度，不读子视图上一轮的 frame，与布局先后无关；
+        // 每轮都量，字号（动态字体）变了也会跟上。
+        let editorChanged = updateEditorHeight(contentWidth: bounds.width - Self.contentInset * 2)
         super.layoutSubviews()
-        guard abs(bounds.width - lastMetricsWidth) > 0.5 else { return }
-        // 先把内部子视图排好，编辑器拿到本轮的真实宽度再量高；否则偶尔量到旧宽度（或 0）后
-        // lastMetricsWidth 已更新、不再重量，输入区高度在截图之间来回差 16pt。
-        glass.layoutIfNeeded()
-        updateEditorHeight()
+        if editorChanged, pinsToKeyboard {
+            superview?.setNeedsLayout()
+        }
+        guard editorChanged || abs(bounds.width - lastMetricsWidth) > 0.5 else { return }
         refreshMetrics()
+    }
+
+    /// 给定宽度下整块输入区的高度。宿主（SwiftUI）按提议宽度直接要高度，不依赖上一轮布局。
+    public func fittingHeight(width: CGFloat) -> CGFloat {
+        guard let content = installedView, width > 1 else { return preferredBarHeight }
+        if case .composer = mode {
+            updateEditorHeight(contentWidth: width - Self.contentInset * 2)
+        }
+        let fitted = content.systemLayoutSizeFitting(
+            CGSize(width: max(1, width - Self.contentInset * 2), height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel)
+        return max(72, fitted.height + Self.contentInset * 2)
     }
 
     public func showComposer(animated: Bool) {
@@ -354,7 +373,6 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         let current = textView.text ?? ""
         guard current != mirrorText else { return }
         mirrorText = current
-        updateEditorHeight()
         refreshMetrics()
         updatePlaceholderVisibility()
         // 程序下推的文本不回声，避免 SwiftUI ↔ UIKit 回调死循环。
@@ -408,6 +426,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         chipStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         chipStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
         chipStack.isHidden = chips.isEmpty
+        // 没有建议时整块隐藏：空的 UIStackView 没有固有高度，留在排列里会让纵向高度不确定。
+        suggestionStack.isHidden = suggestions.isEmpty
         let spacer = UIView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
         spacer.setContentCompressionResistancePriority(.init(1), for: .horizontal)
@@ -462,7 +482,6 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         field.text = newValue
         isApplyingExternalText = false
         clampSelection()
-        updateEditorHeight()
         refreshMetrics()
         updatePlaceholderVisibility()
     }
@@ -588,27 +607,43 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         }
     }
 
-    private func updateEditorHeight() {
-        guard field.bounds.width > 0 else { return }
-        field.isScrollEnabled = false
+    /// 按给定的编辑器宽度量高，返回约束是否改了。
+    ///
+    /// 宽度由调用方从本视图宽度算出（不读 field.bounds，那是上一轮布局的结果）；
+    /// 字号按本视图当前的 traitCollection 先对齐，不等编辑器自己晚一步跟进动态字体。
+    /// 量的时候不切 isScrollEnabled：只在结果需要时改一次，避免反复触发重排。
+    @discardableResult
+    private func updateEditorHeight(contentWidth: CGFloat) -> Bool {
+        guard contentWidth > 1 else { return false }
+        syncEditorFont()
         let fitting = field.sizeThatFits(
-            CGSize(width: field.bounds.width, height: UIView.layoutFittingExpandedSize.height))
-        let target = min(max(Self.editorMinimumHeight, ceil(fitting.height)), Self.editorMaximumHeight)
-        guard abs(editorHeight.constant - target) > 0.5 else { return }
+            CGSize(width: contentWidth, height: UIView.layoutFittingExpandedSize.height))
+        let natural = ceil(fitting.height)
+        let target = min(max(Self.editorMinimumHeight, natural), Self.editorMaximumHeight)
+        // 到上限后改为内部滚动，不再继续撑高。
+        let scrolls = natural > Self.editorMaximumHeight
+        if field.isScrollEnabled != scrolls {
+            field.isScrollEnabled = scrolls
+        }
+        guard abs(editorHeight.constant - target) > 0.5 else { return false }
         editorHeight.constant = target
-        // 到上限后改为内部滚动，不再继续撑高，避免反复触发外部重排。
-        field.isScrollEnabled = fitting.height > Self.editorMaximumHeight
+        return true
+    }
+
+    private func syncEditorFont() {
+        let body = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+        if field.font != body {
+            field.font = body
+        }
+        if placeholderLabel.font != body {
+            placeholderLabel.font = body
+        }
     }
 
     private func refreshMetrics() {
-        guard let content = installedView else { return }
-        let width = bounds.width > 1 ? bounds.width : 378
-        let fitted = content.systemLayoutSizeFitting(
-            CGSize(width: max(1, width - 24), height: UIView.layoutFittingCompressedSize.height),
-            withHorizontalFittingPriority: .required,
-            verticalFittingPriority: .fittingSizeLevel)
         lastMetricsWidth = bounds.width
-        let height = max(72, fitted.height + 24)
+        guard installedView != nil else { return }
+        let height = fittingHeight(width: bounds.width > 1 ? bounds.width : Self.fallbackWidth)
         guard abs(preferredBarHeight - height) > 0.5 else { return }
         preferredBarHeight = height
         invalidateIntrinsicContentSize()
