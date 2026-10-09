@@ -27,18 +27,23 @@ final class PerformanceLaunchTests: XCTestCase {
     func testThreeThousandMessageScroll() async throws {
         let fixture = try await preparedFixture()
         let app = XCUIApplication()
-        let ready = onMain { () -> Bool in
+        let stage = onMain { () -> String? in
             app.launchArguments = ["-performanceFixture", fixture.path]
             app.launch()
             let row = app.staticTexts.matching(identifier: sessionTitle).firstMatch
-            guard row.waitForExistence(timeout: 20) else { return false }
+            guard row.waitForExistence(timeout: 20) else { return "session row" }
             row.tap()
             let stream = app.collectionViews["message-stream"]
-            guard stream.waitForExistence(timeout: 10) else { return false }
+            guard stream.waitForExistence(timeout: 10) else { return "message-stream" }
             stream.swipeUp()
-            return app.staticTexts["message-3000"].waitForExistence(timeout: 20)
+            return app.staticTexts["message-3000"].waitForExistence(timeout: 20) ? nil : "message-3000"
         }
-        XCTAssertTrue(ready)
+        if let stage {
+            // CI 无法下载 xcresult：把卡住的阶段与可见层级摘要写进失败消息，工作流会转成注解。
+            let summary = onMain { Self.hierarchySummary(app) }
+            XCTFail("scroll not ready at stage=\(stage); \(summary)")
+            return
+        }
         measure(metrics: [XCTClockMetric(), XCTOSSignpostMetric.scrollDecelerationMetric]) {
             onMain {
                 let stream = app.collectionViews["message-stream"]
@@ -113,6 +118,16 @@ final class PerformanceLaunchTests: XCTestCase {
         onMain { app.terminate() }
     }
 
+    private static func hierarchySummary(_ app: XCUIApplication) -> String {
+        let ids = app.descendants(matching: .any).allElementsBoundByIndex.prefix(400)
+            .compactMap { e -> String? in
+                let id = e.identifier, label = e.label
+                if id.isEmpty && label.isEmpty { return nil }
+                return "\(e.elementType.rawValue):\(id.isEmpty ? "-" : id)/\(String(label.prefix(24)))"
+            }
+        return "elements(\(ids.count))=" + ids.prefix(60).joined(separator: ", ")
+    }
+
     private func waitForFreshQR(_ path: String) throws {
         let deadline = Date().addingTimeInterval(20)
         while Date() < deadline {
@@ -173,9 +188,11 @@ final class PerformanceLaunchTests: XCTestCase {
                     atomically: false, encoding: .utf8)
             done.fulfill()
         }.resume()
+        let started = Date()
         let result = XCTWaiter.wait(for: [done], timeout: 30)
         if result != .completed || !accepted.value {
-            XCTFail("POST \(path) failed")
+            let waited = String(format: "%.1f", Date().timeIntervalSince(started))
+            XCTFail("POST \(path) failed (waiter=\(result.rawValue) accepted=\(accepted.value) waited=\(waited)s)")
             return false
         }
         return true
