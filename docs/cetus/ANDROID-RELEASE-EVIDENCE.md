@@ -9,6 +9,63 @@
 
 > 本文只记录**已验证事实**。未发布、未打 tag、未上传 Release 的事项一律标「未做」。
 
+---
+
+## 0. 当前权威产物（2026-10-09 复核补充）
+
+> **§1–§4 记录的是 2026-10-08 的 `3728131d` 脏树产物**，用于当时的预备验收。
+> 之后在**干净树**上重建了一份，**以本节为准**；§1 那条已被取代，保留仅为历史对照。
+
+| 项 | 值 |
+|---|---|
+| 构建提交 | **`a91562ae`**（`test(ios): 弹层截图容差与其它套件对齐…`） |
+| 工作树 | **干净**（**无** `-dirty`） |
+| 产物路径 | `.local/release-builds/0.5.0-beta.31-a91562ae/cetus-android-0.5.0-beta.31-a91562ae.apk` |
+| APK SHA-256 | `7e9713105e2658511372ef3d76d0b439b69b536146de38d118f9299f7c039779` |
+| mapping.txt SHA-256 | `0b9fed3e5cacb5478daf4d0c4d432319ae27f4db4ab80bca291ef99a7d916952` |
+| 签名证书 SHA-256 | `38f71adf8b67d81042c99a3ec0dfdafb4303dd31e3fc491068ccd534cb482a47` |
+| versionName / versionCode | `0.5.0-beta.31` / `39` |
+| applicationId | `dev.deeplinks`（保持 legacy） |
+
+**被取代的旧产物**：`0.5.0-beta.31-3728131d/app-release.apk`，
+SHA-256 `f3916ec9c8c2742d021c333210ff2caf3e0d232a56191b495fd69ab817e00ca8`，`BUILD_COMMIT=3728131d-dirty`。
+
+### 0.1 溯源是可复现的（不靠记忆）
+
+APK 里嵌了 `BuildConfig.BUILD_COMMIT`，直接从产物读出来即可核对：
+
+```sh
+APK=.local/release-builds/0.5.0-beta.31-a91562ae/cetus-android-0.5.0-beta.31-a91562ae.apk
+unzip -p "$APK" classes.dex | strings | grep -oE '[0-9a-f]{8}(-dirty)?' | sort -u
+# → a91562ae      （无 -dirty）
+```
+
+同时确认**该提交之后 `apps/android/` 零改动**：
+
+```sh
+git merge-base --is-ancestor a91562ae origin/main && echo "在 main 历史中"
+git log --oneline a91562ae..origin/main -- apps/android/ | wc -l   # → 0
+```
+
+两条合起来 = 「这份 APK 的 Android 源码与当前 main 逐字节相同」。因此本产物
+**对当前 main 仍然有效**，不需要为「落后 69 个提交」重建（那 69 个全部不涉及 `apps/android/`）。
+
+### 0.2 签名方案：**只有 v2**（发现，未修）
+
+`apksigner verify --verbose` 实测：
+
+| 方案 | 结果 | 影响 |
+|---|---|---|
+| v1（JAR） | **false** | **无影响** —— `minSdk = 26 ≥ 24`，v1 非必需 |
+| v2 | **true** | 正常 |
+| v3 / v3.1 | **false** | ⚠️ **密钥轮换能力缺失**：签名密钥若丢失或需更换，v3 是轮换的前提；没有它只能让用户**卸载重装**（丢掉已配对凭据与状态） |
+
+**未修的原因**：修它需要改 `apps/android/app/build.gradle.kts` 并**重新构建签名包** ——
+那会让当前这份**已核验**的产物失效。而真机验收（见 `DEVICE-CHECKLIST.md`）尚未开始，
+一旦真机发现缺陷反正要重建，**届时应一并启用 v3**（`signingConfigs.release { enableV3Signing = true }`）。
+
+**结论**：记为「下次重建时必须一并处理」，而不是现在动产物。这是 **P2**，不影响安装与使用。
+
 ## 1. 产物清单
 
 | 项 | 值 |
@@ -209,8 +266,8 @@ cd apps/android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lint
 
 ## 7. 未做 / 需维护者处理
 
-1. **未打 tag、未建 GitHub Release、未上传 APK** —— `RELEASING.md` 规定正式发布由维护者执行；
-   且本次产物为 `-dirty`，不宜作为发布物。
+1. **未打 tag、未建 GitHub Release、未上传 APK** —— `RELEASING.md` 规定正式发布由维护者执行。
+   （注：§0 的 `a91562ae` 产物**已是干净树构建**，`-dirty` 的限制只适用于 §1 的旧产物。）
 2. **未在真机验证** —— 本次只在 AVD 上做安装/升级/启动/配对页验收。`RELEASING.md` 要求的
    真机项（配对、会话/SSE、审批、吊销、重启重连、蜂窝/Wi‑Fi 切换）**均未做**，属「未验证」。
 3. **未把 APK 放到桌面/Release** —— APK 只在 `.local/`（gitignored）。
@@ -221,5 +278,6 @@ cd apps/android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lint
    （签名目录为受保护位置，未擅自写入）。
 6. **`answeredApprovalUntil` 幂等窗口缺测试**（见 5.2），建议补。
 7. **`src/tls.js` 证书 CN 仍为 `dsh-links`**（见 5.3），需维护者决策。
-8. **工作树脏**：`splash_wordmark.png`（drawable 与 drawable-night）由 `app-rebrand` 队友
-   在构建期间修改，**本任务未触碰**。正式发版需在干净树重建，否则产物仍带 `-dirty`。
+8. ~~工作树脏~~ —— **已解决**：§0 的 `a91562ae` 产物在**干净树**上构建，实测无 `-dirty`。
+9. **签名方案只含 v2**（§0.2）：缺 v3 → 无密钥轮换能力。**下次重建时必须一并启用**
+   `enableV3Signing = true`。不在本轮修，以免作废已核验产物。
