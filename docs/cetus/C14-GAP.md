@@ -16,9 +16,11 @@
 
 | **4** | 问题「必填 / 可选」两端语义一致 | 插件与 Android 都把 `required: false` 归一为可选，**iOS 只读 `optional`**。同一道题在 Android 可跳过、在 iOS 被当成必填卡住提交。目前插件在出口处已归一，所以线上未暴露 —— 但这等于把两端一致性押在"上游永远替我们归"上 | `ClarifyingQuestion` 加自定义解码：`optional ?? (required == false ? true : nil)`，显式 `optional` 优先；并补回随之消失的 `encode(to:)` |
 
+| **5** | 改动摘要 `total` / `added` / `deleted` 的取数与回退 | iOS 三处都与 Android 不同，后果都是**用户可见的自相矛盾**：① `total` 无下限 → 出现「Changed 1 files」下面列 3 行；② 顶层 `added`/`deleted` 缺省时取 0（而非逐文件之和）→ 顶部 `+0 -0` 而每行都有真实数字；③ 逐文件负数未按 0 计，会抵消正常行数 | `changeCard` 对齐 `WorkspaceChanges.kt:95-99`：`total = max(总, 文件数)`；`added`/`deleted` 缺省用逐文件之和；逐文件 `max(0, …)`。同时把 `added`/`deleted` 一并从 `changeCard` 返回，让回退逻辑**只有一处**（原先 `TurnTail` 调用点另写了一份 `?? 0`） |
+
 配套测试：`InboxDeleteNavigationTests`（4）、`InboxOfflineReasonTests`（3）、
 `RemoteClockSkewRetryTests`（4，覆盖手机落后/超前/已对齐/补偿后对齐四种情形）、
-`RequiredFieldNormalizationTests`（4）。
+`RequiredFieldNormalizationTests`（4）、`ChangeCardConsistencyTests`（6）。
 **并且逐条验证过这些测试是 load-bearing 的**：临时把修复注释掉后，对应的用例确实失败
 （`archivingOpenSessionPopsIt` / `archivingKeepsOtherDestinations` /
 `unauthorizedIsRejectedNotUnreachable`），确认不是永远为真的空断言。
@@ -72,5 +74,5 @@
 | 无网络 / 低电量 / 低内存 / 长会话 / 巨大代码块 | **未做**：属于性能与真机场景，本地无法构造（模拟器在本环境也起不来） |
 | 自动更新入口、安装说明、隐私文档重命名后不指向失效地址 | 插件侧白名单已过渡期兼容新旧仓库（`dfaa13c5`）；文档域名迁移未启动 |
 | 配对流程的阶段语义 | **已对照**（本轮，见下节） |
-| 文件与改动的路径/范围/统计/权限 | **部分**：diff 行号推进已逐条对齐；路径规范化、范围统计、权限差异未对照 |
+| 文件与改动的路径/范围/统计/权限 | **统计已对齐**（本轮，见下表 #5）；路径规范化与权限差异仍**未对照** |
 | 更名后两端行为 | **部分**：插件白名单过渡期已兼容；两端文案与安装身份未逐项比 |
