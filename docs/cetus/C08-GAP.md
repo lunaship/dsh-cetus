@@ -28,8 +28,8 @@
 | # | 缺口 | 严重度 |
 |---|---|---|
 | **C8-G1** | **diff 无行号、无 `+`/`-` 符号列** —— Android `DiffRow` 有双列行号（`WorkspaceChanges.kt:189`），iOS `DiffLine` **根本没有行号字段** | 高（方案 R9 明确要求；Android 与 iOS 同 fixture 下呈现不一致） |
-| **C8-G2** | **diff 说明行缺失** —— Android 有 `diffNotes`（新建 / 删除 / 两侧相同 / 逐行超时 / 截断，`WorkspaceChanges.kt:321-328`），iOS **无对应实现**；`coarse` / `before` / `after` / `truncated` 解码了但从不呈现 | 高（方案 R4「二进制和超大文件状态都来自响应」；用户会看到无说明的空 diff） |
-| **C8-G3** | **「下一个差异段」hunk 导航缺失** —— `ReviewText.previousHunk` / `nextHunk` 与 `review.previousHunk` / `review.nextHunk` 文案**已存在但无人引用**（死字符串）；`ReviewPages.swift:207-208` 注释自述「不再有上/下 hunk 死按钮」 | 中（方案 R6 明确要求；需与 Lead 确认是否有意放弃） |
+| **C8-G2** | ~~diff 说明行缺失~~ → ✅ **已实现**（本轮复核修正） | 已加 iOS 版 `diffNotes`（`DLCore/Review.swift:87`，对齐 Android `WorkspaceChanges.kt:321-328`）：新建 / 删除 / 两侧相同 / 逐行超时 / 截断，并在 `DiffPage` 呈现。`ReviewCopy.text(key:)` 走 `DiffNote.textKey` 取文案 |
+| **C8-G3** | ~~hunk 导航缺失~~ → ✅ **已实现**（本轮复核修正） | `ReviewPages.swift` 已加 `DiffGutterRow` + hunk 下标锚点与上/下导航，`ReviewText.previousHunk` / `nextHunk` **不再是死字符串**（`ReviewPages.swift:327` 用 `.accessibilityLabel(copy.text(.nextHunk))`）。按设计稿 R3.5 补齐 |
 
 另有 1 项需与方案/Android 口径对齐：**R10「下一轮改动不替换当前审查轮次」无实现**（见 §3 C8-G4）。
 
@@ -128,8 +128,8 @@
 | # | 要求 | 现状 | 建议 |
 |---|---|---|---|
 | **C8-G1** | R9：颜色之外还有增删符号 / 行号 | `DiffLine` 无行号字段；`DiffPage` 不画符号列 | 在 `DLCore` 给 `DiffLine` 加 `oldLineNumber` / `newLineNumber`（可选 Int），在 `diffLines(from:)` 里按 Android 同规则推进（`+`→new，`-`→old，上下文→both）；`DiffPage` 左侧加单色等宽符号列（`+` / `-` / 空格）+ 双列行号。**用既有 `ReviewText.added/deleted`；不新增服务端字段。** |
-| **C8-G2** | R4：二进制 / 超大 / 无改动状态来自响应 | `coarse` / `before` / `after` / `truncated` 解码了但不呈现 | 加 iOS 版 `diffNotes` 纯函数（对齐 Android `DiffNote`），在 `DiffPage` 顶部/底部显示说明行（新建 / 删除 / 两侧相同 / 逐行超时 / 截断） |
-| **C8-G3** | R6：上一个 / 下一个差异段 + 当前位置 | 未实现；`previousHunk` / `nextHunk` 文案已是死字符串 | 需要 Lead 决策：**补 hunk 导航**（`DiffPage` 加 `ScrollViewReader` + hunk 下标锚点，复用已有文案），或**明确记录为有意不做并从文案表删除死字符串**。仓库规则「未在设计稿里的 UI 不做」——6.2 设计稿底部确有「上一个 / 下一个」（`docs/redesign-v4/PLAN.md` R3.5），故我倾向补。 |
+| **C8-G2** | R4：二进制 / 超大 / 无改动状态来自响应 | ✅ **已完成** | `DLCore/Review.swift:87` `diffNotes`（`DiffNote` 枚举 + `textKey`），`DiffPage` 呈现说明行 |
+| **C8-G3** | R6：上一个 / 下一个差异段 + 当前位置 | ✅ **已完成** | `ReviewPages.swift` `DiffGutterRow` + hunk 锚点 + 上/下导航；文案已接线 |
 | **C8-G4** | R10：下一轮改动时提示可切换 | 不替换（安全）但无提示 | 低优先级；用 `changesTurnSeqs` 与当前 `changesSeq` 比较，有新轮次时显示一条可点击提示 |
 | **C8-G5** | R8：返回改动列表保留滚动位置与所选文件 | 未实现（inspector 与 push 同源已满足） | 若 Lead 认为必要，按 C09 `filesReturnAnchor` 的既有做法补 |
 | **C8-G6** | R5：切换轮次时取消在途 diff 请求 | 只清空结果，不取消请求 | 加 `Task` 句柄取消（与 C09 `filesTask?.cancel()` 同样做法） |

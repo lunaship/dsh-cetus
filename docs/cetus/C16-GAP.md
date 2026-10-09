@@ -64,9 +64,9 @@
 
 | 编号 | 要求 | 判定 | 处置 |
 |---|---|---|---|
-| **G1** | R5 后半：Debug/Release bundle 配置未分开，`.debug` 写死 | 缺失 | **本次实施 P0** |
-| **G2** | R3：iOS 诊断导出缺"不含敏感串"的测试 | 缺失 | **本次实施 P0** |
-| **G3** | R6：无 24 小时 soak 记录 | 缺失 | 登记待办（需挂机，非本轮） |
+| **G1** | R5 后半：Debug/Release bundle 配置未分开，`.debug` 写死 | ✅ **已完成**（本轮复核修正） | `project.yml` 四个 target 都加了 `configs:` 块；`IOSBundleIdentifierTests` 断言 Debug 保持历史值、Release 不带 `.debug` 后缀 |
+| **G2** | R3：iOS 诊断导出缺"不含敏感串"的测试 | ✅ **已完成**（本轮复核修正） | `DiagnosticsRedactionTests` + `DiagnosticDetailPrivacy` 允许清单（`A-Za-z0-9._-`、≤64 字符）与敏感形态正则（`gh[pousr]_` / `sk-` / `xox[baprs]-` / IPv4 / 16 位以上数字串） |
+| **G3** | R6：无 24 小时 soak 记录 | ⏳ **仍未做**（缺挂机条件） | 需长时间独占运行；本环境无法做。属 T46 的一部分 |
 | **G4** | R7：无统一问题清单 | 部分 | **本次实施 P1**（模板 + 首条登记） |
 
 ### G1 细化

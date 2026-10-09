@@ -35,7 +35,7 @@
 | 5 | 必填未答不能前进；跳过仅在合同允许时出现；多选/自由回答/选项混合规则一致 | **已满足** | `currentCanAdvance`（110-113）必填未答 false → `move(.next)` 返回 nil（101）；`canSkip`（73）只在 `optional==true` 时 true，`secondaryIsPrevious`（74）否则给「上一题」。混合规则统一走 `answered`（155-160）：选中**或**自由文本非空即算答 |
 | 6 | 普通消息草稿与回答草稿**彻底分离**；问题出现/切题/提交/取消都不清普通草稿 | **已满足** | 两个独立 slot：`.prompt` vs `.answer`。`syncQuestionDraft`(356-365)：有问题→`freeze(.prompt)`（保留内存文本）；无问题→`unfreeze(.prompt, text: draft)` + `clear(.answer)`。提交成功只 `drafts.clear(.answer)`(633)，不碰 `.prompt` |
 | 7 | 最后一题「提交回答」提交完整表单；顶部/底部**不得同时两个语义不清的发送按钮** | **部分** | 完整表单 ✅：`answerBody`(129-139) 用 `questions.enumerated()` 全量构造。单按钮 ✅/⚠️：`questionNavigator:588` 末题显示 submit，同时 `ConversationBar` 在 question 模式下 primary 也是 `copy.text(.send)`（`ConversationBar.swift:93`）—— **确实存在两个「发送」语义按钮**（导航区 submit + 决策栏 send）。P1 待修 |
-| 8 | 服务器校验错误**定位到对应题**，修改后可重试；超时/另一端回答/请求过期按真实状态处理 | **缺失（P0）** | 无任何按题定位逻辑：`QuestionAnswers.swift` grep 无 `HostClientError`；`ConversationPage.swift:636-638` 所有错误一律 `decisionNotice = .decisionFailed`（单一通用文案），用户不知道是哪一题错。终态处理 ✅ 部分：`isTerminalRequestStatus` + SSE `question-resolved`（`ConversationModel.swift:700, 734-736`）→ 退为终态。**P0 待修**：需 `resolveQuestionFailure` 按题号/字段映射 |
+| 8 | 服务器校验错误**定位到对应题**，修改后可重试；超时/另一端回答/请求过期按真实状态处理 | ✅ **已满足**（本文档此前判为「缺失（P0）」，属**陈旧结论**，本轮复核修正） | 实现：`locateQuestionValidationError`（`DLCore`）+ `ConversationPage.swift:660-671` 把错误定位到具体题并**跳到那一题**让用户就地改（`moveToQuestion` + `.questionInvalidIndexed`），定位失败才退到通用文案。**匹配用整词**（`containsWholeWord`）—— 初版用子串匹配，短 id 如 `a` 会命中 `missing_answer` 而定位到**错误的题**，已修。终态处理 ✅：`isTerminalRequestStatus` + SSE `question-resolved` 退为终态。测试 `DecisionValidationErrorTests` 6 条 |
 
 ---
 
