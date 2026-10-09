@@ -142,7 +142,9 @@ struct NewTaskPage: View {
                 }
                 Button(copy.text(.addWorkspace)) { sheet = .add }
             }
-            .searchable(text: $query)
+            // 截图模式用常量绑定：初始文字在搜索栏创建时就位。onAppear 再写入会让清除按钮
+            // 时有时无，导致 3_2_workspace 基线在重生成与对比之间来回不一致。
+            .searchable(text: staticSnapshot ? .constant(snapshotQuery) : $query)
             .navigationTitle(copy.text(.chooseWorkspace))
         case .add:
             Form {

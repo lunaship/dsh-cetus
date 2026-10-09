@@ -119,6 +119,37 @@ jobs:
             "$RUNNER_TEMP/performance/metrics" \
             "$RUNNER_TEMP/performance/summary.json"
 
+      - name: Surface failure details as annotations
+        if: failure()
+        run: |
+          set +e
+          R="$RUNNER_TEMP/performance/raw.xcresult"
+          if [ -d "$R" ]; then
+            xcrun xcresulttool get test-results tests --path "$R" > "$RUNNER_TEMP/perf-tests.json" 2>/dev/null
+            node -e '
+              const t = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+              const out = [];
+              const walk = (n, path) => {
+                const name = path ? path + "/" + n.name : n.name;
+                if (n.result === "Failed" && n.nodeType === "Test Case") {
+                  const msgs = (n.children || []).filter(c => c.nodeType === "Failure Message").map(c => c.name);
+                  out.push(name + " :: " + (msgs.join(" | ") || "failed"));
+                }
+                (n.children || []).forEach(c => walk(c, name));
+              };
+              (t.testNodes || []).forEach(n => walk(n, ""));
+              if (!out.length) out.push("no failed test case found in xcresult");
+              out.slice(0, 20).forEach(l => console.log("::error title=perf test failure::" + l.replace(/\r?\n/g, " ").slice(0, 900)));
+            ' "$RUNNER_TEMP/perf-tests.json"
+          else
+            echo "::error title=perf test failure::no xcresult bundle produced"
+          fi
+          for f in /tmp/dsh-performance-control.log /tmp/dsh-performance-append-hierarchy.txt; do
+            [ -f "$f" ] && echo "::error title=$(basename "$f")::$(head -c 900 "$f" | tr '\n' ' ')"
+          done
+          tail -c 900 "$RUNNER_TEMP/performance-plugin.log" 2>/dev/null | tr '\n' ' ' | sed 's/^/::warning title=plugin log tail::/'
+          echo
+
       - name: Upload raw performance results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

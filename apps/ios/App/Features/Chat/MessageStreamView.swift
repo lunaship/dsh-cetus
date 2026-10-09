@@ -267,8 +267,10 @@ final class MessageStreamController: UIViewController, UICollectionViewDelegateF
         guard !chrome.staticSnapshot, pinsToTail else { return }
         // C04：上翻读历史时保持锚点 —— 这是旧实现最大的问题
         // （无条件 scrollToItem 会把用户拽回底部）。
-        refreshTailState()
-        if tailTracker.policy == .hold {
+        // 首次贴底之前不读滚动位置：此时 contentOffset 还在顶部，长会话会被误判成
+        //「用户上翻」而进入 hold，结果打开会话停在最旧的消息（性能 CI 3000 条用例因此失败）。
+        if didPin { refreshTailState() }
+        if didPin, tailTracker.policy == .hold {
             // 用户在上翻读历史，期间来了新消息 → 提示，但**不**把他拽回底部。
             if !changed.isEmpty || structureChanged {
                 onNewMessagesWhileHeld?()

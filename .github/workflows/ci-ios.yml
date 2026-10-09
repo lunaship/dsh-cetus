@@ -193,6 +193,34 @@ jobs:
             -skip-testing:CetusTests/ModelsLoadTests \
             -skip-testing:CetusTests/TokenUsageTests \
             -skip-testing:CetusTests/DemoFixturesTests \
+            -resultBundlePath "$RUNNER_TEMP/screenshots.xcresult" \
             test \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Surface screenshot failures as annotations
+        if: failure()
+        run: |
+          set +e
+          R="$RUNNER_TEMP/screenshots.xcresult"
+          if [ -d "$R" ]; then
+            xcrun xcresulttool get test-results tests --path "$R" > "$RUNNER_TEMP/shot-tests.json" 2>/dev/null
+            node -e '
+              const t = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+              const out = [];
+              const walk = (n, path) => {
+                const name = path ? path + "/" + n.name : n.name;
+                if (n.result === "Failed" && n.nodeType === "Test Case") {
+                  const msgs = (n.children || []).filter(c => c.nodeType === "Failure Message").map(c => c.name);
+                  out.push(name + " :: " + (msgs.join(" | ") || "failed"));
+                }
+                (n.children || []).forEach(c => walk(c, name));
+              };
+              (t.testNodes || []).forEach(n => walk(n, ""));
+              if (!out.length) out.push("no failed test case found in xcresult");
+              console.log("::error title=failed count::" + out.length);
+              out.slice(0, 40).forEach(l => console.log("::error title=screenshot failure::" + l.replace(/\r?\n/g, " ").slice(0, 700)));
+            ' "$RUNNER_TEMP/shot-tests.json"
+          else
+            echo "::error title=screenshot failure::no xcresult bundle produced"
+          fi
