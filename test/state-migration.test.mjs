@@ -894,3 +894,84 @@ test("符号链接：指向目录内部时保留为链接本体，不复制目�
   assert.ok(st.isSymbolicLink(), "内部软链必须保留为链接，而不是被展开成文件副本")
   assertNoRealDirTouched(before)
 })
+
+// ================= §22.5 场景 9：迁移后新增设备不丢（§22.4 回滚红线）=================
+//
+// 方案 §22.4 的原文要求：「不支持反向转换就明确阻止自动回滚，提供保持新状态的
+// 修复路径；**不能让旧版从备份启动丢掉新配对**」。
+//
+// 之前这条没有测试。它守的是最危险的一类回归：迁移之后新插件又配了一台设备，
+// 此时旧备份已经落后；如果启动逻辑哪天「聪明」了一点 —— 比如看到旧目录存在就
+// 回退过去，或者按 mtime 选「更新的那个」—— 用户会**静默丢掉新配对的设备**。
+//
+// 这里验证的是：迁移完成后，无论旧目录怎么变，解析结果**永远**是规范目录，
+// 且新设备始终在结果里。
+test("场景9 迁移后新增设备：解析持续指向新目录，绝不回退到落后的旧备份", async () => {
+  const before = snapshotRealDirs()
+  const home = sandbox()
+  const src = join(home, ".dsh", PRIOR_DIR_NAME)
+  const target = join(home, ".dsh", CANONICAL_DIR_NAME)
+
+  // 迁移前：只有一台设备。
+  await writeStateDir(src, { devices: [fakeDevice("A", "dev-1")] })
+  const first = resolveStateDir({}, { home, log: () => {}, now: 1 })
+  assert.equal(first.dir, target, "迁移后必须落到规范目录")
+  assert.equal(first.ready, true)
+
+  // 迁移之后新插件又配了一台设备，并改动了推送注册。
+  const state = JSON.parse(readFileSync(join(target, "state.json"), "utf8"))
+  state.devices.push(fakeDevice("B", "dev-2"))
+  state.pairing = { lastPairedAt: 123 }
+  writeFileSync(join(target, "state.json"), JSON.stringify(state, null, 2), { mode: 0o600 })
+
+  // 此时旧备份**已经落后**（只有 dev-1）。
+  const oldState = JSON.parse(readFileSync(join(src, "state.json"), "utf8"))
+  assert.equal(oldState.devices.length, 1, "前置条件：旧备份应落后于新目录")
+
+  // 把旧备份的 mtime 推到**未来**：任何"选更新的那个"式启发都会在这里露出马脚。
+  // （单靠设备数量不够 —— 落后的备份也可能因为手工编辑而暂时变多。）
+  const future = new Date(Date.now() + 86_400_000)
+  utimesSync(join(src, "state.json"), future, future)
+
+  // 再次启动：必须仍解析到新目录，且新设备还在。
+  const second = resolveStateDir({}, { home, log: () => {}, now: 2 })
+  assert.equal(second.dir, target, "不得回退到旧备份（那会丢掉迁移后的新配对）")
+  assert.equal(second.migrated, false, "已经迁移过就不该再迁一次")
+
+  const resolved = JSON.parse(readFileSync(join(second.dir, "state.json"), "utf8"))
+  const ids = resolved.devices.map((d) => d.deviceId).sort()
+  assert.deepEqual(ids, ["dev-1", "dev-2"], "迁移后新增的设备必须仍在（§22.4 红线）")
+
+  // 旧备份保持原样，作为历史回滚点，不被静默改写。
+  const oldAfter = JSON.parse(readFileSync(join(src, "state.json"), "utf8"))
+  assert.deepEqual(oldAfter.devices.map((d) => d.deviceId), ["dev-1"], "旧备份不该被自动合并或改写")
+
+  assertNoRealDirTouched(before)
+})
+
+// 反向：即便有人**手动**把旧目录改得「更新」（mtime 更晚、设备更多），
+// 启动逻辑也不能因此改选它 —— 选源只看「是不是旧规范目录」，不看新旧程度。
+test("场景9b 旧备份被人为改成更新也不改选：不回退、不按 mtime 择优", async () => {
+  const before = snapshotRealDirs()
+  const home = sandbox()
+  const src = join(home, ".dsh", PRIOR_DIR_NAME)
+  const target = join(home, ".dsh", CANONICAL_DIR_NAME)
+
+  await writeStateDir(src, { devices: [fakeDevice("A", "dev-1")] })
+  resolveStateDir({}, { home, log: () => {}, now: 1 })
+
+  // 人为把旧备份改得「更诱人」：设备更多、mtime 更晚。
+  const lure = JSON.parse(readFileSync(join(src, "state.json"), "utf8"))
+  lure.devices.push(fakeDevice("GHOST", "ghost-1"), fakeDevice("GHOST2", "ghost-2"))
+  writeFileSync(join(src, "state.json"), JSON.stringify(lure, null, 2), { mode: 0o600 })
+
+  const again = resolveStateDir({}, { home, log: () => {}, now: 999999 })
+  assert.equal(again.dir, target, "不得按 mtime 或设备数量改选旧目录")
+  const resolved = JSON.parse(readFileSync(join(again.dir, "state.json"), "utf8"))
+  assert.deepEqual(
+    resolved.devices.map((d) => d.deviceId).sort(),
+    ["dev-1"],
+    "新目录的内容不得被旧备份污染（不拼设备数组）",
+  )
+  assertNoRealDirTouched(before)
+})
