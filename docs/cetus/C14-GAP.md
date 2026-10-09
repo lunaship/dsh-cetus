@@ -18,9 +18,12 @@
 
 | **5** | 改动摘要 `total` / `added` / `deleted` 的取数与回退 | iOS 三处都与 Android 不同，后果都是**用户可见的自相矛盾**：① `total` 无下限 → 出现「Changed 1 files」下面列 3 行；② 顶层 `added`/`deleted` 缺省时取 0（而非逐文件之和）→ 顶部 `+0 -0` 而每行都有真实数字；③ 逐文件负数未按 0 计，会抵消正常行数 | `changeCard` 对齐 `WorkspaceChanges.kt:95-99`：`total = max(总, 文件数)`；`added`/`deleted` 缺省用逐文件之和；逐文件 `max(0, …)`。同时把 `added`/`deleted` 一并从 `changeCard` 返回，让回退逻辑**只有一处**（原先 `TurnTail` 调用点另写了一份 `?? 0`） |
 
+| **6** | 单文件对比必须校验「返回的是这份文件」（§4.4） | Android 有 `diffMatchesFile`（`WorkspaceChanges.kt:53`）：`path` 不一致 → 判为不可用且**不写缓存**。**iOS 没有这条校验**，把 Host 返回的任何内容按**下标**直接写进 `fileDiffs`。摘要在「列出文件」与「请求对比」之间可能变化（新一轮改动 / SSE 增量 / 重新拉取），下标一旦错位就会把**别的文件**的差异显示在这个文件名下；更糟的是它进了缓存（`guard fileDiffs[index] == nil`），错的内容会一直留着 | `loadFileDiff` 请求前记下该下标的 `path`，返回体 `path` 不一致 → 记入 `unavailableDiffs`、**不入缓存、不重试**；`ChangesPage` 对该行显示「对比不可用」而不是一直空着。取不到期望 path 或缺返回 path 时**不误判**（保持旧行为） |
+
 配套测试：`InboxDeleteNavigationTests`（4）、`InboxOfflineReasonTests`（3）、
 `RemoteClockSkewRetryTests`（4，覆盖手机落后/超前/已对齐/补偿后对齐四种情形）、
-`RequiredFieldNormalizationTests`（4）、`ChangeCardConsistencyTests`（6）。
+`RequiredFieldNormalizationTests`（4）、`ChangeCardConsistencyTests`（6）、
+`DiffPathValidationTests`（5）。
 **并且逐条验证过这些测试是 load-bearing 的**：临时把修复注释掉后，对应的用例确实失败
 （`archivingOpenSessionPopsIt` / `archivingKeepsOtherDestinations` /
 `unauthorizedIsRejectedNotUnreachable`），确认不是永远为真的空断言。
@@ -74,5 +77,5 @@
 | 无网络 / 低电量 / 低内存 / 长会话 / 巨大代码块 | **未做**：属于性能与真机场景，本地无法构造（模拟器在本环境也起不来） |
 | 自动更新入口、安装说明、隐私文档重命名后不指向失效地址 | 插件侧白名单已过渡期兼容新旧仓库（`dfaa13c5`）；文档域名迁移未启动 |
 | 配对流程的阶段语义 | **已对照**（本轮，见下节） |
-| 文件与改动的路径/范围/统计/权限 | **统计已对齐**（本轮，见下表 #5）；路径规范化与权限差异仍**未对照** |
+| 文件与改动的路径/范围/统计/权限 | **统计与对比归属已对齐**（见下表 #5、#6）；路径规范化形式与权限差异仍**未对照** |
 | 更名后两端行为 | **部分**：插件白名单过渡期已兼容；两端文案与安装身份未逐项比 |
