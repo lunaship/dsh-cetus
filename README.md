@@ -1,6 +1,8 @@
 <div align="center">
-  <img src="apps/android/store/playstore-icon-512.png" width="100" height="100" alt="Cetus Logo" />
-  <h1>Cetus</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/brand/cetus-horizontal-white-transparent.svg" />
+    <img src="docs/images/brand/cetus-horizontal-black-transparent.svg" width="300" alt="Cetus" />
+  </picture>
   <p><b>DeepSeek Harness 的手机端</b> · 任务收件箱 · 局域网配对 · 原生 Android 与 iOS 工作台</p>
 
   <p>
