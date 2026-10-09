@@ -68,3 +68,41 @@ import Testing
         #expect(form.answerBody?.answers.count == 1)
     }
 }
+
+// MARK: - C14：两端 optional/required 语义必须一致
+
+@Suite struct RequiredFieldNormalizationTests {
+    private func decode(_ json: String) throws -> ClarifyingQuestion {
+        try JSONDecoder().decode(ClarifyingQuestion.self, from: Data(json.utf8))
+    }
+
+    /// 插件与 Android 都把 `required: false` 当作可选。iOS 之前只看 `optional`，
+    /// 同一道题在 Android 能跳过、在 iOS 卡住 —— 这是两端语义不一致。
+    @Test("required=false 等价于可选")
+    func requiredFalseMeansOptional() throws {
+        let question = try decode(#"{"id":"q1","question":"题","kind":"text","required":false}"#)
+        #expect(question.optional == true)
+    }
+
+    /// `required: true` 不能把显式的 `optional: true` 覆盖掉。
+    @Test("显式 optional 优先于 required")
+    func explicitOptionalWins() throws {
+        let question = try decode(
+            #"{"id":"q1","question":"题","kind":"text","optional":true,"required":true}"#)
+        #expect(question.optional == true)
+    }
+
+    /// 两者都没给时保持未指定，沿用既有「必填」判定。
+    @Test("未给任何字段时不做推断")
+    func absentStaysUnspecified() throws {
+        let question = try decode(#"{"id":"q1","question":"题","kind":"text"}"#)
+        #expect(question.optional == nil)
+    }
+
+    /// `required: true` 单独出现也不应被当成可选。
+    @Test("required=true 不产生 optional")
+    func requiredTrueStaysRequired() throws {
+        let question = try decode(#"{"id":"q1","question":"题","kind":"text","required":true}"#)
+        #expect(question.optional == nil)
+    }
+}

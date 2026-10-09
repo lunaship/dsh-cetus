@@ -150,6 +150,44 @@ public struct ClarifyingQuestion: Codable, Equatable, Sendable {
         self.multiple = multiple
         self.optional = optional
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, header, question, options, kind, multiple, optional, required
+    }
+
+    /// 解码时把 `required: false` 归一成 `optional: true`。
+    ///
+    /// 插件的 `src/question-answers.js:70` 已经这么归（`optional || required === false`），
+    /// Android 也这么归（`QuestionAnswers.kt:63`），**只有 iOS 之前只看 `optional`**。
+    /// 于是同一道题在 Android 可跳过、在 iOS 被当成必填而卡住提交。
+    /// 目前插件在出口处归一，所以线上没暴露；但这属于「两端语义必须一致」的合同，
+    /// 不能依赖上游永远替我们归。
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+        header = try container.decodeIfPresent(String.self, forKey: .header)
+        question = try container.decodeIfPresent(String.self, forKey: .question)
+        options = try container.decodeIfPresent([QuestionOption].self, forKey: .options)
+        kind = try container.decodeIfPresent(String.self, forKey: .kind)
+        multiple = try container.decodeIfPresent(Bool.self, forKey: .multiple)
+        let explicitOptional = try container.decodeIfPresent(Bool.self, forKey: .optional)
+        let required = try container.decodeIfPresent(Bool.self, forKey: .required)
+        // 显式 `optional` 优先；否则 `required == false` 等价于可选。
+        optional = explicitOptional ?? (required == false ? true : nil)
+    }
+
+    /// 自定义解码后必须补上编码：合成实现已随 `init(from:)` 一起消失。
+    /// 输出 `optional`（不写 `required`），与插件归一后的形状一致。
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(id, forKey: .id)
+        try container.encodeIfPresent(header, forKey: .header)
+        try container.encodeIfPresent(question, forKey: .question)
+        try container.encodeIfPresent(options, forKey: .options)
+        try container.encodeIfPresent(kind, forKey: .kind)
+        try container.encodeIfPresent(multiple, forKey: .multiple)
+        try container.encodeIfPresent(optional, forKey: .optional)
+    }
 }
 
 /// 澄清选项：线上是裸字符串或 `{ id?, label?, value? }` 对象。
