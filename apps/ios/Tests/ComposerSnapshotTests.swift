@@ -48,6 +48,12 @@ import XCTest
     private var question: RequestMessage {
         RequestMessage(
             id: "q", role: "question", text: "Which file should change?", questionRpcId: "rpc-1",
+            // 设计稿 4.4：两道题，第一道可选、带三个选项，截图里要看到选项列表与「跳过 / 下一题」。
+            questionPayloadJson: #"""
+                [{"id":"q1","question":"每台设备每分钟上限设成多少？","optional":true,
+                "options":[{"label":"60 次"},{"label":"120 次"},{"label":"不限"}]},
+                {"id":"q2","question":"超出上限时怎么提示？"}]
+                """#,
             requestStatus: .pending)
     }
 
