@@ -28,7 +28,9 @@ import XCTest
         NavigationStack {
             ConversationPage(
                 model: model(kind, language: language), staticSnapshot: true, pinsToTail: pinsToTail,
-                showsStatusSlot: false)
+                showsStatusSlot: false,
+                // 设计稿 4.1：运行中截图带上输入区（模型 / 权限胶囊与圆形发送按钮）。
+                showsComposer: kind == .running ? true : nil)
         }
     }
 
