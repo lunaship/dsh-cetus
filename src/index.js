@@ -1336,6 +1336,29 @@ function findApprovalId(req) {
   return req?.id ?? req?.approvalId ?? req?.payload?.id ?? null
 }
 
+/**
+ * 端口被占时的可操作诊断（方案 §22.1 第 5 步）。
+ *
+ * 插件从 `dsh-links` 改名到 `dsh-cetus` 期间，用户 profile 里**可能同时存在新旧
+ * 两个 id 的条目**。两个实例都会去 bind 同一个端口，后启动的那个拿到
+ * `EADDRINUSE`。裸错误信息看不出这一点，用户会以为插件坏了。
+ *
+ * 这里只做**诊断**，不做任何自动处置（不杀进程、不改端口）—— 抢端口的另一端
+ * 可能正是用户正在用的旧实例，贸然处理会把他的会话打断。
+ *
+ * @returns 命中端口冲突时返回提示文本，否则返回 null。
+ */
+export function portConflictHint(err, port) {
+  const code = err?.code ?? err?.errno
+  if (code !== "EADDRINUSE") return null
+  return [
+    `端口 ${port} 已被占用。`,
+    "最常见的原因是**新旧两个插件 id 同时启用**（改名过渡期），另一个实例已经在监听该端口。",
+    "处理建议：在 DSH 里禁用重复的那个插件条目，然后重启 host；",
+    "若确认是其它程序占用，可在插件配置里改 port。",
+  ].join("\n")
+}
+
 export function apply(ctx, config) {
   const rt = createRuntime(config)
   // 可选服务：旧 Host 没有 workspaceChanges，不能进 inject（会阻止插件加载），按请求取。
@@ -2058,7 +2081,14 @@ export function apply(ctx, config) {
   }).catch((err) => {
     readiness.phase = "failed"
     readiness.error = String(err?.message ?? err)
-    ctx.logger.warn(`dsh-cetus: 手机接入代理启动失败（${readiness.error}），配对面板保持不可用`)
+    // 方案 §22.1 第 5 步点名的风险：插件改名前后**新旧 id 可能被同时启用**，
+    // 两个实例会抢同一个端口。此时 Node 只抛一句 `listen EADDRINUSE`，
+    // 用户看不出是"另一个实例在跑"还是"别的程序占了端口"——这正是最需要知道的事。
+    const hint = portConflictHint(err, config.port)
+    ctx.logger.warn(
+      hint
+        ? `dsh-cetus: 手机接入代理启动失败（${readiness.error}），配对面板保持不可用\n${hint}`
+        : `dsh-cetus: 手机接入代理启动失败（${readiness.error}），配对面板保持不可用`)
     throw err
   })
   // 宿主未必 await 该 promise：挂 no-op catch 避免 unhandled rejection；宿主自行处理 ready 不受影响。
