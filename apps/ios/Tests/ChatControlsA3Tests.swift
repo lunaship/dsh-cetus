@@ -255,3 +255,138 @@ private actor ScriptedConversationService: ConversationServing {
         if clearError { throw ConversationServiceError.failed }
     }
 }
+
+// MARK: - T15：连续加载三页历史
+
+/// 方案的 T15 要求「连续加载三页历史 → 不重复，位置稳定，失败可重试」。
+///
+/// 此前只有**单页**用例。三页连拉才会暴露游标问题：如果 `nextBeforeSeq`
+/// 没有随每页前进（或 `hasOlder` 没被正确置位），第二页会重复请求同一段，
+/// 表现为列表里出现重复消息、或"点了没反应"。
+///
+/// 这里用按游标返回不同页的服务，逐页断言：请求的游标在前进、消息不重复、
+/// 顺序保持、最后一页正确停止。
+@MainActor @Suite(.serialized) struct MultiPageHistoryTests {
+    /// 按 `beforeSeq` 返回对应的一页，模拟真实分页。
+    private actor PagingService: ConversationServing {
+        var requestedBefore: [Int?] = []
+        func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse {
+            _ = sessionID
+            requestedBefore.append(beforeSeq)
+            switch beforeSeq {
+            case nil:
+                // 尾页：seq 30 起。
+                return HistoryResponse(
+                    messages: [HistoryMessage(id: "m30", role: "user", kind: .user, text: "现在")],
+                    hasMore: true, nextBeforeSeq: 20, maxSeq: 30)
+            case 20:
+                return HistoryResponse(
+                    messages: [
+                        HistoryMessage(id: "m20", role: "user", kind: .user, text: "较早"),
+                        HistoryMessage(id: "m19", role: "user", kind: .user, text: "更早一点"),
+                    ],
+                    hasMore: true, nextBeforeSeq: 10, maxSeq: 29)
+            case 10:
+                return HistoryResponse(
+                    messages: [HistoryMessage(id: "m10", role: "user", kind: .user, text: "最早")],
+                    hasMore: false, nextBeforeSeq: nil, maxSeq: 29)
+            default:
+                // 不该被请求：说明游标没前进。
+                return HistoryResponse(messages: [], hasMore: false, nextBeforeSeq: nil, maxSeq: 29)
+            }
+        }
+    }
+
+    private func makeModel(_ service: PagingService) -> ConversationModel {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        return ConversationModel(
+            hostID: "host", sessionID: "session", service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+    }
+
+    @Test func threePagesLoadWithoutDuplicates() async throws {
+        let service = PagingService()
+        let model = makeModel(service)
+
+        // 第一页（尾页由 seed 提供，模拟已加载）。
+        model.seedForTest(
+            messages: [
+                HistoryMessage(id: "m30", role: "user", kind: .user, text: "现在")
+            ], hasOlder: true, beforeSeq: 20)
+
+        await model.loadOlder()
+        #expect(model.messages.map(\.id) == ["m20", "m19", "m30"], "第二页应前插且顺序正确")
+
+        await model.loadOlder()
+        #expect(model.messages.map(\.id) == ["m10", "m20", "m19", "m30"], "第三页应继续前插")
+
+        // 游标必须一路前进，不能重复请求同一段。
+        let asked = await service.requestedBefore
+        #expect(asked == [20, 10], "游标应 20 → 10 前进，实际 \(asked)")
+
+        // 没有更早的了 → 再点不应发请求。
+        #expect(!model.hasOlder)
+        await model.loadOlder()
+        let after = await service.requestedBefore
+        #expect(after == [20, 10], "hasOlder=false 后不应再请求，实际 \(after)")
+    }
+
+    /// 每页都不重复：三页合并后 ID 唯一。
+    @Test func mergedPagesHaveUniqueIDs() async {
+        let service = PagingService()
+        let model = makeModel(service)
+        model.seedForTest(
+            messages: [
+                HistoryMessage(id: "m30", role: "user", kind: .user, text: "现在")
+            ], hasOlder: true, beforeSeq: 20)
+        await model.loadOlder()
+        await model.loadOlder()
+        let ids = model.messages.map(\.id)
+        #expect(Set(ids).count == ids.count, "合并后出现重复消息：\(ids)")
+    }
+
+    /// 中途失败后重试必须从**同一个**游标继续，而不是跳过一页。
+    @Test func failureThenRetryKeepsCursor() async {
+        let service = FlakyPagingService()
+        let model = makeModel2(service)
+        await model.loadOlder()
+        #expect(model.olderFailed, "首次应失败")
+        // 游标不被失败推进。
+        await model.loadOlder()
+        let asked = await service.requestedBefore
+        #expect(asked == [20, 20], "重试必须用同一游标，实际 \(asked)")
+        #expect(model.messages.contains { $0.id == "m20" }, "重试成功后应拿到该页")
+    }
+
+    private actor FlakyPagingService: ConversationServing {
+        var requestedBefore: [Int?] = []
+        private var first = true
+        func history(sessionID: String, beforeSeq: Int?) async throws -> HistoryResponse {
+            _ = sessionID
+            requestedBefore.append(beforeSeq)
+            if first {
+                first = false
+                throw ConversationServiceError.failed
+            }
+            return HistoryResponse(
+                messages: [HistoryMessage(id: "m20", role: "user", kind: .user, text: "较早")],
+                hasMore: true, nextBeforeSeq: 10, maxSeq: 29)
+        }
+    }
+
+    private func makeModel2(_ service: FlakyPagingService) -> ConversationModel {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        let model = ConversationModel(
+            hostID: "host", sessionID: "session", service: service,
+            box: TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory),
+            prepared: PreparedTranscript(messages: [], running: false), autostart: false)
+        model.seedForTest(
+            messages: [
+                HistoryMessage(id: "m30", role: "user", kind: .user, text: "现在")
+            ], hasOlder: true, beforeSeq: 20)
+        return model
+    }
+}
