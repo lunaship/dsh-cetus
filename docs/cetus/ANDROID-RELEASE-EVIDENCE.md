@@ -18,10 +18,10 @@
 
 | 项 | 值 |
 |---|---|
-| 构建提交 | **`0c76eed7`** |
-| 工作树 | **干净**（**无** `-dirty`，实测） |
-| 产物路径 | `.local/release-builds/0.5.0-beta.31-0c76eed7/cetus-android-0.5.0-beta.31-0c76eed7.apk` |
-| APK SHA-256 | `053c0a76940247049372afa125d74ac1b616a13d2326f095c9ba1d015ac32fe0` |
+| 构建提交 | **`f11f0a08`**（含本轮 `enableV3Signing` 提交） |
+| 工作树 | **干净**（`git status --porcelain` 为空，实测） |
+| 产物路径 | `.local/release-builds/0.5.0-beta.31-f11f0a08/cetus-android-0.5.0-beta.31-f11f0a08.apk` |
+| APK SHA-256 | `7f8d2e7a032652efb7e3550f6d2fd9e53ca0c738472667b47121575d974cf17d` |
 | APK 大小 | `6 991 187` bytes |
 | mapping.txt SHA-256 | `0b9fed3e5cacb5478daf4d0c4d432319ae27f4db4ab80bca291ef99a7d916952` |
 | 签名证书 SHA-256 | `38f71adf8b67d81042c99a3ec0dfdafb4303dd31e3fc491068ccd534cb482a47` |
@@ -35,6 +35,8 @@
 |---|---|---|
 | `0.5.0-beta.31-3728131d` | `f3916ec9…00ca8` | `BUILD_COMMIT=3728131d-dirty`（脏树） |
 | `0.5.0-beta.31-a91562ae` | `7e971310…39779` | 干净树，但**只有 v2 签名** |
+
+（本轮先产出过一份 `0c76eed7-dirty` 的中间产物，已删除 —— 见 §0.3。）
 
 ### 0.0 本轮为什么重建（两件事一起做）
 
@@ -52,14 +54,30 @@
 APK 里嵌了 `BuildConfig.BUILD_COMMIT`，直接从产物读出来即可核对：
 
 ```sh
-APK=.local/release-builds/0.5.0-beta.31-0c76eed7/cetus-android-0.5.0-beta.31-0c76eed7.apk
-unzip -p "$APK" classes.dex | strings | grep -c 0c76eed7
-# → 2   （BUILD_COMMIT 已按当前提交写入）
-git status --porcelain | wc -l    # → 0（构建时工作树干净）
+APK=.local/release-builds/0.5.0-beta.31-f11f0a08/cetus-android-0.5.0-beta.31-f11f0a08.apk
+# 精确匹配整个 token，别用子串 —— `grep -c f11f0a08` 也会命中 `f11f0a08-dirty`，
+# 那样即使产物来自脏树也会"通过"。（本文件初版就犯过这个错，见 §0.3。）
+unzip -p "$APK" classes.dex | strings \
+  | grep -oE '\b[0-9a-f]{8}(-dirty)?\b' | sort -u | grep -E '^f11f0a08'
+# → f11f0a08        （没有 -dirty 后缀）
 ```
 
-`BUILD_COMMIT` 由 `build-metadata.mjs` 从 `git rev-parse` 注入，工作树脏时带 `-dirty`；
-本产物实测**不含** `-dirty`。
+`BUILD_COMMIT` 由 `build-metadata.mjs` 从 `git rev-parse` 注入，工作树脏时带 `-dirty`。
+
+### 0.3 一次自查纠正（留档）
+
+本节初版写的是「工作树干净、无 `-dirty`」，并附了一条检查：
+
+```sh
+unzip -p "$APK" classes.dex | strings | grep -c 0c76eed7     # → 2 ❌
+```
+
+**这条检查是错的**：`grep -c` 是**子串**匹配，`0c76eed7-dirty` 同样命中，
+所以它在产物来自**脏树**时也会"通过"。而那次构建确实是在**提交前**跑的
+（`build.gradle.kts` 的改动还没提交），产物实际是 `0c76eed7-dirty`。
+
+改正方式不是改文档措辞，而是**在干净树上重新构建**（现在 HEAD = `f11f0a08`），
+并换成上面的精确匹配。脏树产物已从 `.local/` 删除，避免误用。
 
 ### 0.2 签名方案：**只有 v2**（发现，未修）
 
