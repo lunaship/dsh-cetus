@@ -119,13 +119,14 @@ final class PerformanceLaunchTests: XCTestCase {
     }
 
     private static func hierarchySummary(_ app: XCUIApplication) -> String {
-        let ids = app.descendants(matching: .any).allElementsBoundByIndex.prefix(400)
-            .compactMap { e -> String? in
-                let id = e.identifier, label = e.label
-                if id.isEmpty && label.isEmpty { return nil }
-                return "\(e.elementType.rawValue):\(id.isEmpty ? "-" : id)/\(String(label.prefix(24)))"
-            }
-        return "elements(\(ids.count))=" + ids.prefix(60).joined(separator: ", ")
+        var parts: [String] = []
+        for element in app.descendants(matching: .any).allElementsBoundByIndex.prefix(400) {
+            let id = element.identifier
+            let label = element.label
+            if id.isEmpty && label.isEmpty { continue }
+            parts.append("\(element.elementType.rawValue):\(id.isEmpty ? "-" : id)/\(String(label.prefix(24)))")
+        }
+        return "elements(\(parts.count))=" + parts.prefix(60).joined(separator: ", ")
     }
 
     private func waitForFreshQR(_ path: String) throws {
