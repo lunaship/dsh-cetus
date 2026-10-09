@@ -2279,6 +2279,23 @@
         }
       }
     },
+    "chat.questionOwnAnswer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write your own answer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自己写答案"
+          }
+        }
+      }
+    },
     "chat.questionPrevious": {
       "extractionState": "manual",
       "localizations": {
@@ -6767,6 +6784,23 @@
         }
       }
     },
+    "pairing.scanPhoto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose from Photos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从相册选择"
+          }
+        }
+      }
+    },
     "pairing.scanPreview": {
       "extractionState": "manual",
       "localizations": {
@@ -7260,6 +7294,23 @@
         }
       }
     },
+    "pairing.torch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flashlight"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手电筒"
+          }
+        }
+      }
+    },
     "pairing.waitBody": {
       "extractionState": "manual",
       "localizations": {
@@ -7392,6 +7443,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "就这个文件提问"
+          }
+        }
+      }
+    },
+    "review.askHunk": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask about this hunk"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就这段提问"
           }
         }
       }
@@ -9130,6 +9198,23 @@
         }
       }
     },
+    "settings.listSeparator": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", "
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "、"
+          }
+        }
+      }
+    },
     "settings.liveActivity": {
       "extractionState": "manual",
       "localizations": {
@@ -9317,6 +9402,23 @@
         }
       }
     },
+    "settings.notifyOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
     "settings.notifyQuestion": {
       "extractionState": "manual",
       "localizations": {
@@ -9330,6 +9432,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "需要回答时"
+          }
+        }
+      }
+    },
+    "settings.notifyShortApproval": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approvals"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "审批"
+          }
+        }
+      }
+    },
+    "settings.notifyShortDone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "settings.notifyShortFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failures"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失败"
+          }
+        }
+      }
+    },
+    "settings.notifyShortQuestion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questions"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提问"
           }
         }
       }
