@@ -13,8 +13,8 @@
 
 | 判定 | 数量 | 含义 |
 |---|---|---|
-| **已验（本地/CI）** | 28 | 有单测/集成测试或 CI 门禁直接覆盖 |
-| **部分** | 12 | 有代码与部分测试，但缺关键一半（如只测了双端之一，或只验了负例） |
+| **已验（本地/CI）** | 29 | 有单测/集成测试或 CI 门禁直接覆盖 |
+| **部分** | 11 | 有代码与部分测试，但缺关键一半（如只测了双端之一，或只验了负例） |
 | **未验证** | 6 | 需真机 / 真实 APNs / Apple 账号 / 24h 观测 |
 | 合计 | 46 | — |
 
@@ -73,7 +73,7 @@
 | T42 iOS 同 ID 升级/新 ID 安装 | 部分 | Debug/Release bundle id 已分离（C16）；`IOSBundleIdentifierTests` 断言 Debug 保持历史值。**缺**真机容器与签名核对 |
 | T43 旧 QR/旧 API/旧深链/加密向量 | 已验 | `test/v1-contract-freeze.test.mjs` 钉住 `dlpush/1` 字节、TLS CN、`/dsh-link/` 前缀；双 scheme（`deeplinks://` + `cetus://`）已实现并有测试 |
 | T44 旧版更新器→新仓库资产 | 已验 | `UpdateCheckTest` 过渡期同时接受新旧仓库，含 `dsh-links-evil` 相似前缀防护 |
-| T45 profile 迁移/新旧插件重复启用 | 部分 | 端口冲突诊断已补（`port-conflict.test.mjs`）；profile 条目迁移**判定为维护者事项**（插件写 host 配置属越界）。**缺**假 profile 端到端 |
+| T45 profile 迁移/新旧插件重复启用 | 已验 | **本轮补强**：① 端口冲突诊断（`port-conflict.test.mjs`，含「不得含自动处置」断言）；② profile 迁移**只读助手** `scripts/profile-migrate.mjs` —— 用假 profile 端到端跑通：识别旧条目、列出会保留的 port/stateDir/autoApprove、敏感键脱敏、双 id 并存时警告抢端口，10 条测试。**写入不由插件执行**（越界），属维护者步骤且已在输出中写明 |
 | T46 24 小时运行+迁移后回滚 | 部分 | 回滚侧：`STATE-MIGRATION.md` §6 可执行手册 + 沙箱实测 + §22.5 场景 9 用例。**缺** 24 小时 soak（本环境无法长时间独占运行） |
 
 ---
