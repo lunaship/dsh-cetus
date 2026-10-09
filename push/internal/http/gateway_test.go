@@ -307,3 +307,83 @@ func (s scriptedSender) Send(ctx context.Context, req apns.Request) (apns.Result
 	}
 	return res, nil
 }
+
+// RFC 0002 §5.6 把「payload 顶层只有 aps / e / k」定为**硬性**约束：
+// 多一个字段就多一份锁屏可见面（deviceId / sessionId / 标题原文 / 工具名
+// 都会因此暴露给 APNs 与通知中心）。
+//
+// 之前没有任何测试盯着这条 —— 谁顺手加个字段都不会被发现。这里按
+// "允许清单" 断言，而不是检查黑名单字段：新增字段必须显式改这个测试，
+// 从而强制过一次 RFC §5.6 的复查。
+func TestAlertPayloadTopLevelIsExactlyApsEK(t *testing.T) {
+	contentCt := base64.StdEncoding.EncodeToString([]byte("plugin-content-ciphertext"))
+	var seen map[string]json.RawMessage
+	fake := http.NewServeMux()
+	fake.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "read", http.StatusInternalServerError)
+			return
+		}
+		if err := json.Unmarshal(raw, &seen); err != nil {
+			http.Error(w, "decode", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(fake)
+	t.Cleanup(srv.Close)
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender := apns.NewTokenSender(
+		&token.Token{AuthKey: key, KeyID: "KEYID", TeamID: "TEAMID"}, "TEAMID",
+		"dev.deeplinks.ios", strings.TrimPrefix(srv.URL, "http://"))
+	sender.SetTestClient(srv.Client(), "http")
+	gw, sealed := testGateway(t, sender)
+
+	body, err := json.Marshal(PushRequest{
+		Kid: sealed.Kid, Sealed: sealed, Kind: "alert", Ct: contentCt, ExpiresIn: 60,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := postRaw(t, gw.Handle(), body); rec.Code != http.StatusOK {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+
+	allowed := map[string]bool{"aps": true, "e": true, "k": true}
+	for field := range seen {
+		if !allowed[field] {
+			t.Errorf(
+				"payload 顶层出现额外字段 %q —— RFC 0002 §5.6 只允许 aps/e/k；"+
+					"新增字段会扩宽锁屏可见面，必须显式更新本条测试与 RFC", field)
+		}
+	}
+	for field := range allowed {
+		if _, ok := seen[field]; !ok {
+			t.Errorf("payload 顶层缺少必需字段 %q", field)
+		}
+	}
+
+	// 顺带钉住 §5.6 的另外两条：aps 必须带 mutable-content（否则 NSE 不会运行），
+	// 且 alert 文本是通用文案，不得包含业务内容。
+	var aps struct {
+		Alert struct {
+			Title string `json:"title"`
+			Body  string `json:"body"`
+		} `json:"alert"`
+		MutableContent int `json:"mutable-content"`
+	}
+	if err := json.Unmarshal(seen["aps"], &aps); err != nil {
+		t.Fatal(err)
+	}
+	if aps.MutableContent != 1 {
+		t.Errorf("aps.mutable-content = %d, want 1（NSE 需要它才会被拉起）", aps.MutableContent)
+	}
+	if aps.Alert.Title != "cetus" || aps.Alert.Body != "有新的任务动态" {
+		t.Errorf("锁屏回退文案应为通用文案，实际 title=%q body=%q", aps.Alert.Title, aps.Alert.Body)
+	}
+}
