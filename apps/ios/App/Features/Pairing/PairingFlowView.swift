@@ -12,6 +12,7 @@ struct PairingFlowView: View {
     var onPaired: (String) -> Void = { _ in }
     @State private var scanning = false
     @State private var pickingPhoto = false
+    @State private var scanPickingPhoto = false
     @State private var photo: PhotosPickerItem?
     @State private var readingPhoto = false
     @State private var demo = false
@@ -45,7 +46,15 @@ struct PairingFlowView: View {
                             scanning = false
                             model.showFailure(failure)
                         }),
-                    hint: model.scanHint, close: { scanning = false })
+                    hint: model.scanHint, close: { scanning = false },
+                    photo: { scanPickingPhoto = true }
+                )
+                // 设计稿 1.3：扫码页底部「从相册选择」。选择器挂在扫码页上（全屏覆盖层里才能弹出），
+                // 选中后关掉扫码页，交给下面同一个 `.task(id: photo)` 识别。
+                .photosPicker(isPresented: $scanPickingPhoto, selection: $photo, matching: .images)
+                .onChange(of: photo) { _, picked in
+                    if picked != nil { scanning = false }
+                }
             }
             .alert(copy.text(.sameNameTitle), isPresented: conflictPresented) {
                 Button(copy.text(.replace), role: .destructive) { model.replace() }
