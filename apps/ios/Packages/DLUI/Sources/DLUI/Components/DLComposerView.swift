@@ -298,6 +298,9 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public override func layoutSubviews() {
         super.layoutSubviews()
         guard abs(bounds.width - lastMetricsWidth) > 0.5 else { return }
+        // 先把内部子视图排好，编辑器拿到本轮的真实宽度再量高；否则偶尔量到旧宽度（或 0）后
+        // lastMetricsWidth 已更新、不再重量，输入区高度在截图之间来回差 16pt。
+        glass.layoutIfNeeded()
         updateEditorHeight()
         refreshMetrics()
     }
