@@ -14,6 +14,21 @@ public struct ComposerSuggestion: Equatable {
     }
 }
 
+/// 设计稿 4.1：输入区底部的模型 / 权限胶囊。点按交给宿主打开对应面板。
+public struct ComposerChip: Equatable {
+    public var id: String
+    public var title: String
+    public var systemImage: String
+    public var accessibilityLabel: String
+
+    public init(id: String, title: String, systemImage: String, accessibilityLabel: String) {
+        self.id = id
+        self.title = title
+        self.systemImage = systemImage
+        self.accessibilityLabel = accessibilityLabel
+    }
+}
+
 /// 硬件键盘合同需要追踪 Shift 是否按下（Return 发送、Shift-Return 换行）；
 /// 文本输入路径不暴露修饰键，所以在 responder 链上记一下。
 ///
@@ -50,6 +65,10 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var onDraft: ((String) -> Void)?
     public var onDecisionSecondary: (() -> Void)?
     public var onDecisionPrimary: (() -> Void)?
+    /// 设计稿 4.4：点选项（交回选项值）。
+    public var onDecisionChoice: ((String) -> Void)?
+    /// 设计稿 4.4：自由回答输入框的文字变化。
+    public var onDecisionAnswer: ((String) -> Void)?
     public var onSuggestion: ((String) -> Void)?
     public var onAttach: (() -> Void)?
 
@@ -60,6 +79,17 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             refreshMetrics()
         }
     }
+
+    /// 设计稿 4.1：模型 / 权限胶囊，排在附件按钮和发送按钮之间。
+    public var chips: [ComposerChip] = [] {
+        didSet {
+            guard didFinishInit, chips != oldValue else { return }
+            rebuildChips()
+            refreshMetrics()
+        }
+    }
+
+    public var onChip: ((String) -> Void)?
 
     public var showsAttachButton = false {
         didSet {
@@ -100,7 +130,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var placeholder = "" {
         didSet {
             placeholderLabel.text = placeholder
-            placeholderLabel.isHidden = !placeholder.isEmpty || !(field.text ?? "").isEmpty
+            updatePlaceholderVisibility()
         }
     }
 
@@ -121,6 +151,25 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private let editorHeight: NSLayoutConstraint
     private let sendButton: UIButton
     private let attachButton = UIButton(type: .system)
+    /// 设计稿 4.4：提问卡里的自由回答输入框。全生命周期一个实例，切题重装时保留焦点。
+    private let answerField: UITextField = {
+        let field = UITextField()
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.textColor = DLUIKitColor.label
+        field.borderStyle = .none
+        field.clearButtonMode = .whileEditing
+        field.returnKeyType = .done
+        let pencil = UIImageView(image: UIImage(systemName: "pencil"))
+        pencil.tintColor = DLUIKitColor.tertiaryLabel
+        pencil.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .body)
+        pencil.contentMode = .center
+        pencil.frame = CGRect(x: 0, y: 0, width: 28, height: 24)
+        field.leftView = pencil
+        field.leftViewMode = .always
+        field.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        return field
+    }()
     private let placeholderLabel: UILabel = {
         let label = UILabel()
         label.font = .preferredFont(forTextStyle: .body)
@@ -128,6 +177,14 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         label.adjustsFontForContentSizeCategory = true
         label.isHidden = true
         return label
+    }()
+
+    private let chipStack: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 6
+        return stack
     }()
 
     private let suggestionStack: UIStackView = {
@@ -165,7 +222,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         case composer
         case decision(
             status: String, question: String, command: String?, secondaryTitle: String, primaryTitle: String,
-            positionText: String?, notice: String?)
+            positionText: String?, notice: String?, answer: DecisionAnswerInput?)
     }
 
     private enum Installed: Equatable {
@@ -177,7 +234,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         self.sendTitle = sendTitle
         self.mirrorText = text
         editorHeight = field.heightAnchor.constraint(equalToConstant: Self.editorMinimumHeight)
-        sendButton = dlBarButton(title: sendTitle, prominent: true, enabled: isEnabled) {}
+        sendButton = dlRoundSendButton(title: sendTitle, enabled: isEnabled)
         super.init(frame: .zero)
 
         glass.translatesAutoresizingMaskIntoConstraints = false
@@ -192,6 +249,13 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         configureEditor()
         configureChrome()
         configurePlaceholder()
+        answerField.addAction(
+            UIAction { [weak self] _ in
+                guard let self else { return }
+                self.onDecisionAnswer?(self.answerField.text ?? "")
+            }, for: .editingChanged)
+        answerField.addAction(
+            UIAction { [weak self] _ in self?.answerField.resignFirstResponder() }, for: .editingDidEndOnExit)
         didFinishInit = true
         showComposer(animated: false)
     }
@@ -203,9 +267,10 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         // placeholder 叠在 field 上（同位置，不占额外空间）
         field.addSubview(placeholderLabel)
         NSLayoutConstraint.activate([
-            placeholderLabel.topAnchor.constraint(equalTo: field.topAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 4),
-            placeholderLabel.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -4),
+            // 与 textContainerInset（上 8）和 lineFragmentPadding（5）对齐，提示与光标同一位置。
+            placeholderLabel.topAnchor.constraint(equalTo: field.topAnchor, constant: 8),
+            placeholderLabel.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 5),
+            placeholderLabel.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -5),
         ])
     }
 
@@ -248,6 +313,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         command: String? = nil,
         positionText: String? = nil,
         notice: String? = nil,
+        answer: DecisionAnswerInput? = nil,
         animated: Bool
     ) {
         mode = .decision(
@@ -257,7 +323,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             secondaryTitle: secondaryTitle,
             primaryTitle: primaryTitle,
             positionText: positionText,
-            notice: notice
+            notice: notice,
+            answer: answer
         )
         applyMode(animated: animated)
     }
@@ -284,7 +351,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         mirrorText = current
         updateEditorHeight()
         refreshMetrics()
-        placeholderLabel.isHidden = !placeholder.isEmpty && current.isEmpty ? false : true
+        updatePlaceholderVisibility()
         // 程序下推的文本不回声，避免 SwiftUI ↔ UIKit 回调死循环。
         guard !isApplyingExternalText else { return }
         onDraft?(current)
@@ -332,13 +399,53 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         attachButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         attachButton.isHidden = !showsAttachButton
 
-        let row = UIStackView(arrangedSubviews: [attachButton, field, sendButton])
-        row.axis = .horizontal
-        row.alignment = .bottom
-        row.spacing = 8
+        // 设计稿 4.1：编辑器独占一行；下面一行是 附件 · 模型 / 权限胶囊 · 圆形发送。
+        chipStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        chipStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        chipStack.isHidden = chips.isEmpty
+        let spacer = UIView()
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        let tools = UIStackView(arrangedSubviews: [attachButton, chipStack, spacer, sendButton])
+        tools.axis = .horizontal
+        tools.alignment = .center
+        tools.spacing = 8
 
         composerRoot.addArrangedSubview(suggestionStack)
-        composerRoot.addArrangedSubview(row)
+        composerRoot.addArrangedSubview(field)
+        composerRoot.addArrangedSubview(tools)
+    }
+
+    private func rebuildChips() {
+        for view in chipStack.arrangedSubviews {
+            chipStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        chipStack.isHidden = chips.isEmpty
+        for chip in chips {
+            var config = UIButton.Configuration.gray()
+            config.title = chip.title
+            config.image = UIImage(systemName: chip.systemImage)
+            config.imagePadding = 4
+            config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(textStyle: .footnote)
+            config.cornerStyle = .capsule
+            config.baseForegroundColor = DLUIKitColor.label
+            config.titleLineBreakMode = .byTruncatingTail
+            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
+            config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+                var outgoing = incoming
+                outgoing.font = UIFont.preferredFont(forTextStyle: .footnote)
+                return outgoing
+            }
+            let id = chip.id
+            let button = UIButton(
+                configuration: config, primaryAction: UIAction { [weak self] _ in self?.onChip?(id) })
+            button.accessibilityLabel = chip.accessibilityLabel
+            button.accessibilityIdentifier = "composer.chip.\(chip.id)"
+            button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            chipStack.addArrangedSubview(button)
+        }
     }
 
     private func applyExternalText(_ newValue: String) {
@@ -352,7 +459,12 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         clampSelection()
         updateEditorHeight()
         refreshMetrics()
-        placeholderLabel.isHidden = !placeholder.isEmpty && mirrorText.isEmpty ? false : true
+        updatePlaceholderVisibility()
+    }
+
+    /// C05：没有提示文案、或编辑器里已有文字时隐藏提示；否则显示。
+    private func updatePlaceholderVisibility() {
+        placeholderLabel.isHidden = placeholder.isEmpty || !(field.text ?? "").isEmpty
     }
 
     private func clampSelection() {
@@ -379,14 +491,21 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             }
             shouldRestoreFocus = false
         case .decision(
-            let status, let question, let command, let secondaryTitle, let primaryTitle, let positionText, let notice
+            let status, let question, let command, let secondaryTitle, let primaryTitle, let positionText, let notice,
+            let answer
         ):
+            // 回答文字不进签名：用户打字时不重装视图，焦点和输入法候选都不受影响。
             let signature = [
                 status, question, command ?? "", secondaryTitle, primaryTitle, isEnabled ? "1" : "0",
-                positionText ?? "", notice ?? "",
+                positionText ?? "", notice ?? "", answer?.signature ?? "",
             ].joined(separator: "␟")
-            if installed == .decision(signature: signature) { return }
+            if installed == .decision(signature: signature) {
+                syncAnswerText(answer)
+                return
+            }
             shouldRestoreFocus = installed == .composer && field.isFirstResponder
+            let answerHadFocus = answerField.isFirstResponder
+            syncAnswerText(answer, force: true)
             let content = makeDecisionContent(
                 status: status,
                 question: question,
@@ -396,14 +515,29 @@ public final class DLComposerView: UIView, UITextViewDelegate {
                 enabled: isEnabled,
                 positionText: positionText,
                 notice: notice,
+                answer: answer,
+                answerField: answer == nil ? nil : answerField,
+                onChoice: { [weak self] value in self?.onDecisionChoice?(value) },
                 onSecondary: { [weak self] in self?.onDecisionSecondary?() },
                 onPrimary: { [weak self] in self?.onDecisionPrimary?() }
             )
             glass.install(content, animated: animated)
             installed = .decision(signature: signature)
             installedView = content
+            if answerHadFocus, answer != nil, isEnabled, !answerField.isFirstResponder {
+                answerField.becomeFirstResponder()
+            }
         }
         refreshMetrics()
+    }
+
+    /// 外部回答文字下推。正在输入（有焦点或组词中）时不覆盖，切题重装时强制对齐。
+    private func syncAnswerText(_ answer: DecisionAnswerInput?, force: Bool = false) {
+        guard let answer, answerField.markedTextRange == nil else { return }
+        guard force || !answerField.isFirstResponder else { return }
+        if (answerField.text ?? "") != answer.text {
+            answerField.text = answer.text
+        }
     }
 
     private func applyComposerProperties() {
@@ -413,6 +547,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         sendButton.isEnabled = isEnabled && !isSending
         sendButton.alpha = isSending ? 0.5 : 1
         attachButton.isHidden = !showsAttachButton
+        chipStack.isHidden = chips.isEmpty
     }
 
     private func rebuildSuggestions() {
@@ -480,4 +615,23 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         }
         return CGSize(width: UIView.noIntrinsicMetric, height: preferredBarHeight)
     }
+}
+
+/// 设计稿 4.1：圆形发送按钮，只放图标；读屏和 UI 测试仍按「发送 / Send」找到它。
+/// 用标签色实心圆（浅色黑底、深色白底），不占用这一屏唯一的品牌实心名额。
+@MainActor
+func dlRoundSendButton(title: String, enabled: Bool) -> UIButton {
+    var config = UIButton.Configuration.filled()
+    config.image = UIImage(systemName: "arrow.up")
+    config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(textStyle: .headline)
+    config.cornerStyle = .capsule
+    config.baseBackgroundColor = DLUIKitColor.label
+    config.baseForegroundColor = DLUIKitColor.background
+    config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+    let button = UIButton(configuration: config)
+    button.accessibilityLabel = title
+    button.isEnabled = enabled
+    button.widthAnchor.constraint(equalToConstant: 44).isActive = true
+    button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+    return button
 }
