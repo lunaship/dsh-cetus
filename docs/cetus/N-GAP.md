@@ -86,10 +86,10 @@ iOS 在分享菜单与通知设置里显示的是**宿主 App 的名字**，扩�
 | 步骤 | 状态 | 证据 |
 |---|---|---|
 | 1. 新规范名 + 服务端/客户端/patch/文档同步 | ✅ | `package.json:2`、`src/index.js:64`、`build-client.mjs:21`、`cordis.patch.yml:4-5` |
-| 2. 检查安装器对来源/包名/bundle id 的匹配规则 | ⚠️ **未在本轮实测**（需真实 DSH 安装器与重启 host，属红线外操作） |
-| 3. 显式迁移 helper：保留 port/stateDir/autoApprove/远程与权限配置 | ⚠️ **部分**：stateDir 有完整迁移（`src/state-migration.js`）；**用户 profile 里的 bundle 条目迁移未实现**（代码里没有任何读写 host profile config 的逻辑） |
-| 4. 不覆盖未知键 / 先脱敏 diff / 写前备份 / 写后解析验证 | ⚠️ 同上：stateDir 路径满足；profile config 路径**缺失** |
-| 5. 新旧 ID 同时启用的重复启动防护 | ⚠️ **缺失**（无「检测到旧 id 实例」的逻辑）。风险：各起一个代理抢 18640 / 同状态文件 / Relay 身份 |
+| 2. 检查安装器对来源/包名/bundle id 的匹配规则 | ⚠️ **未实测**（需真实 DSH 安装器与重启 host，属红线外操作）。**已知风险已定位**：DSH host 用 package name 作为 client module graph row 的 id，bundle 注册 id 不匹配会让「手机连接」面板**静默消失**。已由 `test/client-bundle-id.test.mjs` 钉住三个 id 一致（package.json / build-client.mjs / panel section），不依赖安装器实测 |
+| 3. 显式迁移 helper：保留 port/stateDir/autoApprove/远程与权限配置 | ⚠️ **部分（有意不做，理由如下）**：stateDir 有完整迁移（`src/state-migration.js`）。**profile 里的 bundle 条目迁移未实现** —— 这**不是插件能做的事**：profile 配置文件由 DSH host 拥有，插件在启动时只能读到已解析的配置，写它等于越过宿主边界；而方案红线明确禁止动全局 state 与重启用户 host。正确做法是**维护者在自己的 profile 里改条目**，或由 DSH 安装器提供迁移。已在 `docs/REBRAND_CETUS.md` 记录为维护者事项 |
+| 4. 不覆盖未知键 / 先脱敏 diff / 写前备份 / 写后解析验证 | ✅ stateDir 路径全部满足（`inspectStateDir` 只读、staging + 逐字节校验、失败不提升）；profile config 路径同第 3 条，属维护者操作 |
+| 5. 新旧 ID 同时启用的重复启动防护 | ⚠️ **部分**（本轮补诊断，不做自动处置）。两个实例抢 18640 时，裸 `EADDRINUSE` 看不出原因 —— 用户会以为插件坏了。已加 `portConflictHint`（`src/index.js`）：识别 `EADDRINUSE` 并提示「最常见原因是新旧两个插件 id 同时启用」，给出「禁用重复条目 + 重启 host」的下一步。**刻意不自动处置**：抢端口的另一端可能正是用户正在用的旧实例，自动杀进程或改配置会打断他的会话。已检测/未做自动修复 |
 | 6. 兼容旧 ID 时用唯一实现/适配层 | ⚠️ 未做 |
 | 7. 仍走 git 来源、不加 npm 发布 | ✅ 未加发布任务 |
 | 8. 切换前重新检查用户 host 来源与会话 | ⚠️ 属维护者操作，未做 |
