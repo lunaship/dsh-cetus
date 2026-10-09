@@ -45,20 +45,22 @@ actor InboxLiveService: InboxServing {
         }
         await stopHostPump()
         await stopSession()
-        let selection = await routes.select(key: hostID, candidates: RouteSelector.directCandidates(for: host)) {
-            address in
-            await Self.probe(address: address, fingerprint: host.certFingerprint)
-        }
-        guard case .direct(let address) = selection, let base = URL(string: address) else {
-            await routes.forget(key: hostID)
+        // §15.2：直连优先，不可达且有远程能力时走远程（两路钉扎同一张证书）。
+        guard let connection = await HostConnectionFactory.open(host: host, token: token, routes: routes) else {
             throw InboxServiceError.offline
         }
-        let http = HostClient(baseURL: base, token: token, expectedFingerprint: host.certFingerprint)
+        let http = connection.client
         do {
-            let payload = try await fetch(http, host: host, route: Self.routeKind(base, host: host))
+            // DLP/1 远程必须标成 `.remote`：`routeKind` 只看地址，
+            // 远程路径复用的是主机局域网地址，会被误判成 `.local`。
+            let route: InboxRouteKind =
+                connection.isRemote ? .remote : Self.routeKind(http.baseURL, host: host)
+            let payload = try await fetch(http, host: host, route: route)
             client = http
             eventsEnabled = payload.eventsEnabled
-            await routes.noteSuccess(key: hostID, address: address)
+            if let address = connection.directAddress {
+                await routes.noteSuccess(key: hostID, address: address)
+            }
             if eventContinuation != nil { await restartHostPump() }
             return payload
         } catch {
@@ -419,30 +421,10 @@ actor InboxLiveService: InboxServing {
             .lowercased()
     }
 
-    /// Any HTTP response means the address answered. Pin failure and transport failure do not.
-    /// No token is sent. Slightly wider than a TLS-only handshake: there is no handshake-only API.
-    /// 供设置页复用。设为 internal 而不是再写一份 —— 选路探测必须只有一处实现，
-    /// 否则首页能连、设置页连不上这类不一致会重新出现。
+    /// 直连可达性探测。实现已移到 `HostReachability`（五个调用点共用一份）；
+    /// 这里保留同名转发，避免已有调用点（设置页）改动。
     static func probe(address: String, fingerprint: String) async -> Bool {
-        guard let url = URL(string: address) else { return false }
-        let delegate = PinnedSessionDelegate(expectedFingerprint: fingerprint)
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 1.2
-        configuration.timeoutIntervalForResource = 1.2
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 1.2
-        let before = delegate.pinFailureCount
-        do {
-            let (_, response) = try await session.data(for: request)
-            session.finishTasksAndInvalidate()
-            return response is HTTPURLResponse && delegate.pinFailureCount == before
-        } catch {
-            session.invalidateAndCancel()
-            return false
-        }
+        await HostReachability.probe(address: address, fingerprint: fingerprint)
     }
 
     private static func hostRequest(client: HostClient, cursor: Int) -> URLRequest {

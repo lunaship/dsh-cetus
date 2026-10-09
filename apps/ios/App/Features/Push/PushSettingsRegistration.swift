@@ -44,37 +44,18 @@ enum PushPluginClient {
         guard let token = await store.token(for: hostID), !token.isEmpty else {
             throw HostClientError.unauthorized
         }
-        let selection = await routes.select(key: hostID, candidates: RouteSelector.directCandidates(for: host)) {
-            address in
-            await probe(address: address, fingerprint: host.certFingerprint)
-        }
-        guard case .direct(let address) = selection, let base = URL(string: address) else {
-            await routes.forget(key: hostID)
+        // §15.2：直连优先，不可达且有远程能力时走远程。推送注册也必须能走远程 ——
+        // 否则手机在外网换了 APNs token 就注册不上，任务通知会静默失效。
+        guard let connection = await HostConnectionFactory.open(host: host, token: token, routes: routes) else {
             throw HostClientError.transport(URLError(.cannotConnectToHost))
         }
-        await routes.noteSuccess(key: hostID, address: address)
-        return HostClient(baseURL: base, token: token, expectedFingerprint: host.certFingerprint)
+        if let address = connection.directAddress {
+            await routes.noteSuccess(key: hostID, address: address)
+        }
+        return connection.client
     }
 
     private static func probe(address: String, fingerprint: String) async -> Bool {
-        guard let url = URL(string: address) else { return false }
-        let delegate = PinnedSessionDelegate(expectedFingerprint: fingerprint)
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 1.2
-        configuration.timeoutIntervalForResource = 1.2
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 1.2
-        let before = delegate.pinFailureCount
-        do {
-            let (_, response) = try await session.data(for: request)
-            session.finishTasksAndInvalidate()
-            return response is HTTPURLResponse && delegate.pinFailureCount == before
-        } catch {
-            session.invalidateAndCancel()
-            return false
-        }
+        await HostReachability.probe(address: address, fingerprint: fingerprint)
     }
 }

@@ -170,15 +170,12 @@ extension SettingsAccountService {
                 guard let host = await store.get(hostId: hostID),
                     let token = await store.token(for: hostID), !token.isEmpty
                 else { throw InboxServiceError.missingHost }
-                let selection = await routes.select(
-                    key: hostID, candidates: RouteSelector.directCandidates(for: host)
-                ) { address in
-                    await InboxLiveService.probe(address: address, fingerprint: host.certFingerprint)
-                }
-                guard case .direct(let address) = selection, let base = URL(string: address) else {
-                    throw InboxServiceError.offline
-                }
-                return HostClient(baseURL: base, token: token, expectedFingerprint: host.certFingerprint)
+                // §15.2：直连优先，不可达且有远程能力时走远程。
+                guard
+                    let connection = await HostConnectionFactory.open(
+                        host: host, token: token, routes: routes)
+                else { throw InboxServiceError.offline }
+                return connection.client
             },
             host: { await store.get(hostId: hostID) },
             rename: { alias in names.setAlias(alias, hostID: hostID) },

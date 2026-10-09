@@ -105,17 +105,15 @@ actor SettingsModelsLiveService: SettingsModelsServing {
         guard let token = await store.token(for: hostID), !token.isEmpty else {
             throw SettingsModelsError.missingHost
         }
-        let selection = await routes.select(key: hostID, candidates: RouteSelector.directCandidates(for: host)) {
-            address in
-            await Self.probe(address: address, fingerprint: host.certFingerprint)
-        }
-        guard case .direct(let address) = selection, let base = URL(string: address) else {
-            await routes.forget(key: hostID)
+        // §15.2：直连优先，不可达且有远程能力时走远程。
+        guard let connection = await HostConnectionFactory.open(host: host, token: token, routes: routes) else {
             throw SettingsModelsError.offline
         }
-        let http = HostClient(baseURL: base, token: token, expectedFingerprint: host.certFingerprint)
+        let http = connection.client
         client = http
-        await routes.noteSuccess(key: hostID, address: address)
+        if let address = connection.directAddress {
+            await routes.noteSuccess(key: hostID, address: address)
+        }
         return http
     }
 
