@@ -27,11 +27,22 @@ final class DLGlassBar: UIView {
         if solid {
             effectView.effect = nil
             effectView.backgroundColor = .secondarySystemGroupedBackground
+            // 截图里的实色替身也要看得出是一块卡：连续圆角 + 轻阴影（浅色下底色与页面同为白色）。
+            effectView.layer.cornerRadius = 24
+            effectView.layer.cornerCurve = .continuous
+            effectView.clipsToBounds = true
+            layer.shadowColor = UIColor.black.cgColor
+            layer.shadowOpacity = 0.12
+            layer.shadowRadius = 12
+            layer.shadowOffset = CGSize(width: 0, height: 4)
         } else if effectView.effect == nil {
             let glass = UIGlassEffect(style: .regular)
             glass.isInteractive = false
             effectView.effect = glass
             effectView.backgroundColor = nil
+            effectView.layer.cornerRadius = 0
+            effectView.clipsToBounds = false
+            layer.shadowOpacity = 0
         }
     }
 
@@ -73,13 +84,18 @@ func dlBarButton(
     enabled: Bool,
     action: @escaping () -> Void
 ) -> UIButton {
-    var config = prominent ? UIButton.Configuration.borderedProminent() : UIButton.Configuration.bordered()
+    // 设计稿 4.3 / 4.4：决策栏是一整块玻璃，里面的按钮全部用实色。
+    // 次按钮（拒绝 / 跳过 / 上一题）是灰色填充，主按钮是品牌实心；每屏最多一个品牌实心。
+    var config = prominent ? UIButton.Configuration.borderedProminent() : UIButton.Configuration.gray()
     config.title = title
     config.cornerStyle = .capsule
     config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+    if !prominent {
+        config.baseForegroundColor = DLUIKitColor.label
+    }
     config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
         var outgoing = incoming
-        outgoing.font = UIFont.preferredFont(forTextStyle: .body)
+        outgoing.font = UIFont.preferredFont(forTextStyle: .headline)
         return outgoing
     }
     let button = UIButton(configuration: config, primaryAction: UIAction { _ in action() })
