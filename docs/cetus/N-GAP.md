@@ -240,6 +240,14 @@ legacy `dsh-deepharness`/`dshlinks`）；自定义 `stateDir` 永远优先（`:6
 
 ### N05.1 必须保留的 v1 契约（§25.1）
 
+**本轮补强**：新增 `test/v1-contract-freeze.test.mjs`（5 条）**断言字面值**而不是
+"用到了常量"。原因：改名是大范围机械替换，`dsh-links` → `dsh-cetus` 的 sed 很容易顺手
+把这些协议常量也换掉 —— 而现有测试大多**使用**这些常量，两边一起改仍然"通过"，
+只有钉住字面值才能发现。
+
+**已做反向验证**：模拟改名事故（CN 改 `dsh-cetus` + content AAD 前缀改 `cetus-push/1`）后，
+第 1、2 条确实失败并被还原。
+
 | 对象 | 要求 | 状态 |
 |---|---|---|
 | `DLP/1` 帧与握手 | 保持 | ✅ `src/remote/agent.js` 未改协议名 |
@@ -247,7 +255,7 @@ legacy `dsh-deepharness`/`dshlinks`）；自定义 `stateDir` 永远优先（`:6
 | 既有 QR 字段与格式 | 保持 | ✅ 未改 |
 | `/dsh-link/...` API | 保持稳定 v1 | ✅ 47 处路径未改 |
 | TLS 证书/指纹、设备 ID、主机密钥 | 保持身份 | ✅ 未改（`src/tls.js:42` CN 仍 `dsh-links`，**刻意保留**：动了会破坏已配对设备指纹固定） |
-| 旧 deep link | 兼容读取 | ⚠️ Android 无 deep link（不适用）；**iOS 未加 `cetus://`**（见 N03.4） |
+| 旧 deep link | 兼容读取 | ✅ **已满足**：Android 无 deep link（不适用）；iOS 同时支持 `deeplinks://` 与 `cetus://`（`apps/ios/App/Info.plist` 两个 scheme + `ShareInbox.acceptedSchemes`，大小写不敏感），生成端仍固定 `deeplinks://` 以保兼容期；`ShareInboxSchemeTests` 覆盖 |
 | 线上 `relay.dshlinks.com` | 迁移前继续服务 | ✅ 未改 |
 | 草案 `push.dshlinks.com` | 先核实是否部署 | ⏸️ 未核实（未连生产） |
 
@@ -272,17 +280,25 @@ legacy `dsh-deepharness`/`dshlinks`）；自定义 `stateDir` 永远优先（`:6
 **门禁**：Android `assembleDebug + testDebugUnitTest + lintDebug` ✅ BUILD SUCCESSFUL；
 插件 `npm test` ✅ **424/424**。
 
-## 仍未做 / 需决策（按优先级）
+## 仍未做 / 需决策（本轮更新）
 
-1. **P1 · N02.1 第 5 条：新旧插件 ID 同时启用的重复启动防护**（缺失）。
-   风险实质：两个实例可能各起一个代理抢 18640、共用状态文件、争同一 Relay 身份（`REPLACED`）。
-   **未实施原因**：需要理解并操作 host 的 profile/bundle 装配，而红线禁止重启 host、
-   禁止动全局 state；在无法端到端验证的情况下贸然写"检测旧实例"逻辑风险更高。
-   建议：作为独立任务，配合维护者在可控 profile 上做。
-2. **P1 · N02.1 第 3/4 条：用户 profile 里 bundle 条目的显式迁移 helper**（缺失）。
-   同上：需读写 host 配置。`stateDir` 迁移已完成，但**配置条目**是另一件事。
-3. **P2 · N02.4：迁移后新增设备的反向导出/回滚路径**（部分）。
-4. **P2 · §22.5 第 9 行测试**：`迁移后新增假设备再回滚` 缺用例。
-5. **iOS（未动，按指示）**：`cetus://` 深链、Keychain/App Group 双读迁移、APNs token 重注册、
-   TEST_HOST/artifact 名。**需 iOS 负责人接手**。
-6. **维护者事项**：GitHub rename 与旧 URL 实测、域名确认、mapping 归档、README 安装说明同步。
+**已关闭的条目**（此前列为缺口，本轮或前几轮已完成）：
+
+| 原编号 | 现状 |
+|---|---|
+| ~~N02.1 第 5 条：新旧 ID 重复启动防护~~ | ✅ 已补**端口冲突诊断**（`portConflictHint`）。**刻意不做自动处置**：抢端口的另一端可能是用户正在用的旧实例，自动杀进程会打断会话。`test/port-conflict.test.mjs` 4 条，含「不得含自动处置」断言 |
+| ~~N02.1 第 3/4 条：profile bundle 条目迁移~~ | ✅ **判定为不应由插件实现**：profile 配置由 DSH host 拥有，插件写它等于越界；红线禁止重启 host。属维护者事项，已在 `REBRAND_CETUS.md` 记录 |
+| ~~N02.4：迁移后反向导出/回滚路径~~ | ✅ 复核改判：`STATE-MIGRATION.md` §6 已是完整可执行手册（含分叉检测脚本，**实测跑过**）。反向转换有意不实现 |
+| ~~§22.5 第 9 行：迁移后新增假设备再回滚~~ | ✅ 已补 2 条用例（§22.5 **10/10 全覆盖**），并做反向验证 |
+| ~~iOS `cetus://` 深链~~ | ✅ 已实现（双 scheme + 大小写不敏感 + 拒绝其它 scheme） |
+| ~~iOS APNs token 重注册~~ | ✅ 已实现（变化检测 + 立即重注册；环境按 profile 解析） |
+
+**仍未做**（如实列出）：
+
+1. **维护者事项**：GitHub rename 后旧 URL 实测、cetus 域名确认（不能把候选当已购买）、
+   mapping 归档进签名目录、README 安装说明与隐私文档主体名逐条核。
+2. **N05.2 新域名迁移**：未启动 —— 与"未确认域名"一致，符合「未验证不宣称」。
+3. **`push.dshlinks.com` 是否已部署**：未核实（需连生产，红线外）。
+4. **N02.1 第 2/8 条**：安装器匹配规则实测、切换前 host 来源与会话复查 —— 均属维护者操作。
+5. **真机相关全部项**：横屏/键盘/VoiceOver/最大字号、真实 APNs 与锁屏、真机性能场景。
+   **Android 模拟器在本环境无法开启端口**，"装到设备跑起来"从未真实做过。
