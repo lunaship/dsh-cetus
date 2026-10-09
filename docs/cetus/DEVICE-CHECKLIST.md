@@ -17,8 +17,9 @@
 | 同一局域网 | 真机与电脑在同一 Wi-Fi（远程项另需能上外网） |
 | 记录方式 | 截图 + 录屏；**每条都记下手机型号、系统版本、包版本** |
 
-Android 安装包：`.local/release-builds/0.5.0-beta.31-a91562ae/cetus-android-0.5.0-beta.31-a91562ae.apk`
-（`applicationId=dev.deeplinks`，证书 `38f71adf…2a47`，versionCode 39）
+Android 安装包：`.local/release-builds/0.5.0-beta.31-0c76eed7/cetus-android-0.5.0-beta.31-0c76eed7.apk`
+（`applicationId=dev.deeplinks`，证书 `38f71adf…2a47`，versionCode 39，v2+v3 双签名）
+SHA-256 `053c0a76…32fe0`（见 `ANDROID-RELEASE-EVIDENCE.md` §0）
 
 iOS：需自行从源码构建（`apps/ios/`，Xcode 26.6）。
 

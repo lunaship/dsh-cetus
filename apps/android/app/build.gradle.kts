@@ -110,6 +110,12 @@ android {
                 storePassword = releaseSigningEnv.getValue("DSH_LINKS_KEYSTORE_PASSWORD")
                 keyAlias = releaseSigningEnv.getValue("DSH_LINKS_KEY_ALIAS")
                 keyPassword = releaseSigningEnv.getValue("DSH_LINKS_KEY_PASSWORD")
+                // v3 签名：密钥轮换（key rotation）的前提。没有它，签名密钥一旦丢失或需要
+                // 更换，就只能让用户**卸载重装** —— 那会丢掉已配对凭据与本地状态。
+                // 实测旧产物（`a91562ae`）只有 v2，AGP 9.3.2 默认未开 v3，故在此显式开启。
+                //
+                // v1 **不开**：`minSdk = 26 ≥ 24`，Android 7.0+ 只需 v2，v1 无意义且会增大体积。
+                enableV3Signing = true
             }
         }
     }

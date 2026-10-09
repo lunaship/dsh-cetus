@@ -18,37 +18,48 @@
 
 | 项 | 值 |
 |---|---|
-| 构建提交 | **`a91562ae`**（`test(ios): 弹层截图容差与其它套件对齐…`） |
-| 工作树 | **干净**（**无** `-dirty`） |
-| 产物路径 | `.local/release-builds/0.5.0-beta.31-a91562ae/cetus-android-0.5.0-beta.31-a91562ae.apk` |
-| APK SHA-256 | `7e9713105e2658511372ef3d76d0b439b69b536146de38d118f9299f7c039779` |
+| 构建提交 | **`0c76eed7`** |
+| 工作树 | **干净**（**无** `-dirty`，实测） |
+| 产物路径 | `.local/release-builds/0.5.0-beta.31-0c76eed7/cetus-android-0.5.0-beta.31-0c76eed7.apk` |
+| APK SHA-256 | `053c0a76940247049372afa125d74ac1b616a13d2326f095c9ba1d015ac32fe0` |
+| APK 大小 | `6 991 187` bytes |
 | mapping.txt SHA-256 | `0b9fed3e5cacb5478daf4d0c4d432319ae27f4db4ab80bca291ef99a7d916952` |
 | 签名证书 SHA-256 | `38f71adf8b67d81042c99a3ec0dfdafb4303dd31e3fc491068ccd534cb482a47` |
+| 签名方案 | **v2 + v3**（v1 关闭，`minSdk=26` 无需） |
 | versionName / versionCode | `0.5.0-beta.31` / `39` |
 | applicationId | `dev.deeplinks`（保持 legacy） |
 
-**被取代的旧产物**：`0.5.0-beta.31-3728131d/app-release.apk`，
-SHA-256 `f3916ec9c8c2742d021c333210ff2caf3e0d232a56191b495fd69ab817e00ca8`，`BUILD_COMMIT=3728131d-dirty`。
+**已被取代的两份旧产物**（保留仅作历史对照）：
+
+| 目录 | APK SHA-256 | 说明 |
+|---|---|---|
+| `0.5.0-beta.31-3728131d` | `f3916ec9…00ca8` | `BUILD_COMMIT=3728131d-dirty`（脏树） |
+| `0.5.0-beta.31-a91562ae` | `7e971310…39779` | 干净树，但**只有 v2 签名** |
+
+### 0.0 本轮为什么重建（两件事一起做）
+
+1. **启用 v3 签名**（见 §0.2）：旧产物只有 v2，缺密钥轮换能力。
+2. **验证发布流水线仍可复现**：改名/迁移工作落地后，`assembleRelease` 从未重新跑过。
+   本轮从干净树跑通（`BUILD SUCCESSFUL in 5m 59s`），并跑过
+   `assembleDebug + testDebugUnitTest + lintDebug`（全绿）。
+
+**交叉验证「只改了签名、没改代码」**：新旧 `mapping.txt` **逐字节相同**
+（同为 `0b9fed3e…`）。APK 增大 4 096 bytes，正是 v3 签名块的大小。
+指纹与公钥也与旧产物完全一致（`f535062f…`），**升级身份未变**。
 
 ### 0.1 溯源是可复现的（不靠记忆）
 
 APK 里嵌了 `BuildConfig.BUILD_COMMIT`，直接从产物读出来即可核对：
 
 ```sh
-APK=.local/release-builds/0.5.0-beta.31-a91562ae/cetus-android-0.5.0-beta.31-a91562ae.apk
-unzip -p "$APK" classes.dex | strings | grep -oE '[0-9a-f]{8}(-dirty)?' | sort -u
-# → a91562ae      （无 -dirty）
+APK=.local/release-builds/0.5.0-beta.31-0c76eed7/cetus-android-0.5.0-beta.31-0c76eed7.apk
+unzip -p "$APK" classes.dex | strings | grep -c 0c76eed7
+# → 2   （BUILD_COMMIT 已按当前提交写入）
+git status --porcelain | wc -l    # → 0（构建时工作树干净）
 ```
 
-同时确认**该提交之后 `apps/android/` 零改动**：
-
-```sh
-git merge-base --is-ancestor a91562ae origin/main && echo "在 main 历史中"
-git log --oneline a91562ae..origin/main -- apps/android/ | wc -l   # → 0
-```
-
-两条合起来 = 「这份 APK 的 Android 源码与当前 main 逐字节相同」。因此本产物
-**对当前 main 仍然有效**，不需要为「落后 69 个提交」重建（那 69 个全部不涉及 `apps/android/`）。
+`BUILD_COMMIT` 由 `build-metadata.mjs` 从 `git rev-parse` 注入，工作树脏时带 `-dirty`；
+本产物实测**不含** `-dirty`。
 
 ### 0.2 签名方案：**只有 v2**（发现，未修）
 
@@ -58,13 +69,11 @@ git log --oneline a91562ae..origin/main -- apps/android/ | wc -l   # → 0
 |---|---|---|
 | v1（JAR） | **false** | **无影响** —— `minSdk = 26 ≥ 24`，v1 非必需 |
 | v2 | **true** | 正常 |
-| v3 / v3.1 | **false** | ⚠️ **密钥轮换能力缺失**：签名密钥若丢失或需更换，v3 是轮换的前提；没有它只能让用户**卸载重装**（丢掉已配对凭据与状态） |
+| v3 / v3.1 | 旧产物 **false** → 新产物 **true** | 旧产物缺**密钥轮换**能力：签名密钥若丢失或需更换，v3 是轮换前提；没有它只能让用户**卸载重装**（丢掉已配对凭据与状态）。**本轮已修** |
 
-**未修的原因**：修它需要改 `apps/android/app/build.gradle.kts` 并**重新构建签名包** ——
-那会让当前这份**已核验**的产物失效。而真机验收（见 `DEVICE-CHECKLIST.md`）尚未开始，
-一旦真机发现缺陷反正要重建，**届时应一并启用 v3**（`signingConfigs.release { enableV3Signing = true }`）。
-
-**结论**：记为「下次重建时必须一并处理」，而不是现在动产物。这是 **P2**，不影响安装与使用。
+**已修**（2026-10-09）：在 `signingConfigs.release` 显式 `enableV3Signing = true` 并重建。
+`apksigner verify` 实测新产物 `v2=true, v3=true`，公钥与旧产物一致（升级不受影响）。
+v1 仍**有意关闭** —— `minSdk = 26 ≥ 24`，v1 无意义。
 
 ## 1. 产物清单
 
@@ -279,5 +288,4 @@ cd apps/android && ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lint
 6. **`answeredApprovalUntil` 幂等窗口缺测试**（见 5.2），建议补。
 7. **`src/tls.js` 证书 CN 仍为 `dsh-links`**（见 5.3），需维护者决策。
 8. ~~工作树脏~~ —— **已解决**：§0 的 `a91562ae` 产物在**干净树**上构建，实测无 `-dirty`。
-9. **签名方案只含 v2**（§0.2）：缺 v3 → 无密钥轮换能力。**下次重建时必须一并启用**
-   `enableV3Signing = true`。不在本轮修，以免作废已核验产物。
+9. ~~签名方案只含 v2~~ —— **已修**（§0.2）：`enableV3Signing = true`，新产物 v2+v3 双签名。
