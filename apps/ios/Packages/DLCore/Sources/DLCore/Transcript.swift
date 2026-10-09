@@ -302,8 +302,8 @@ public func projectTranscript(
                 TurnTail(
                     id: assistantID + "-tail",
                     lines: card.lines,
-                    added: changes?.added ?? 0,
-                    deleted: changes?.deleted ?? 0,
+                    added: card.added,
+                    deleted: card.deleted,
                     total: card.total,
                     meta: TurnMeta(
                         model: last ? nonEmpty(stats?.tokenUsage?.model) : nil,
@@ -639,17 +639,28 @@ func processSteps(_ items: [HistoryMessage], ids: [String], sessionRunning: Bool
     }
 }
 
-func changeCard(_ summary: ChangesSummary?) -> (lines: [ChangeLine], total: Int) {
+func changeCard(_ summary: ChangesSummary?) -> (lines: [ChangeLine], total: Int, added: Int, deleted: Int) {
     let files = summary?.files ?? []
-    let total = summary?.total ?? files.count
+    // 三处取值都要与 Android `parseWorkspaceChanges` 对齐（`WorkspaceChanges.kt:95-99`）：
+    //
+    // 1. `total` 缺省用文件数，且**不得小于**文件数 —— 否则会出现
+    //    「Changed 1 files」下面却列着 3 行文件，自相矛盾。
+    // 2. `added`/`deleted` 缺省用**逐文件之和** —— 插件省略顶层字段时若直接取 0，
+    //    顶部显示 `+0 -0` 而每行都有真实数字，同样自相矛盾。
+    // 3. 逐文件的 added/deleted 负数一律按 0 计（Android 用 `coerceAtLeast(0)`）。
+    let total = max(summary?.total ?? files.count, files.count)
+    let sumAdded = files.reduce(0) { $0 + max($1.added ?? 0, 0) }
+    let sumDeleted = files.reduce(0) { $0 + max($1.deleted ?? 0, 0) }
+    let added = summary?.added ?? sumAdded
+    let deleted = summary?.deleted ?? sumDeleted
     let lines = files.prefix(3).enumerated().map { offset, file in
         ChangeLine(
             id: "file-\(offset)-\(file.path ?? file.display ?? "")",
             path: file.display ?? file.path ?? "",
-            added: file.added ?? 0,
-            deleted: file.deleted ?? 0)
+            added: max(file.added ?? 0, 0),
+            deleted: max(file.deleted ?? 0, 0))
     }
-    return (Array(lines), total)
+    return (Array(lines), total, added, deleted)
 }
 
 func tokenTotal(_ usage: TokenUsage?) -> Int? {

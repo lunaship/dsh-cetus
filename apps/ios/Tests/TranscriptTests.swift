@@ -1,7 +1,8 @@
-import DLCore
 import DLModels
 import Foundation
 import Testing
+
+@testable import DLCore
 
 @Suite struct TranscriptTests {
     @Test func lazySplitKeepsFenceTogether() {
@@ -225,4 +226,87 @@ private func chunkText(_ frame: StreamFrame) -> String? {
 private func fade(_ rows: [TranscriptRow]) -> Bool {
     guard case .assistant(let block) = rows.first else { return false }
     return block.fade
+}
+
+// MARK: - C14：改动摘要的取值必须与 Android 一致
+
+/// 三个取值规则对齐 Android `parseWorkspaceChanges`（`WorkspaceChanges.kt:95-99`）。
+/// 不一致的后果都是**用户可见的自相矛盾**：数字与下面列出的文件行对不上。
+@Suite struct ChangeCardConsistencyTests {
+    private func file(_ path: String, added: Int? = nil, deleted: Int? = nil) -> ChangedFile {
+        ChangedFile(path: path, display: path, added: added, deleted: deleted)
+    }
+
+    /// `total` 不得小于实际文件数 —— 否则出现「Changed 1 files」下面列 3 行。
+    @Test("total 小于文件数时以文件数为准")
+    func totalNeverBelowFileCount() {
+        let card = changeCard(
+            ChangesSummary(
+                turn: 1, total: 1, added: 0, deleted: 0,
+                files: [
+                    file("a"), file("b"), file("c"),
+                ]))
+        #expect(card.total == 3, "Android 用 coerceAtLeast(files.size)，iOS 必须一致")
+    }
+
+    /// 插件缺省 `total` 时用文件数（这条两端本来就一致，一并钉住防回归）。
+    @Test("缺省 total 用文件数")
+    func missingTotalFallsBackToFileCount() {
+        let card = changeCard(
+            ChangesSummary(turn: 1, total: nil, added: nil, deleted: nil, files: [file("a"), file("b")]))
+        #expect(card.total == 2)
+    }
+
+    /// 顶层 `added` 缺省时用**逐文件之和**。
+    ///
+    /// 直接取 0 会让顶部显示 `+0` 而每行都有真实数字，用户一眼就看出不对。
+    @Test("缺省 added/deleted 用逐文件之和")
+    func missingAddedFallsBackToFileSum() {
+        let card = changeCard(
+            ChangesSummary(
+                turn: 1, total: nil, added: nil, deleted: nil,
+                files: [
+                    file("a", added: 5, deleted: 2),
+                    file("b", added: 3, deleted: 1),
+                ]))
+        #expect(card.added == 8, "Android 用 files.sumOf { it.added }")
+        #expect(card.deleted == 3)
+    }
+
+    /// 顶层给了值时以它为准（它可能包含只列前几行之外的文件）。
+    @Test("顶层值优先于逐文件之和")
+    func explicitTotalsWin() {
+        let card = changeCard(
+            ChangesSummary(
+                turn: 1, total: 90, added: 100, deleted: 40,
+                files: [
+                    file("a", added: 5, deleted: 2)
+                ]))
+        #expect(card.total == 90)
+        #expect(card.added == 100)
+        #expect(card.deleted == 40)
+    }
+
+    /// 负数按 0 计（Android 逐文件 `coerceAtLeast(0)`）。
+    @Test("负数按 0 计")
+    func negativesClampToZero() {
+        let card = changeCard(
+            ChangesSummary(
+                turn: 1, total: nil, added: nil, deleted: nil,
+                files: [
+                    file("a", added: -5, deleted: -3),
+                    file("b", added: 2, deleted: 0),
+                ]))
+        #expect(card.added == 2, "负数不得抵消正常行数")
+        #expect(card.deleted == 0)
+        #expect(card.lines.allSatisfy { $0.added >= 0 && $0.deleted >= 0 })
+    }
+
+    /// 没有 files 时 total 为 0（不出卡片）。
+    @Test("无文件时 total 为 0")
+    func emptyFilesGiveZero() {
+        let card = changeCard(nil)
+        #expect(card.total == 0)
+        #expect(card.lines.isEmpty)
+    }
 }
