@@ -192,3 +192,4 @@ iOS 26.5 SDK 的 `accessibilityReduceTransparency` 只读，UIKit 无对应可�
 | 7.5 外观 | C10：`ThemePreference` 统一存储键与配色换算，`RootView` 用 `.preferredColorScheme` 在根层应用；「跟随系统」不覆盖 | `ThemePreferenceTests` |
 | 7.4 通知 | C10 §8：拆成**系统授权 / App 偏好 / 电脑能力**三个维度显示，拒绝时给「App 内改不了」的说明 | `PushSettingsDimensionsTests` |
 | 7.3 诊断 | C10 §2：显示**测试时间**（毫秒口径）；失败时空态说明，不再列伪造结论 | `DiagnosticsTimestampTests` / `SettingsDiagnosticsHonestyTests` |
+| 4.4 问题表单 | C14：`required: false` 归一为可选，与插件和 Android 语义一致（此前只有 iOS 只看 `optional`） | `RequiredFieldNormalizationTests` |
