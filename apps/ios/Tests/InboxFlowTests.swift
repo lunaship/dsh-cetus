@@ -443,3 +443,103 @@ import Testing
         #expect(model.presentation == .starters)
     }
 }
+
+// MARK: - C13 R5：大范围 resync 不闪成空页
+
+/// 方案 §17 R5 要求「大范围 resync 不闪成空页」。
+///
+/// 实现上的保证很朴素但**很容易被破坏**：`reload` 只在拉取**成功后**才把
+/// `sessions = payload.sessions`，且**从不先清空**；失败走 `applyFailure`
+/// 也只改 `loading` 与错误态，不碰 `sessions`。
+///
+/// 危险回归长这样：有人为了"显示加载中"在拉取前加一句 `sessions = []` ——
+/// 于是每次 resync 列表都会闪一下空白。这种改动**不会让任何现有测试变红**，
+/// 所以在这里钉住。
+@MainActor @Suite(.serialized) struct InboxResyncKeepsContentTests {
+    /// 先成功、之后一直失败的服务。
+    private final class FlakyService: InboxServing {
+        var fail = false
+        private(set) var loads = 0
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            loads += 1
+            if fail { throw InboxServiceError.offline }
+            return InboxPayload(
+                sessions: [
+                    SessionSummary(sessionId: "s1", title: "One", cwd: "/work"),
+                    SessionSummary(sessionId: "s2", title: "Two", cwd: "/work"),
+                ],
+                archivedIDs: [], workspaces: [], hostName: "Mac", route: .local, eventsEnabled: false)
+        }
+    }
+
+    private func makeModel(_ service: FlakyService) -> InboxModel {
+        InboxModel(
+            hostID: "mac", service: service, cache: InboxMemoryCache(),
+            preferences: InboxPreferences(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            autostart: false)
+    }
+
+    /// resync（走 `reload`）失败时，已有列表必须**原样保留**。
+    @Test func failedResyncKeepsExistingSessions() async {
+        let service = FlakyService()
+        let model = makeModel(service)
+        await model.refresh()
+        let before = model.sessions.compactMap(\.sessionId)
+        #expect(before == ["s1", "s2"], "前置条件：先要有内容")
+
+        // 模拟 resync 时电脑不可达。
+        service.fail = true
+        await model.refresh()
+
+        #expect(
+            model.sessions.compactMap(\.sessionId) == before,
+            "resync 失败不得清空列表（否则用户会看到内容闪成空白）")
+        #expect(model.loading == false, "失败后不应卡在加载态")
+    }
+
+    /// 中途也不得出现空白：拉取**开始前**列表就应仍是旧内容。
+    ///
+    /// 直接断言「拉取前不清空」——用一个能观察到"拉取那一刻"状态的服务。
+    @Test func listIsNeverEmptiedWhileFetching() async {
+        let service = ObservingService()
+        let model = makeModel2(service)
+        await model.refresh()
+        #expect(model.sessions.count == 2)
+
+        service.observe = { [weak model] in
+            // 服务端被调用时（也就是"正在拉取"这一刻），列表必须还在。
+            service.sessionsDuringFetch = model?.sessions.compactMap(\.sessionId) ?? []
+        }
+        service.fail = true
+        await model.refresh()
+
+        #expect(
+            service.sessionsDuringFetch.count == 2,
+            "拉取过程中列表被清空了：\(service.sessionsDuringFetch)")
+    }
+
+    private final class ObservingService: InboxServing {
+        var fail = false
+        var observe: (() -> Void)?
+        var sessionsDuringFetch: [String] = []
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            observe?()
+            if fail { throw InboxServiceError.offline }
+            return InboxPayload(
+                sessions: [
+                    SessionSummary(sessionId: "s1", title: "One", cwd: "/work"),
+                    SessionSummary(sessionId: "s2", title: "Two", cwd: "/work"),
+                ],
+                archivedIDs: [], workspaces: [], hostName: "Mac", route: .local, eventsEnabled: false)
+        }
+    }
+
+    private func makeModel2(_ service: ObservingService) -> InboxModel {
+        InboxModel(
+            hostID: "mac", service: service, cache: InboxMemoryCache(),
+            preferences: InboxPreferences(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            autostart: false)
+    }
+}
