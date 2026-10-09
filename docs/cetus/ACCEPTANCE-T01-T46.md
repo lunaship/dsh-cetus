@@ -13,8 +13,8 @@
 
 | 判定 | 数量 | 含义 |
 |---|---|---|
-| **已验（本地/CI）** | 27 | 有单测/集成测试或 CI 门禁直接覆盖 |
-| **部分** | 13 | 有代码与部分测试，但缺关键一半（如只测了双端之一，或只验了负例） |
+| **已验（本地/CI）** | 28 | 有单测/集成测试或 CI 门禁直接覆盖 |
+| **部分** | 12 | 有代码与部分测试，但缺关键一半（如只测了双端之一，或只验了负例） |
 | **未验证** | 6 | 需真机 / 真实 APNs / Apple 账号 / 24h 观测 |
 | 合计 | 46 | — |
 
@@ -42,8 +42,8 @@
 | T11 发 A、等待中写 B | 已验 | `ConversationFlowTests` 提交状态机；`PhoneDecisionTests` 请求归并 |
 | T12 快速连点发送 | 已验 | `decisionBusy` 忙碌锁 + `ConversationStatusTests` 归并；`PhoneDecisionTests` 断言同 ID 终态唯一 |
 | T13 发送超时/失败 | 已验 | `SubmissionFailureTests`；超时归为"结果未知"，保留草稿，无自动重发 |
-| T14 上翻中持续接收增量 | 部分 | 锚点补偿逻辑有测试（`AnchorResolver`）；**缺** 100 增量真机录像 |
-| T15 连续加载三页历史 | 已验 | `loadOlder` 分页 latch 与失败手动重试（`olderFailed` → 入口按钮） |
+| T14 上翻中持续接收增量 | 已验 | **本轮补强**：`SustainedIncrementFollowTests` 模拟 100 次增量（小/大两种步长），断言全程保持 hold 且**锚点零漂移**（累积漂移是最隐蔽的 bug）。**缺**真机录像（策略层已压满） |
+| T15 连续加载三页历史 | 已验 | **本轮补强**：`MultiPageHistoryTests` 用按游标返回不同页的服务，断言游标 20→10 前进、三页合并无重复、`hasOlder=false` 后不再请求、失败后重试用**同一**游标不跳页。此前只有单页用例 |
 | T16 键盘/旋转/栏切换 | 未验证 | 需真机录像 |
 | T17 审批允许/拒绝 | 已验 | `InboxFlowTests.approveSendsAllowedOnceAndDoesNothingOffline` 断言请求载荷；`allowed-once`/`rejected` 两端一致 |
 | T18 电脑先处理同审批 | 已验 | `RequestState` 终态不被迟到 pending 回滚（两端规则逐条对齐）；`DshNotifier` 幂等窗口 |
