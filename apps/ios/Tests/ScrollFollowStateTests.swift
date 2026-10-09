@@ -94,3 +94,98 @@ import Testing
         #expect(AnchorResolver.capture(visible: visible) == nil)
     }
 }
+
+// MARK: - T14：上翻中持续接收增量，不被拉回最新
+
+/// 方案的 T14 要求「上翻中持续接收增量 → 不被拉回最新」，验收证据写的是
+/// 「100 增量录像/锚点」。录像需要真机，但**策略层**可以在这里压满：
+/// 一次跑 100 次增量，逐步断言策略始终是 hold、锚点始终能恢复。
+///
+/// 这条比"单次增量"更有价值的地方在于：真实 bug 往往是**累积漂移**
+/// （每次补偿差几个点，100 次后画面跑掉），单次断言看不出来。
+@Suite struct SustainedIncrementFollowTests {
+    private let viewport = 800.0
+
+    /// 模拟一次「上翻读历史 + 持续来增量」。
+    /// 返回 100 次增量后是否仍保持 hold，以及锚点的最大漂移。
+    private func runIncrements(count: Int, driftPerStep: Double) throws -> (
+        heldEveryStep: Bool, maxDrift: Double
+    ) {
+        var tracker = TailTracker()
+        // 用户上翻：距底部一屏之外。
+        tracker.update(distanceFromBottom: 2000, visibleHeight: viewport)
+        #expect(tracker.policy == .hold, "上翻后应进入 hold")
+
+        let anchor = try #require(
+            AnchorResolver.capture(visible: [
+                (id: "m-anchor", top: 120, height: 80),
+                (id: "m-next", top: 200, height: 80),
+            ]))
+        var maxDrift = 0.0
+        var heldEveryStep = true
+
+        for step in 1...count {
+            // 每来一条增量，内容高度增加，锚点的绝对位置被推下去。
+            let addedHeight = driftPerStep * Double(step)
+            let newTop = 120 + addedHeight
+            let delta = AnchorResolver.compensation(anchor: anchor, newTop: newTop)
+            // 补偿后锚点应当回到原来的偏移（120）。
+            let restoredTop = newTop - delta
+            maxDrift = max(maxDrift, abs(restoredTop - 120))
+            // 位置没变 → 仍远离底部 → 策略必须继续是 hold。
+            tracker.update(distanceFromBottom: 2000 + addedHeight, visibleHeight: viewport)
+            if tracker.policy != .hold { heldEveryStep = false }
+        }
+        return (heldEveryStep, maxDrift)
+    }
+
+    @Test("100 次增量全程保持 hold，锚点零漂移")
+    func hundredIncrementsStayHeld() throws {
+        let result = try runIncrements(count: 100, driftPerStep: 1)
+        #expect(result.heldEveryStep, "100 次增量中只要有一次回到 follow，用户就会被拽到底部")
+        #expect(result.maxDrift < 0.001, "锚点漂移 \(result.maxDrift) —— 累积漂移正是最隐蔽的 bug")
+    }
+
+    @Test("增量很大时也不被拉回")
+    func largeIncrementsStayHeld() throws {
+        let result = try runIncrements(count: 100, driftPerStep: 400)
+        #expect(result.heldEveryStep)
+        #expect(result.maxDrift < 0.001)
+    }
+
+    /// 贴底时才跟随 —— 与上一条互补，防止"为了不拉回用户"而把跟随也关掉。
+    @Test("贴底时仍然跟随增量")
+    func pinnedToTailStillFollows() {
+        var tracker = TailTracker()
+        // 距底部很小 → 在阈值内 → 跟随。
+        tracker.update(distanceFromBottom: 10, visibleHeight: viewport)
+        #expect(tracker.policy == .follow)
+        #expect(!tracker.userScrolledUp)
+    }
+
+    /// 惯性滚动经过底部不能解除 hold。
+    ///
+    /// 这是 `update` 注释里点明的设计要点：一旦判定上翻，只有**真正**进入
+    /// 底部阈值才恢复跟随；否则用户轻轻一滑就被拽走。
+    @Test("轻微回弹不解锁 hold")
+    func smallBounceDoesNotUnlock() {
+        var tracker = TailTracker()
+        tracker.markScrolledUp()
+        // 距底部仍远大于阈值（800 * 0.15 = 120）。
+        tracker.update(distanceFromBottom: 700, visibleHeight: viewport)
+        #expect(tracker.policy == .hold, "回弹到 700 点仍应保持 hold")
+        // 真正接近底部才解锁。
+        tracker.update(distanceFromBottom: 100, visibleHeight: viewport)
+        #expect(tracker.policy == .follow)
+    }
+
+    /// 显式"回到最新"必须立刻恢复跟随（用户点了入口或自己发完消息）。
+    @Test("jumpToLatest 立即恢复跟随")
+    func jumpToLatestRestoresFollow() {
+        var tracker = TailTracker()
+        tracker.markScrolledUp()
+        #expect(tracker.policy == .hold)
+        tracker.jumpToLatest()
+        #expect(tracker.policy == .follow)
+    }
+}
