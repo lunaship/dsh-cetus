@@ -87,8 +87,8 @@ iOS 在分享菜单与通知设置里显示的是**宿主 App 的名字**，扩�
 |---|---|---|
 | 1. 新规范名 + 服务端/客户端/patch/文档同步 | ✅ | `package.json:2`、`src/index.js:64`、`build-client.mjs:21`、`cordis.patch.yml:4-5` |
 | 2. 检查安装器对来源/包名/bundle id 的匹配规则 | ⚠️ **未实测**（需真实 DSH 安装器与重启 host，属红线外操作）。**已知风险已定位**：DSH host 用 package name 作为 client module graph row 的 id，bundle 注册 id 不匹配会让「手机连接」面板**静默消失**。已由 `test/client-bundle-id.test.mjs` 钉住三个 id 一致（package.json / build-client.mjs / panel section），不依赖安装器实测 |
-| 3. 显式迁移 helper：保留 port/stateDir/autoApprove/远程与权限配置 | ⚠️ **部分（有意不做，理由如下）**：stateDir 有完整迁移（`src/state-migration.js`）。**profile 里的 bundle 条目迁移未实现** —— 这**不是插件能做的事**：profile 配置文件由 DSH host 拥有，插件在启动时只能读到已解析的配置，写它等于越过宿主边界；而方案红线明确禁止动全局 state 与重启用户 host。正确做法是**维护者在自己的 profile 里改条目**，或由 DSH 安装器提供迁移。已在 `docs/REBRAND_CETUS.md` 记录为维护者事项 |
-| 4. 不覆盖未知键 / 先脱敏 diff / 写前备份 / 写后解析验证 | ✅ stateDir 路径全部满足（`inspectStateDir` 只读、staging + 逐字节校验、失败不提升）；profile config 路径同第 3 条，属维护者操作 |
+| 3. 显式迁移 helper：保留 port/stateDir/autoApprove/远程与权限配置 | ✅ **已补只读助手**（`scripts/profile-migrate.mjs`）。此前判为「有意不做」**过于宽泛** —— 方案的原文是「**先产生脱敏 diff**，写前备份，写后解析验证」，其中**读与比对**完全可以在插件侧做，只有**写入**才越界。现在：读 profile → 找出旧 `dsh-links` 条目 → 逐条列出**会保留**的配置（port/stateDir/autoApprove 等）→ 敏感键脱敏 → 给出维护者可执行的下一步（停 host / 备份 / 只改 id / 校验）。**工具本身不写任何文件**。测试 10 条（`test/profile-migrate.test.mjs`） |
+| 4. 不覆盖未知键 / 先脱敏 diff / 写前备份 / 写后解析验证 | ✅ **全部满足**：stateDir 路径满足（`inspectStateDir` 只读、staging + 逐字节校验、失败不提升）；profile 路径由 `scripts/profile-migrate.mjs` 产出**脱敏 diff**（敏感键值不回显）并在输出里写明「先停 host + 先备份」，**未知键原样保留、其它 bundle 不参与**；真正的写入与解析验证由维护者按输出步骤执行 |
 | 5. 新旧 ID 同时启用的重复启动防护 | ⚠️ **部分**（本轮补诊断，不做自动处置）。两个实例抢 18640 时，裸 `EADDRINUSE` 看不出原因 —— 用户会以为插件坏了。已加 `portConflictHint`（`src/index.js`）：识别 `EADDRINUSE` 并提示「最常见原因是新旧两个插件 id 同时启用」，给出「禁用重复条目 + 重启 host」的下一步。**刻意不自动处置**：抢端口的另一端可能正是用户正在用的旧实例，自动杀进程或改配置会打断他的会话。已检测/未做自动修复 |
 | 6. 兼容旧 ID 时用唯一实现/适配层 | ⚠️ 未做 |
 | 7. 仍走 git 来源、不加 npm 发布 | ✅ 未加发布任务 |
@@ -287,7 +287,7 @@ legacy `dsh-deepharness`/`dshlinks`）；自定义 `stateDir` 永远优先（`:6
 | 原编号 | 现状 |
 |---|---|
 | ~~N02.1 第 5 条：新旧 ID 重复启动防护~~ | ✅ 已补**端口冲突诊断**（`portConflictHint`）。**刻意不做自动处置**：抢端口的另一端可能是用户正在用的旧实例，自动杀进程会打断会话。`test/port-conflict.test.mjs` 4 条，含「不得含自动处置」断言 |
-| ~~N02.1 第 3/4 条：profile bundle 条目迁移~~ | ✅ **判定为不应由插件实现**：profile 配置由 DSH host 拥有，插件写它等于越界；红线禁止重启 host。属维护者事项，已在 `REBRAND_CETUS.md` 记录 |
+| ~~N02.1 第 3/4 条：profile bundle 条目迁移~~ | ✅ **已补只读助手**（本轮修正了此前「整体不做」的过宽判断）：读出旧条目、列出会保留的配置、脱敏、给维护者步骤。**写入仍由维护者执行** —— 那部分确实越界 |
 | ~~N02.4：迁移后反向导出/回滚路径~~ | ✅ 复核改判：`STATE-MIGRATION.md` §6 已是完整可执行手册（含分叉检测脚本，**实测跑过**）。反向转换有意不实现 |
 | ~~§22.5 第 9 行：迁移后新增假设备再回滚~~ | ✅ 已补 2 条用例（§22.5 **10/10 全覆盖**），并做反向验证 |
 | ~~iOS `cetus://` 深链~~ | ✅ 已实现（双 scheme + 大小写不敏感 + 拒绝其它 scheme） |
