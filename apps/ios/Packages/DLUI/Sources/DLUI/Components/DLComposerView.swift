@@ -268,9 +268,11 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         field.addSubview(placeholderLabel)
         NSLayoutConstraint.activate([
             // 与 textContainerInset（上 8）和 lineFragmentPadding（5）对齐，提示与光标同一位置。
-            placeholderLabel.topAnchor.constraint(equalTo: field.topAnchor, constant: 8),
-            placeholderLabel.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 5),
-            placeholderLabel.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -5),
+            // 用 frameLayoutGuide：UITextView 是滚动视图，直接贴 field 的锚点会落到内容区，
+            // 提示宽度不确定，截图在重生成与对比之间来回不一致。
+            placeholderLabel.topAnchor.constraint(equalTo: field.frameLayoutGuide.topAnchor, constant: 8),
+            placeholderLabel.leadingAnchor.constraint(equalTo: field.frameLayoutGuide.leadingAnchor, constant: 5),
+            placeholderLabel.trailingAnchor.constraint(equalTo: field.frameLayoutGuide.trailingAnchor, constant: -5),
         ])
     }
 
