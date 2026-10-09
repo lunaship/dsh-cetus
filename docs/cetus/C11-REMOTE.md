@@ -87,6 +87,63 @@ guard case .direct(let address) = selection, let base = URL(string: address) els
 手机也能连上 Relay。也就是说**远程能力目前对用户完全不可见**，
 `ConversationLiveService.connect()` 同样只接受 `.direct`（方案 §15 原文点名的缺口）。
 
+## 3.1 曾卡住的坑：`URLSession.bytes(for:)` 的任务级证书挑战（已修）
+
+按第 2 节的结论实现 URLSession 版传输时，**一次性请求全部通过，SSE 一律失败**，
+报 `NSURLErrorServerCertificateUntrusted (-1202)`，且 `PinnedSessionDelegate.pinFailureCount == 0`
+—— 说明**钉扎回调根本没被调用**。
+
+做成决定性对照实验（`RemoteLoopbackAdmissionSpikeTests.pinnedURLSessionBytesAPIOnSameBridge`）：
+**同一个桥、同一个假插件、同一张指纹、同一个 delegate**，只把 `dataTask` 换成
+`bytes(for:)`：
+
+```
+修好后：  SPIKE-A3 bytesStatus=200 received=25 pinFailures=0
+修好前：  SPIKE-A3 bytesFAILED=-1202  pinFailures=0
+```
+
+### 根因
+
+**`URLSession.bytes(for:)`（`AsyncBytes`，SSE 用）把 server-trust 挑战投递到
+*任务级* 回调**（`urlSession(_:task:didReceive:completionHandler:)`），
+而 `data(for:)` 走 *会话级*。原来的 `PinnedSessionDelegate` 只声明了
+`URLSessionDelegate` 且只实现会话级方法，于是：
+
+- `data(for:)` → 会话级方法被调用 → 钉扎生效 ✅
+- `bytes(for:)` → 任务级方法不存在 → 落到**系统默认校验** → 自签证书被拒 ❌
+
+第二个必要条件是 **Swift 的 ObjC 暴露**：即使写了任务级方法，类也必须
+**声明 `URLSessionTaskDelegate` 遵循**，否则该方法不会暴露给 ObjC 运行时；
+运行时找不到选择器，现象与"根本没实现"一模一样。
+本轮实测：只加方法、不改遵循声明时 SSE **仍然失败**。
+
+### 修法
+
+```swift
+public final class PinnedSessionDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable
+```
+
+并让会话级与任务级两个入口共用同一个私有 `evaluate(_:_:)`，保证两条路钉扎语义一致。
+
+### 为什么值得单独记一笔
+
+症状极具误导性：*同一个 session、同一张证书、一次性请求成功而流式请求失败*，
+错误信息只说"证书无效"，完全指不到 delegate。它会**静默地让远程 SSE 永远连不上** ——
+而 §15.2 末条要求「只有 bootstrap/SSE 真正可用才显示电脑在线」，
+所以 SSE 不通等于远程整体不可用。
+
+**潜在影响面**：局域网路径当前只用 `data(for:)`，因此没被触发；
+但将来任何地方改用 `bytes(for:)`（一个很自然的选择）都会重新踩上。
+
+### 验证
+
+| 证据 | 结果 |
+|---|---|
+| 同一桥对照实验（`SPIKE-A3`） | 修好后 `bytesStatus=200 received=25 pinFailures=0` |
+| `LoopbackURLSessionTransportTests` | **10/10**：SSE 逐行与空行分帧、状态码、`Host` 头还原、钉扎硬停止、fail-closed、拒绝码只诊断、取消语义、URL 保路径 |
+| **反向验证**：遵循声明改回 `URLSessionDelegate` | SSE 这一条**确实失败**（9/10）→ 修复是承重的 |
+| 回归面 | `RemoteInnerTLSTests` / `PreviewProxyTests` / `RemoteRouteBuilderTests` / spike 共 **40 例全过** |
+
 ## 4. 待办（按顺序）
 
 1. **把回环端口暴露给 URLSession**：给 `NWRemoteTunnelTransport` 加一个
@@ -94,7 +151,8 @@ guard case .direct(let address) = selection, let base = URL(string: address) els
    `bridge.listen()` → 后台跑 `acceptAndPump()` → 返回端口与关闭句柄。
    （`InnerTLSChannel.open` 的编排顺序可直接复用：**先 listen 拿端口、再发起连接、
    最后等桥接受**，顺序反了会互等。）
-2. **实现 URLSession 版 `RemoteHostTransport`**（注意 §3.1 的 SSE 坑）：
+2. ~~实现 URLSession 版传输~~ ✅ **已完成**（`LoopbackURLSessionTransport`，10 例测试；
+   根因见 §3.1）。保留原设计要求备查：
    - `send`：`URLSession.data(for:)` 指向 `https://127.0.0.1:<port><path>`，
      用与局域网**同一个** `PinnedSessionDelegate`（保证两条路径钉扎同源，§15.2 第 2 条）；
    - `stream`：`URLSession.bytes(for:)` → `SSELineSplitter` → 行流，**不攒 body**；
