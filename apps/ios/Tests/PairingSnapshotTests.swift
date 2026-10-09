@@ -15,10 +15,16 @@ final class PairingSnapshotTests: XCTestCase {
         }
     }
 
-    func testWelcome() { matrix("1_2_welcome") { PairingWelcomePage() } }
-    func testSubmitting() { fixture("1_2_submitting") { PairingWelcomePage(busy: .submitting) } }
-    func testPhotoReading() { fixture("1_2_photoReading") { PairingWelcomePage(busy: .photoReading) } }
-    func testLANExplanation() { matrix("1_lan_explain") { LocalNetworkExplanationPage() } }
+    // `.glassProminent` makes the hosted page snapshot transparent (the 1.2 baselines were 99% clear).
+    // These scenes use the filled snapshot style; production keeps glass.
+    func testWelcome() { matrix("1_2_welcome") { PairingWelcomePage(staticSnapshot: true) } }
+    func testSubmitting() {
+        fixture("1_2_submitting") { PairingWelcomePage(busy: .submitting, staticSnapshot: true) }
+    }
+    func testPhotoReading() {
+        fixture("1_2_photoReading") { PairingWelcomePage(busy: .photoReading, staticSnapshot: true) }
+    }
+    func testLANExplanation() { matrix("1_lan_explain") { LocalNetworkExplanationPage(staticSnapshot: true) } }
     func testScan() { scannerMatrix(hint: nil, scene: "1_3_scan") }
     func testInvalidScan() { scannerMatrix(hint: .invalidQR, scene: "1_3_scan_invalid") }
 
@@ -95,11 +101,11 @@ final class PairingSnapshotTests: XCTestCase {
     private func scannerMatrix(hint: PairingText?, scene: String) {
         if hint == nil {
             matrix(scene, navigation: false) {
-                PairingScannerPage(camera: DLColor.groupedBackground, hint: hint)
+                PairingScannerPage(camera: DLColor.groupedBackground, hint: hint, photo: {}, torchAvailable: true)
             }
         } else {
             fixture(scene, navigation: false) {
-                PairingScannerPage(camera: DLColor.groupedBackground, hint: hint)
+                PairingScannerPage(camera: DLColor.groupedBackground, hint: hint, photo: {}, torchAvailable: true)
             }
         }
     }
