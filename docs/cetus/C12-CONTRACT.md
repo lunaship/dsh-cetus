@@ -32,6 +32,20 @@
 | §16.3.5 禁通知/移除配对时停止订阅 | 设置页 `notifyMaster` 关闭与 `unpair()` 成功都调 `push.service().unregister()` | **一致** |
 | §16.2.5 前台 SSE 活跃时去重通知 | `src/push-sink.js:113` `hasForegroundSse(deviceId)` → `{sent:false, reason:"foreground"}` | **一致** |
 
+## RFC 0001（DLP/1）拒绝码 —— 顺带核对
+
+| code | RFC 要求的 App 行为 | 实现 | 判定 |
+|---|---|---|---|
+| `CLOCK_SKEW` | 用 `hostNow − 本机时间` 作为偏移重试**一次** | 上轮已补：`NWRemoteTunnelTransport.open` 捕获后带修正偏移重试一次 | **已一致**（此前 iOS 缺该重试，Android 有） |
+| `REPLAY` | 生成新 nonce **立即重试一次** | `sendClientOpen` **每次调用**都用 `SecRandomCopyBytes` 生成新 nonce；`CLOCK_SKEW` 重试路径会重新走一遍 `openOnce`，因此天然满足 | **一致（结构性满足）** |
+| `DEVICE_LIMIT` | 退避 1–3 秒后重试 | 映射为 `.busy(code:)`，由 `RemoteTunnelPool` 的额度与退避逻辑处理 | **一致** |
+| `SERVER_BUSY` | 退避重试 | `mapError` → `.serverBusy`，池层退避 | **一致** |
+| `BAD_MAC` / `UNKNOWN_KEY` | **不重试**、**不删凭据** | 映射为 `.rejected`，`isHardStop` 明确区分硬停止 | **一致** |
+
+> 注：`CLOCK_SKEW` 的实际重试需要真实 Relay + Agent 才能端到端验证；
+> 本轮只验证了**偏移量算术**（`RemoteClockSkewRetryTests`）与**触发条件**（`mapError` 映射）。
+> 端到端仍属未验证。
+
 ## 本条曾被误报（已澄清，勿重复排查）
 
 **「APNs payload 缺 `deviceId`，NSE 永远无法解密」 —— 不成立。**
