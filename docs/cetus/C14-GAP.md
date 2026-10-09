@@ -56,6 +56,34 @@
 
 > 平台可不同的部分（CameraX vs 系统扫码）按方案允许保留差异，未做统一。
 
+## 文件与改动的两端对照（本轮完成）
+
+| 项 | Android | iOS | 判定 |
+|---|---|---|---|
+| 相对路径拼接 | `childWorkspacePath`：`dir.isEmpty() ? name : "$dir/$name"`（`MobileApi.kt:1463`） | `childPath`：`parent.isEmpty ? child : parent + "/" + child`（`ReviewPages.swift:507`） | **一致** |
+| 工作区路径规范化 | `normalizeWorkspacePath = path.trimEnd('/')`（`WorkspaceLists.kt:25`） | `inboxNormalizeWorkspacePath`：循环去尾斜杠但**保留单个 `/`**（`Inbox.swift:166`） | **实质一致**，见下「唯一的差异」 |
+| 规范化的用途 | 分组 / 去重 / 选中（`WorkspaceSessionDerivations`、`HomeWorkspaceGroups`），**不当展示值** | 分组 / 去重（`InboxModel:690`、`inboxWorkspaceLabels`），**不当展示值** | **一致**：两端都拿它当内部键，展示标签从 `/` 分段推导 |
+| 上一级目录 | `parentWorkspacePath(dir) = dir.substringBeforeLast('/', "")`，根的上一次仍是根（`MobileApi.kt:1467`） | 用 `NavigationStack` 系统返回，无显式父路径 | **可不同**（导航机制差异，非语义差异） |
+| 工作区外/断链符号链接 | `entry.outside` → 行禁用（`enabled = !entry.outside`）+ 点击回调为 `null` + 副标题「指向工作区外」 | `entry.outside` → `onTapGesture` 首行 `if outside { return }` + `.disabled(outside)` + 「不可打开」文案 + `accessibilityHint` | **一致**（两端都不进入、不打开，且都给说明） |
+| 树条目模型 | `WorkspaceDirEntry(name, type, size, link, outside)`（`MobileApi.kt:1422`） | `TreeEntry(name, type, size, mtimeMs, link, outside)`（`Files.swift:28`） | **一致**（iOS 多 `mtimeMs`，是该端额外展示） |
+| 符号链接指向工作区内 | `link = true` 时按目标类型给出，可进入/打开 | 同（`Files.swift:34` 注释与实现一致） | **一致** |
+
+### 唯一的差异（不修，理由如下）
+
+**字面根路径 `/`**：iOS 规范化为 `/`（保留单个斜杠），Android 的 `trimEnd('/')` 得到**空串**。
+
+影响面：两端都只把它当**内部键**用，标签由 `/` 分段推导 —— iOS 的分段是 `[]`（回退到原串 `/`），
+Android 是空。任何**真实项目目录**（如 `/Users/x/proj`）两端结果完全相同，只有把文件系统根
+当作工作区时才会不同（实践中不会发生）。
+
+**为什么不修**：
+1. 改 iOS 去迎合 Android 会让根路径标签**变成空串**，更差；
+2. 改 Android 需要动 `apps/android/`，而这会让**已交付的签名 APK 失效**
+   （交付包对应 `a91562ae`，`apps/android/` 至今零改动）。为一个不可达的边界情形
+   作废一个已核验的发布产物，不划算。
+
+结论：**该维度已对照完毕，无用户可见分歧**。
+
 ## 已满足（核对确认，未改）
 
 | 要求 | 证据 |
@@ -77,5 +105,5 @@
 | 无网络 / 低电量 / 低内存 / 长会话 / 巨大代码块 | **未做**：属于性能与真机场景，本地无法构造（模拟器在本环境也起不来） |
 | 自动更新入口、安装说明、隐私文档重命名后不指向失效地址 | 插件侧白名单已过渡期兼容新旧仓库（`dfaa13c5`）；文档域名迁移未启动 |
 | 配对流程的阶段语义 | **已对照**（本轮，见下节） |
-| 文件与改动的路径/范围/统计/权限 | **统计与对比归属已对齐**（见下表 #5、#6）；路径规范化形式与权限差异仍**未对照** |
+| 文件与改动的路径/范围/统计/权限 | ✅ **已对照**（本轮完成，逐项见下节「文件与改动的两端对照」） |
 | 更名后两端行为 | **部分**：插件白名单过渡期已兼容；两端文案与安装身份未逐项比 |
