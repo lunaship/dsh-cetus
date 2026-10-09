@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   品牌启动背景（API 26–30）。
-  启动页用品牌字标（DeepLinks）。
+  启动页用品牌字标（cetus）。
   API 31+ 由系统 SplashScreen 接管（见 values-v31/themes.xml），此时 windowBackground
   必须保持纯色，否则退出后会在窗口背景里再闪一次同一张图。
 -->
