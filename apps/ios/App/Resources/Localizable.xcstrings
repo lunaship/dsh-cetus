@@ -4761,6 +4761,40 @@
         }
       }
     },
+    "inbox.loadFailedHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair with this computer again to see your tasks. Retrying will not help."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重新与这台电脑配对。反复重试没有用。"
+          }
+        }
+      }
+    },
+    "inbox.loadFailedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pairing is no longer valid"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对已失效"
+          }
+        }
+      }
+    },
     "inbox.loading": {
       "extractionState": "manual",
       "localizations": {

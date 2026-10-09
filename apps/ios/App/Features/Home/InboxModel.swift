@@ -43,11 +43,23 @@ enum InboxDestination: Hashable, Sendable {
     case archived
 }
 
+/// 列表为空且不在线时的原因（C14：错误不是空状态）。
+enum InboxOfflineReason: Equatable, Sendable {
+    /// 连不上：断网、电脑休眠、地址不通。可重试。
+    case unreachable
+    /// 连上了但被拒：未授权或证书不符。重试无用，需要重新配对。
+    case rejected
+}
+
 enum InboxPresentation: Equatable, Sendable {
     case loading
     case starters
     case workspaceEmpty
-    case offlineEmpty
+    /// 列表为空且当前不在线。`reason` 区分**为什么**不在线 —— C14 要求
+    /// 「权限拒绝、服务不支持、真空数据、加载失败分别表达」：
+    /// - `.unreachable`：连不上（断网/电脑休眠）。可重试。
+    /// - `.rejected`：连上了但被拒（未授权/证书不符）。重试无用，要重新配对。
+    case offlineEmpty(reason: InboxOfflineReason)
     case search(InboxSearchGroups, degraded: Bool, failed: Bool)
     case folders([InboxWorkspaceFolder])
 }
@@ -404,6 +416,14 @@ final class InboxModel {
     private var searchDegraded = false
     private var searchFailed = false
     private var searchGeneration = 0
+    /// 离线原因。C14：未授权/证书不符与「连不上」要给不同说明 ——
+    /// 前者重试没有意义，用户需要重新配对。
+    private var offlineReason: InboxOfflineReason {
+        switch notice {
+        case .unauthorized, .certificate: .rejected
+        default: .unreachable
+        }
+    }
     private var started = false
     private var refreshing = false
     private var refreshAgain = false
@@ -507,7 +527,7 @@ final class InboxModel {
         }
         if visibleSessions.isEmpty {
             if isChecking { return sessions.isEmpty ? .loading : .starters }
-            if !link.isOnline { return .offlineEmpty }
+            if !link.isOnline { return .offlineEmpty(reason: offlineReason) }
             if tokens.first != nil { return .workspaceEmpty }
             return .starters
         }

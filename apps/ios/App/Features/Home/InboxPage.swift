@@ -385,10 +385,21 @@ struct InboxPage: View {
                 copy, title: copy.text(.workspaceEmptyTitle), message: copy.text(.workspaceEmptyHint),
                 symbol: "folder")
             Button(copy.text(.showAll)) { model.setWorkspace(nil) }
-        case .offlineEmpty:
-            empty(
-                copy, title: copy.format(.offlineTitle, model.displayName),
-                message: copy.text(.offlineHintPlain), symbol: "wifi.slash")
+        case .offlineEmpty(let reason):
+            // C14：错误不是空状态，且不同原因给不同说明。
+            // 被拒（未授权/证书不符）重试没有意义，要引导重新配对；
+            // 连不上则说明这是最后一次保存的内容，恢复后会自动重连。
+            switch reason {
+            case .rejected:
+                empty(
+                    copy, title: copy.text(.loadFailedTitle),
+                    message: copy.text(.loadFailedHint),
+                    symbol: "exclamationmark.triangle")
+            case .unreachable:
+                empty(
+                    copy, title: copy.format(.offlineTitle, model.displayName),
+                    message: copy.text(.offlineHintPlain), symbol: "wifi.slash")
+            }
         case .search(let groups, let degraded, let failed):
             searchResults(copy, groups: groups, degraded: degraded, failed: failed)
         case .folders(let folders):

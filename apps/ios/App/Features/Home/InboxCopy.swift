@@ -52,6 +52,9 @@ enum InboxText: String, Equatable, Sendable {
     case offlineTitle
     case offlineHint
     case offlineHintPlain
+    /// C14：拉取失败 ≠ 没有任务。这两条是失败态专用文案。
+    case loadFailedTitle
+    case loadFailedHint
     case approveBlocked
     case emptyTitle
     case emptyHint
@@ -163,6 +166,8 @@ enum InboxText: String, Equatable, Sendable {
         case .offlineTitle: "Can't reach %@"
         case .offlineHint: "This is the state from %@. It reconnects once the computer is back online."
         case .offlineHintPlain: "This is the last saved state. It reconnects once the computer is back online."
+        case .loadFailedTitle: "Pairing is no longer valid"
+        case .loadFailedHint: "Pair with this computer again to see your tasks. Retrying will not help."
         case .approveBlocked: "You can approve once the computer is back online"
         case .emptyTitle: "Nothing needs you right now"
         case .emptyHint: "Tasks you start on the computer show up here too."

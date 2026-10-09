@@ -390,3 +390,56 @@ import Testing
         func archive(sessionID: String) async throws { throw InboxServiceError.failed }
     }
 }
+
+// MARK: - C14：错误不是空状态，且不同原因分别表达
+
+@MainActor @Suite(.serialized) struct InboxOfflineReasonTests {
+    private actor RejectingService: InboxServing {
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            throw InboxServiceError.unauthorized
+        }
+    }
+
+    private actor UnreachableService: InboxServing {
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            throw InboxServiceError.offline
+        }
+    }
+
+    private actor EmptyService: InboxServing {
+        func load(resetStreams: Bool) async throws -> InboxPayload {
+            _ = resetStreams
+            return InboxPayload(
+                sessions: [], archivedIDs: [], workspaces: [], hostName: "mac", route: .local,
+                eventsEnabled: false)
+        }
+    }
+
+    /// 未授权是「配对失效」，重试没有用 —— 必须与「连不上」区分开（C14）。
+    @Test func unauthorizedIsRejectedNotUnreachable() async {
+        let model = InboxModel(
+            hostID: "mac", service: RejectingService(), cache: InboxMemoryCache(), autostart: false)
+        await model.refresh()
+        #expect(model.presentation == .offlineEmpty(reason: .rejected))
+    }
+
+    /// 连不上是「可重试」，与配对失效不同。
+    @Test func offlineIsUnreachable() async {
+        let model = InboxModel(
+            hostID: "mac", service: UnreachableService(), cache: InboxMemoryCache(), autostart: false)
+        await model.refresh()
+        #expect(model.presentation == .offlineEmpty(reason: .unreachable))
+    }
+
+    /// 真正没有任务的账号走 starters，不能被报成错误（C14：错误不是空状态，
+    /// 反过来空状态也不能被报成错误）。
+    @Test func genuinelyEmptyAccountStillShowsStarters() async {
+        let model = InboxModel(
+            hostID: "mac", service: EmptyService(), cache: InboxMemoryCache(), autostart: false)
+        await model.refresh()
+        #expect(model.notice == nil)
+        #expect(model.presentation == .starters)
+    }
+}
