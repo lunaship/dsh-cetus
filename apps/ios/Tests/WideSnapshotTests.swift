@@ -41,6 +41,7 @@ import XCTest
     /// 这次更新和第一张截图的绘制是交错的，所以总是第一个渲染的变体落到另一种状态。
     /// 先完整渲染一张丢掉，等这次一次性更新结束，之后每张截图都从同一个稳定状态开始。
     private static var sceneWarmedUp = false
+    private static var warmUpImage: UIImage?
 
     private func shot(_ scene: String, size: CGSize, regular: Bool, changes: Bool) {
         if !Self.sceneWarmedUp {
@@ -48,7 +49,8 @@ import XCTest
             let warm = wideImage(
                 makePage(size: size, regular: regular, changes: changes, reduceTransparency: false),
                 size: size, regular: regular, label: "\(scene)/warm-up")
-            wideLog("WIDEDIAG \(scene)/warm-up button=\(wideButtonColor(warm))")
+            wideLog("WIDEDIAG \(scene)/warm-up button=\(wideButtonColor(warm)) \(wideFormat(warm))")
+            Self.warmUpImage = warm
         }
         render(scene, size: size, regular: regular, changes: changes, named: "default")
         render(
@@ -68,7 +70,15 @@ import XCTest
         let image = wideImage(
             page, size: size, regular: regular, increaseContrast: increaseContrast,
             label: "\(scene)/\(named)")
-        wideLog("WIDEDIAG \(scene)/\(named) button=\(wideButtonColor(image))")
+        wideLog("WIDEDIAG \(scene)/\(named) button=\(wideButtonColor(image)) \(wideFormat(image))")
+        if let warm = Self.warmUpImage {
+            Self.warmUpImage = nil
+            // 用和断言同样的比较（预热图先过一遍 PNG，当作“基线”），看预热图是不是落在另一种状态。
+            let diffing = Diffing<UIImage>.image(precision: 0.995, perceptualPrecision: 0.99)
+            let reference = diffing.fromData(diffing.toData(warm))
+            let verdict = diffing.diffV2(reference, image)?.0 ?? "identical-within-tolerance"
+            wideLog("WIDEDIAG \(scene) warm-up-vs-\(named): \(verdict) | \(widePixelDiff(warm, image))")
+        }
         // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
         // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
         assertSnapshot(
@@ -209,6 +219,68 @@ import XCTest
             + " curGamut=\(current.displayGamut.rawValue) tint=\(host.view.tintAdjustmentMode.rawValue)"
             + " windows=\(scene.windows.count) visible=\(visible) brand=\(brand)"
             + " orient=\(scene.effectiveGeometry.interfaceOrientation.rawValue)")
+}
+
+private func wideFormat(_ image: UIImage) -> String {
+    guard let cgImage = image.cgImage else { return "format=none" }
+    let space = cgImage.colorSpace?.name.map { $0 as String } ?? "nil"
+    return
+        "format=\(cgImage.bitsPerComponent)bpc/\(cgImage.bitsPerPixel)bpp \(space) \(cgImage.width)x\(cgImage.height)"
+}
+
+/// 诊断：两张图转成 sRGB 8 位逐像素比，报告不同像素数、范围和最常见的一对颜色。
+private func widePixelDiff(_ first: UIImage, _ second: UIImage) -> String {
+    guard let a = first.cgImage, let b = second.cgImage, a.width == b.width, a.height == b.height,
+        let space = CGColorSpace(name: CGColorSpace.sRGB)
+    else { return "pixel-diff-unavailable" }
+    let width = a.width
+    let height = a.height
+    func bitmap(_ image: CGImage) -> CGContext? {
+        guard
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context
+    }
+    guard let left = bitmap(a), let right = bitmap(b), let leftData = left.data, let rightData = right.data
+    else { return "pixel-diff-no-context" }
+    let leftBytes = leftData.assumingMemoryBound(to: UInt8.self)
+    let rightBytes = rightData.assumingMemoryBound(to: UInt8.self)
+    let rowBytes = left.bytesPerRow
+    var differing = 0
+    var pairs: [String: Int] = [:]
+    var minX = Int.max
+    var minY = Int.max
+    var maxX = -1
+    var maxY = -1
+    var y = 0
+    while y < height {
+        var x = 0
+        while x < width {
+            let index = y * rowBytes + x * 4
+            let dr = abs(Int(leftBytes[index]) - Int(rightBytes[index]))
+            let dg = abs(Int(leftBytes[index + 1]) - Int(rightBytes[index + 1]))
+            let db = abs(Int(leftBytes[index + 2]) - Int(rightBytes[index + 2]))
+            if max(dr, max(dg, db)) > 2 {
+                differing += 1
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+                let key =
+                    String(format: "#%02X%02X%02X", leftBytes[index], leftBytes[index + 1], leftBytes[index + 2])
+                    + "->"
+                    + String(format: "#%02X%02X%02X", rightBytes[index], rightBytes[index + 1], rightBytes[index + 2])
+                pairs[key, default: 0] += 1
+            }
+            x += 2
+        }
+        y += 2
+    }
+    let top = pairs.sorted { $0.value > $1.value }.prefix(4).map { "\($0.key)x\($0.value)" }
+    return "differing(sampled 1/4)=\(differing) box=(\(minX),\(minY))-(\(maxX),\(maxY)) \(top.joined(separator: " "))"
 }
 
 private func wideLog(_ message: String) {
