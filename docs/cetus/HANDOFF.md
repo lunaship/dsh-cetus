@@ -57,6 +57,7 @@
 - **SnapshotSettle**（`apps/ios/Tests/SnapshotSettle.swift`）：每张截图先用同样内容挂一次窗口拍一张丢掉，再正式拍；等到连续两帧逐字节相同；每帧前 `endEditing`。宽屏套件第一个截图前额外预热一张（进程里第一次挂宽屏窗口时系统会做一次性场景更新，侧栏阴影不同）。
 - **main 原有的偶发截图**（不是 #195 引入）：`TrajectorySnapshotTests.testTrace`（`4_7_trace_dark_en.default`，main b92c190 job 113632955894 等，数值完全相同 0.99464035 / 0.9573047）、`ChatSheetSnapshotTests.testGoal`（`5_13_goal_dark_zh.large`，玻璃「保存」按钮差 1 色阶）、`NewTaskSnapshotTests.testWorkspace`（`3_2_workspace` 浅色大字号，系统搜索框清除按钮时有时无；main 6ae1f15 job 113821055282 第 1 次失败重跑通过）。前两个经 SnapshotSettle 后未再出现；第三个在 #195 里把截图路径的 `.searchable` 换成实色静态替身解决。
 - **系统玻璃控件不适合整页截图**：`.glassProminent`、系统导航栏 / 底部工具栏、`.searchable` 在截图里可能透明、取色不稳或状态不定。做法：截图路径（`staticSnapshot`）画实色替身，生产路径不变；在 PR 正文「截图路径 ≠ 生产路径」一节登记。
+- **`pull_request` 的 `paths` 过滤按整个 PR 的改动判断**，不是按最新一次提交：PR 里只要有 `apps/ios/**` 的改动，哪怕新提交只改文档，iOS 工作流也会在新头上全部重跑（截图检查要重新过）。所以文档类提交尽量和代码一起提交，或放在最后一轮 CI 之前。
 - **macOS runner 排队慢**：一轮（build + unit + screenshot + e2e + performance + regen）常要 20–40 分钟，排队可能更久。轮询用后台脚本，单条命令不超过 10 分钟。
 - **swift-format**：CI 跑 `swift-format lint --strict --recursive --configuration .swift-format .`（在 `apps/ios/`）。提交前对改动文件先 `format -i` 再 `lint --strict`。
 - 本地沙箱没有 Xcode / macOS，无法编译 iOS；只能靠 CI。
@@ -97,7 +98,7 @@
 ## 8. 当前状态快照（2026-10-10 13:00 左右）
 
 - `main` = `c220824`（#194）。`design/ios-align-p0`（PR #195）在 main 之上，无冲突。
-- #195 代码头 `caf6e53`（四项设计决定 + 3_2 截图搜索框实色替身），基线 `2539540`（CI run 38022440908 重生成），之后只追加本文档（只改 `docs/cetus/HANDOFF.md`，iOS 工作流按路径过滤不会重跑）。
+- #195 代码头 `caf6e53`（四项设计决定 + 3_2 截图搜索框实色替身），基线 `2539540`（CI run 38022440908 重生成），之后只追加本文档（只改 `docs/cetus/HANDOFF.md`；iOS 代码与基线和 `2539540` 相同，但 PR 的 iOS 工作流仍会在新头上重跑，见 §6）。最终头的 CI 结果见 PR #195 正文「CI 结论」。
 - `2539540` 上的 iOS CI：CI iOS run 38023830425 第 2 次（screenshot job 114130388882）✅、第 3 次（screenshot job 114133418927）✅，build / unit 两次均 ✅；e2e run 38023830433 ✅；performance run 38023830504 ✅。`caf6e53` 上 performance 有一次 `testThreeThousandMessageAppend` 失败（性能夹具 `POST /control/restart` 未被接受，waiter=2 accepted=false，与 UI 改动无关），`2539540` 上通过。
 - 本地工作副本：`/workspace/work/cetus/repo2`（云端 agent 的沙箱，非用户机器）。提交走 GitHub git data API。
 - 锁屏 / 灵动岛没有截图测试（扩展不在截图矩阵里），标题显示只有单测和代码审查，真机 / 模拟器上看效果由用户做（8.5 需要有灵动岛的设备）。
