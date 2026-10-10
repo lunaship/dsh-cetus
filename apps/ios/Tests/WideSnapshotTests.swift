@@ -36,7 +36,20 @@ import XCTest
         shot("wide_split_third", size: CGSize(width: 341, height: 768), regular: false, changes: false)
     }
 
+    /// 进程里第一次把宽屏窗口挂到场景上时，系统会对整个场景做一次性的几何/特征更新（日志里同一时刻
+    /// 涌出几百条前面测试留下的 hosting controller 的 appearance 回调，这一张要多花 20 多秒）。
+    /// 这次更新和第一张截图的绘制是交错的，所以总是第一个渲染的变体落到另一种状态。
+    /// 先完整渲染一张丢掉，等这次一次性更新结束，之后每张截图都从同一个稳定状态开始。
+    private static var sceneWarmedUp = false
+
     private func shot(_ scene: String, size: CGSize, regular: Bool, changes: Bool) {
+        if !Self.sceneWarmedUp {
+            Self.sceneWarmedUp = true
+            let warm = wideImage(
+                makePage(size: size, regular: regular, changes: changes, reduceTransparency: false),
+                size: size, regular: regular, label: "\(scene)/warm-up")
+            wideLog("WIDEDIAG \(scene)/warm-up button=\(wideButtonColor(warm))")
+        }
         render(scene, size: size, regular: regular, changes: changes, named: "default")
         render(
             scene, size: size, regular: regular, changes: changes, named: "reduce-transparency",
@@ -50,9 +63,28 @@ import XCTest
         _ scene: String, size: CGSize, regular: Bool, changes: Bool, named: String,
         reduceTransparency: Bool = false, increaseContrast: Bool = false
     ) {
+        let page = makePage(
+            size: size, regular: regular, changes: changes, reduceTransparency: reduceTransparency)
+        let image = wideImage(
+            page, size: size, regular: regular, increaseContrast: increaseContrast,
+            label: "\(scene)/\(named)")
+        wideLog("WIDEDIAG \(scene)/\(named) button=\(wideButtonColor(image))")
+        // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
+        // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
+        assertSnapshot(
+            of: image,
+            as: .image(precision: 0.995, perceptualPrecision: 0.99),
+            named: named,
+            testName: "Snapshot_\(scene)_light_zh"
+        )
+    }
+
+    private func makePage(
+        size: CGSize, regular: Bool, changes: Bool, reduceTransparency: Bool
+    ) -> some View {
         let model = inbox()
         if regular { model.selectedSessionID = "approve" }
-        let page = InboxPage(
+        return InboxPage(
             model: model,
             staticSnapshot: true,
             wideSnapshotConversation: regular ? conversation() : nil,
@@ -65,19 +97,10 @@ import XCTest
         .environment(\._accessibilityReduceTransparency, reduceTransparency)
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
-        let image = wideImage(page, size: size, regular: regular, increaseContrast: increaseContrast)
-        // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
-        // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
-        assertSnapshot(
-            of: image,
-            as: .image(precision: 0.995, perceptualPrecision: 0.99),
-            named: named,
-            testName: "Snapshot_\(scene)_light_zh"
-        )
     }
 
     private func wideImage<V: View>(
-        _ view: V, size: CGSize, regular: Bool, increaseContrast: Bool = false
+        _ view: V, size: CGSize, regular: Bool, increaseContrast: Bool = false, label: String
     ) -> UIImage {
         let host = UIHostingController(rootView: view)
         host.view.backgroundColor = .systemBackground
@@ -110,6 +133,7 @@ import XCTest
         window.isHidden = false
         window.makeKeyAndVisible()
         host.view.frame = CGRect(origin: .zero, size: size)
+        wideDiag("\(label) shown", scene: scene, window: window, host: host)
 
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
@@ -130,12 +154,11 @@ import XCTest
         let format = UIGraphicsImageRendererFormat()
         format.scale = window.screen.scale > 0 ? window.screen.scale : 3
         format.opaque = true
-        // 固定广色域 16 位（与现有基线一致）。默认 .automatic 按当时的 UITraitCollection.current 选，
-        // 同一张图两次运行可能一次 P3 16 位、一次 sRGB 8 位，饱和色区域（品牌色按钮）整块对不上。
-        format.preferredRange = .extended
+        wideDiag("\(label) before-draw", scene: scene, window: window, host: host)
         let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
             host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        wideDiag("\(label) after-draw", scene: scene, window: window, host: host)
         window.isHidden = true
         window.rootViewController = nil
         window.windowScene = nil
@@ -164,6 +187,80 @@ import XCTest
         }
         return nil
     }
+}
+
+/// 诊断：截图时的场景/窗口状态，和品牌色按钮在图里的实际颜色。
+@MainActor private func wideDiag(_ label: String, scene: UIWindowScene, window: UIWindow, host: UIViewController) {
+    let traits = window.traitCollection
+    let current = UITraitCollection.current
+    var red: CGFloat = 0
+    var green: CGFloat = 0
+    var blue: CGFloat = 0
+    var alpha: CGFloat = 0
+    DLUIKitColor.brandFill.resolvedColor(with: traits).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+    let brand = String(format: "%.3f,%.3f,%.3f", Double(red), Double(green), Double(blue))
+    let visible = scene.windows.filter { !$0.isHidden }.count
+    wideLog(
+        "WIDEDIAG \(label) t=\(String(format: "%.3f", Date().timeIntervalSince1970))"
+            + " scene=\(scene.activationState.rawValue) key=\(window.isKeyWindow)"
+            + " style=\(traits.userInterfaceStyle.rawValue) active=\(traits.activeAppearance.rawValue)"
+            + " gamut=\(traits.displayGamut.rawValue) contrast=\(traits.accessibilityContrast.rawValue)"
+            + " curStyle=\(current.userInterfaceStyle.rawValue) curActive=\(current.activeAppearance.rawValue)"
+            + " curGamut=\(current.displayGamut.rawValue) tint=\(host.view.tintAdjustmentMode.rawValue)"
+            + " windows=\(scene.windows.count) visible=\(visible) brand=\(brand)"
+            + " orient=\(scene.effectiveGeometry.interfaceOrientation.rawValue)")
+}
+
+private func wideLog(_ message: String) {
+    NSLog("%@", message as NSString)
+}
+
+/// 诊断：右下四分之一里偏蓝的饱和像素（品牌色按钮），按 sRGB 8 位统计最多的三种颜色和范围。
+private func wideButtonColor(_ image: UIImage) -> String {
+    guard let cgImage = image.cgImage else { return "no-cgimage" }
+    let width = cgImage.width / 2
+    let height = cgImage.height / 4
+    let crop = CGRect(x: cgImage.width - width, y: cgImage.height - height, width: width, height: height)
+    guard let cropped = cgImage.cropping(to: crop),
+        let space = CGColorSpace(name: CGColorSpace.sRGB)
+    else { return "no-crop" }
+    guard
+        let context = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return "no-context" }
+    context.draw(cropped, in: CGRect(x: 0, y: 0, width: width, height: height))
+    guard let data = context.data else { return "no-data" }
+    let bytes = data.assumingMemoryBound(to: UInt8.self)
+    let rowBytes = context.bytesPerRow
+    var counts: [Int: Int] = [:]
+    var minX = Int.max
+    var minY = Int.max
+    var maxX = -1
+    var maxY = -1
+    var y = 0
+    while y < height {
+        var x = 0
+        while x < width {
+            let index = y * rowBytes + x * 4
+            let red = Int(bytes[index])
+            let green = Int(bytes[index + 1])
+            let blue = Int(bytes[index + 2])
+            if blue - red > 60 {
+                counts[(red << 16) | (green << 8) | blue, default: 0] += 1
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+            }
+            x += 2
+        }
+        y += 2
+    }
+    let top = counts.sorted { $0.value > $1.value }.prefix(3).map {
+        String(format: "#%06lX", $0.key) + "x\($0.value)"
+    }
+    return "\(top.joined(separator: " ")) box=(\(minX),\(minY))-(\(maxX),\(maxY)) of \(width)x\(height)"
 }
 
 private final class WideSnapshotWindow: UIWindow {
