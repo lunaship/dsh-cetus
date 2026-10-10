@@ -119,6 +119,10 @@ import XCTest
         increaseContrast: Bool,
         make: () -> V
     ) {
+        // 同样的内容先完整挂一次窗口、拍一张丢掉，再用新的 hosting controller 正式拍（见 SnapshotSettle.swift）。
+        _ = renderImage(
+            make(), appearance: appearance, large: large, reduceTransparency: reduceTransparency,
+            increaseContrast: increaseContrast, language: language)
         let image = renderImage(
             make(), appearance: appearance, large: large, reduceTransparency: reduceTransparency,
             increaseContrast: increaseContrast, language: language)
