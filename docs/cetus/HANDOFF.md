@@ -69,12 +69,13 @@
    - 线索：PR #195 正文写的是「手机 API 没有中断接口，需要插件新增」，**但插件已有** `POST /dsh-link/mobile/sessions/:id/cancel`（`src/mobile-api.js` 约 979 行，调 RPC `session.cancel`），Android 已用（`MobileApi.kt` `cancelSession`，`WorkspaceActivity.kt` 约 2640 行），iOS 也有模型 `CancelResponse`（`DLModels/Control.swift`）但没有调用点。先核实 `session.cancel` 是「中断当前轮次」还是「取消整个会话」，再决定是 iOS 直接接线还是插件补接口。
 
 ### P1
-2. **显示真实模型**（4.1 模型胶囊打开面板前只显示「模型」）。
+2. **显示真实模型**（4.1 模型胶囊打开面板前只显示「模型」）。✅ **已完成**（PR #198，2026-10-10 合并）。
    - 验收：进入会话即显示当前模型名；切换后即时更新；拿不到时显示中性说明，不填假值。
-   - 线索：iOS 已有 `GET /dsh-link/mobile/models?sessionId=`（`ConversationLiveService.swift` 约 129 行）；插件 `src/mobile-api.js` 约 1047 行「投影里有模型 id 就用它，否则短缓存问 session.models」。看会话摘要 / 历史投影是否已带模型 id，不新增 v1 必填字段。
-3. **设置页电脑状态 / 余额 / 会话数**（7.1 右侧值）。
-   - 验收：电脑行一行「● 在线 · 局域网 · Tailscale 备用」；「模型与余额」显示余额；「会话记录」显示归档会话数；拿不到就不显示值。
-   - 线索：余额已有 `GET /dsh-link/mobile/balance`（`SettingsModelsService.swift` 约 67 行，RPC `account.getBalance`）；Tailscale 备用路线状态目前首页拿不到。
+   - 实现：`ConversationModel.serviceCurrentModel()` 取 `GET /dsh-link/mobile/models` 的 `current`；`ConversationPage` 在 `.task` 中自动填入胶囊（手动选择保留）。
+3. **设置页电脑状态 / 余额 / 会话数**（7.1 右侧值）。✅ **已完成**（PR #199，2026-10-10 合并）。
+   - 验收：电脑行一行「● 在线 · 局域网」/「○ 离线」（拿不到路线不显示）；「模型与余额」显示余额；「会话记录」显示归档会话数；拿不到就不显示值。
+   - 实现：`computerStatusLine()` 单行格式；`SettingsModelsModel.loadBalance(locale:)` 轻量取余额；`archivedCount` 由首页传入。
+   - 注：Tailscale 备用状态首页拿不到，未显示（原验收中的「Tailscale 备用」暂略）。
 4. **6.1 范围分段 / 6.2 生产路由段级提问**。
    - 验收：6.1 分段控件「本轮 / 整个会话 / 未提交」有真实数据才显示；6.2 生产路径接上 `DiffPage` 路由，「就这段提问」引用具体段。
    - 线索：插件目前没有三种范围的数据（需新增可选接口）；生产路径现在在 6.1 列表里内联展开 diff，`DiffPage` 只在截图里用，`onAskHunk(段下标)` 已有。
@@ -92,11 +93,12 @@
 10. **iOS 版本号 / 构建号可追溯**：现在 `apps/ios/project.yml` 写死 `MARKETING_VERSION 1.0`、`CURRENT_PROJECT_VERSION 1`（1.0(1)）。验收：构建号来自 CI（如 run number 或提交数），关于页能对上提交；与 Android 版本方案一致；不破坏 Bundle ID。
 11. **发布与维护者材料**：验收：CHANGELOG、隐私说明、App Store / TestFlight 文案与截图清单、维护者检查表齐全；签名 / 上传由用户做。
 
-## 8. 当前状态快照（2026-10-10 15:40 左右）
+## 8. 当前状态快照（2026-10-10 22:00 左右）
 
-- `main` = `3d38e0d`（#195 squash 合并；2026-10-10 用户授权合并，审阅结论：通过，建议合并）。
-- #195 最终头 `5cb931e` 的 CI：iOS build / unit / screenshot / e2e / performance 全绿（screenshot check 连续两次全绿：run 38026028542 job 114137628475 / 114140078437）；插件 CI（Go gates / Node gates / DLP/1 e2e）全绿。与 `c220824` 无冲突。
-- 下一项：P0「停止当前轮次（4.1 停止按钮）」（§7 第 1 项）。
+- `main` = `a44785d`（#199 squash 合并；2026-10-10 用户授权合并）。
+- #198（P1 显示真实模型）CI 全绿后合并；#199（P1 设置页状态值）CI 全绿后合并。
+- P0「停止当前轮次」PR #197 仍阻塞：iOS build 挂（`ConversationPage.swift` 编译错误，3 failures）；等用户从 CI 日志复制 3 条 `error:` 行。
+- 下一项：P1「6.1 范围分段 / 6.2 生产路由段级提问」（§7 第 4 项）。
 - 遗留小 nit：`apps/ios/Packages/DLUI/Sources/DLUI/Theme/DLColor.swift:15` 注释还写着「provisional token」，文档已改「用户 2026-10-10 定」；不影响功能，下个 iOS 任务顺手改。
 - 本地工作副本：`/workspace/work/cetus/repo2`（云端 agent 的沙箱，非用户机器）。提交走 GitHub git data API。
 - 锁屏 / 灵动岛没有截图测试（扩展不在截图矩阵里），标题显示只有单测和代码审查，真机 / 模拟器上看效果由用户做（8.5 需要有灵动岛的设备）。
