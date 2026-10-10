@@ -4,9 +4,10 @@ import WidgetKit
 
 /// Content state shared with the app.
 ///
-/// RFC 0002 §5.6 allows only these keys. A task title is deliberately absent:
-/// the lock screen shows generic copy, and the concrete title is shown inside
-/// the app only after tapping through.
+/// RFC 0002 §5.6 allows only these keys in `content-state`; the title is not
+/// one of them. The task title instead rides in the attributes the app sets
+/// when it starts the activity locally (user decision 2026-10-10: the lock
+/// screen and Dynamic Island show the task title). It is never pushed.
 struct CetusActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var state: String
@@ -17,6 +18,7 @@ struct CetusActivityAttributes: ActivityAttributes {
     }
 
     var hostRef: String
+    var title: String?
 }
 
 struct CetusLiveActivity: Widget {
@@ -26,8 +28,20 @@ struct CetusLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.center) {
-                    // Generic on purpose: never a command, file name, or title.
-                    Text(verbatim: statusText(context.state.state))
+                    // Title (one line, truncated) + generic status. Never a command or file name.
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let title = context.attributes.title {
+                            Text(verbatim: title)
+                                .font(.headline)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        Text(verbatim: statusText(context.state.state))
+                            .font(context.attributes.title == nil ? .body : .subheadline)
+                            .foregroundStyle(context.attributes.title == nil ? .primary : .secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } compactLeading: {
                 Image(systemName: "link")
@@ -45,6 +59,13 @@ private struct LiveActivityLockView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Task title looked up by the app (one line, truncated), then the generic status.
+            if let title = context.attributes.title {
+                Text(verbatim: title)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
             Text(verbatim: statusText(context.state.state))
             Text(verbatim: "步骤 \(max(1, context.state.step))")
             // `Text(timerInterval:)` counts up forever and makes a dead task look

@@ -28,9 +28,15 @@ public struct CetusActivityAttributes: ActivityAttributes {
     }
 
     public var hostRef: String
+    /// Task title looked up in the app when the activity starts (user decision
+    /// 2026-10-10: show it on the lock screen and Dynamic Island). Attributes are
+    /// fixed for the activity's lifetime and never travel in a push; `content-state`
+    /// stays the five RFC 0002 §5.6 fields. Optional so older activities decode.
+    public var title: String?
 
-    public init(hostRef: String) {
+    public init(hostRef: String, title: String? = nil) {
         self.hostRef = hostRef
+        self.title = title
     }
 }
 
@@ -48,7 +54,7 @@ public struct CetusActivityAttributes: ActivityAttributes {
         }
 
         public func start(content: LiveActivityContent) async throws -> LiveActivityHandle {
-            let attributes = CetusActivityAttributes(hostRef: content.hostRef)
+            let attributes = CetusActivityAttributes(hostRef: content.hostRef, title: content.title)
             let state = Self.state(from: content)
             let activity = try Activity<CetusActivityAttributes>.request(
                 attributes: attributes,
@@ -82,8 +88,7 @@ public struct CetusActivityAttributes: ActivityAttributes {
         }
 
         /// Maps contract content onto the widget's content state. Only the
-        /// RFC 0002 §5.6 fields travel; the task title is deliberately absent so
-        /// it cannot reach the lock screen.
+        /// RFC 0002 §5.6 fields travel here; the title lives in the attributes.
         private static func state(from content: LiveActivityContent) -> CetusActivityAttributes.ContentState {
             CetusActivityAttributes.ContentState(
                 state: content.phase.rawValue,

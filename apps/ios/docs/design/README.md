@@ -32,7 +32,7 @@
 | Token | 浅色 | 深色 | 用途 |
 |---|---|---|---|
 | AccentColor | `#3F5BD6` | `#8B9DFF` | 文字按钮、图标、选中态 |
-| BrandFill | `#3F5BD6` | `#4C66E6`（暂定，待你定） | 品牌实心按钮底色，白字 |
+| BrandFill | `#3F5BD6` | `#4C66E6`（用户 2026-10-10 定） | 品牌实心按钮底色，白字 |
 | 状态 | systemOrange / systemGreen / systemRed | 同左（系统自动适配） | 等待、完成、失败；diff 增删 |
 | 其余 | 系统语义色（label、secondaryLabel、fill、systemBackground…） | | |
 

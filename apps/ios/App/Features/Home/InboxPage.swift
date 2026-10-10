@@ -304,7 +304,7 @@ struct InboxPage: View {
     private func screen(_ copy: InboxCopy) -> some View {
         inbox(copy)
             .navigationTitle(model.displayName)
-            .navigationSubtitle(copy.subtitle(name: model.displayName, link: model.link))
+            .navigationSubtitle(copy.subtitle(link: model.link))
             // 设计稿 2.1：手机上是大标题 + 电脑状态副标题；iPad 侧栏仍用行内标题。
             // 手机截图的大标题由 `snapshotHeader` 画在内容里，系统栏保持行内，免得顶部多留一段空白。
             .navigationBarTitleDisplayMode(sizeClass == .regular || staticSnapshot ? .inline : .large)
@@ -327,7 +327,7 @@ struct InboxPage: View {
             Text(model.displayName)
                 .font(.largeTitle.bold())
                 .foregroundStyle(DLColor.label)
-            Text(copy.subtitle(name: model.displayName, link: model.link))
+            Text(copy.subtitle(link: model.link))
                 .font(.subheadline)
                 .foregroundStyle(DLColor.secondaryLabel)
         }

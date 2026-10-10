@@ -11,21 +11,24 @@ struct PairingWelcomePage: View {
     /// Snapshot path only: the filled system style instead of `.glassProminent`.
     /// A `.glassProminent` button makes the whole hosted page snapshot transparent.
     var staticSnapshot = false
+    /// 品牌图标块边长与步骤编号圆直径，随动态字体缩放（设计稿 1.2：72pt / 32pt）。
+    @ScaledMetric(relativeTo: .largeTitle) private var brandTile: CGFloat = 72
+    @ScaledMetric(relativeTo: .headline) private var stepBadge: CGFloat = 32
 
     var body: some View {
         let copy = PairingCopy(locale: locale)
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Image(systemName: "terminal")
-                    .font(.largeTitle)
-                    .imageScale(.large)
-                    .foregroundStyle(DLColor.accent)
-                    .accessibilityHidden(true)
-                Text(copy.text(.welcomeTitle)).font(.largeTitle.bold())
-                Text(copy.text(.welcomeBody)).foregroundStyle(DLColor.secondaryLabel)
-                step("1.circle", title: .stepOne, detail: .stepOneBody, copy: copy)
-                step("2.circle", title: .stepTwo, detail: .stepTwoBody, copy: copy)
-                step("3.circle", title: .stepThree, detail: .stepThreeBody, copy: copy)
+                brandMark
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(copy.text(.welcomeTitle)).font(.largeTitle.bold())
+                    Text(copy.text(.welcomeBody)).foregroundStyle(DLColor.secondaryLabel)
+                }
+                VStack(alignment: .leading, spacing: 20) {
+                    step(1, title: .stepOne, detail: .stepOneBody, copy: copy)
+                    step(2, title: .stepTwo, detail: .stepTwoBody, copy: copy)
+                    step(3, title: .stepThree, detail: .stepThreeBody, copy: copy)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(24)
@@ -35,8 +38,11 @@ struct PairingWelcomePage: View {
                 if let busy {
                     ProgressView(copy.text(busy))
                 }
+                // 设计稿 1.2：扫码配对（品牌实心）→ 从相册识别（强调色中粗）→ 先看看演示（次要色）→ 免责声明。
                 scanButton(copy.text(.scan))
-                Button(copy.text(.photo), action: photo).frame(minHeight: 44)
+                Button(copy.text(.photo), action: photo)
+                    .fontWeight(.semibold)
+                    .frame(minHeight: 44)
                 Button(copy.text(.demo), action: demo).frame(minHeight: 44)
                     .foregroundStyle(DLColor.secondaryLabel)
                 Text(copy.text(.disclaimer)).font(.footnote)
@@ -50,9 +56,24 @@ struct PairingWelcomePage: View {
         .background(DLColor.background)
     }
 
-    private func step(_ image: String, title: PairingText, detail: PairingText, copy: PairingCopy) -> some View {
+    /// 设计稿 1.2 的品牌图标块：BrandFill 实心圆角方块 + 白色「>_」。装饰性，读屏跳过。
+    private var brandMark: some View {
+        Text(verbatim: ">_")
+            .font(.system(.title, design: .monospaced).weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(width: brandTile, height: brandTile)
+            .background(DLColor.brandFill, in: RoundedRectangle(cornerRadius: brandTile * 0.225, style: .continuous))
+            .accessibilityHidden(true)
+    }
+
+    /// 设计稿 1.2 的步骤编号：强调色淡底圆 + 强调色数字。
+    private func step(_ number: Int, title: PairingText, detail: PairingText, copy: PairingCopy) -> some View {
         HStack(alignment: .top, spacing: 16) {
-            Image(systemName: image).font(.title3).foregroundStyle(DLColor.accent)
+            Text(verbatim: "\(number)")
+                .font(.headline)
+                .foregroundStyle(DLColor.accent)
+                .frame(width: stepBadge, height: stepBadge)
+                .background(DLColor.accent.opacity(0.12), in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(copy.text(title)).font(.headline)

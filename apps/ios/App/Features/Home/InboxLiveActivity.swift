@@ -13,6 +13,8 @@ struct InboxLiveActivityTarget: Equatable, Sendable {
     var step: Int
     var startedAt: Date
     var waitingCount: Int
+    /// Local session title (`inboxDisplayTitle`), shown on the lock screen.
+    var title: String? = nil
 }
 
 let inboxLongTaskThreshold: TimeInterval = 60
@@ -24,7 +26,8 @@ func inboxLiveActivityTarget(_ sessions: [SessionSummary], now: Date) -> InboxLi
     {
         return InboxLiveActivityTarget(
             sessionID: sessionID, phase: .approval, step: session.activity?.step ?? 1,
-            startedAt: inboxActivityStart(session, now: now), waitingCount: waiting.count)
+            startedAt: inboxActivityStart(session, now: now), waitingCount: waiting.count,
+            title: inboxActivityTitle(session))
     }
     let running = sessions.filter { session in
         guard session.running == true, session.sessionId?.isEmpty == false else { return false }
@@ -35,7 +38,13 @@ func inboxLiveActivityTarget(_ sessions: [SessionSummary], now: Date) -> InboxLi
     else { return nil }
     return InboxLiveActivityTarget(
         sessionID: sessionID, phase: .running, step: session.activity?.step ?? 1,
-        startedAt: inboxActivityStart(session, now: now), waitingCount: 0)
+        startedAt: inboxActivityStart(session, now: now), waitingCount: 0, title: inboxActivityTitle(session))
+}
+
+/// The title the inbox row shows, cleaned to one line. Comes from session data the
+/// app already has; nothing new is requested from the computer.
+private func inboxActivityTitle(_ session: SessionSummary) -> String? {
+    LiveActivityTitle.clean(inboxDisplayTitle(session.title))
 }
 
 /// `activity.startedAt` is epoch milliseconds (MOBILE_SYNC_CONTRACT). Without it
@@ -74,6 +83,6 @@ final class InboxLiveActivitySync {
         current = target.sessionID
         await controller.update(
             hostRef: hostID, sessionRef: target.sessionID, phase: target.phase, step: target.step,
-            startedAt: target.startedAt, waitingCount: target.waitingCount)
+            startedAt: target.startedAt, waitingCount: target.waitingCount, title: target.title)
     }
 }

@@ -36,7 +36,8 @@ public enum LiveActivityError: Error, Equatable {
 ///   the existing activity instead of creating a duplicate;
 /// * the activity ends on completed, failed, or stopped;
 /// * a cold launch reattaches to instances ActivityKit still holds;
-/// * content-state carries only the RFC 0002 §5.6 fields.
+/// * content-state carries only the RFC 0002 §5.6 fields; the task title rides in
+///   the locally requested activity's attributes (fixed when the activity starts).
 public actor LiveActivityController {
     private let adapter: any LiveActivityAdapting
     private let isEnabled: @Sendable () -> Bool
@@ -72,12 +73,13 @@ public actor LiveActivityController {
     /// Starts for a long task or refreshes the instance already showing it.
     @discardableResult
     public func start(
-        hostRef: String, sessionRef: String, phase: LiveActivityPhase, step: Int, startedAt: Date, waitingCount: Int
+        hostRef: String, sessionRef: String, phase: LiveActivityPhase, step: Int, startedAt: Date, waitingCount: Int,
+        title: String? = nil
     ) async -> LiveActivityHandle? {
         guard isEnabled(),
             let content = LiveActivityPolicy.content(
                 enabled: true, hostRef: hostRef, sessionRef: sessionRef, phase: phase, step: step,
-                startedAt: startedAt, waitingCount: waitingCount)
+                startedAt: startedAt, waitingCount: waitingCount, title: title)
         else { return nil }
 
         if let existing = active[sessionRef] {
@@ -99,7 +101,8 @@ public actor LiveActivityController {
     /// long task that crossed the threshold mid-flight still gets one.
     @discardableResult
     public func update(
-        hostRef: String, sessionRef: String, phase: LiveActivityPhase, step: Int, startedAt: Date, waitingCount: Int
+        hostRef: String, sessionRef: String, phase: LiveActivityPhase, step: Int, startedAt: Date, waitingCount: Int,
+        title: String? = nil
     ) async -> LiveActivityHandle? {
         guard isEnabled() else {
             await end(sessionRef: sessionRef)
@@ -108,12 +111,12 @@ public actor LiveActivityController {
         guard let existing = active[sessionRef] else {
             return await start(
                 hostRef: hostRef, sessionRef: sessionRef, phase: phase, step: step, startedAt: startedAt,
-                waitingCount: waitingCount)
+                waitingCount: waitingCount, title: title)
         }
         guard
             let content = LiveActivityPolicy.content(
                 enabled: true, hostRef: hostRef, sessionRef: sessionRef, phase: phase, step: step,
-                startedAt: startedAt, waitingCount: waitingCount)
+                startedAt: startedAt, waitingCount: waitingCount, title: title)
         else {
             await end(sessionRef: sessionRef)
             return nil

@@ -142,9 +142,7 @@ struct NewTaskPage: View {
                 }
                 Button(copy.text(.addWorkspace)) { sheet = .add }
             }
-            // 截图模式用常量绑定：初始文字在搜索栏创建时就位。onAppear 再写入会让清除按钮
-            // 时有时无，导致 3_2_workspace 基线在重生成与对比之间来回不一致。
-            .searchable(text: staticSnapshot ? .constant(snapshotQuery) : $query)
+            .modifier(WorkspaceSearch(staticSnapshot: staticSnapshot, query: $query, snapshotQuery: snapshotQuery))
             .navigationTitle(copy.text(.chooseWorkspace))
         case .add:
             Form {
@@ -227,6 +225,44 @@ struct NewTaskPage: View {
             // 保留用户输入（不清空 addPath），只显示可操作说明。
             submitError = copy.text(.addWorkspaceFailed)
         }
+    }
+}
+
+/// 3.2 选择工作区的搜索框。
+///
+/// 生产路径是系统 `.searchable`（iOS 26 底部玻璃搜索框）。截图路径不用它：系统搜索框里的
+/// 清除按钮有没有画出来取决于搜索栏内部的编辑状态，同一份输入在 CI 上时有时无，
+/// 3_2_workspace 浅色大字号基线因此在两种状态间来回跳（等渲染稳定也消不掉）。
+/// 截图改用实色静态替身：同位置、同层级（放大镜 + 搜索文字的胶囊），不画清除按钮。
+private struct WorkspaceSearch: ViewModifier {
+    var staticSnapshot: Bool
+    @Binding var query: String
+    var snapshotQuery: String
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if staticSnapshot {
+            content.safeAreaInset(edge: .bottom, spacing: 0) { snapshotField }
+        } else {
+            content.searchable(text: $query)
+        }
+    }
+
+    private var snapshotField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(DLColor.secondaryLabel)
+            Text(snapshotQuery)
+                .foregroundStyle(DLColor.label)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 48)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: Capsule())
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
     }
 }
 

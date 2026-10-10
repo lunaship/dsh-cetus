@@ -65,4 +65,15 @@ struct InboxLiveActivityTests {
         done.stoppedReason = "failed"
         #expect(inboxLiveActivityTarget([done], now: now) == nil)
     }
+
+    @Test("锁屏标题取会话本地标题，压成一行；没有标题时为空")
+    func titleComesFromLocalSession() throws {
+        var titled = running("t", startedSecondsAgo: 120)
+        titled.title = "  修复登录\n页面跳转  "
+        let target = try #require(inboxLiveActivityTarget([titled], now: now))
+        #expect(target.title == "修复登录 页面跳转")
+
+        let untitled = try #require(inboxLiveActivityTarget([running("u", startedSecondsAgo: 120)], now: now))
+        #expect(untitled.title == nil)
+    }
 }

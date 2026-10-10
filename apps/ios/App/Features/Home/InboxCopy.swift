@@ -197,10 +197,10 @@ enum InboxText: String, Equatable, Sendable {
         case .remote: "Remote"
         case .offline: "Offline"
         case .connecting: "Connecting"
-        case .subtitleOnline: "● %@ · Online"
-        case .subtitleOffline: "● %@ · Offline"
-        case .subtitleRemote: "● %@ · Remote"
-        case .subtitleChecking: "● %@"
+        case .subtitleOnline: "● Online"
+        case .subtitleOffline: "● Offline"
+        case .subtitleRemote: "● Remote"
+        case .subtitleChecking: "● Connecting"
         case .rename: "Rename"
         case .fork: "Fork as new session"
         case .share: "Share conversation"
@@ -319,12 +319,14 @@ struct InboxCopy {
         }
     }
 
-    func subtitle(name: String, link: InboxLink) -> String {
+    /// 首页副标题只放连接状态。电脑名已经是大标题（iPad 侧栏是行内标题），
+    /// 副标题不再重复（用户 2026-10-10 决定）。
+    func subtitle(link: InboxLink) -> String {
         switch link {
-        case .checking(nil): format(.subtitleChecking, name)
-        case .checking(.local), .online(.local): format(.subtitleOnline, name)
-        case .checking(.remote), .online(.remote): format(.subtitleRemote, name)
-        case .offline: format(.subtitleOffline, name)
+        case .checking(nil): text(.subtitleChecking)
+        case .checking(.local), .online(.local): text(.subtitleOnline)
+        case .checking(.remote), .online(.remote): text(.subtitleRemote)
+        case .offline: text(.subtitleOffline)
         }
     }
 

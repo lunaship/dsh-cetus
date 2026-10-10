@@ -43,6 +43,10 @@ private actor FakeActivityAdapter: LiveActivityAdapting {
         handles + preexisting
     }
 
+    func startedTitles() -> [String?] {
+        started.map(\.title)
+    }
+
     func counts() -> (started: Int, updated: Int, ended: Int) {
         (started.count, updated.count, ended.count)
     }
@@ -166,5 +170,40 @@ struct LiveActivityControllerTests {
         #expect(
             LiveActivityStaleness.isStale(
                 lastUpdated: base, now: base.addingTimeInterval(LiveActivityStaleness.threshold + 1)) == true)
+    }
+
+    @Test("标题随活动启动传入，内容状态仍只有五个字段")
+    func titleTravelsInAttributesOnly() async throws {
+        let adapter = FakeActivityAdapter()
+        let controller = Self.controller(adapter: adapter)
+        _ = await controller.start(
+            hostRef: "host", sessionRef: "sess", phase: .running, step: 1, startedAt: Self.started, waitingCount: 0,
+            title: "整理发布说明")
+        let titles = await adapter.startedTitles()
+        #expect(titles == ["整理发布说明"])
+
+        let state = CetusActivityAttributes.ContentState(
+            state: "running", step: 1, startedAt: Self.started, waitingCount: 0, sessionRef: "sess")
+        let stateKeys = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any]
+        ).keys
+        #expect(Set(stateKeys) == ["state", "step", "startedAt", "waitingCount", "sessionRef"])
+
+        let attributes = CetusActivityAttributes(hostRef: "host", title: "整理发布说明")
+        let attributeKeys = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(attributes)) as? [String: Any]
+        ).keys
+        #expect(Set(attributeKeys) == ["hostRef", "title"])
+    }
+
+    @Test("锁屏标题压成一行、去空白、过长截断")
+    func titleIsCleaned() {
+        #expect(LiveActivityTitle.clean(nil) == nil)
+        #expect(LiveActivityTitle.clean("  \n ") == nil)
+        #expect(LiveActivityTitle.clean(" a\n b ") == "a b")
+        let long = String(repeating: "长", count: 200)
+        let cleaned = LiveActivityTitle.clean(long)
+        #expect(cleaned?.count == LiveActivityTitle.maxCharacters)
+        #expect(cleaned?.hasSuffix("…") == true)
     }
 }
