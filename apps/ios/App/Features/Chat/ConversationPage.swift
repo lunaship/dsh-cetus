@@ -1121,6 +1121,51 @@ struct ConversationPage: View {
     }
 }
 
+/// 6.2：单文件 diff 详情页。加载中显示进度，加载完用 DiffPage 呈现，
+/// 「就这段提问」带文件下标和段下标。
+private struct FileDiffDetailView: View {
+    var fileIndex: Int
+    var model: ConversationModel
+    var copy: ReviewCopy
+    var onAskHunk: (Int, Int) -> Void
+    @State private var hunkIndex = 0
+
+    private var response: ChangesDiffResponse? { model.fileDiffs[fileIndex] }
+
+    private var diffLines: [DiffLine]? {
+        guard let response,
+              response.kind == .text,
+              let hunks = response.hunks, !hunks.isEmpty
+        else { return nil }
+        var budget = 5000
+        return diffLines(from: hunks, budget: &budget)
+    }
+
+    private var hunkCount: Int { response?.hunks?.count ?? 0 }
+
+    var body: some View {
+        if let lines = diffLines {
+            DiffPage(
+                lines: lines,
+                copy: copy,
+                hunkIndex: hunkIndex,
+                hunkCount: hunkCount,
+                onPreviousHunk: { hunkIndex = max(0, hunkIndex - 1) },
+                onNextHunk: { hunkIndex = min(hunkCount - 1, hunkIndex + 1) },
+                onAskHunk: { idx in onAskHunk(fileIndex, idx) }
+            )
+        } else if model.unavailableDiffs.contains(fileIndex) {
+            DLEmptyState(
+                title: copy.text(.changesUnavailable),
+                systemImage: "exclamationmark.triangle"
+            )
+        } else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
 private struct ChangesPresentation: ViewModifier {
     var regular: Bool
     @Binding var presented: Bool
@@ -1130,6 +1175,8 @@ private struct ChangesPresentation: ViewModifier {
     var model: ConversationModel
     /// C08：把改动引用并入输入区。只预填，**不自动发送**。
     var onAsk: (String) -> Void
+    /// 6.2：选中的文件下标，用于导航到 DiffPage（不再内联展开）。
+    @State private var diffFileIndex: Int?
 
     private var files: [ChangedFile] { model.changes?.files ?? [] }
     private var turn: Int { model.changes?.turn ?? (model.changesSeq ?? 0) }
@@ -1151,17 +1198,37 @@ private struct ChangesPresentation: ViewModifier {
             onOpenDiff: { [model] index in
                 guard let seq = model.changesSeq else { return }
                 model.loadFileDiff(seq: seq, index: index)
+                // 6.2：不再内联展开，导航到 DiffPage。
+                diffFileIndex = index
             },
-            diff: model.fileDiffs,
+            diff: [:],
             diffUnavailable: model.unavailableDiffs)
+        let pageWithDiffNav = page
+            .navigationDestination(
+                isPresented: Binding(
+                    get: { diffFileIndex != nil },
+                    set: { if !$0 { diffFileIndex = nil } }
+                )
+            ) {
+                if let index = diffFileIndex {
+                    FileDiffDetailView(
+                        fileIndex: index,
+                        model: model,
+                        copy: copy,
+                        onAskHunk: { fileIdx, hunkIdx in
+                            onAsk(model.changesAskReference(fileIndex: fileIdx, hunkIndex: hunkIdx))
+                        }
+                    )
+                }
+            }
         if regular {
             content.inspector(isPresented: $presented) {
-                page
+                pageWithDiffNav
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
             }
         } else {
             content.navigationDestination(isPresented: $presented) {
-                page
+                pageWithDiffNav
                     .navigationTransition(.zoom(sourceID: 0, in: zoom))
             }
         }
