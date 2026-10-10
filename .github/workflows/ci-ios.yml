@@ -225,16 +225,15 @@ jobs:
             echo "::error title=screenshot failure::no xcresult bundle produced"
           fi
 
-      - name: Export failed screenshot attachments
+      - name: Collect failed screenshots
         if: failure()
         run: |
           set +e
-          R="$RUNNER_TEMP/screenshots.xcresult"
+          # SnapshotTesting 只在 Xcode 里运行时才附图；CI 上失败图写在模拟器 App 的 tmp/<套件>/ 下。
           OUT="$RUNNER_TEMP/screenshot-failures"
           mkdir -p "$OUT"
-          if [ -d "$R" ]; then
-            xcrun xcresulttool export attachments --path "$R" --output-path "$OUT" --only-failures
-          fi
+          find "$HOME/Library/Developer/CoreSimulator/Devices" -path '*/tmp/*SnapshotTests/*.png' \
+            -exec cp {} "$OUT/" \;
           ls -la "$OUT"
 
       - name: Upload failed screenshot attachments
