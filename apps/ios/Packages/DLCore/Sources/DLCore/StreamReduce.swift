@@ -81,6 +81,20 @@ public func reduceRunning(_ running: Bool, frames: [StreamFrame]) -> Bool {
     return value
 }
 
+/// 从 turn/end 帧提取停止原因（`data.reason.kind`），与插件 `deriveStoppedReason` 对齐：
+/// 非 completed 的 kind 即为 stoppedReason；completed 表示正常结束，置 nil。
+/// 4.1「停止」按钮依赖它：cancel 后 host 下发 turn/end（interrupted），
+/// 会话 phase 变为 .stopped，副标题显示「已停止」。
+public func reduceStoppedReason(_ current: String?, frames: [StreamFrame]) -> String? {
+    var value = current
+    for frame in frames {
+        guard frame.type == "turn/end" else { continue }
+        let kind = frame.data.objectValue?["reason"]?.objectValue?["kind"]?.stringValue
+        value = (kind != nil && kind != "completed") ? kind : nil
+    }
+    return value
+}
+
 public func isDurableFrame(_ frame: StreamFrame) -> Bool {
     if frame.type != "assistant/chunk" { return true }
     return chunk(frame)?.type == "block-end"

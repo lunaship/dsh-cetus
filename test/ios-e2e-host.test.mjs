@@ -164,6 +164,57 @@ test("e2e host：重启后同一端口仍可配对，订阅中的会话能收到
   }
 })
 
+test("e2e host：/control/turn-end 追加 turn/end，reason.kind 可指定", async () => {
+  const scratch = mkdtempSync(join(tmpdir(), "dsh-ios-turn-end-test-"))
+  const qrPath = join(scratch, "qr.json")
+  const host = await startE2eHost({ qrPath, logPath: join(scratch, "host.log") })
+  let stream
+  try {
+    const qr = JSON.parse(readFileSync(qrPath, "utf8"))
+    const agent = httpsAgentFor(host.stateDir)
+    const paired = await proxyRequest({
+      agent,
+      proxyPort: host.port,
+      path: "/dsh-link/pair",
+      method: "POST",
+      body: { code: qr.pairingCode, deviceName: "e2e-turn-end", requestId: "ios-e2e-host-turn-end-1" },
+    })
+    assert.equal(paired.status, 200, paired.text)
+    const live = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("SSE 未在时限内收到 turn/end")), 4_000)
+      stream = openSse({
+        agent,
+        proxyPort: host.port,
+        token: paired.json.token,
+        path: `/dsh-link/mobile/sessions/${SESSION_LOGIN}/stream`,
+        quietMs: 60_000,
+        timeoutMs: 8_000,
+        onFrame(frame) {
+          if (frame.data?.type === "turn/end" && frame.data?.data?.reason?.kind === "interrupted") {
+            clearTimeout(timer)
+            resolve(frame)
+          }
+        },
+      })
+    })
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    const injected = await postControl(host.controlPort, "/control/turn-end", {
+      sessionId: SESSION_LOGIN,
+      kind: "interrupted",
+    })
+    assert.equal(injected.status, 200, injected.text)
+    const got = await live
+    assert.equal(got.data?.type, "turn/end")
+    assert.equal(got.data?.data?.reason?.kind, "interrupted")
+    const missing = await postControl(host.controlPort, "/control/turn-end", { sessionId: "" })
+    assert.equal(missing.status, 400, missing.text)
+  } finally {
+    try { stream?.close() } catch {}
+    await host.shutdown()
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})
+
 test("e2e host：性能会话默认关闭，显式打开后可追加第 3001 条", async () => {
   const scratch = mkdtempSync(join(tmpdir(), "dsh-ios-performance-host-"))
   const qrPath = join(scratch, "qr.json")

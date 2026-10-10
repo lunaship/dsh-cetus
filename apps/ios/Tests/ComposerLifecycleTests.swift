@@ -202,4 +202,45 @@ final class ComposerPlaceholderTests: XCTestCase {
     private func placeholderLabel(_ view: DLComposerView) -> UILabel? {
         view.editor.subviews.compactMap { $0 as? UILabel }.first
     }
+
+    /// 4.1：运行中主按钮变为停止态（读屏取 stopTitle），点按走 onStop、不走 onSubmit。
+    func testRunningShowsStopButton() {
+        let view = makeView()
+        view.stopTitle = "停止"
+        var stopped = 0
+        var submitted = 0
+        view.onStop = { stopped += 1 }
+        view.onSubmit = { submitted += 1 }
+        view.isRunning = true
+        XCTAssertEqual(view.mainButton.accessibilityLabel, "停止")
+        XCTAssertTrue(view.mainButton.isEnabled, "运行中停止按钮必须可点")
+        view.mainButton.sendActions(for: .touchUpInside)
+        XCTAssertEqual(stopped, 1)
+        XCTAssertEqual(submitted, 0)
+    }
+
+    /// 4.1：非运行态主按钮是发送（↑ + Send 读屏），点按走 onSubmit。
+    func testIdleShowsSendButton() {
+        let view = makeView()
+        var submitted = 0
+        var stopped = 0
+        view.onSubmit = { submitted += 1 }
+        view.onStop = { stopped += 1 }
+        view.isRunning = false
+        XCTAssertEqual(view.mainButton.accessibilityLabel, "Send")
+        view.mainButton.sendActions(for: .touchUpInside)
+        XCTAssertEqual(submitted, 1)
+        XCTAssertEqual(stopped, 0)
+    }
+
+    /// 4.1：运行中按钮不受 isSending 禁用——随时可停。
+    func testRunningButtonIgnoresSendingDisabled() {
+        let view = makeView()
+        view.isSending = true
+        XCTAssertFalse(view.mainButton.isEnabled)
+        view.isRunning = true
+        XCTAssertTrue(view.mainButton.isEnabled, "运行中必须能点停止")
+        view.isRunning = false
+        XCTAssertFalse(view.mainButton.isEnabled, "回到空闲态恢复提交禁用")
+    }
 }
