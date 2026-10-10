@@ -251,3 +251,45 @@ private actor GatedHistory: ConversationServing {
         for waiter in pending { waiter.resume() }
     }
 }
+
+private actor StubModelsService: ConversationServing {
+    let response: SessionModelsResponse
+    init(_ response: SessionModelsResponse) { self.response = response }
+    func models(sessionID: String) async throws -> SessionModelsResponse {
+        _ = sessionID
+        return response
+    }
+}
+
+@MainActor @Suite struct CurrentModelTests {
+    private func makeModel(_ response: SessionModelsResponse) throws -> ConversationModel {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        let box = TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory)
+        return ConversationModel(
+            hostID: "host", sessionID: "s-1", service: StubModelsService(response), box: box, autostart: false)
+    }
+
+    /// P1：能拿到 current.model 时返回 id 和 effort。
+    @Test func currentModelReturned() async throws {
+        let response = SessionModelsResponse(
+            current: SessionModelCurrent(provider: "deepseek", model: "deepseek-chat", reasoningEffort: "high"))
+        let model = try makeModel(response)
+        let current = await model.serviceCurrentModel()
+        #expect(current?.id == "deepseek-chat")
+        #expect(current?.effort == "high")
+    }
+
+    /// P1：拿不到 current 时返回 nil，不填假值。
+    @Test func currentModelNilWhenMissing() async throws {
+        let model = try makeModel(SessionModelsResponse())
+        #expect(await model.serviceCurrentModel() == nil)
+    }
+
+    /// P1：current.model 为空字符串时返回 nil。
+    @Test func currentModelNilWhenEmpty() async throws {
+        let response = SessionModelsResponse(current: SessionModelCurrent(model: ""))
+        let model = try makeModel(response)
+        #expect(await model.serviceCurrentModel() == nil)
+    }
+}

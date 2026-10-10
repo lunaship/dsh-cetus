@@ -308,7 +308,10 @@ struct ConversationPage: View {
                     Button(copy.text(.retry)) { Task { await send(copy) } }
                     Button(copy.text(.cancel), role: .cancel) { submissionNotice = nil }
                 }
-                .task { await model.start() }
+                .task {
+                    await model.start()
+                    await loadCurrentModel()
+                }
                 .onDisappear { Task { await model.stop() } }
                 .onChange(of: sheet) { _, item in
                     guard let item else { return }
@@ -998,6 +1001,15 @@ struct ConversationPage: View {
         default:
             break
         }
+    }
+
+    /// P1「显示真实模型」：进入会话即取当前模型名显示在胶囊上，不等用户打开面板。
+    /// 只在未选择时自动填（用户手动选过的保留）；拿不到就留空显示中性占位。
+    private func loadCurrentModel() async {
+        guard selectedModelID.isEmpty else { return }
+        guard let current = await model.serviceCurrentModel() else { return }
+        selectedModelID = current.id
+        if effort.isEmpty { effort = current.effort }
     }
 
     private func acceptFiles(_ urls: [URL]) {
