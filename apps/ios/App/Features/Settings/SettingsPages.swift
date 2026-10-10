@@ -40,6 +40,8 @@ struct SettingsHomePage: View {
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
     var push: PushSettingsRegistration?
+    /// 归档会话数（首页传入）；nil = 不显示。
+    var archivedCount: Int?
     /// 「关于」一行右侧的版本号。截图用测试宿主的固定 bundle 版本。
     var buildInfo: BuildInfo = .from()
     @AppStorage(ThemePreference.storageKey) private var theme = ThemePreference.system
@@ -49,20 +51,18 @@ struct SettingsHomePage: View {
     @AppStorage("settings.notifyDone") private var notifyDone = false
     @AppStorage("settings.notifyFailed") private var notifyFailed = false
     @Environment(\.locale) private var locale
+    @State private var balanceValue: String?
 
     var body: some View {
         let copy = SettingsCopy(locale: locale)
         Form {
             Section {
                 NavigationLink(value: SettingsPage.computer) {
-                    // 设计稿 7.1：图标统一强调色、不加彩色底块。
+                    // 设计稿 7.1：一行显示状态；拿不到路线就不显示路线部分。
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(computerName).font(.headline)
-                            Text(computerAddress)
-                                .font(.footnote.monospaced())
-                                .foregroundStyle(.secondary)
-                            Text(online ? copy.text(.online) : copy.text(.offline))
+                            Text(computerStatusLine(copy))
                                 .font(.footnote)
                                 .foregroundStyle(online ? .green : .secondary)
                         }
@@ -86,14 +86,17 @@ struct SettingsHomePage: View {
             }
             Section(copy.text(.agent)) {
                 row(copy.text(.defaults), systemImage: "slider.horizontal.3", page: .defaults)
-                row(copy.text(.models), systemImage: "creditcard", page: .models)
+                row(copy.text(.models), systemImage: "creditcard", value: balanceValue, page: .models)
             }
             Section(copy.text(.other)) {
-                row(copy.text(.history), systemImage: "archivebox", page: .history)
+                row(
+                    copy.text(.history), systemImage: "archivebox",
+                    value: archivedCount.map { String($0) }, page: .history)
                 row(copy.text(.about), systemImage: "info.circle", value: versionValue, page: .about)
                 row(copy.text(.crash), systemImage: "exclamationmark.triangle", page: .crash)
             }
         }
+        .task { await loadBalanceValue(copy) }
         .navigationTitle(copy.text(.title))
         .navigationDestination(for: SettingsPage.self) { page in
             SettingsDetailPage(
@@ -135,6 +138,37 @@ extension SettingsHomePage {
         if notifyDone { parts.append(copy.text(.notifyShortDone)) }
         if notifyFailed { parts.append(copy.text(.notifyShortFailed)) }
         return parts.isEmpty ? copy.text(.notifyOff) : parts.joined(separator: copy.text(.listSeparator))
+    }
+
+    /// 电脑行单行状态；离线时显示离线；拿不到路线就不显示路线部分。
+    fileprivate func computerStatusLine(_ copy: SettingsCopy) -> String {
+        let dot = online ? "●" : "○"
+        let status = online ? copy.text(.online) : copy.text(.offline)
+        var parts = ["\(dot) \(status)"]
+        if online {
+            switch route {
+            case .local: parts.append(copy.text(.lan))
+            case .remote: parts.append(copy.text(.relay))
+            case .none: break
+            }
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// 设置首页「模型与余额」行右侧值：取余额，拿不到就不显示。
+    fileprivate func loadBalanceValue(_ copy: SettingsCopy) async {
+        guard let models else { return }
+        await models.loadBalance(locale: copy.locale.identifier)
+        let balance = models.state.balance
+        switch balance.status {
+        case .ready:
+            let text = (balance.wallets ?? []).compactMap { wallet in
+                [wallet.currency, wallet.balance].compactMap { $0 }.joined(separator: " ")
+            }.joined(separator: ", ")
+            balanceValue = text.isEmpty ? nil : text
+        case .signedOut, .failed, .unavailable, .none, .unknown:
+            balanceValue = nil
+        }
     }
 
     fileprivate func themeName(_ copy: SettingsCopy) -> String {

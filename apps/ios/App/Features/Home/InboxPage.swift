@@ -916,6 +916,7 @@ struct InboxDestinationPage: View {
                 // 详情页拿不到服务，`loadAccount` 直接 return。
                 account: SettingsAccountService.live(hostID: model.hostID, draftStore: draftStore),
                 models: SettingsModelsModel(service: SettingsModelsLiveService(hostID: model.hostID)),
+                archivedCount: model.archivedSessions.count,
                 push: PushSettingsRegistration(
                     hostID: model.hostID, pushVersion: model.pushVersion, pairedDeviceID: model.pairedDeviceID))
         case .computer:
