@@ -61,6 +61,25 @@ struct ReviewScreen: View {
     static let sampleText = "fun main() {\n    println(\"hi\")\n}\n"
 }
 
+/// 设计稿 6.1 / 6.2：改动页「提问」用的品牌实心胶囊按钮。
+///
+/// 底色自己画，不用系统 `.borderedProminent`：宽屏截图（真实窗口 + drawHierarchy）里系统按钮首帧的底色
+/// 偶尔还没落定，同一张图在重生成与对比之间差约 2% 像素（正好是这颗按钮）。自己画的颜色每次一致。
+private struct ReviewAskButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(DLFont.headline)
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(Capsule().fill(DLColor.brandFill))
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? 0.7 : (isEnabled ? 1 : 0.4))
+    }
+}
+
 struct ChangesPage: View {
     var files: [ChangedFile]
     var turn: Int
@@ -123,12 +142,9 @@ struct ChangesPage: View {
             // 设计稿 6.1：底部是这一屏唯一的品牌实心按钮。
             Button(action: onAsk) {
                 Label(copy.text(.askChanges), systemImage: "ellipsis.bubble")
-                    .font(DLFont.headline)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
-            .tint(DLColor.brandFill)
+            .buttonStyle(ReviewAskButtonStyle())
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(DLColor.background)
@@ -360,12 +376,9 @@ struct DiffPage: View {
                         if let onAskHunk { onAskHunk(hunkIndex) } else { onAsk() }
                     } label: {
                         Label(copy.text(.askHunk), systemImage: "ellipsis.bubble")
-                            .font(DLFont.headline)
                             .frame(minHeight: 44)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.capsule)
-                    .tint(DLColor.brandFill)
+                    .buttonStyle(ReviewAskButtonStyle())
                 }
             }
             .frame(minHeight: 44)
