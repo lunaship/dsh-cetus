@@ -85,6 +85,10 @@ enum ChatText: String {
     case statusDemoUser
     case statusDemoAssistant
     case send
+    /// 4.1：运行中主按钮的「停止」文案（图标按钮的读屏标签）。
+    case stop
+    /// 4.1：停止当前轮次失败（`session.cancel` 出错），轮次可能还在跑。
+    case stopFailed
     case reject
     case allowOnce
     case waitApproval
@@ -337,6 +341,8 @@ enum ChatText: String {
         case .statusDemoUser: "Keep approval status in sync."
         case .statusDemoAssistant: "I'll check the event subscribers first."
         case .send: "Send"
+        case .stop: "Stop"
+        case .stopFailed: "Couldn't stop this turn — it may still be running."
         case .reject: "Reject"
         case .allowOnce: "Allow once"
         case .waitApproval: "Waiting for approval"

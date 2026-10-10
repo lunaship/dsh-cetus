@@ -368,6 +368,20 @@ export async function startE2eHost({ qrPath, logPath = "", includePerformanceSes
       }
       case "/control/prompt-seen":
         return { status: 200, body: { ok: true, prompts: gateway.promptsSeen() } }
+      case "/control/turn-end": {
+        const sessionId = String(body?.sessionId ?? "").trim()
+        const kind = String(body?.kind ?? "interrupted")
+        if (!sessionId) return { status: 400, body: { ok: false, error: "缺少 sessionId" } }
+        try {
+          const done = gateway.appendLiveEvent(sessionId, {
+            type: "turn/end",
+            data: { reason: { kind } },
+          })
+          return { status: 200, body: { ok: true, seq: done.seq } }
+        } catch (err) {
+          return unknownSession(err) ?? { status: 500, body: { ok: false, error: String(err?.message ?? err) } }
+        }
+      }
       case "/control/restart": {
         const previous = generation
         generation = null

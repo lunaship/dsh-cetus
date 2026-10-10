@@ -100,6 +100,17 @@ actor ConversationLiveService: ConversationServing {
         }
     }
 
+    func cancelTurn(sessionID: String) async throws {
+        let http = try await connect()
+        do {
+            _ = try await http.post(
+                CancelResponse.self, path: try sessionPath(sessionID, "/cancel"),
+                json: ConversationEmptyBody())
+        } catch {
+            throw Self.map(error)
+        }
+    }
+
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws {
         let http = try await connect()
         let body = ApprovalBody(approvalId: approvalID, outcome: outcome)
@@ -498,3 +509,5 @@ private struct GoalEditBody: Encodable {
 private struct GoalClearBody: Encodable {
     var ref: GoalRefBody
 }
+
+private struct ConversationEmptyBody: Encodable {}
