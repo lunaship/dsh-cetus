@@ -104,8 +104,7 @@ actor ConversationLiveService: ConversationServing {
         let http = try await connect()
         do {
             _ = try await http.post(
-                CancelResponse.self, path: try sessionPath(sessionID, "/cancel"),
-                json: ConversationEmptyBody())
+                CancelResponse.self, path: try sessionPath(sessionID, "/cancel"), json: ConversationEmptyBody())
         } catch {
             throw Self.map(error)
         }

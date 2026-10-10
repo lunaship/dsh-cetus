@@ -53,7 +53,8 @@ final class E2ELaunchTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [stopGone], timeout: waitLimit), .completed)
     }
 
-    func testApproval() throws {        let ctx = try launchContext()
+    func testApproval() throws {
+        let ctx = try launchContext()
         try continuePastLocalNetworkExplanation(ctx.app)
         post(ctx.control, "/control/approve-pairing", [:])
         try openFirstSession(ctx.app)

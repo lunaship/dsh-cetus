@@ -313,10 +313,7 @@ struct ConversationPage: View {
                     Button(copy.text(.cancel), role: .cancel) { submissionNotice = nil }
                 }
                 // 4.1：停止失败要给可见反馈，轮次可能还在跑，可重试。
-                .alert(
-                    copy.text(.stopFailed),
-                    isPresented: $stopFailed
-                ) {
+                .alert(copy.text(.stopFailed), isPresented: $stopFailed) {
                     Button(copy.text(.retry)) { Task { await stopTurn() } }
                     Button(copy.text(.cancel), role: .cancel) { stopFailed = false }
                 }

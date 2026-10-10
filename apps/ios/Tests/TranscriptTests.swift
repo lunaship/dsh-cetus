@@ -158,7 +158,7 @@ import Testing
         #expect(reduceRunning(true, frames: [StreamFrame(seq: 2, type: "turn/end", time: 1, data: .null)]) == false)
     }
 
-    /// 4.1：turn/end 的 reason.kind 即 stoppedReason；completed 置 nil（与插件 deriveStoppedReason 对齐）。
+    /// 4.1：turn/end 的 reason.kind 即 stoppedReason；completed 置 nil（同插件 deriveStoppedReason）。
     @Test func stoppedReasonFollowsTurnEndReason() {
         func end(_ kind: String?) -> StreamFrame {
             let reason: JSONValue = kind.map { .object(["kind": .string($0)]) } ?? .null
