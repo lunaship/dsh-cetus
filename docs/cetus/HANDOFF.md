@@ -45,8 +45,7 @@
 
 ## 5. PR 状态
 
-- 已合并：**#192** 换上 Cetus 鲸鱼线稿 logo（`12618a1`）；**#193** README 顶部换横版 logo（`5ec484e`）；**#194** 打开长会话自动贴底 + 性能 CI 失败诊断注解（`c220824`，当前 main）。
-- **#195**（`design/ios-align-p0`，未合并，等用户过目）：iOS 按设计稿对齐 UI（P0 + 低风险 P1）+ 截图稳定性修复 + 2026-10-10 四项设计决定。最终头与 CI 结论见 §8 与 PR 正文。
+- 已合并：**#192** 换上 Cetus 鲸鱼线稿 logo（`12618a1`）；**#193** README 顶部换横版 logo（`5ec484e`）；**#194** 打开长会话自动贴底 + 性能 CI 失败诊断注解（`c220824`）；**#195** iOS 按设计稿对齐 UI（P0 + 低风险 P1）（`3d38e0d` squash，当前 main；2026-10-10 用户授权合并，审阅结论：通过）。
 
 ## 6. CI 经验（踩过的坑）
 
@@ -65,40 +64,39 @@
 ## 7. 剩余任务（按优先级）
 
 ### P0
-1. **合并 #195**（用户过目后由用户合并或明确授权）。
-   - 验收：用户确认截图与设计决定；最终头 screenshot check 连续通过；build / unit / e2e / performance 绿；与 main 无冲突（冲突按 §6 重放法）。
-2. **停止当前轮次（4.1「停止」按钮）**。
+1. **停止当前轮次（4.1「停止」按钮）**。
    - 验收：运行中输入区主按钮变「停止」，点了之后当前轮次停止、会话显示 `interrupted / stopped`，读屏「停止 / Stop」；不影响排队消息；iOS 与 Android 语义一致；单测 + e2e。
    - 线索：PR #195 正文写的是「手机 API 没有中断接口，需要插件新增」，**但插件已有** `POST /dsh-link/mobile/sessions/:id/cancel`（`src/mobile-api.js` 约 979 行，调 RPC `session.cancel`），Android 已用（`MobileApi.kt` `cancelSession`，`WorkspaceActivity.kt` 约 2640 行），iOS 也有模型 `CancelResponse`（`DLModels/Control.swift`）但没有调用点。先核实 `session.cancel` 是「中断当前轮次」还是「取消整个会话」，再决定是 iOS 直接接线还是插件补接口。
 
 ### P1
-3. **显示真实模型**（4.1 模型胶囊打开面板前只显示「模型」）。
+2. **显示真实模型**（4.1 模型胶囊打开面板前只显示「模型」）。
    - 验收：进入会话即显示当前模型名；切换后即时更新；拿不到时显示中性说明，不填假值。
    - 线索：iOS 已有 `GET /dsh-link/mobile/models?sessionId=`（`ConversationLiveService.swift` 约 129 行）；插件 `src/mobile-api.js` 约 1047 行「投影里有模型 id 就用它，否则短缓存问 session.models」。看会话摘要 / 历史投影是否已带模型 id，不新增 v1 必填字段。
-4. **设置页电脑状态 / 余额 / 会话数**（7.1 右侧值）。
+3. **设置页电脑状态 / 余额 / 会话数**（7.1 右侧值）。
    - 验收：电脑行一行「● 在线 · 局域网 · Tailscale 备用」；「模型与余额」显示余额；「会话记录」显示归档会话数；拿不到就不显示值。
    - 线索：余额已有 `GET /dsh-link/mobile/balance`（`SettingsModelsService.swift` 约 67 行，RPC `account.getBalance`）；Tailscale 备用路线状态目前首页拿不到。
-5. **6.1 范围分段 / 6.2 生产路由段级提问**。
+4. **6.1 范围分段 / 6.2 生产路由段级提问**。
    - 验收：6.1 分段控件「本轮 / 整个会话 / 未提交」有真实数据才显示；6.2 生产路径接上 `DiffPage` 路由，「就这段提问」引用具体段。
    - 线索：插件目前没有三种范围的数据（需新增可选接口）；生产路径现在在 6.1 列表里内联展开 diff，`DiffPage` 只在截图里用，`onAskHunk(段下标)` 已有。
-6. **Live Activity 剩余排版与点击**（8.4 / 8.5）。
+5. **Live Activity 剩余排版与点击**（8.4 / 8.5）。
    - 验收：按设计稿：App 图标 + 名称 + 状态胶囊、标题、`工作区 · 第 N 步`、计时、进度条（只在有真实进度时画）；灵动岛紧凑 / 最小 / 展开态；展开态「打开 App 审批」；点击深链到对应会话；任何位置都没有「允许」按钮；锁屏文案中英文。8.5 必须用有灵动岛的设备或模拟器验收（iPhone 13 没有灵动岛）。
    - 线索：#195 已把标题放进 `ActivityAttributes.title`（启动时固定）；`content-state` 不能加字段；锁屏文案目前在扩展里写死中文；`LiveActivityBundle.swift` 没有 `widgetURL`。
-7. **C16 24h soak 脚本与记录模板**。
+6. **C16 24h soak 脚本与记录模板**。
    - 验收：仓库有可重复的 soak 脚本（临时 stateDir、不碰真实设备）和记录模板（重连、资源增长、任务状态、通知去重与恢复、提交与 fixture 可追踪）；**实际 24h 运行由用户做**。
    - 线索：`docs/cetus/C16-GAP.md` R6 / G3。
-8. **`docs/cetus/ISSUES.md`**：已知问题登记（目前不存在）。验收：每条有现象、复现、影响、状态、关联 PR / 提交。线索：#195 正文「没做的」与本节各项。
+7. **`docs/cetus/ISSUES.md`**：已知问题登记（目前不存在）。验收：每条有现象、复现、影响、状态、关联 PR / 提交。线索：#195 正文「没做的」与本节各项。
 
 ### P2
-9. **README 安装与发布说明**：验收：iOS / Android 安装（TestFlight / APK 签名校验）、插件安装、发布流程与 `RELEASING.md` 一致。线索：README「快速开始」「发布」两节。
-10. **仓库描述去掉 DeepLinks**：当前 GitHub 描述「Android companion for DeepSeek Harness … DeepLinks Relay (private testing).」。验收：描述与 topics 用 cetus 命名、提到 iOS。改仓库设置前先问用户。
-11. **iOS 版本号 / 构建号可追溯**：现在 `apps/ios/project.yml` 写死 `MARKETING_VERSION 1.0`、`CURRENT_PROJECT_VERSION 1`（1.0(1)）。验收：构建号来自 CI（如 run number 或提交数），关于页能对上提交；与 Android 版本方案一致；不破坏 Bundle ID。
-12. **发布与维护者材料**：验收：CHANGELOG、隐私说明、App Store / TestFlight 文案与截图清单、维护者检查表齐全；签名 / 上传由用户做。
+8. **README 安装与发布说明**：验收：iOS / Android 安装（TestFlight / APK 签名校验）、插件安装、发布流程与 `RELEASING.md` 一致。线索：README「快速开始」「发布」两节。
+9. **仓库描述去掉 DeepLinks**：当前 GitHub 描述「Android companion for DeepSeek Harness … DeepLinks Relay (private testing).」。验收：描述与 topics 用 cetus 命名、提到 iOS。改仓库设置前先问用户。
+10. **iOS 版本号 / 构建号可追溯**：现在 `apps/ios/project.yml` 写死 `MARKETING_VERSION 1.0`、`CURRENT_PROJECT_VERSION 1`（1.0(1)）。验收：构建号来自 CI（如 run number 或提交数），关于页能对上提交；与 Android 版本方案一致；不破坏 Bundle ID。
+11. **发布与维护者材料**：验收：CHANGELOG、隐私说明、App Store / TestFlight 文案与截图清单、维护者检查表齐全；签名 / 上传由用户做。
 
-## 8. 当前状态快照（2026-10-10 13:00 左右）
+## 8. 当前状态快照（2026-10-10 15:40 左右）
 
-- `main` = `c220824`（#194）。`design/ios-align-p0`（PR #195）在 main 之上，无冲突。
-- #195 代码头 `caf6e53`（四项设计决定 + 3_2 截图搜索框实色替身），基线 `2539540`（CI run 38022440908 重生成），之后只追加本文档（只改 `docs/cetus/HANDOFF.md`；iOS 代码与基线和 `2539540` 相同，但 PR 的 iOS 工作流仍会在新头上重跑，见 §6）。最终头的 CI 结果见 PR #195 正文「CI 结论」。
-- `2539540` 上的 iOS CI：CI iOS run 38023830425 第 2 次（screenshot job 114130388882）✅、第 3 次（screenshot job 114133418927）✅，build / unit 两次均 ✅；e2e run 38023830433 ✅；performance run 38023830504 ✅。`caf6e53` 上 performance 有一次 `testThreeThousandMessageAppend` 失败（性能夹具 `POST /control/restart` 未被接受，waiter=2 accepted=false，与 UI 改动无关），`2539540` 上通过。
+- `main` = `3d38e0d`（#195 squash 合并；2026-10-10 用户授权合并，审阅结论：通过，建议合并）。
+- #195 最终头 `5cb931e` 的 CI：iOS build / unit / screenshot / e2e / performance 全绿（screenshot check 连续两次全绿：run 38026028542 job 114137628475 / 114140078437）；插件 CI（Go gates / Node gates / DLP/1 e2e）全绿。与 `c220824` 无冲突。
+- 下一项：P0「停止当前轮次（4.1 停止按钮）」（§7 第 1 项）。
+- 遗留小 nit：`apps/ios/Packages/DLUI/Sources/DLUI/Theme/DLColor.swift:15` 注释还写着「provisional token」，文档已改「用户 2026-10-10 定」；不影响功能，下个 iOS 任务顺手改。
 - 本地工作副本：`/workspace/work/cetus/repo2`（云端 agent 的沙箱，非用户机器）。提交走 GitHub git data API。
 - 锁屏 / 灵动岛没有截图测试（扩展不在截图矩阵里），标题显示只有单测和代码审查，真机 / 模拟器上看效果由用户做（8.5 需要有灵动岛的设备）。
