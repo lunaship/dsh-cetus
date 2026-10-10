@@ -100,9 +100,9 @@
 ## 8. 当前状态快照（2026-10-11 凌晨，用户 Mac 本地执行后更新）
 
 - `main` = `a44785d`：**iOS CI 实际是红的**。#199 squash 合并把 `InboxPage.swift:920` 调用处 `SettingsHomePage(...)` 的 `archivedCount:` 放在了 `push:` 前（memberwise 参数顺序错误），iOS build / 单测 / 截图 / e2e / performance 全挂；Node / Go / DLP/1 e2e 绿。修复在 **PR #203**（只交换实参顺序），并顺带由 CI 重生成 #199 漏掉的 `testHome` 基线（10 张，电脑行从「地址+在线」改为「● 在线」是有意视觉变化）。
-- PR #197（P0 停止按钮）：已 rebase 到 #203 之上，修好两个根因（见 §7 第 1 项），本地全绿（Debug/Release 构建、全部单测含新用例、e2e `testStopTurn` 真跑通过、performance 无回归）；CI 除截图检查（等 #203 的基线）外全绿。
-- PR #201（6.2 DiffPage 路由）：已 rebase 到 #203 之上，修好 swift-format，本地全绿（同上）；CI 除截图检查外全绿（截图只挂 `testHome`）。
-- 建议合并顺序：**#203 → #197 → #201**，然后 #200 / #202；#203 先合并后，#197/#201 在 GitHub 上重跑截图检查即绿。
+- PR #197（P0 停止按钮）：已 rebase 到 #203 之上（含新基线），修好两个根因（见 §7 第 1 项），本地全绿（Debug/Release 构建、全部单测含新用例、e2e `testStopTurn` 真跑通过、performance 无回归）；**GitHub CI 全绿**（经历两次基础设施偶发重跑：`WideSnapshotTests testLandscape`、已知偶发 `testGoal large`）。
+- PR #201（6.2 DiffPage 路由）：已 rebase 到 #203 之上，修好 swift-format，本地全绿（同上）；**GitHub CI 全绿**（performance 经历两次 runner 偶发重跑：App 启动超时 / `Received unexpected number of metrics`，均非回归）。
+- 建议合并顺序：**#203 → #197 → #201**，然后 #200 / #202（四者 GitHub CI 均已全绿；若日后重跑遇 `testGoal large` / performance runner 偶发，重跑失败作业即可）。
 - **CI iOS e2e 作业是空转的（假绿）**：`ios-e2e.yml` 用 GITHUB_ENV 注入 `E2E_QR_PATH/E2E_CONTROL_URL`，但 xcodebuild 不把这些变量传进测试 runner（需 `TEST_RUNNER_` 前缀），7 个 E2E 用例全部被 XCTSkip。本地真跑发现更深一层：配对码一次性 + App 每次启动用随机 UUID `requestId` 重新配对，整套 `E2ELaunchTests` 第 2 个用例起必然失败（首例 `testPairAndInbox` 真跑通过；#197 新增的 `testStopTurn` 单独跑也通过）。修工作流需要先定设计（host 每用例刷新二维码 / 确定性 requestId），未擅自改。
 - 本地环境限制（Xcode 27.1 + iOS 26.5 模拟器，CI 是 Xcode 26）：① 截图对比全部失配——字体排版换行位置整体漂移，属环境差异非回归，**截图结论只能以 CI 为准**；② 未签名二进制（`CODE_SIGNING_ALLOWED=NO`）在模拟器写不了 Keychain，e2e 配对报「无法在本机保存配对记录」，本地真跑需 `CODE_SIGN_IDENTITY=-` ad-hoc 签名 + `TEST_RUNNER_` 前缀传环境变量。
 - 遗留小 nit：`apps/ios/Packages/DLUI/Sources/DLUI/Theme/DLColor.swift:15` 注释还写着「provisional token」，文档已改「用户 2026-10-10 定」；不影响功能，下个 iOS 任务顺手改。
