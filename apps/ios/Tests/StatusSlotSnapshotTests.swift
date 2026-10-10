@@ -138,6 +138,9 @@ import XCTest
         let format = UIGraphicsImageRendererFormat()
         format.scale = window.screen.scale > 0 ? window.screen.scale : 3
         format.opaque = true
+        // 固定广色域 16 位（与现有基线一致）。默认 .automatic 按当时的 UITraitCollection.current 选，
+        // 同一张图两次运行可能一次 P3 16 位、一次 sRGB 8 位，饱和色区域（品牌色按钮）整块对不上。
+        format.preferredRange = .extended
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in
             host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
