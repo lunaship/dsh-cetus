@@ -110,6 +110,8 @@ struct ConversationPage: View {
     @State private var showSelectText = false
     @State private var showChanges = false
     @State private var showFiles = false
+    /// 6.2：DiffPage 导航的目标文件下标（nil = 不导航）。
+    @State private var diffFileIndex: Int?
     @State private var showFilePreview = false
     @State private var showPreview = false
     @Namespace private var changesZoom
@@ -201,7 +203,7 @@ struct ConversationPage: View {
                 .modifier(
                     ChangesPresentation(
                         regular: sizeClass == .regular, presented: $showChanges, copy: ReviewCopy(locale: locale),
-                        zoom: changesZoom, model: model,
+                        zoom: changesZoom, model: model, diffFileIndex: $diffFileIndex,
                         // C08：引用只预填输入区，不自动发送。
                         onAsk: { reference in
                             draft = ChangesTurnNavigator.appending(reference, to: draft)
@@ -1173,10 +1175,10 @@ private struct ChangesPresentation: ViewModifier {
     var zoom: Namespace.ID
     /// C08：真实改动数据（从 ConversationModel 取），不再是空集合。
     var model: ConversationModel
+    /// 6.2：DiffPage 导航的目标文件下标（nil = 不导航）。由 ConversationPage 持有。
+    @Binding var diffFileIndex: Int?
     /// C08：把改动引用并入输入区。只预填，**不自动发送**。
     var onAsk: (String) -> Void
-    /// 6.2：选中的文件下标，用于导航到 DiffPage（不再内联展开）。
-    @State private var diffFileIndex: Int?
 
     private var files: [ChangedFile] { model.changes?.files ?? [] }
     private var turn: Int { model.changes?.turn ?? (model.changesSeq ?? 0) }
