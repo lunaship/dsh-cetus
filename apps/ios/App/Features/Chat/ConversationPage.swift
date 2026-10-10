@@ -1134,19 +1134,19 @@ private struct FileDiffDetailView: View {
 
     private var response: ChangesDiffResponse? { model.fileDiffs[fileIndex] }
 
-    private var diffLines: [DiffLine]? {
+    private var lines: [DiffLine]? {
         guard let response,
               response.kind == .text,
               let hunks = response.hunks, !hunks.isEmpty
         else { return nil }
         var budget = 5000
-        return diffLines(from: hunks, budget: &budget)
+        return DLCore.diffLines(from: hunks, budget: &budget)
     }
 
     private var hunkCount: Int { response?.hunks?.count ?? 0 }
 
     var body: some View {
-        if let lines = diffLines {
+        if let lines {
             DiffPage(
                 lines: lines,
                 copy: copy,
