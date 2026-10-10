@@ -120,11 +120,18 @@ struct ChangesPage: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button(copy.text(.askChanges), action: onAsk)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(DLColor.background)
+            // 设计稿 6.1：底部是这一屏唯一的品牌实心按钮。
+            Button(action: onAsk) {
+                Label(copy.text(.askChanges), systemImage: "ellipsis.bubble")
+                    .font(DLFont.headline)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            .tint(DLColor.brandFill)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(DLColor.background)
         }
     }
 
@@ -293,6 +300,8 @@ struct DiffPage: View {
     var hunkCount: Int = 0
     var onPreviousHunk: () -> Void = {}
     var onNextHunk: () -> Void = {}
+    /// 设计稿 6.2：「就这段提问」针对当前差异段（参数：段下标）。没接时退回整文件的 `onAsk`。
+    var onAskHunk: ((Int) -> Void)? = nil
 
     var body: some View {
         ScrollViewReader { reader in
@@ -322,21 +331,41 @@ struct DiffPage: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                HStack {
-                    // C08：上/下一个差异段只在真的有多段时出现；到边界置灰。
+                HStack(spacing: 8) {
+                    // 设计稿 6.2：上一个 / 下一个常驻；只有一段或到边界时置灰，不再整组消失。
+                    Button(action: onPreviousHunk) {
+                        Image(systemName: "chevron.up").frame(minWidth: 28, minHeight: 28)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                    .tint(DLColor.label)
+                    .disabled(hunkIndex <= 0)
+                    .accessibilityLabel(copy.text(.previousHunk))
+                    Button(action: onNextHunk) {
+                        Image(systemName: "chevron.down").frame(minWidth: 28, minHeight: 28)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                    .tint(DLColor.label)
+                    .disabled(hunkIndex >= hunkCount - 1)
+                    .accessibilityLabel(copy.text(.nextHunk))
                     if hunkCount > 1 {
-                        Button(action: onPreviousHunk) { Image(systemName: "chevron.up") }
-                            .disabled(hunkIndex <= 0)
-                            .accessibilityLabel(copy.text(.previousHunk))
                         Text(copy.format(.hunkPosition, hunkIndex + 1, hunkCount))
                             .font(DLFont.footnote)
                             .foregroundStyle(DLColor.secondaryLabel)
-                        Button(action: onNextHunk) { Image(systemName: "chevron.down") }
-                            .disabled(hunkIndex >= hunkCount - 1)
-                            .accessibilityLabel(copy.text(.nextHunk))
                     }
-                    Spacer()
-                    Button(copy.text(.askFile), action: onAsk)
+                    Spacer(minLength: 8)
+                    // 设计稿 6.2：这一屏唯一的品牌实心按钮，范围是当前这一段。
+                    Button {
+                        if let onAskHunk { onAskHunk(hunkIndex) } else { onAsk() }
+                    } label: {
+                        Label(copy.text(.askHunk), systemImage: "ellipsis.bubble")
+                            .font(DLFont.headline)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .tint(DLColor.brandFill)
                 }
             }
             .frame(minHeight: 44)
@@ -848,6 +877,8 @@ enum ReviewText: String {
     /// C08：差异段位置（参数：当前段序号、总段数）。
     case hunkPosition
     case askFile
+    /// 设计稿 6.2：就当前差异段提问。
+    case askHunk
     case filesTitle
     case root
     case copyPath
@@ -892,6 +923,7 @@ enum ReviewText: String {
         case .nextHunk: "Next"
         case .hunkPosition: "%d / %d"
         case .askFile: "Ask about this file"
+        case .askHunk: "Ask about this hunk"
         case .filesTitle: "Files"
         case .root: "Workspace"
         case .copyPath: "Copy path"

@@ -16,6 +16,9 @@ enum PairingText: String, Equatable, Sendable {
     case close
     case scanTitle
     case scanBody
+    /// 设计稿 1.3：右上角手电筒、底部「从相册选择」。
+    case torch
+    case scanPhoto
     case scanPreview
     case lanTitle
     case lanBody
@@ -97,6 +100,8 @@ enum PairingText: String, Equatable, Sendable {
         case .close: "Close scanner"
         case .scanTitle: "Scan the pairing QR code on your computer"
         case .scanBody: "Find it in the Mobile Connection panel in dsh."
+        case .torch: "Flashlight"
+        case .scanPhoto: "Choose from Photos"
         case .scanPreview: "Camera preview"
         case .lanTitle: "Connect to your computer"
         case .lanBody: "cetus needs local network access to connect to dsh on your computer."

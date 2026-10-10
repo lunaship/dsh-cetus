@@ -36,7 +36,19 @@ import XCTest
         shot("wide_split_third", size: CGSize(width: 341, height: 768), regular: false, changes: false)
     }
 
+    /// 进程里第一次把宽屏窗口挂到场景上时，系统会对整个场景做一次一次性的更新（CI 日志里此刻涌出
+    /// 约 700 条前面测试留下的 hosting controller 的 appearance 回调，这一张多花 20–30 秒）。
+    /// 这一张里浮动侧栏右缘的阴影和之后每一张都不一样（只差侧栏右侧约 44pt 宽的一条灰阶），
+    /// 所以以前总是第一个渲染的 default 变体对不上基线。先完整渲染一张丢掉，正式截图都从同一个状态开始。
+    private static var sceneWarmedUp = false
+
     private func shot(_ scene: String, size: CGSize, regular: Bool, changes: Bool) {
+        if !Self.sceneWarmedUp {
+            Self.sceneWarmedUp = true
+            _ = wideImage(
+                makePage(regular: regular, changes: changes, reduceTransparency: false), size: size,
+                regular: regular)
+        }
         render(scene, size: size, regular: regular, changes: changes, named: "default")
         render(
             scene, size: size, regular: regular, changes: changes, named: "reduce-transparency",
@@ -50,9 +62,22 @@ import XCTest
         _ scene: String, size: CGSize, regular: Bool, changes: Bool, named: String,
         reduceTransparency: Bool = false, increaseContrast: Bool = false
     ) {
+        let page = makePage(regular: regular, changes: changes, reduceTransparency: reduceTransparency)
+        let image = wideImage(page, size: size, regular: regular, increaseContrast: increaseContrast)
+        // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
+        // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
+        assertSnapshot(
+            of: image,
+            as: .image(precision: 0.995, perceptualPrecision: 0.99),
+            named: named,
+            testName: "Snapshot_\(scene)_light_zh"
+        )
+    }
+
+    private func makePage(regular: Bool, changes: Bool, reduceTransparency: Bool) -> some View {
         let model = inbox()
         if regular { model.selectedSessionID = "approve" }
-        let page = InboxPage(
+        return InboxPage(
             model: model,
             staticSnapshot: true,
             wideSnapshotConversation: regular ? conversation() : nil,
@@ -65,15 +90,6 @@ import XCTest
         .environment(\._accessibilityReduceTransparency, reduceTransparency)
         .tint(DLColor.accent)
         .transaction { $0.disablesAnimations = true }
-        let image = wideImage(page, size: size, regular: regular, increaseContrast: increaseContrast)
-        // 分栏玻璃层每次有大量像素差 1–2 个色阶，字节精度会低于 0.995。
-        // 感知精度 0.99 放过这种色差；像素精度仍要求 0.995，缺一列内容会失败。
-        assertSnapshot(
-            of: image,
-            as: .image(precision: 0.995, perceptualPrecision: 0.99),
-            named: named,
-            testName: "Snapshot_\(scene)_light_zh"
-        )
     }
 
     private func wideImage<V: View>(

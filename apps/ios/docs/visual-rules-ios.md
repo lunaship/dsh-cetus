@@ -26,9 +26,9 @@
 | Token | 浅色 | 深色 | 用途 |
 |---|---|---|---|
 | `AccentColor` | `#3F5BD6` | `#8B9DFF` | 文字按钮、图标、选中、tint |
-| `BrandFill` | `#3F5BD6` | `#4C66E6`（暂定） | 品牌实心按钮底，白字 |
+| `BrandFill` | `#3F5BD6` | `#4C66E6`（用户 2026-10-10 定） | 品牌实心按钮底，白字 |
 
-同屏最多一个品牌实心按钮。首页给「新任务」；列表里的「允许一次」用 `.bordered` + accent tint。
+同屏最多一个品牌实心按钮。首页给「新任务」；列表里的「允许一次」用 `.bordered` + accent tint，「拒绝 / 回答」用 `.bordered` + 标签色 tint（灰色）。
 
 ## 3. 文字
 
@@ -38,7 +38,7 @@
 
 ## 4. 形状
 
-控件用胶囊；容器用同心圆角（`ConcentricRectangle` / `containerShape`）；行内代码与小标签固定 6pt。不自定义其他圆角。
+控件用胶囊；容器用同心圆角（`ConcentricRectangle` / `containerShape`）；行内代码与小标签固定 6pt。例外（设计稿 4.1 / 4.4，2026-10-10）：用户气泡 18pt 连续圆角（列表行里没有外层容器，同心圆角会退化成直角）；决策栏里的选项分组块 12pt；1.2 欢迎页品牌图标块用 App 图标式连续圆角（边长 × 0.225）。不自定义其他圆角。
 
 ## 5. 间距
 
@@ -51,8 +51,8 @@
 - 系统导航栏、工具栏、`.sheet`、`Menu`、`alert`、`confirmationDialog`（自动带玻璃，不额外处理）。
 - 自定义玻璃只有两处：输入区（`DLComposerView`）与决策栏（`DLDecisionBar`），共用一个容器。
 - 浮在相机画面上的关闭按钮。
-- 按钮样式：独立浮在内容上的主操作用 `.glassProminent`（BrandFill），次操作用 `.glass`；**放在玻璃容器内部**（输入区、决策栏）的按钮用 `.borderedProminent`（BrandFill）/ `.bordered` 实色，不叠玻璃。
-- 同屏最多一个品牌实心按钮：首页给「新任务」，列表里的「允许一次」用 `.bordered` + accent tint。
+- 按钮样式：独立浮在内容上的主操作用 `.glassProminent`（BrandFill），次操作用 `.glass`；**放在玻璃容器内部**（输入区、决策栏）的按钮用 `.borderedProminent`（BrandFill）/ 灰色填充（`UIButton.Configuration.gray()`，标签色文字）实色，不叠玻璃。标题为空的按钮不画。输入区底行：附件 · 模型 / 权限胶囊（`ComposerChip`，灰色胶囊）· 标签色实心圆形发送（不占品牌实心名额）。
+- 同屏最多一个品牌实心按钮：首页给「新任务」，列表里的「允许一次」用 `.bordered` + accent tint，「拒绝 / 回答」用 `.bordered` + 标签色 tint（灰色）。
 
 **禁止**
 
@@ -69,15 +69,25 @@
 
 ## 8. 组件清单
 
-封装组件（`DLUI`）：`DLStatusSlot` `DLInboxRow` `DLComposerView` `DLDecisionBar` `DLChip` `DLProcessLine` `DLCodeBlock` `DLEmptyState` `DLBanner`。
+封装组件（`DLUI`）：`DLStatusSlot` `DLInboxRow` `DLComposerView`（含 `ComposerChip` 胶囊）`DLDecisionBar` `DLChip` `DLProcessLine` `DLCodeBlock` `DLEmptyState` `DLBanner`。
 
 1.x 配对页面直接使用 `PhotosPicker`、`DataScannerViewController`（不支持时 `AVCaptureSession`）、系统 `alert` 与改名 `Form` sheet；扫描器桥接留在 App，不新增 DLUI 组件。
 
 系统组件直接用：`NavigationStack` `NavigationSplitView` `List` `Form` `.sheet` `.inspector` `confirmationDialog` `alert` `Menu` `Picker` `Toggle` `contextMenu` `swipeActions` `searchable`。新增封装组件先改本文件。
 
-2.x 不新增封装。`DLInboxRow` 支持工作区文件夹行（组头计数、缩进会话、只显示一行标题）与待处理置顶行（跨工作区保留工作区名、内联按钮）；`DLBanner` 增加可选图标。筛选、搜索、分组、长按用系统组件。底栏在系统玻璃里，「新任务」用 `.borderedProminent` + BrandFill，列表里的「允许一次」仍是 `.bordered` + accent tint。**首页不放品牌大标题**（品牌只在 1.1 / 1.2 / 关于）。
+2.x 不新增封装。`DLInboxRow` 支持工作区文件夹行（组头计数、缩进会话、只显示一行标题）与待处理置顶行（跨工作区保留工作区名、内联按钮）；`DLBanner` 增加可选图标。筛选、搜索、分组、长按用系统组件。底栏在系统玻璃里，「新任务」用 `.borderedProminent` + BrandFill，列表里的「允许一次」仍是 `.bordered` + accent tint。**首页不放品牌大标题**（品牌只在 1.1 / 1.2 / 关于）。手机上用系统大标题显示当前电脑名、副标题只显示连接状态（`● 在线 / 远程 / 离线 / 正在连接`，不重复电脑名，用户 2026-10-10 定；设计稿 2.1）；iPad 侧栏仍是行内标题。系统导航栏和底部玻璃工具栏在整页截图里画不出来，手机截图在内容里画同层级的替身（大标题 + 副标题、筛选 · 搜索框 · 品牌色「新任务」），生产路径不变。
 
-4.x 消息流留在 App（`UICollectionView` + `UIHostingConfiguration`），不新增 DLUI 类型。复用 `DLProcessLine`、`DLCodeBlock`、`DLChip`。用户气泡用 `secondarySystemFill` + `ConcentricRectangle`，不用玻璃。助手全宽。`DLCodeBlock` 可传入语义色 `AttributedString`，不传时外观与阶段 2 相同。公式和 Mermaid 的锁死 `WKWebView` 只在 App。输入区和决策栏仍是 `DLComposerView` / `DLDecisionBar`，共用一个玻璃容器；决策面板的主动作见第 7 节。
+1.2 欢迎页（按 iOS 设计稿，用户 2026-10-10 定）：顶部品牌图标块（BrandFill 实心圆角方块 + 白色等宽「>_」，72pt 随动态字体缩放，读屏跳过）；大标题 + 次要色说明；三步用强调色淡底圆 + 强调色数字（32pt 随动态字体缩放）；底部依次是「扫码配对」（品牌实心）、「从相册识别」（强调色中粗）、「先看看演示」（次要色）、免责声明。
+
+3.2 选择工作区：生产用系统 `searchable`；截图里系统搜索框的清除按钮时有时无（取决于搜索栏内部编辑状态），截图改画实色静态替身（底部胶囊：放大镜 + 搜索文字，不画清除按钮），生产路径不变。
+
+8.4 / 8.5 锁屏与灵动岛（用户 2026-10-10 定）：显示任务标题，一行、超长截尾省略；标题是 App 启动活动时按会话本地查到的（`ActivityAttributes.title`），`content-state` 仍只有 RFC 0002 §5.6 的五个字段，推送里不带标题。命令、文件名、正文不上锁屏；任何位置都没有「允许」按钮。
+
+1.3 扫码页深浅色相同（相机永远是深色，页面内容按深色取色）；关闭在左上、手电筒在右上（设备没有手电筒时不画），底部「从相册选择」。
+
+7.1 设置首页是系统分组列表：每行 SF Symbol 图标统一用强调色、不加彩色底块；手机上已有的值（语言、通知范围、外观、版本）放在行右侧，需要电脑侧数据的值不显示。
+
+4.x 消息流留在 App（`UICollectionView` + `UIHostingConfiguration`），不新增 DLUI 类型。复用 `DLProcessLine`、`DLCodeBlock`、`DLChip`。用户气泡用 `secondarySystemFill` + 18pt 连续圆角（见第 4 节），不用玻璃。助手全宽。`DLCodeBlock` 可传入语义色 `AttributedString`，不传时外观与阶段 2 相同。公式和 Mermaid 的锁死 `WKWebView` 只在 App。输入区和决策栏仍是 `DLComposerView` / `DLDecisionBar`，共用一个玻璃容器；决策面板的主动作见第 7 节。4.4 提问卡是这一个容器里的一整块：状态行、题面、选项分组块（右侧对勾）与自由回答输入框、底部「跳过 / 上一题」「下一题 / 发送」；选项和输入框是 `DLComposerView` 决策态的一部分（`DecisionAnswerInput`），不在容器外另叠视图。
 
 4.5 / 4.8 复用 `DLStatusSlot`，增加可选展开内容与 SF Symbol，不新增组件、不加玻璃。摘要默认一行；展开后标题换行，系统 `ProgressView` 表示已完成计划项比例，清单完成项用次要色且无删除线。最大辅助字号摘要允许换行；有计划时展开区用系统 `ScrollView` 限高，保留消息流空间；无计划只保留真实标题和阶段。待处理只读，不加入决策按钮。
 

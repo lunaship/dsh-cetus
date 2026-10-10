@@ -164,4 +164,36 @@ import UIKit
         }
         #expect((code.accessibilityLabel?.isEmpty ?? true) || code.accessibilityLabel == code.text)
     }
+
+    // MARK: 设计稿 4.4 提问卡
+
+    @Test func questionCardShowsChoicesAndAnswerFieldInsideOneBlock() {
+        var picked: [String] = []
+        let field = UITextField()
+        let content = makeDecisionContent(
+            status: "Waiting",
+            question: "Limit?",
+            secondaryTitle: "Skip",
+            primaryTitle: "Next",
+            enabled: true,
+            answer: DecisionAnswerInput(
+                choices: [
+                    DecisionChoice(value: "60", title: "60", selected: true),
+                    DecisionChoice(value: "120", title: "120", selected: false),
+                ],
+                placeholder: "Write your own answer", text: ""),
+            answerField: field,
+            onChoice: { picked.append($0) },
+            onSecondary: {},
+            onPrimary: {})
+        let all = descendants(content)
+        #expect(all.contains { $0 === field }, "自由回答输入框应在决策面板里")
+        #expect(field.placeholder == "Write your own answer")
+        let choices = all.compactMap { $0 as? UIButton }.filter { $0.configuration == nil }
+        #expect(choices.map(\.accessibilityLabel) == ["60", "120"])
+        #expect(choices.first?.accessibilityTraits.contains(.selected) == true)
+        choices.last?.sendActions(for: .primaryActionTriggered)
+        #expect(picked == ["120"])
+        #expect(buttonTitles(in: content) == ["Skip", "Next"])
+    }
 }

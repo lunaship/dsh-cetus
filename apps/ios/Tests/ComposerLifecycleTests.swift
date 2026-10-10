@@ -186,4 +186,20 @@ final class ComposerPlaceholderTests: XCTestCase {
         view.text = ""
         XCTAssertEqual(view.editor.text, "")
     }
+
+    /// 设计稿 4.1：提示标签本身的可见性——空且有提示时显示，有文字或无提示时隐藏。
+    func testPlaceholderLabelVisibility() {
+        let view = makeView(placeholder: "补充说明")
+        XCTAssertEqual(placeholderLabel(view)?.isHidden, false, "编辑器为空时应显示提示")
+        view.text = "hello"
+        XCTAssertEqual(placeholderLabel(view)?.isHidden, true, "有文字时应隐藏提示")
+        view.text = ""
+        XCTAssertEqual(placeholderLabel(view)?.isHidden, false, "清空后应重新显示提示")
+        view.placeholder = ""
+        XCTAssertEqual(placeholderLabel(view)?.isHidden, true, "没有提示文案时应隐藏")
+    }
+
+    private func placeholderLabel(_ view: DLComposerView) -> UILabel? {
+        view.editor.subviews.compactMap { $0 as? UILabel }.first
+    }
 }

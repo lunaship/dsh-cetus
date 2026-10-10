@@ -373,10 +373,6 @@ struct ConversationPage: View {
                     if showsStatusSlot {
                         ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
                     }
-                    if activeQuestion != nil, !staticSnapshot {
-                        questionChoices(copy)
-                        questionNavigator(copy)
-                    }
                     ConversationBar(
                         decision: decision,
                         draft: draft,
@@ -391,8 +387,8 @@ struct ConversationPage: View {
                         },
                         onSend: { Task { await send(copy) } },
                         onEscape: { _ = dismissPresented() },
-                        onSecondary: { Task { await decide(allow: false) } },
-                        onPrimary: { Task { await decide(allow: true) } },
+                        onSecondary: { decideSecondary() },
+                        onPrimary: { decidePrimary() },
                         solidSnapshot: staticSnapshot,
                         suggestions: decision == nil ? slashSuggestions(draft: draft, copy: copy) : [],
                         onSuggestion: { pickSlash($0, copy: copy) },
@@ -406,11 +402,36 @@ struct ConversationPage: View {
                         decisionNotice: decisionNoticeText(copy),
                         // C06 10.2.7：末题提交由题目导航区负责，决策栏不再重复放发送。
                         questionUsesNavigatorSubmit: activeQuestion != nil,
-                        decisionBusy: decisionBusy
+                        decisionBusy: decisionBusy,
+                        questionTitles: questionBarTitles(copy),
+                        chips: composerChips(copy),
+                        onChip: { id in
+                            guard !staticSnapshot else { return }
+                            switch id {
+                            case "model": sheet = .model
+                            case "permission": sheet = .permission
+                            default: break
+                            }
+                        },
+                        // 设计稿 4.4：选项和自由回答在决策栏这一块玻璃里，截图路径同样画出。
+                        answer: questionAnswerInput(copy),
+                        onChoice: { value in
+                            guard !staticSnapshot else { return }
+                            toggleQuestionOption(value)
+                        },
+                        onAnswer: { text in
+                            guard !staticSnapshot else { return }
+                            answerText = text
+                        }
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
                     .fixedSize(horizontal: false, vertical: true)
+                    .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
+                    .onChange(of: activeQuestion?.questionRpcId) { _, _ in
+                        if let activeQuestion { syncQuestionForm(activeQuestion) }
+                    }
+                    .onChange(of: answerText) { _, _ in persistQuestionDraft() }
                 }
             )
             .sensoryFeedback(.success, trigger: decisionPulse)
@@ -531,29 +552,100 @@ struct ConversationPage: View {
         .background(DLColor.background)
     }
 
-    private func questionChoices(_ copy: ConversationCopy) -> some View {
-        let options = questionForm.current?.options ?? []
-        let selected = questionForm.current.map { questionForm.draft(for: $0).selected } ?? []
-        return VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(options.enumerated()), id: \.offset) { entry in
-                let value = QuestionForm.optionValue(entry.element) ?? ""
-                let label = entry.element.label ?? value
-                Button {
-                    toggleQuestionOption(value)
-                } label: {
-                    HStack {
-                        Image(systemName: selected.contains(value) ? "checkmark.circle.fill" : "circle")
-                        Text(label.isEmpty ? value : label)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(minHeight: 44)
-                }
-                .disabled(label.isEmpty && value.isEmpty)
-            }
+    /// 正在显示的问题表单。`questionForm` 在首次同步前是空的；截图路径和首帧
+    /// 直接按请求负载现算一份，保证选项、题号和按钮标题从第一帧起就对。
+    private var shownQuestionForm: QuestionForm {
+        guard let message = activeQuestion, questionRPC != message.questionRpcId else { return questionForm }
+        return QuestionForm(questions: QuestionForm.questions(from: message.questionPayloadJson))
+    }
+
+    /// 设计稿 4.4：「等你回答 · 第 1 题，共 2 题」+ 当前题面 +「跳过 / 上一题」「下一题 / 发送」。
+    /// 按钮语义沿用 `QuestionForm`：跳过只给可选题，必填题的次按钮是上一题。
+    private func questionBarTitles(_ copy: ConversationCopy) -> QuestionBarTitles? {
+        guard let message = activeQuestion else { return nil }
+        let form = shownQuestionForm
+        let count = form.questions.count
+        var status = copy.text(.waitAnswer)
+        if count > 1 {
+            status += " · " + copy.format(.questionProgress, form.index + 1, count)
         }
-        .padding(.horizontal, 16)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(copy.text(.question))
+        let current = form.current?.question?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let secondary: String
+        if form.canSkip {
+            secondary = copy.text(.questionSkip)
+        } else if form.canGoBack {
+            secondary = copy.text(.questionPrevious)
+        } else {
+            secondary = ""
+        }
+        let primary = form.isLast || count == 0 ? copy.text(.send) : copy.text(.questionNext)
+        return QuestionBarTitles(
+            status: status,
+            question: current.isEmpty ? message.text : current,
+            secondary: secondary,
+            primary: primary)
+    }
+
+    /// 决策栏次按钮：审批是拒绝；问题是跳过（可选题）或上一题（必填题）。
+    private func decideSecondary() {
+        guard activeQuestion != nil else {
+            Task { await decide(allow: false) }
+            return
+        }
+        moveQuestion(shownQuestionForm.canSkip ? .skip : .previous)
+    }
+
+    /// 决策栏主按钮：审批是允许一次；问题是下一题，最后一题时提交。
+    private func decidePrimary() {
+        guard activeQuestion != nil else {
+            Task { await decide(allow: true) }
+            return
+        }
+        let form = shownQuestionForm
+        moveQuestion(form.isLast || form.questions.isEmpty ? .submit : .next)
+    }
+
+    /// 设计稿 4.1：输入区底部的模型 / 权限胶囊，点开对应面板。
+    private func composerChips(_ copy: ConversationCopy) -> [ComposerChip] {
+        guard decision == nil else { return [] }
+        let modelTitle: String
+        if selectedModelID.isEmpty {
+            modelTitle = copy.text(.modelSection)
+        } else if effort.isEmpty {
+            modelTitle = selectedModelID
+        } else {
+            modelTitle = selectedModelID + " · " + effort
+        }
+        let permissionName = permissionTitle(permission, copy: copy)
+        return [
+            ComposerChip(
+                id: "model", title: modelTitle, systemImage: "cpu",
+                accessibilityLabel: copy.text(.modelSection) + ", " + modelTitle),
+            ComposerChip(
+                id: "permission", title: permissionName, systemImage: "lock.shield",
+                accessibilityLabel: copy.text(.permTitle) + ", " + permissionName),
+        ]
+    }
+
+    /// 设计稿 4.4：当前题的选项（带选中态）+ 自由回答输入框 + 未知题型说明。
+    /// 选项值、选中态都来自 `QuestionForm`，与原来的 SwiftUI 列表同一份数据。
+    private func questionAnswerInput(_ copy: ConversationCopy) -> DecisionAnswerInput? {
+        guard activeQuestion != nil, !isDecisionHandled else { return nil }
+        let form = shownQuestionForm
+        let options = form.current?.options ?? []
+        let selected = form.current.map { form.draft(for: $0).selected } ?? []
+        let choices = options.map { option -> DecisionChoice in
+            let value = QuestionForm.optionValue(option) ?? ""
+            let label = option.label ?? value
+            return DecisionChoice(
+                value: value, title: label.isEmpty ? value : label, selected: selected.contains(value))
+        }
+        return DecisionAnswerInput(
+            choices: choices,
+            placeholder: copy.text(choices.isEmpty ? .questionAnswerPlaceholder : .questionOwnAnswer),
+            text: answerText,
+            note: form.hasUnsupportedQuestion ? copy.text(.questionUnsupported) : nil,
+            accessibilityLabel: copy.text(.question))
     }
 
     private func toggleQuestionOption(_ value: String) {
@@ -570,50 +662,6 @@ struct ConversationPage: View {
         }
         questionForm.updateCurrent(selected: selected, custom: answerText)
         persistQuestionDraft()
-    }
-
-    private func questionNavigator(_ copy: ConversationCopy) -> some View {
-        let count = max(questionForm.questions.count, 1)
-        return VStack(spacing: 8) {
-            // C06：自由回答用独立输入框，不再复用正文 draft —— 切题 / 提交
-            // 不会把用户正在写的正文冲掉。
-            TextField(copy.text(.questionAnswerPlaceholder), text: $answerText)
-                .textFieldStyle(.roundedBorder)
-                .frame(minHeight: 44)
-                .onChange(of: answerText) { _, _ in persistQuestionDraft() }
-            HStack {
-                Button(copy.text(.questionPrevious)) { moveQuestion(.previous) }
-                    .disabled(!questionForm.canGoBack || decisionBusy)
-                if questionForm.canSkip {
-                    Button(copy.text(.questionSkip)) { moveQuestion(.skip) }
-                        .disabled(decisionBusy)
-                }
-                Spacer()
-                Text(copy.format(.questionProgress, questionForm.index + 1, count))
-                    .font(DLFont.footnote)
-                    .foregroundStyle(DLColor.secondaryLabel)
-                Spacer()
-                Button(questionForm.isLast ? copy.text(.send) : copy.text(.questionNext)) {
-                    moveQuestion(questionForm.isLast ? .submit : .next)
-                }
-                // C06 10.2.2：含未知题型时**不提交**（也不静默丢空数组），
-                // 由下方说明告诉用户去电脑上答。
-                .disabled(decisionBusy || questionForm.hasUnsupportedQuestion)
-            }
-            .frame(minHeight: 44)
-            // C06 10.2.2：未知题型的用户可见说明——按钮为什么点不动。
-            if questionForm.hasUnsupportedQuestion {
-                Text(copy.text(.questionUnsupported))
-                    .font(DLFont.footnote)
-                    .foregroundStyle(DLColor.err)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(.horizontal, 16)
-        .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
-        .onChange(of: activeQuestion?.questionRpcId) { _, _ in
-            if let activeQuestion { syncQuestionForm(activeQuestion) }
-        }
     }
 
     /// 每题草稿存进 `.answer` 槽位，与正文 `.prompt` 分开（C02 要求 2）。
@@ -1114,7 +1162,11 @@ private struct ComposerInset<Bar: View>: ViewModifier {
 
     func body(content: Content) -> some View {
         if on {
-            content.safeAreaInset(edge: .bottom, spacing: 0, content: bar)
+            // 设计稿 4.4：状态槽和决策栏必须竖排。`safeAreaInset` 的多个子视图会被叠放（像 ZStack），
+            // 之前选项列表和回答输入框就是这样被决策栏整块盖住的。
+            content.safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) { bar() }
+            }
         } else {
             content
         }

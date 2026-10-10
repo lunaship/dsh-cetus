@@ -8,23 +8,27 @@ struct PairingWelcomePage: View {
     var scan: () -> Void = {}
     var photo: () -> Void = {}
     var demo: () -> Void = {}
-    /// Welcome snapshots only. Pairing matrix scenes keep `.glassProminent`.
+    /// Snapshot path only: the filled system style instead of `.glassProminent`.
+    /// A `.glassProminent` button makes the whole hosted page snapshot transparent.
     var staticSnapshot = false
+    /// 品牌图标块边长与步骤编号圆直径，随动态字体缩放（设计稿 1.2：72pt / 32pt）。
+    @ScaledMetric(relativeTo: .largeTitle) private var brandTile: CGFloat = 72
+    @ScaledMetric(relativeTo: .headline) private var stepBadge: CGFloat = 32
 
     var body: some View {
         let copy = PairingCopy(locale: locale)
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Image(systemName: "terminal")
-                    .font(.largeTitle)
-                    .imageScale(.large)
-                    .foregroundStyle(DLColor.accent)
-                    .accessibilityHidden(true)
-                Text(copy.text(.welcomeTitle)).font(.largeTitle.bold())
-                Text(copy.text(.welcomeBody)).foregroundStyle(DLColor.secondaryLabel)
-                step("1.circle", title: .stepOne, detail: .stepOneBody, copy: copy)
-                step("2.circle", title: .stepTwo, detail: .stepTwoBody, copy: copy)
-                step("3.circle", title: .stepThree, detail: .stepThreeBody, copy: copy)
+                brandMark
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(copy.text(.welcomeTitle)).font(.largeTitle.bold())
+                    Text(copy.text(.welcomeBody)).foregroundStyle(DLColor.secondaryLabel)
+                }
+                VStack(alignment: .leading, spacing: 20) {
+                    step(1, title: .stepOne, detail: .stepOneBody, copy: copy)
+                    step(2, title: .stepTwo, detail: .stepTwoBody, copy: copy)
+                    step(3, title: .stepThree, detail: .stepThreeBody, copy: copy)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(24)
@@ -34,8 +38,11 @@ struct PairingWelcomePage: View {
                 if let busy {
                     ProgressView(copy.text(busy))
                 }
+                // 设计稿 1.2：扫码配对（品牌实心）→ 从相册识别（强调色中粗）→ 先看看演示（次要色）→ 免责声明。
                 scanButton(copy.text(.scan))
-                Button(copy.text(.photo), action: photo).frame(minHeight: 44)
+                Button(copy.text(.photo), action: photo)
+                    .fontWeight(.semibold)
+                    .frame(minHeight: 44)
                 Button(copy.text(.demo), action: demo).frame(minHeight: 44)
                     .foregroundStyle(DLColor.secondaryLabel)
                 Text(copy.text(.disclaimer)).font(.footnote)
@@ -49,9 +56,24 @@ struct PairingWelcomePage: View {
         .background(DLColor.background)
     }
 
-    private func step(_ image: String, title: PairingText, detail: PairingText, copy: PairingCopy) -> some View {
+    /// 设计稿 1.2 的品牌图标块：BrandFill 实心圆角方块 + 白色「>_」。装饰性，读屏跳过。
+    private var brandMark: some View {
+        Text(verbatim: ">_")
+            .font(.system(.title, design: .monospaced).weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(width: brandTile, height: brandTile)
+            .background(DLColor.brandFill, in: RoundedRectangle(cornerRadius: brandTile * 0.225, style: .continuous))
+            .accessibilityHidden(true)
+    }
+
+    /// 设计稿 1.2 的步骤编号：强调色淡底圆 + 强调色数字。
+    private func step(_ number: Int, title: PairingText, detail: PairingText, copy: PairingCopy) -> some View {
         HStack(alignment: .top, spacing: 16) {
-            Image(systemName: image).font(.title3).foregroundStyle(DLColor.accent)
+            Text(verbatim: "\(number)")
+                .font(.headline)
+                .foregroundStyle(DLColor.accent)
+                .frame(width: stepBadge, height: stepBadge)
+                .background(DLColor.accent.opacity(0.12), in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(copy.text(title)).font(.headline)
@@ -81,6 +103,8 @@ struct LocalNetworkExplanationPage: View {
     @Environment(\.locale) private var locale
     var proceed: () -> Void = {}
     var back: () -> Void = {}
+    /// Snapshot path only: the filled system style instead of `.glassProminent` (see 1.2).
+    var staticSnapshot = false
 
     var body: some View {
         let copy = PairingCopy(locale: locale)
@@ -95,13 +119,20 @@ struct LocalNetworkExplanationPage: View {
         .navigationBarBackButtonHidden()
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
-                Button(copy.text(.continueAction), action: proceed)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.glassProminent).tint(DLColor.brandFill)
+                continueButton(copy.text(.continueAction))
                 Button(copy.text(.back), action: back).frame(minHeight: 44)
             }.padding(16).background(DLColor.background)
         }
         .background(DLColor.background)
+    }
+
+    @ViewBuilder private func continueButton(_ title: String) -> some View {
+        let button = Button(title, action: proceed).frame(maxWidth: .infinity, minHeight: 44)
+        if staticSnapshot {
+            button.buttonStyle(.borderedProminent).tint(DLColor.brandFill)
+        } else {
+            button.buttonStyle(.glassProminent).tint(DLColor.brandFill)
+        }
     }
 }
 
@@ -180,34 +211,111 @@ struct PairingFailurePage: View {
 }
 
 /// 1.3 overlay. Snapshots use a fixture camera surface, never a live capture session.
+/// 设计稿 1.3：深浅色相同（相机永远是深色）；关闭在左上、手电筒在右上，
+/// 中间是标题 + 取景框 + 提示，底部是「从相册选择」。
 struct PairingScannerPage<Camera: View>: View {
     @Environment(\.locale) private var locale
     let camera: Camera
     var hint: PairingText?
     var close: () -> Void = {}
+    /// nil = 不画「从相册选择」。
+    var photo: (() -> Void)? = nil
+    /// 设备没有手电筒（模拟器、部分 iPad）时不画按钮。截图显式传 true。
+    var torchAvailable = PairingTorch.isAvailable
+    @State private var torchOn = false
 
     var body: some View {
         let copy = PairingCopy(locale: locale)
-        ZStack(alignment: .topLeading) {
+        ZStack {
             camera.ignoresSafeArea().accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 24) {
-                Button(action: close) {
-                    Image(systemName: "xmark").frame(minWidth: 44, minHeight: 44)
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: close) {
+                        Image(systemName: "xmark").frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.glass).accessibilityLabel(copy.text(.close))
+                    Spacer()
+                    if torchAvailable {
+                        Button {
+                            torchOn.toggle()
+                            PairingTorch.set(torchOn)
+                        } label: {
+                            Image(systemName: torchOn ? "flashlight.on.fill" : "flashlight.off.fill")
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                        .buttonStyle(.glass)
+                        .accessibilityLabel(copy.text(.torch))
+                        .accessibilityAddTraits(torchOn ? .isSelected : [])
+                    }
                 }
-                .buttonStyle(.glass).accessibilityLabel(copy.text(.close))
                 Spacer()
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
                     Text(copy.text(.scanTitle)).font(.headline)
-                    Text(copy.text(hint ?? .scanBody)).font(.body)
+                    PairingViewfinder()
+                        .stroke(.white, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                        .frame(width: 232, height: 232)
+                        .accessibilityHidden(true)
+                    Text(copy.text(hint ?? .scanBody))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 .multilineTextAlignment(.center)
-                .padding(16)
-                .background(DLColor.background)
-                .preferredColorScheme(.dark)
+                .padding(.horizontal, 16)
                 Spacer()
-            }.padding(16)
+                if let photo {
+                    Button(action: photo) {
+                        Label(copy.text(.scanPhoto), systemImage: "photo.on.rectangle")
+                            .font(.headline)
+                            .padding(.horizontal, 8)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.glass)
+                }
+            }
+            .padding(16)
+            // 设计稿 1.3：相机上的控件一律白色，不用强调色。
+            .tint(.white)
+            .foregroundStyle(.white)
         }
-        .background(DLColor.background)
+        // 相机界面永远是深色：页面内容按深色取色，呈现层也请求深色。
+        .environment(\.colorScheme, .dark)
         .preferredColorScheme(.dark)
+        .onDisappear {
+            if torchOn { PairingTorch.set(false) }
+        }
+    }
+}
+
+/// 设计稿 1.3：取景框只画四个圆角折角。
+struct PairingViewfinder: Shape {
+    func path(in rect: CGRect) -> Path {
+        let arm = min(rect.width, rect.height) * 0.22
+        let radius = min(rect.width, rect.height) * 0.1
+        var path = Path()
+        // 左上
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + arm))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + radius, y: rect.minY), control: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + arm, y: rect.minY))
+        // 右上
+        path.move(to: CGPoint(x: rect.maxX - arm, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + radius), control: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + arm))
+        // 右下
+        path.move(to: CGPoint(x: rect.maxX, y: rect.maxY - arm))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - radius, y: rect.maxY), control: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX - arm, y: rect.maxY))
+        // 左下
+        path.move(to: CGPoint(x: rect.minX + arm, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + radius, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - radius), control: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - arm))
+        return path
     }
 }

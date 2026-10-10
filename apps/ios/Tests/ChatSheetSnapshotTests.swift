@@ -70,7 +70,16 @@ import XCTest
             testName: snapshotName(scene, appearance: appearance, language: language))
     }
 
+    /// 同样的内容先完整挂一次窗口、拍一张丢掉，再用新的 hosting controller 正式拍：
+    /// 正式这一张的「上一个窗口」就是同样的画面，不受前一个变体残留状态影响（见 SnapshotSettle.swift）。
     private func render<V: View>(
+        _ view: V, appearance: UIUserInterfaceStyle, large: Bool, increaseContrast: Bool
+    ) -> UIImage {
+        _ = renderInWindow(view, appearance: appearance, large: large, increaseContrast: increaseContrast)
+        return renderInWindow(view, appearance: appearance, large: large, increaseContrast: increaseContrast)
+    }
+
+    private func renderInWindow<V: View>(
         _ view: V, appearance: UIUserInterfaceStyle, large: Bool, increaseContrast: Bool
     ) -> UIImage {
         let size = CGSize(width: 402, height: 874)
@@ -99,12 +108,8 @@ import XCTest
             window.windowScene = nil
             previousKey?.makeKey()
         }
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 3
-        format.opaque = true
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
-        }
+        // 等玻璃层/渲染管线稳定再拍，见 SnapshotSettle.swift。
+        return settledSnapshot(of: host.view, size: size)
     }
 
     private func snapshotName(_ scene: String, appearance: UIUserInterfaceStyle, language: String) -> String {

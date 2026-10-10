@@ -14,6 +14,21 @@ public struct ComposerSuggestion: Equatable {
     }
 }
 
+/// 设计稿 4.1：输入区底部的模型 / 权限胶囊。点按交给宿主打开对应面板。
+public struct ComposerChip: Equatable {
+    public var id: String
+    public var title: String
+    public var systemImage: String
+    public var accessibilityLabel: String
+
+    public init(id: String, title: String, systemImage: String, accessibilityLabel: String) {
+        self.id = id
+        self.title = title
+        self.systemImage = systemImage
+        self.accessibilityLabel = accessibilityLabel
+    }
+}
+
 /// 硬件键盘合同需要追踪 Shift 是否按下（Return 发送、Shift-Return 换行）；
 /// 文本输入路径不暴露修饰键，所以在 responder 链上记一下。
 ///
@@ -50,6 +65,10 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var onDraft: ((String) -> Void)?
     public var onDecisionSecondary: (() -> Void)?
     public var onDecisionPrimary: (() -> Void)?
+    /// 设计稿 4.4：点选项（交回选项值）。
+    public var onDecisionChoice: ((String) -> Void)?
+    /// 设计稿 4.4：自由回答输入框的文字变化。
+    public var onDecisionAnswer: ((String) -> Void)?
     public var onSuggestion: ((String) -> Void)?
     public var onAttach: (() -> Void)?
 
@@ -60,6 +79,17 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             refreshMetrics()
         }
     }
+
+    /// 设计稿 4.1：模型 / 权限胶囊，排在附件按钮和发送按钮之间。
+    public var chips: [ComposerChip] = [] {
+        didSet {
+            guard didFinishInit, chips != oldValue else { return }
+            rebuildChips()
+            refreshMetrics()
+        }
+    }
+
+    public var onChip: ((String) -> Void)?
 
     public var showsAttachButton = false {
         didSet {
@@ -100,7 +130,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var placeholder = "" {
         didSet {
             placeholderLabel.text = placeholder
-            placeholderLabel.isHidden = !placeholder.isEmpty || !(field.text ?? "").isEmpty
+            updatePlaceholderVisibility()
         }
     }
 
@@ -121,6 +151,25 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private let editorHeight: NSLayoutConstraint
     private let sendButton: UIButton
     private let attachButton = UIButton(type: .system)
+    /// 设计稿 4.4：提问卡里的自由回答输入框。全生命周期一个实例，切题重装时保留焦点。
+    private let answerField: UITextField = {
+        let field = UITextField()
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.textColor = DLUIKitColor.label
+        field.borderStyle = .none
+        field.clearButtonMode = .whileEditing
+        field.returnKeyType = .done
+        let pencil = UIImageView(image: UIImage(systemName: "pencil"))
+        pencil.tintColor = DLUIKitColor.tertiaryLabel
+        pencil.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .body)
+        pencil.contentMode = .center
+        pencil.frame = CGRect(x: 0, y: 0, width: 28, height: 24)
+        field.leftView = pencil
+        field.leftViewMode = .always
+        field.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        return field
+    }()
     private let placeholderLabel: UILabel = {
         let label = UILabel()
         label.font = .preferredFont(forTextStyle: .body)
@@ -128,6 +177,14 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         label.adjustsFontForContentSizeCategory = true
         label.isHidden = true
         return label
+    }()
+
+    private let chipStack: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 6
+        return stack
     }()
 
     private let suggestionStack: UIStackView = {
@@ -160,12 +217,16 @@ public final class DLComposerView: UIView, UITextViewDelegate {
 
     private static let editorMinimumHeight: CGFloat = 44
     private static let editorMaximumHeight: CGFloat = 132
+    /// 内容到玻璃边的内距（DLGlassBar.install 四边各 12）。编辑器宽度 = 本视图宽度 − 2 × 12。
+    private static let contentInset: CGFloat = 12
+    /// 还没拿到真实宽度（SwiftUI 先要尺寸）时按这个宽度量。
+    private static let fallbackWidth: CGFloat = 378
 
     private enum Mode {
         case composer
         case decision(
             status: String, question: String, command: String?, secondaryTitle: String, primaryTitle: String,
-            positionText: String?, notice: String?)
+            positionText: String?, notice: String?, answer: DecisionAnswerInput?)
     }
 
     private enum Installed: Equatable {
@@ -177,7 +238,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         self.sendTitle = sendTitle
         self.mirrorText = text
         editorHeight = field.heightAnchor.constraint(equalToConstant: Self.editorMinimumHeight)
-        sendButton = dlBarButton(title: sendTitle, prominent: true, enabled: isEnabled) {}
+        sendButton = dlRoundSendButton(title: sendTitle, enabled: isEnabled)
         super.init(frame: .zero)
 
         glass.translatesAutoresizingMaskIntoConstraints = false
@@ -192,6 +253,13 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         configureEditor()
         configureChrome()
         configurePlaceholder()
+        answerField.addAction(
+            UIAction { [weak self] _ in
+                guard let self else { return }
+                self.onDecisionAnswer?(self.answerField.text ?? "")
+            }, for: .editingChanged)
+        answerField.addAction(
+            UIAction { [weak self] _ in self?.answerField.resignFirstResponder() }, for: .editingDidEndOnExit)
         didFinishInit = true
         showComposer(animated: false)
     }
@@ -199,13 +267,15 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     private func configurePlaceholder() {
         field.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
-        composerRoot.addArrangedSubview(placeholderLabel)
-        // placeholder 叠在 field 上（同位置，不占额外空间）
+        // placeholder 叠在 field 上（同位置，不占额外空间），不进 composerRoot 的排列。
         field.addSubview(placeholderLabel)
         NSLayoutConstraint.activate([
-            placeholderLabel.topAnchor.constraint(equalTo: field.topAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: field.leadingAnchor, constant: 4),
-            placeholderLabel.trailingAnchor.constraint(equalTo: field.trailingAnchor, constant: -4),
+            // 与 textContainerInset（上 8）和 lineFragmentPadding（5）对齐，提示与光标同一位置。
+            // 用 frameLayoutGuide：UITextView 是滚动视图，直接贴 field 的锚点会落到内容区，
+            // 提示宽度不确定，截图在重生成与对比之间来回不一致。
+            placeholderLabel.topAnchor.constraint(equalTo: field.frameLayoutGuide.topAnchor, constant: 8),
+            placeholderLabel.leadingAnchor.constraint(equalTo: field.frameLayoutGuide.leadingAnchor, constant: 5),
+            placeholderLabel.trailingAnchor.constraint(equalTo: field.frameLayoutGuide.trailingAnchor, constant: -5),
         ])
     }
 
@@ -229,10 +299,29 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     }
 
     public override func layoutSubviews() {
+        // 先按本视图自己的宽度和当前字号量好编辑器高度、改好约束，再交给 super 一次排完。
+        // 量高只看文字、字号和本视图宽度，不读子视图上一轮的 frame，与布局先后无关；
+        // 每轮都量，字号（动态字体）变了也会跟上。
+        let editorChanged = updateEditorHeight(contentWidth: bounds.width - Self.contentInset * 2)
         super.layoutSubviews()
-        guard abs(bounds.width - lastMetricsWidth) > 0.5 else { return }
-        updateEditorHeight()
+        if editorChanged, pinsToKeyboard {
+            superview?.setNeedsLayout()
+        }
+        guard editorChanged || abs(bounds.width - lastMetricsWidth) > 0.5 else { return }
         refreshMetrics()
+    }
+
+    /// 给定宽度下整块输入区的高度。宿主（SwiftUI）按提议宽度直接要高度，不依赖上一轮布局。
+    public func fittingHeight(width: CGFloat) -> CGFloat {
+        guard let content = installedView, width > 1 else { return preferredBarHeight }
+        if case .composer = mode {
+            updateEditorHeight(contentWidth: width - Self.contentInset * 2)
+        }
+        let fitted = content.systemLayoutSizeFitting(
+            CGSize(width: max(1, width - Self.contentInset * 2), height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel)
+        return max(72, fitted.height + Self.contentInset * 2)
     }
 
     public func showComposer(animated: Bool) {
@@ -248,6 +337,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         command: String? = nil,
         positionText: String? = nil,
         notice: String? = nil,
+        answer: DecisionAnswerInput? = nil,
         animated: Bool
     ) {
         mode = .decision(
@@ -257,7 +347,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             secondaryTitle: secondaryTitle,
             primaryTitle: primaryTitle,
             positionText: positionText,
-            notice: notice
+            notice: notice,
+            answer: answer
         )
         applyMode(animated: animated)
     }
@@ -282,9 +373,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         let current = textView.text ?? ""
         guard current != mirrorText else { return }
         mirrorText = current
-        updateEditorHeight()
         refreshMetrics()
-        placeholderLabel.isHidden = !placeholder.isEmpty && current.isEmpty ? false : true
+        updatePlaceholderVisibility()
         // 程序下推的文本不回声，避免 SwiftUI ↔ UIKit 回调死循环。
         guard !isApplyingExternalText else { return }
         onDraft?(current)
@@ -332,13 +422,55 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         attachButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         attachButton.isHidden = !showsAttachButton
 
-        let row = UIStackView(arrangedSubviews: [attachButton, field, sendButton])
-        row.axis = .horizontal
-        row.alignment = .bottom
-        row.spacing = 8
+        // 设计稿 4.1：编辑器独占一行；下面一行是 附件 · 模型 / 权限胶囊 · 圆形发送。
+        chipStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        chipStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        chipStack.isHidden = chips.isEmpty
+        // 没有建议时整块隐藏：空的 UIStackView 没有固有高度，留在排列里会让纵向高度不确定。
+        suggestionStack.isHidden = suggestions.isEmpty
+        let spacer = UIView()
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        let tools = UIStackView(arrangedSubviews: [attachButton, chipStack, spacer, sendButton])
+        tools.axis = .horizontal
+        tools.alignment = .center
+        tools.spacing = 8
 
         composerRoot.addArrangedSubview(suggestionStack)
-        composerRoot.addArrangedSubview(row)
+        composerRoot.addArrangedSubview(field)
+        composerRoot.addArrangedSubview(tools)
+    }
+
+    private func rebuildChips() {
+        for view in chipStack.arrangedSubviews {
+            chipStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        chipStack.isHidden = chips.isEmpty
+        for chip in chips {
+            var config = UIButton.Configuration.gray()
+            config.title = chip.title
+            config.image = UIImage(systemName: chip.systemImage)
+            config.imagePadding = 4
+            config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(textStyle: .footnote)
+            config.cornerStyle = .capsule
+            config.baseForegroundColor = DLUIKitColor.label
+            config.titleLineBreakMode = .byTruncatingTail
+            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
+            config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+                var outgoing = incoming
+                outgoing.font = UIFont.preferredFont(forTextStyle: .footnote)
+                return outgoing
+            }
+            let id = chip.id
+            let button = UIButton(
+                configuration: config, primaryAction: UIAction { [weak self] _ in self?.onChip?(id) })
+            button.accessibilityLabel = chip.accessibilityLabel
+            button.accessibilityIdentifier = "composer.chip.\(chip.id)"
+            button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            chipStack.addArrangedSubview(button)
+        }
     }
 
     private func applyExternalText(_ newValue: String) {
@@ -350,9 +482,13 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         field.text = newValue
         isApplyingExternalText = false
         clampSelection()
-        updateEditorHeight()
         refreshMetrics()
-        placeholderLabel.isHidden = !placeholder.isEmpty && mirrorText.isEmpty ? false : true
+        updatePlaceholderVisibility()
+    }
+
+    /// C05：没有提示文案、或编辑器里已有文字时隐藏提示；否则显示。
+    private func updatePlaceholderVisibility() {
+        placeholderLabel.isHidden = placeholder.isEmpty || !(field.text ?? "").isEmpty
     }
 
     private func clampSelection() {
@@ -379,14 +515,21 @@ public final class DLComposerView: UIView, UITextViewDelegate {
             }
             shouldRestoreFocus = false
         case .decision(
-            let status, let question, let command, let secondaryTitle, let primaryTitle, let positionText, let notice
+            let status, let question, let command, let secondaryTitle, let primaryTitle, let positionText, let notice,
+            let answer
         ):
+            // 回答文字不进签名：用户打字时不重装视图，焦点和输入法候选都不受影响。
             let signature = [
                 status, question, command ?? "", secondaryTitle, primaryTitle, isEnabled ? "1" : "0",
-                positionText ?? "", notice ?? "",
+                positionText ?? "", notice ?? "", answer?.signature ?? "",
             ].joined(separator: "␟")
-            if installed == .decision(signature: signature) { return }
+            if installed == .decision(signature: signature) {
+                syncAnswerText(answer)
+                return
+            }
             shouldRestoreFocus = installed == .composer && field.isFirstResponder
+            let answerHadFocus = answerField.isFirstResponder
+            syncAnswerText(answer, force: true)
             let content = makeDecisionContent(
                 status: status,
                 question: question,
@@ -396,14 +539,29 @@ public final class DLComposerView: UIView, UITextViewDelegate {
                 enabled: isEnabled,
                 positionText: positionText,
                 notice: notice,
+                answer: answer,
+                answerField: answer == nil ? nil : answerField,
+                onChoice: { [weak self] value in self?.onDecisionChoice?(value) },
                 onSecondary: { [weak self] in self?.onDecisionSecondary?() },
                 onPrimary: { [weak self] in self?.onDecisionPrimary?() }
             )
             glass.install(content, animated: animated)
             installed = .decision(signature: signature)
             installedView = content
+            if answerHadFocus, answer != nil, isEnabled, !answerField.isFirstResponder {
+                answerField.becomeFirstResponder()
+            }
         }
         refreshMetrics()
+    }
+
+    /// 外部回答文字下推。正在输入（有焦点或组词中）时不覆盖，切题重装时强制对齐。
+    private func syncAnswerText(_ answer: DecisionAnswerInput?, force: Bool = false) {
+        guard let answer, answerField.markedTextRange == nil else { return }
+        guard force || !answerField.isFirstResponder else { return }
+        if (answerField.text ?? "") != answer.text {
+            answerField.text = answer.text
+        }
     }
 
     private func applyComposerProperties() {
@@ -413,6 +571,7 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         sendButton.isEnabled = isEnabled && !isSending
         sendButton.alpha = isSending ? 0.5 : 1
         attachButton.isHidden = !showsAttachButton
+        chipStack.isHidden = chips.isEmpty
     }
 
     private func rebuildSuggestions() {
@@ -448,27 +607,43 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         }
     }
 
-    private func updateEditorHeight() {
-        guard field.bounds.width > 0 else { return }
-        field.isScrollEnabled = false
+    /// 按给定的编辑器宽度量高，返回约束是否改了。
+    ///
+    /// 宽度由调用方从本视图宽度算出（不读 field.bounds，那是上一轮布局的结果）；
+    /// 字号按本视图当前的 traitCollection 先对齐，不等编辑器自己晚一步跟进动态字体。
+    /// 量的时候不切 isScrollEnabled：只在结果需要时改一次，避免反复触发重排。
+    @discardableResult
+    private func updateEditorHeight(contentWidth: CGFloat) -> Bool {
+        guard contentWidth > 1 else { return false }
+        syncEditorFont()
         let fitting = field.sizeThatFits(
-            CGSize(width: field.bounds.width, height: UIView.layoutFittingExpandedSize.height))
-        let target = min(max(Self.editorMinimumHeight, ceil(fitting.height)), Self.editorMaximumHeight)
-        guard abs(editorHeight.constant - target) > 0.5 else { return }
+            CGSize(width: contentWidth, height: UIView.layoutFittingExpandedSize.height))
+        let natural = ceil(fitting.height)
+        let target = min(max(Self.editorMinimumHeight, natural), Self.editorMaximumHeight)
+        // 到上限后改为内部滚动，不再继续撑高。
+        let scrolls = natural > Self.editorMaximumHeight
+        if field.isScrollEnabled != scrolls {
+            field.isScrollEnabled = scrolls
+        }
+        guard abs(editorHeight.constant - target) > 0.5 else { return false }
         editorHeight.constant = target
-        // 到上限后改为内部滚动，不再继续撑高，避免反复触发外部重排。
-        field.isScrollEnabled = fitting.height > Self.editorMaximumHeight
+        return true
+    }
+
+    private func syncEditorFont() {
+        let body = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+        if field.font != body {
+            field.font = body
+        }
+        if placeholderLabel.font != body {
+            placeholderLabel.font = body
+        }
     }
 
     private func refreshMetrics() {
-        guard let content = installedView else { return }
-        let width = bounds.width > 1 ? bounds.width : 378
-        let fitted = content.systemLayoutSizeFitting(
-            CGSize(width: max(1, width - 24), height: UIView.layoutFittingCompressedSize.height),
-            withHorizontalFittingPriority: .required,
-            verticalFittingPriority: .fittingSizeLevel)
         lastMetricsWidth = bounds.width
-        let height = max(72, fitted.height + 24)
+        guard installedView != nil else { return }
+        let height = fittingHeight(width: bounds.width > 1 ? bounds.width : Self.fallbackWidth)
         guard abs(preferredBarHeight - height) > 0.5 else { return }
         preferredBarHeight = height
         invalidateIntrinsicContentSize()
@@ -480,4 +655,23 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         }
         return CGSize(width: UIView.noIntrinsicMetric, height: preferredBarHeight)
     }
+}
+
+/// 设计稿 4.1：圆形发送按钮，只放图标；读屏和 UI 测试仍按「发送 / Send」找到它。
+/// 用标签色实心圆（浅色黑底、深色白底），不占用这一屏唯一的品牌实心名额。
+@MainActor
+func dlRoundSendButton(title: String, enabled: Bool) -> UIButton {
+    var config = UIButton.Configuration.filled()
+    config.image = UIImage(systemName: "arrow.up")
+    config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(textStyle: .headline)
+    config.cornerStyle = .capsule
+    config.baseBackgroundColor = DLUIKitColor.label
+    config.baseForegroundColor = DLUIKitColor.background
+    config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+    let button = UIButton(configuration: config)
+    button.accessibilityLabel = title
+    button.isEnabled = enabled
+    button.widthAnchor.constraint(equalToConstant: 44).isActive = true
+    button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+    return button
 }

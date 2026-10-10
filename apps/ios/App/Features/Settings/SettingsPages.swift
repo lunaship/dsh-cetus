@@ -1,6 +1,7 @@
 import DLCore
 import DLModels
 import DLSecurity
+import DLUI
 import SwiftUI
 
 #if canImport(UIKit)
@@ -39,6 +40,14 @@ struct SettingsHomePage: View {
     var crashReport: SettingsCrashReport?
     var models: SettingsModelsModel?
     var push: PushSettingsRegistration?
+    /// 「关于」一行右侧的版本号。截图用测试宿主的固定 bundle 版本。
+    var buildInfo: BuildInfo = .from()
+    @AppStorage(ThemePreference.storageKey) private var theme = ThemePreference.system
+    @AppStorage("settings.notifyMaster") private var notifyMaster = false
+    @AppStorage("settings.notifyApproval") private var notifyApproval = false
+    @AppStorage("settings.notifyQuestion") private var notifyQuestion = false
+    @AppStorage("settings.notifyDone") private var notifyDone = false
+    @AppStorage("settings.notifyFailed") private var notifyFailed = false
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -46,32 +55,43 @@ struct SettingsHomePage: View {
         Form {
             Section {
                 NavigationLink(value: SettingsPage.computer) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(computerName).font(.headline)
-                        Text(computerAddress)
-                            .font(.footnote.monospaced())
-                            .foregroundStyle(.secondary)
-                        Text(online ? copy.text(.online) : copy.text(.offline))
-                            .font(.footnote)
-                            .foregroundStyle(online ? .green : .secondary)
+                    // 设计稿 7.1：图标统一强调色、不加彩色底块。
+                    Label {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(computerName).font(.headline)
+                            Text(computerAddress)
+                                .font(.footnote.monospaced())
+                                .foregroundStyle(.secondary)
+                            Text(online ? copy.text(.online) : copy.text(.offline))
+                                .font(.footnote)
+                                .foregroundStyle(online ? .green : .secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } icon: {
+                        Image(systemName: "laptopcomputer").foregroundStyle(DLColor.accent)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(minHeight: 44)
                 }
             }
+            // 设计稿 7.1：系统分组列表，值放右侧（次要色），比两行副标题更符合 iOS 习惯。
+            // 只显示手机上已有的值；需要电脑侧数据的行（对话默认、余额、会话数）先不显示值。
             Section(copy.text(.general)) {
-                NavigationLink(copy.text(.language), value: SettingsPage.language)
-                NavigationLink(copy.text(.notifications), value: SettingsPage.notifications)
-                NavigationLink(copy.text(.appearance), value: SettingsPage.appearance)
+                row(copy.text(.language), systemImage: "globe", value: copy.text(.languageValue), page: .language)
+                row(
+                    copy.text(.notifications), systemImage: "bell", value: notificationSummary(copy),
+                    page: .notifications)
+                row(
+                    copy.text(.appearance), systemImage: "circle.lefthalf.filled", value: themeName(copy),
+                    page: .appearance)
             }
             Section(copy.text(.agent)) {
-                NavigationLink(copy.text(.defaults), value: SettingsPage.defaults)
-                NavigationLink(copy.text(.models), value: SettingsPage.models)
+                row(copy.text(.defaults), systemImage: "slider.horizontal.3", page: .defaults)
+                row(copy.text(.models), systemImage: "creditcard", page: .models)
             }
             Section(copy.text(.other)) {
-                NavigationLink(copy.text(.history), value: SettingsPage.history)
-                NavigationLink(copy.text(.about), value: SettingsPage.about)
-                NavigationLink(copy.text(.crash), value: SettingsPage.crash)
+                row(copy.text(.history), systemImage: "archivebox", page: .history)
+                row(copy.text(.about), systemImage: "info.circle", value: versionValue, page: .about)
+                row(copy.text(.crash), systemImage: "exclamationmark.triangle", page: .crash)
             }
         }
         .navigationTitle(copy.text(.title))
@@ -86,6 +106,48 @@ struct SettingsHomePage: View {
                     locale: locale.identifier, lastBalanceAt: models.state.lastBalanceAt)
             }
         }
+    }
+}
+
+extension SettingsHomePage {
+    fileprivate func row(_ title: String, systemImage: String, value: String? = nil, page: SettingsPage)
+        -> some View
+    {
+        NavigationLink(value: page) {
+            LabeledContent {
+                if let value { Text(value) }
+            } label: {
+                Label {
+                    Text(title)
+                } icon: {
+                    Image(systemName: systemImage).foregroundStyle(DLColor.accent)
+                }
+            }
+        }
+    }
+
+    /// 通知一行的值：总开关关着是「关闭」；开着就列出打开的类别（如「审批、完成」）。
+    fileprivate func notificationSummary(_ copy: SettingsCopy) -> String {
+        guard notifyMaster else { return copy.text(.notifyOff) }
+        var parts: [String] = []
+        if notifyApproval { parts.append(copy.text(.notifyShortApproval)) }
+        if notifyQuestion { parts.append(copy.text(.notifyShortQuestion)) }
+        if notifyDone { parts.append(copy.text(.notifyShortDone)) }
+        if notifyFailed { parts.append(copy.text(.notifyShortFailed)) }
+        return parts.isEmpty ? copy.text(.notifyOff) : parts.joined(separator: copy.text(.listSeparator))
+    }
+
+    fileprivate func themeName(_ copy: SettingsCopy) -> String {
+        switch theme {
+        case ThemePreference.light: copy.text(.themeLight)
+        case ThemePreference.dark: copy.text(.themeDark)
+        default: copy.text(.themeSystem)
+        }
+    }
+
+    fileprivate var versionValue: String? {
+        let version = buildInfo.marketingVersion
+        return version == "unknown" ? nil : version
     }
 }
 
@@ -777,6 +839,13 @@ enum SettingsText: String {
     case unpair
     case copyResult
     case notifyMaster
+    /// 设计稿 7.1：设置首页「通知」一行右侧的摘要。
+    case notifyOff
+    case notifyShortApproval
+    case notifyShortQuestion
+    case notifyShortDone
+    case notifyShortFailed
+    case listSeparator
     case balance
     case balanceValue
     case providers
@@ -883,6 +952,12 @@ enum SettingsText: String {
         case .unpair: "Unpair"
         case .copyResult: "Copy result"
         case .notifyMaster: "Notifications"
+        case .notifyOff: "Off"
+        case .notifyShortApproval: "Approvals"
+        case .notifyShortQuestion: "Questions"
+        case .notifyShortDone: "Done"
+        case .notifyShortFailed: "Failures"
+        case .listSeparator: ", "
         case .balance: "Balance"
         case .balanceValue: "Unavailable"
         case .providers: "Providers"
