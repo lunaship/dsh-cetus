@@ -1184,6 +1184,8 @@ private struct ChangesPresentation: ViewModifier {
     private var turn: Int { model.changes?.turn ?? (model.changesSeq ?? 0) }
 
     func body(content: Content) -> some View {
+        // 6.2：显式捕获 binding，避免闭包通过 self 改 struct 的 @Binding。
+        let diffBinding = $diffFileIndex
         let page = ChangesPage(
             files: files,
             turn: max(1, turn),
@@ -1197,22 +1199,22 @@ private struct ChangesPresentation: ViewModifier {
             loading: model.changesLoading,
             error: model.changesError,
             onRetry: { [model] in if let seq = model.changesSeq { model.viewChanges(seq: seq) } },
-            onOpenDiff: { [model] index in
+            onOpenDiff: { [model, diffBinding] index in
                 guard let seq = model.changesSeq else { return }
                 model.loadFileDiff(seq: seq, index: index)
                 // 6.2：不再内联展开，导航到 DiffPage。
-                diffFileIndex = index
+                diffBinding.wrappedValue = index
             },
             diff: [:],
             diffUnavailable: model.unavailableDiffs)
         let pageWithDiffNav = page
             .navigationDestination(
                 isPresented: Binding(
-                    get: { diffFileIndex != nil },
-                    set: { if !$0 { diffFileIndex = nil } }
+                    get: { diffBinding.wrappedValue != nil },
+                    set: { if !$0 { diffBinding.wrappedValue = nil } }
                 )
             ) {
-                if let index = diffFileIndex {
+                if let index = diffBinding.wrappedValue {
                     FileDiffDetailView(
                         fileIndex: index,
                         model: model,
