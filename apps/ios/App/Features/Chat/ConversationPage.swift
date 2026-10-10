@@ -138,6 +138,10 @@ struct ConversationPage: View {
     @State private var decisionNoticeArguments: [CVarArg] = []
     @State private var submission: SubmissionState = .idle
     @State private var submissionNotice: ChatText?
+    /// 4.1：停止当前轮次失败（`session.cancel` 出错）时的提示。
+    @State private var stopFailed = false
+    /// 4.1：停止请求在途时不再重复发（host 侧 cancel 幂等性未知）。
+    @State private var stopInFlight = false
     // MARK: - C04 跟滚
     /// 上翻期间来了新消息 → 显示"回到最新"入口。
     @State private var showNewMessagesPill = false
@@ -308,6 +312,14 @@ struct ConversationPage: View {
                     Button(copy.text(.retry)) { Task { await send(copy) } }
                     Button(copy.text(.cancel), role: .cancel) { submissionNotice = nil }
                 }
+                // 4.1：停止失败要给可见反馈，轮次可能还在跑，可重试。
+                .alert(
+                    copy.text(.stopFailed),
+                    isPresented: $stopFailed
+                ) {
+                    Button(copy.text(.retry)) { Task { await stopTurn() } }
+                    Button(copy.text(.cancel), role: .cancel) { stopFailed = false }
+                }
                 .task {
                     await model.start()
                     await loadCurrentModel()
@@ -389,6 +401,9 @@ struct ConversationPage: View {
                             drafts.update(text, kind: .prompt)
                         },
                         onSend: { Task { await send(copy) } },
+                        // 4.1：运行中主按钮变为「停止」，点按中断当前轮次。
+                        isRunning: model.running,
+                        onStop: { Task { await stopTurn() } },
                         onEscape: { _ = dismissPresented() },
                         onSecondary: { decideSecondary() },
                         onPrimary: { decidePrimary() },
@@ -892,6 +907,21 @@ struct ConversationPage: View {
                 ? .outcomeUnknown(revision: snapshot.revision)
                 : .failedBeforeAccept(revision: snapshot.revision, message: "")
             submissionNotice = failure.copyKey
+        }
+    }
+
+    /// 4.1「停止」按钮：中断当前轮次。只停正在跑的这一轮，不动排队消息；
+    /// 成功后 host 下发 turn/end（reason=interrupted），`running` 由流归约置 false、
+    /// phase 变为 .stopped，会话显示「已停止」。失败则弹提示，不吞错。
+    private func stopTurn() async {
+        guard !staticSnapshot, model.running, !stopInFlight else { return }
+        stopInFlight = true
+        defer { stopInFlight = false }
+        stopFailed = false
+        do {
+            try await model.serviceCancelTurn()
+        } catch {
+            stopFailed = true
         }
     }
 

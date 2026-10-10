@@ -34,6 +34,10 @@ protocol ConversationServing: Sendable {
     func setPhase(_ phase: AppPhase) async
     func stop() async
     func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws
+    /// 中断当前轮次（`POST /dsh-link/mobile/sessions/:id/cancel` → RPC `session.cancel`）。
+    /// 只中断正在跑的这一轮：会话保留，不动排队消息；停止后 turn/end 的 reason 为
+    /// interrupted/stopped，由投影的 stoppedReason 呈现。
+    func cancelTurn(sessionID: String) async throws
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws
     func submitQuestion(sessionID: String, rpcID: String, answer: QuestionAnswerBody) async throws
     func models(sessionID: String) async throws -> SessionModelsResponse
@@ -83,6 +87,10 @@ extension ConversationServing {
     func stop() async {}
     func sendPrompt(sessionID: String, text: String, images: [PromptImage]) async throws {
         _ = (sessionID, text, images)
+        throw ConversationServiceError.offline
+    }
+    func cancelTurn(sessionID: String) async throws {
+        _ = sessionID
         throw ConversationServiceError.offline
     }
     func submitApproval(sessionID: String, approvalID: String, outcome: String) async throws {
@@ -382,6 +390,7 @@ final class ConversationModel {
         guard !frames.isEmpty else { return }
         messages = reduceTranscript(messages, frames: frames)
         running = reduceRunning(running, frames: frames)
+        stoppedReason = reduceStoppedReason(stoppedReason, frames: frames)
         if let seq = frames.map(\.seq).max(), seq > maxSeq { maxSeq = seq }
         confirmingSnapshot = false
         rebuild(fade: true)
@@ -763,6 +772,12 @@ final class ConversationModel {
         writeInFlight = true
         defer { writeInFlight = false }
         try await service.sendPrompt(sessionID: sessionID, text: text, images: images)
+    }
+
+    /// 中断当前轮次（4.1「停止」按钮）。只停这一轮，不动排队消息；
+    /// 停止后 host 下发 turn/end（reason=interrupted），`running` 由流归约置 false。
+    func serviceCancelTurn() async throws {
+        try await service.cancelTurn(sessionID: sessionID)
     }
 
     func serviceApproval(id: String, outcome: String) async throws {
