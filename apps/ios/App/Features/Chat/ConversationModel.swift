@@ -820,6 +820,16 @@ final class ConversationModel {
         return modelRows(response)
     }
 
+    /// 当前会话的模型（P1「显示真实模型」）：进入会话即显示，不等用户打开面板。
+    /// 拿不到时返回 nil，调用方显示中性占位，不填假值。
+    func serviceCurrentModel() async -> (id: String, effort: String)? {
+        guard let response = try? await service.models(sessionID: sessionID),
+            let model = response.current?.model,
+            !model.isEmpty
+        else { return nil }
+        return (model, response.current?.effortValue ?? "")
+    }
+
     func serviceSelectModel(provider: String, model: String, effort: String?) async {
         try? await service.selectModel(sessionID: sessionID, provider: provider, model: model, effort: effort)
     }
