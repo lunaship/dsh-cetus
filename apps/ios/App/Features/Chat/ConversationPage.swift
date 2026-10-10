@@ -1136,8 +1136,8 @@ private struct FileDiffDetailView: View {
 
     private var lines: [DiffLine]? {
         guard let response,
-              response.kind == .text,
-              let hunks = response.hunks, !hunks.isEmpty
+            response.kind == .text,
+            let hunks = response.hunks, !hunks.isEmpty
         else { return nil }
         var budget = 5000
         return DLCore.diffLines(from: hunks, budget: &budget)
@@ -1207,7 +1207,8 @@ private struct ChangesPresentation: ViewModifier {
             },
             diff: [:],
             diffUnavailable: model.unavailableDiffs)
-        let pageWithDiffNav = page
+        let pageWithDiffNav =
+            page
             .navigationDestination(
                 isPresented: Binding(
                     get: { diffBinding.wrappedValue != nil },
