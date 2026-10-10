@@ -19,6 +19,15 @@ final class SettingsModelsModel {
     private let service: any SettingsModelsServing
     var state = SettingsModelsState()
 
+    /// 仅取余额（设置首页「模型与余额」行右侧值用，不拉全量模型列表）。
+    func loadBalance(locale: String) async {
+        do {
+            state.balance = try await service.balance(locale: locale)
+        } catch {
+            // 拿不到就不显示值，不抛错。
+        }
+    }
+
     init(service: any SettingsModelsServing) { self.service = service }
 
     func load(locale: String, now: Date = Date(), lastBalanceAt: Date? = nil) async {
