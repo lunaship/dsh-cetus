@@ -224,3 +224,24 @@ jobs:
           else
             echo "::error title=screenshot failure::no xcresult bundle produced"
           fi
+
+      - name: Export failed screenshot attachments
+        if: failure()
+        run: |
+          set +e
+          R="$RUNNER_TEMP/screenshots.xcresult"
+          OUT="$RUNNER_TEMP/screenshot-failures"
+          mkdir -p "$OUT"
+          if [ -d "$R" ]; then
+            xcrun xcresulttool export attachments --path "$R" --output-path "$OUT" --only-failures
+          fi
+          ls -la "$OUT"
+
+      - name: Upload failed screenshot attachments
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-screenshot-failures-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/screenshot-failures
+          retention-days: 7
+          if-no-files-found: ignore

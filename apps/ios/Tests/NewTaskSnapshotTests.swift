@@ -170,12 +170,8 @@ import XCTest
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         CATransaction.flush()
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 3
-        format.opaque = true
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
-        }
+        // 等玻璃层/渲染管线稳定再拍，见 SnapshotSettle.swift。
+        let image = settledSnapshot(of: host.view, size: size)
         window.isHidden = true
         window.rootViewController = nil
         window.windowScene = nil

@@ -99,12 +99,8 @@ import XCTest
             window.windowScene = nil
             previousKey?.makeKey()
         }
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 3
-        format.opaque = true
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
-        }
+        // 等玻璃层/渲染管线稳定再拍，见 SnapshotSettle.swift。
+        return settledSnapshot(of: host.view, size: size)
     }
 
     private func snapshotName(_ scene: String, appearance: UIUserInterfaceStyle, language: String) -> String {
