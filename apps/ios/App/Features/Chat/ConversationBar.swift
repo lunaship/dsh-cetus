@@ -29,6 +29,9 @@ struct ConversationBar: UIViewRepresentable {
     var onAttach: () -> Void = {}
     /// C03：提交在途时发送按钮进忙碌态，阻止重复点击。
     var isSending = false
+    /// 4.1：会话运行中时主按钮变为「停止」，点按中断当前轮次。
+    var isRunning = false
+    var onStop: () -> Void = {}
     /// C05：编辑器为空时的提示文案。
     var placeholder = ""
     /// C06：请求已被其他设备处理 → 决策面板显示「已处理」，不给成功触感。
@@ -90,6 +93,9 @@ struct ConversationBar: UIViewRepresentable {
         view.attachTitle = attachTitle
         view.onAttach = onAttach
         view.isSending = isSending
+        view.isRunning = isRunning
+        view.onStop = onStop
+        view.stopTitle = copy.text(.stop)
         view.placeholder = placeholder
         view.chips = chips
         view.onChip = onChip
