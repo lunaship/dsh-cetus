@@ -1,7 +1,7 @@
 # 已知问题登记
 
 > 每条包含：现象、复现、影响、状态、关联 PR / 提交。
-> 来源：PR #195 正文「没做的」、HANDOFF.md §7、本仓协作记录。
+> 来源：PR #195 正文「没做的」、HANDOFF.md §7、本仓协作记录。状态截至 2026-10-11。
 
 ---
 
@@ -10,7 +10,7 @@
 - **现象**：PR #197（iOS 停止按钮接 `session.cancel`）CI 在 "Build Debug and Release" 失败，`(3 failures)`，exit 65。
 - **复现**：推 `feat/ios-stop-button` 分支，CI iOS build 必现。
 - **影响**：P0 停止按钮无法合并；`feat/ios-stop-button` 分支处于坏状态（编译不过）。
-- **状态**：🔴 阻塞中。已修两处（swift-format 4 处行合并+1 超长注释；`CancelTurnFlowTests` 缺 `@MainActor`），仍剩 3 个 `ConversationPage.swift` 编译错误未定位。GitHub Actions 日志需登录查看（匿名 API 返回 "Must have admin rights"；账号 `astrwisp@gmail.com` 不支持密码登录），**等用户从日志复制 3 条 `error:` 行**。
+- **状态**：✅ 已解除（2026-10-11）。真正的根因有两个，都已随 PR #197 修好：① 巨大的 SwiftUI body 加上新增 `.alert` 后超出 Swift 单表达式类型检查预算（CI 报 `unable to type-check in reasonable time`，此前因看不到日志一直未定位）——把 `ComposerInset` 内容抽成独立 `@ViewBuilder`；② `ConversationBar` 调用处 `isRunning/onStop` 实参顺序与 memberwise 声明不符。附带教训：本地 Xcode 27.1 可直接复现编译错误，不必依赖 CI 日志。
 - **关联**：PR [#197](https://github.com/lunaship/dsh-cetus/pull/197)；分支 `feat/ios-stop-button`。
 
 ---
@@ -20,7 +20,7 @@
 - **现象**：PR #201（6.2 生产路径接 `DiffPage` 路由）CI iOS build 失败。
 - **复现**：推 `feat/ios-diffpage-route` 分支，CI iOS build 必现。
 - **影响**：6.2 无法合并；盲修 3 轮（@State 改 @Binding、命名冲突、闭包捕获）均未解决。
-- **状态**：🔴 阻塞中。与 #1 同因：看不到 CI 具体错误行。待能看日志后再继续。
+- **状态**：✅ 已解除（2026-10-11）。根因只是 swift-format 缩进/换行（CI 日志即可见），`swift-format format -i` 后 lint --strict 通过，随 PR #201 修好。
 - **关联**：PR [#201](https://github.com/lunaship/dsh-cetus/pull/201)；分支 `feat/ios-diffpage-route`。
 
 ---
