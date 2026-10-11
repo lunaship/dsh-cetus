@@ -33,6 +33,26 @@ final class E2ELaunchTests: XCTestCase {
         XCTAssertTrue(labeled(ctx.app.staticTexts, phoneText).exists)
     }
 
+    /// 4.1「停止」按钮：运行中主按钮变为停止态，点按后 turn/end（interrupted）
+    /// 让按钮回到发送态，会话显示已停止。
+    func testStopTurn() throws {
+        let ctx = try launchContext()
+        try continuePastLocalNetworkExplanation(ctx.app)
+        post(ctx.control, "/control/approve-pairing", [:])
+        try openFirstSession(ctx.app)
+        // text-delta 把 running 置 true，主按钮变为停止态。
+        post(ctx.control, "/control/stream", ["sessionId": sessionID, "text": "e2e-stop-marker"])
+        let stop = try waitUntilHittable(button(ctx.app, "停止", "Stop"))
+        stop.tap()
+        // cancel 走真实插件 → 假 gateway 返回 ok；再下发 turn/end 结束这一轮。
+        post(ctx.control, "/control/turn-end", ["sessionId": sessionID, "kind": "interrupted"])
+        let send = try waitUntilHittable(button(ctx.app, "发送", "Send"))
+        XCTAssertTrue(send.exists)
+        let stopGone = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: button(ctx.app, "停止", "Stop"))
+        XCTAssertEqual(XCTWaiter.wait(for: [stopGone], timeout: waitLimit), .completed)
+    }
+
     func testApproval() throws {
         let ctx = try launchContext()
         try continuePastLocalNetworkExplanation(ctx.app)

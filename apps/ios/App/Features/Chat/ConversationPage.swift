@@ -138,6 +138,10 @@ struct ConversationPage: View {
     @State private var decisionNoticeArguments: [CVarArg] = []
     @State private var submission: SubmissionState = .idle
     @State private var submissionNotice: ChatText?
+    /// 4.1：停止当前轮次失败（`session.cancel` 出错）时的提示。
+    @State private var stopFailed = false
+    /// 4.1：停止请求在途时不再重复发（host 侧 cancel 幂等性未知）。
+    @State private var stopInFlight = false
     // MARK: - C04 跟滚
     /// 上翻期间来了新消息 → 显示"回到最新"入口。
     @State private var showNewMessagesPill = false
@@ -308,6 +312,11 @@ struct ConversationPage: View {
                     Button(copy.text(.retry)) { Task { await send(copy) } }
                     Button(copy.text(.cancel), role: .cancel) { submissionNotice = nil }
                 }
+                // 4.1：停止失败要给可见反馈，轮次可能还在跑，可重试。
+                .alert(copy.text(.stopFailed), isPresented: $stopFailed) {
+                    Button(copy.text(.retry)) { Task { await stopTurn() } }
+                    Button(copy.text(.cancel), role: .cancel) { stopFailed = false }
+                }
                 .task {
                     await model.start()
                     await loadCurrentModel()
@@ -371,86 +380,9 @@ struct ConversationPage: View {
 
     private func screen(_ copy: ConversationCopy) -> some View {
         column(copy)
-            .modifier(
-                ComposerInset(on: composerOn) {
-                    if showsStatusSlot {
-                        ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
-                    }
-                    ConversationBar(
-                        decision: decision,
-                        draft: draft,
-                        copy: copy,
-                        onDraft: { text in
-                            // 用户每次编辑都前进修订号：提交期间新写的内容
-                            // 因此与"被提交的那份快照"区分开（C03 要求 2）。
-                            if text != draft { draftRevision += 1 }
-                            draft = text
-                            // 只排队，不每个字符写盘（C02 要求 6）。
-                            drafts.update(text, kind: .prompt)
-                        },
-                        onSend: { Task { await send(copy) } },
-                        onEscape: { _ = dismissPresented() },
-                        onSecondary: { decideSecondary() },
-                        onPrimary: { decidePrimary() },
-                        solidSnapshot: staticSnapshot,
-                        suggestions: decision == nil ? slashSuggestions(draft: draft, copy: copy) : [],
-                        onSuggestion: { pickSlash($0, copy: copy) },
-                        showsAttach: !staticSnapshot && decision == nil,
-                        attachTitle: copy.text(.attachTitle),
-                        onAttach: { sheet = .attach },
-                        isSending: submission.busy,
-                        placeholder: composerPlaceholderText(copy),
-                        decisionHandled: isDecisionHandled,
-                        decisionPosition: decisionPositionText(copy),
-                        decisionNotice: decisionNoticeText(copy),
-                        // C06 10.2.7：末题提交由题目导航区负责，决策栏不再重复放发送。
-                        questionUsesNavigatorSubmit: activeQuestion != nil,
-                        decisionBusy: decisionBusy,
-                        questionTitles: questionBarTitles(copy),
-                        chips: composerChips(copy),
-                        onChip: { id in
-                            guard !staticSnapshot else { return }
-                            switch id {
-                            case "model": sheet = .model
-                            case "permission": sheet = .permission
-                            default: break
-                            }
-                        },
-                        // 设计稿 4.4：选项和自由回答在决策栏这一块玻璃里，截图路径同样画出。
-                        answer: questionAnswerInput(copy),
-                        onChoice: { value in
-                            guard !staticSnapshot else { return }
-                            toggleQuestionOption(value)
-                        },
-                        onAnswer: { text in
-                            guard !staticSnapshot else { return }
-                            answerText = text
-                        }
-                    )
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
-                    .onChange(of: activeQuestion?.questionRpcId) { _, _ in
-                        if let activeQuestion { syncQuestionForm(activeQuestion) }
-                    }
-                    .onChange(of: answerText) { _, _ in persistQuestionDraft() }
-                }
-            )
+            .modifier(ComposerInset(on: composerOn) { composerOverlay(copy) })
             .sensoryFeedback(.success, trigger: decisionPulse)
-            .onAppear {
-                installDrafts()
-                if let sharePrefill, sharePrefill.target == .session(model.sessionID) {
-                    // C13: merge the share into the saved draft instead of replacing it.
-                    // installDrafts() does not restore text, so read the saved prompt first.
-                    let base = draft.isEmpty ? drafts.restored(.prompt) : draft
-                    draft = ShareInbox.merging(draft: base, shared: sharePrefill.text).text
-                    attachments = ShareInbox.mergingImages(existing: attachments, shared: sharePrefill.images)
-                    return
-                }
-                guard draft.isEmpty else { return }
-                draft = drafts.restored(.prompt)
-            }
+            .onAppear { restoreDraftsOnAppear() }
             // 审批 / 问题卡片出现：冻结正文草稿（不清空，用户回来文字还在）。
             // 离开时解冻，让内存里的文字继续落盘。
             .onChange(of: activeQuestion?.questionRpcId) { _, _ in syncQuestionDraft() }
@@ -462,6 +394,77 @@ struct ConversationPage: View {
             }
             .onChange(of: model.status.kind) { _, _ in statusExpanded = false }
             .onChange(of: model.status.goal?.ref?.id) { _, _ in statusExpanded = false }
+    }
+
+    /// ComposerInset 的内容（状态槽 + 输入区 + 决策栏）。抽成独立 @ViewBuilder，
+    /// 否则 screen 的整个修饰链超出 Swift 单表达式的类型检查预算（4.1 加了 alert 后溢出）。
+    @ViewBuilder
+    private func composerOverlay(_ copy: ConversationCopy) -> some View {
+        if showsStatusSlot {
+            ConversationStatusView(state: model.status, copy: copy, expanded: $statusExpanded)
+        }
+        ConversationBar(
+            decision: decision,
+            draft: draft,
+            copy: copy,
+            onDraft: { text in
+                // 用户每次编辑都前进修订号：提交期间新写的内容
+                // 因此与"被提交的那份快照"区分开（C03 要求 2）。
+                if text != draft { draftRevision += 1 }
+                draft = text
+                // 只排队，不每个字符写盘（C02 要求 6）。
+                drafts.update(text, kind: .prompt)
+            },
+            onSend: { Task { await send(copy) } },
+            onEscape: { _ = dismissPresented() },
+            onSecondary: { decideSecondary() },
+            onPrimary: { decidePrimary() },
+            solidSnapshot: staticSnapshot,
+            suggestions: decision == nil ? slashSuggestions(draft: draft, copy: copy) : [],
+            onSuggestion: { pickSlash($0, copy: copy) },
+            showsAttach: !staticSnapshot && decision == nil,
+            attachTitle: copy.text(.attachTitle),
+            onAttach: { sheet = .attach },
+            isSending: submission.busy,
+            // 4.1：运行中主按钮变为「停止」，点按中断当前轮次。
+            isRunning: model.running,
+            onStop: { Task { await stopTurn() } },
+            placeholder: composerPlaceholderText(copy),
+            decisionHandled: isDecisionHandled,
+            decisionPosition: decisionPositionText(copy),
+            decisionNotice: decisionNoticeText(copy),
+            // C06 10.2.7：末题提交由题目导航区负责，决策栏不再重复放发送。
+            questionUsesNavigatorSubmit: activeQuestion != nil,
+            decisionBusy: decisionBusy,
+            questionTitles: questionBarTitles(copy),
+            chips: composerChips(copy),
+            onChip: { id in
+                guard !staticSnapshot else { return }
+                switch id {
+                case "model": sheet = .model
+                case "permission": sheet = .permission
+                default: break
+                }
+            },
+            // 设计稿 4.4：选项和自由回答在决策栏这一块玻璃里，截图路径同样画出。
+            answer: questionAnswerInput(copy),
+            onChoice: { value in
+                guard !staticSnapshot else { return }
+                toggleQuestionOption(value)
+            },
+            onAnswer: { text in
+                guard !staticSnapshot else { return }
+                answerText = text
+            }
+        )
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+        .fixedSize(horizontal: false, vertical: true)
+        .onAppear { if let activeQuestion { syncQuestionForm(activeQuestion) } }
+        .onChange(of: activeQuestion?.questionRpcId) { _, _ in
+            if let activeQuestion { syncQuestionForm(activeQuestion) }
+        }
+        .onChange(of: answerText) { _, _ in persistQuestionDraft() }
     }
 
     private func column(_ copy: ConversationCopy) -> some View {
@@ -892,6 +895,36 @@ struct ConversationPage: View {
                 ? .outcomeUnknown(revision: snapshot.revision)
                 : .failedBeforeAccept(revision: snapshot.revision, message: "")
             submissionNotice = failure.copyKey
+        }
+    }
+
+    /// 草稿与分享入口的恢复逻辑（从 onAppear 闭包抽出，降低 body 的类型检查负担）。
+    private func restoreDraftsOnAppear() {
+        installDrafts()
+        if let sharePrefill, sharePrefill.target == .session(model.sessionID) {
+            // C13: merge the share into the saved draft instead of replacing it.
+            // installDrafts() does not restore text, so read the saved prompt first.
+            let base = draft.isEmpty ? drafts.restored(.prompt) : draft
+            draft = ShareInbox.merging(draft: base, shared: sharePrefill.text).text
+            attachments = ShareInbox.mergingImages(existing: attachments, shared: sharePrefill.images)
+            return
+        }
+        guard draft.isEmpty else { return }
+        draft = drafts.restored(.prompt)
+    }
+
+    /// 4.1「停止」按钮：中断当前轮次。只停正在跑的这一轮，不动排队消息；
+    /// 成功后 host 下发 turn/end（reason=interrupted），`running` 由流归约置 false、
+    /// phase 变为 .stopped，会话显示「已停止」。失败则弹提示，不吞错。
+    private func stopTurn() async {
+        guard !staticSnapshot, model.running, !stopInFlight else { return }
+        stopInFlight = true
+        defer { stopInFlight = false }
+        stopFailed = false
+        do {
+            try await model.serviceCancelTurn()
+        } catch {
+            stopFailed = true
         }
     }
 

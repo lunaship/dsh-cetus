@@ -71,6 +71,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var onDecisionAnswer: ((String) -> Void)?
     public var onSuggestion: ((String) -> Void)?
     public var onAttach: (() -> Void)?
+    /// 4.1「停止」按钮：运行中主按钮变为停止态，点按中断当前轮次（`session.cancel`）。
+    public var onStop: (() -> Void)?
 
     public var suggestions: [ComposerSuggestion] = [] {
         didSet {
@@ -120,8 +122,24 @@ public final class DLComposerView: UIView, UITextViewDelegate {
     public var isSending = false {
         didSet {
             guard didFinishInit, isSending != oldValue else { return }
-            sendButton.isEnabled = isEnabled && !isSending
-            sendButton.alpha = isSending ? 0.5 : 1
+            updateSendButtonMode()
+        }
+    }
+
+    /// 4.1：会话运行中时主按钮变为「停止」（■ 图标，读屏取 stopTitle），点按走 onStop。
+    /// 与 isSending 互斥：运行中按钮始终可点（用来停止），不因提交态禁用。
+    public var isRunning = false {
+        didSet {
+            guard didFinishInit, isRunning != oldValue else { return }
+            updateSendButtonMode()
+        }
+    }
+
+    /// 停止按钮的读屏文案（页面按 locale 下推，如「停止 / Stop」）。
+    public var stopTitle = "Stop" {
+        didSet {
+            guard didFinishInit, stopTitle != oldValue else { return }
+            updateSendButtonMode()
         }
     }
 
@@ -143,6 +161,8 @@ public final class DLComposerView: UIView, UITextViewDelegate {
 
     /// 只读访问内部编辑器实例。编辑器全生命周期只有一个实例。
     public var editor: UITextView { field }
+    /// 测试用：主按钮（发送态 ↑ / 停止态 ■）。
+    public var mainButton: UIButton { sendButton }
 
     // MARK: - 常驻视图（只创建一次）
 
@@ -412,7 +432,11 @@ public final class DLComposerView: UIView, UITextViewDelegate {
 
     private func configureChrome() {
         sendButton.removeTarget(nil, action: nil, for: .touchUpInside)
-        sendButton.addAction(UIAction { [weak self] _ in self?.onSubmit?() }, for: .touchUpInside)
+        sendButton.addAction(
+            UIAction { [weak self] _ in
+                guard let self else { return }
+                if self.isRunning { self.onStop?() } else { self.onSubmit?() }
+            }, for: .touchUpInside)
         sendButton.setContentHuggingPriority(.required, for: .horizontal)
 
         attachButton.setImage(UIImage(systemName: "plus"), for: .normal)
@@ -568,10 +592,25 @@ public final class DLComposerView: UIView, UITextViewDelegate {
         field.isEditable = isEnabled
         field.isSelectable = isEnabled
         field.textColor = isEnabled ? DLUIKitColor.label : DLUIKitColor.tertiaryLabel
-        sendButton.isEnabled = isEnabled && !isSending
-        sendButton.alpha = isSending ? 0.5 : 1
+        updateSendButtonMode()
         attachButton.isHidden = !showsAttachButton
         chipStack.isHidden = chips.isEmpty
+    }
+
+    /// 发送 / 停止两种主按钮态。停止态：■ 图标 + stopTitle 读屏，始终可点；
+    /// 发送态：↑ 图标 + sendTitle 读屏，提交在途时禁用。
+    private func updateSendButtonMode() {
+        if isRunning {
+            sendButton.configuration?.image = UIImage(systemName: "stop.fill")
+            sendButton.accessibilityLabel = stopTitle
+            sendButton.isEnabled = isEnabled
+            sendButton.alpha = 1
+        } else {
+            sendButton.configuration?.image = UIImage(systemName: "arrow.up")
+            sendButton.accessibilityLabel = sendTitle
+            sendButton.isEnabled = isEnabled && !isSending
+            sendButton.alpha = isSending ? 0.5 : 1
+        }
     }
 
     private func rebuildSuggestions() {

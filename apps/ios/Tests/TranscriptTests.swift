@@ -158,6 +158,19 @@ import Testing
         #expect(reduceRunning(true, frames: [StreamFrame(seq: 2, type: "turn/end", time: 1, data: .null)]) == false)
     }
 
+    /// 4.1：turn/end 的 reason.kind 即 stoppedReason；completed 置 nil（同插件 deriveStoppedReason）。
+    @Test func stoppedReasonFollowsTurnEndReason() {
+        func end(_ kind: String?) -> StreamFrame {
+            let reason: JSONValue = kind.map { .object(["kind": .string($0)]) } ?? .null
+            return StreamFrame(seq: 1, type: "turn/end", time: 1, data: .object(["reason": reason]))
+        }
+        #expect(reduceStoppedReason(nil, frames: [end("interrupted")]) == "interrupted")
+        #expect(reduceStoppedReason(nil, frames: [end("stopped")]) == "stopped")
+        #expect(reduceStoppedReason("interrupted", frames: [end("completed")]) == nil)
+        #expect(reduceStoppedReason(nil, frames: [end(nil)]) == nil)
+        #expect(reduceStoppedReason(nil, frames: [delta("x", seq: 1)]) == nil)
+    }
+
     @Test func freshAssistantsFadeOnGrowthOnly() {
         var seen: [String: String] = [:]
         let first = AssistantBlock(id: "a", markdown: "Hi", streaming: true, fade: false)

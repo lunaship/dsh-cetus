@@ -293,3 +293,25 @@ private actor StubModelsService: ConversationServing {
         #expect(await model.serviceCurrentModel() == nil)
     }
 }
+
+private actor RecordingCancelService: ConversationServing {
+    private(set) var cancelled: [String] = []
+    func cancelTurn(sessionID: String) async throws {
+        cancelled.append(sessionID)
+    }
+}
+
+@MainActor @Suite struct CancelTurnFlowTests {
+    /// 4.1：model 的停止走 service.cancelTurn，带当前会话 id。
+    @Test("停止委托给 service.cancelTurn") func stopDelegatesToService() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let box = TranscriptSnapshotBox(keys: InMemorySecureStore(), directory: directory)
+        let service = RecordingCancelService()
+        let model = ConversationModel(
+            hostID: "host", sessionID: "s-1", service: service, box: box, autostart: false)
+        try await model.serviceCancelTurn()
+        #expect(await service.cancelled == ["s-1"])
+    }
+}
