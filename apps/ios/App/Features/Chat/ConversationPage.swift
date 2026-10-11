@@ -110,6 +110,8 @@ struct ConversationPage: View {
     @State private var showSelectText = false
     @State private var showChanges = false
     @State private var showFiles = false
+    /// 6.2：DiffPage 导航的目标文件下标（nil = 不导航）。
+    @State private var diffFileIndex: Int?
     @State private var showFilePreview = false
     @State private var showPreview = false
     @Namespace private var changesZoom
@@ -205,7 +207,7 @@ struct ConversationPage: View {
                 .modifier(
                     ChangesPresentation(
                         regular: sizeClass == .regular, presented: $showChanges, copy: ReviewCopy(locale: locale),
-                        zoom: changesZoom, model: model,
+                        zoom: changesZoom, model: model, diffFileIndex: $diffFileIndex,
                         // C08：引用只预填输入区，不自动发送。
                         onAsk: { reference in
                             draft = ChangesTurnNavigator.appending(reference, to: draft)
@@ -1154,6 +1156,51 @@ struct ConversationPage: View {
     }
 }
 
+/// 6.2：单文件 diff 详情页。加载中显示进度，加载完用 DiffPage 呈现，
+/// 「就这段提问」带文件下标和段下标。
+private struct FileDiffDetailView: View {
+    var fileIndex: Int
+    var model: ConversationModel
+    var copy: ReviewCopy
+    var onAskHunk: (Int, Int) -> Void
+    @State private var hunkIndex = 0
+
+    private var response: ChangesDiffResponse? { model.fileDiffs[fileIndex] }
+
+    private var lines: [DiffLine]? {
+        guard let response,
+            response.kind == .text,
+            let hunks = response.hunks, !hunks.isEmpty
+        else { return nil }
+        var budget = 5000
+        return DLCore.diffLines(from: hunks, budget: &budget)
+    }
+
+    private var hunkCount: Int { response?.hunks?.count ?? 0 }
+
+    var body: some View {
+        if let lines {
+            DiffPage(
+                lines: lines,
+                copy: copy,
+                hunkIndex: hunkIndex,
+                hunkCount: hunkCount,
+                onPreviousHunk: { hunkIndex = max(0, hunkIndex - 1) },
+                onNextHunk: { hunkIndex = min(hunkCount - 1, hunkIndex + 1) },
+                onAskHunk: { idx in onAskHunk(fileIndex, idx) }
+            )
+        } else if model.unavailableDiffs.contains(fileIndex) {
+            DLEmptyState(
+                title: copy.text(.changesUnavailable),
+                systemImage: "exclamationmark.triangle"
+            )
+        } else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
 private struct ChangesPresentation: ViewModifier {
     var regular: Bool
     @Binding var presented: Bool
@@ -1161,6 +1208,8 @@ private struct ChangesPresentation: ViewModifier {
     var zoom: Namespace.ID
     /// C08：真实改动数据（从 ConversationModel 取），不再是空集合。
     var model: ConversationModel
+    /// 6.2：DiffPage 导航的目标文件下标（nil = 不导航）。由 ConversationPage 持有。
+    @Binding var diffFileIndex: Int?
     /// C08：把改动引用并入输入区。只预填，**不自动发送**。
     var onAsk: (String) -> Void
 
@@ -1168,6 +1217,8 @@ private struct ChangesPresentation: ViewModifier {
     private var turn: Int { model.changes?.turn ?? (model.changesSeq ?? 0) }
 
     func body(content: Content) -> some View {
+        // 6.2：显式捕获 binding，避免闭包通过 self 改 struct 的 @Binding。
+        let diffBinding = $diffFileIndex
         let page = ChangesPage(
             files: files,
             turn: max(1, turn),
@@ -1181,20 +1232,41 @@ private struct ChangesPresentation: ViewModifier {
             loading: model.changesLoading,
             error: model.changesError,
             onRetry: { [model] in if let seq = model.changesSeq { model.viewChanges(seq: seq) } },
-            onOpenDiff: { [model] index in
+            onOpenDiff: { [model, diffBinding] index in
                 guard let seq = model.changesSeq else { return }
                 model.loadFileDiff(seq: seq, index: index)
+                // 6.2：不再内联展开，导航到 DiffPage。
+                diffBinding.wrappedValue = index
             },
-            diff: model.fileDiffs,
+            diff: [:],
             diffUnavailable: model.unavailableDiffs)
+        let pageWithDiffNav =
+            page
+            .navigationDestination(
+                isPresented: Binding(
+                    get: { diffBinding.wrappedValue != nil },
+                    set: { if !$0 { diffBinding.wrappedValue = nil } }
+                )
+            ) {
+                if let index = diffBinding.wrappedValue {
+                    FileDiffDetailView(
+                        fileIndex: index,
+                        model: model,
+                        copy: copy,
+                        onAskHunk: { fileIdx, hunkIdx in
+                            onAsk(model.changesAskReference(fileIndex: fileIdx, hunkIndex: hunkIdx))
+                        }
+                    )
+                }
+            }
         if regular {
             content.inspector(isPresented: $presented) {
-                page
+                pageWithDiffNav
                     .inspectorColumnWidth(min: 280, ideal: 360, max: 480)
             }
         } else {
             content.navigationDestination(isPresented: $presented) {
-                page
+                pageWithDiffNav
                     .navigationTransition(.zoom(sourceID: 0, in: zoom))
             }
         }

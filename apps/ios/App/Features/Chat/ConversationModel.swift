@@ -466,6 +466,13 @@ final class ConversationModel {
         return ChangesTurnNavigator.askReference(paths: picked.compactMap { $0.path ?? $0.display })
     }
 
+    /// 6.2：就某文件的第 `hunkIndex` 个差异段提问。引用里带上段下标。
+    func changesAskReference(fileIndex: Int, hunkIndex: Int) -> String {
+        let base = changesAskReference(index: fileIndex)
+        // 段下标拼在引用后，格式：`path` + ` (hunk N)`。
+        return "\(base) (hunk \(hunkIndex + 1))"
+    }
+
     /// C08：拉取改动摘要与（可选）对比。失败时保留旧的，可重试。
     private func loadChanges(seq: Int?) {
         guard let seq, !changesLoading else { return }
